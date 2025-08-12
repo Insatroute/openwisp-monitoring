@@ -1,0 +1,36 @@
+services:
+  monitoring:
+    image: openwisp/openwisp-monitoring:develop
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    depends_on:
+      - influxdb
+      - redis
+
+  influxdb:
+    image: influxdb:1.8-alpine
+    volumes:
+      - influxdb-data:/var/lib/influxdb
+      - ./tests/influxdb.conf:/etc/influxdb/influxdb.conf
+    ports:
+      - "8086:8086"
+      - "8089:8089/udp"
+      - "8090:8090/udp"
+      - "8091:8091/udp"
+      - "8092:8092/udp"
+    environment:
+      INFLUXDB_DB: openwisp2
+      INFLUXDB_USER: openwisp
+      INFLUXDB_USER_PASSWORD: openwisp
+
+  redis:
+    image: redis:5.0-alpine
+    ports:
+      - "6379:6379"
+    entrypoint: redis-server --appendonly yes
+
+volumes:
+  influxdb-data: {}
