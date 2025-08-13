@@ -13,7 +13,6 @@ def get_install_requires():
             line.startswith("#")
             or line == ""
             or line.startswith("http")
-            or line.startswith("git")
         ):
             continue
         # add line to requirements
@@ -30,7 +29,7 @@ setup(
     description="OpenWISP Monitoring",
     long_description=open("README.rst").read(),
     url="http://openwisp.org",
-    download_url="https://github.com/openwisp/openwisp-monitoring/releases",
+    #download_url="https://github.com/openwisp/openwisp-monitoring/releases",
     platforms=["Platform Independent"],
     keywords=["django", "netjson", "networking", "openwisp", "monitoring"],
     packages=find_packages(exclude=["tests", "docs"]),
