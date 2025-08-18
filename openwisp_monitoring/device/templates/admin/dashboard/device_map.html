@@ -1,6 +1,211 @@
 {% load leaflet_tags i18n %}
 {% load i18n %}
 {% load static %}
+<style>
+@media screen and (min-width: 1380px) and (max-width: 1500px) {
+.svg-container{
+width: 360px !important;
+}
+.toggle-menu #plot-container {
+ 
+}
+}
+ 
+@media screen and (min-width: 1280px) and (max-width: 1379px) {
+.svg-container{
+background-color: #ffffff !important;
+width: 337px !important;
+}
+ 
+.data-card{
+width: 85% ;
+}
+.card{
+width: 85% !important;
+ 
+}
+ 
+}
+
+
+#plot-container .system-type{
+display: none !important;
+}
+#plot-container .currently-active-wifi-sessions{
+display: none !important;
+}
+#plot-container {
+padding: 0.325rem 1.2rem !important;
+overflow-x: unset !important;
+}
+.content{
+background-color: #d3d3d30f !important;
+}
+
+
+.card-grid {
+display: grid;
+grid-gap: 1rem;
+grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+max-width: 1800px;
+margin: 0 auto;
+padding: 25px 25px 25px 25px;
+}
+ 
+.card {
+background-color: #ffffff;
+border-radius: 8px;
+box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+padding: 1rem 1rem 1rem 2rem;
+text-align: center;
+width: 90%;
+}
+#map {
+width: 90% !important;
+height: 300px !important; /* or whatever fits your layout */
+}
+ 
+.card-app {
+background-color: #ffffff;
+border-radius: 8px;
+box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+padding: 1rem 1rem 1rem 2rem;
+text-align: center;
+width: 96%;
+}
+.data-card{
+width: 90% ;
+}
+ 
+.card-app h4 {
+margin-top: 0px;
+font-size: 1rem;
+margin-bottom: 1.5rem;
+color: #777;
+text-align: left;
+}
+ 
+.card-app p {
+font-size: 1.25rem;
+font-weight: bold;
+color: #555;
+}
+ 
+.card-app h4,
+.card-app p {
+word-wrap: break-word;
+}
+ 
+.card-app h4 {
+margin-top: 0px;
+font-size: 1rem;
+margin-bottom: 1.5rem;
+color: #777;
+text-align: left;
+}
+ 
+.card-app p {
+font-size: 1.25rem;
+font-weight: bold;
+color: #555;
+}
+ 
+.card-app h4,
+.card-app p {
+word-wrap: break-word;
+}
+
+
+/* 5) Networks card specific styling */
+.card.networks {
+text-align: left;
+padding: 1rem 1rem;
+}
+.card.networks h4 {
+font-size: 1rem;
+margin-bottom: 0.75rem;
+}
+.network-button {
+color: #fff;
+border: none;
+border-radius: 4px;
+padding: 0.25rem 0.75rem;
+font-size: 0.75rem;
+cursor: pointer;
+float: right;
+}
+.network-button:hover {
+background-color: #0056b3;
+}
+.network-body {
+display: flex;
+align-items: center;
+font-size: 1.25rem;
+color: #333;
+font-weight: 500;
+ 
+}
+.globe-icon {
+font-size: 1.5rem;
+margin-right: 0.5rem;
+}
+.network-stats {
+font-weight: 500;
+}
+.device-btn{
+background-color: #4a555f;
+}
+.tunnel-btn{
+background-color: #4a555f;
+}
+.link-btn{
+background-color: #4a555f;
+}
+.activelink-btn{
+background-color: #4a555f;
+}
+.chart-container canvas {
+width: 100% !important;
+height: 150px !important;
+}
+ 
+.card.devices { border-top: 4px solid #353b44; }
+.card.tunnels { border-top: 4px solid #353b44; }
+.card.total-links { border-top: 4px solid #353b44; }
+.card.link-active { border-top: 4px solid #353b44; }
+
+
+
+.toggle-menu .svg-container {
+width: 382px !important;
+}
+
+
+.toggle-menu #plot-container {
+ 
+margin-left: 0px;
+}
+#content-main > div:not(.app-sdwan_tunnel) {
+display: none;
+}
+ 
+.percircle-container {
+margin-top: 50px;
+}
+.map-view{
+padding: 25px 40px 25px 40px;
+}
+#device-map-container{
+margin: 0 auto !important;
+width: 100% !important;
+}
+.graph-grid .card{
+height: 230px !important;
+}
+#topAppsChart {
+height: 170px !important;
+}
+</style>
 <script type="text/javascript">
   window._owGeoMapConfig = {
     geoJsonUrl: '{{ monitoring_location_geojson_url }}',
