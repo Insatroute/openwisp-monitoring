@@ -1,0 +1,681 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&family=Roboto:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&family=Poppins:wght@300;400;500;600;700;800;900&family=Roboto&display=swap');
+
+body.login {
+    /* background: #464646 !important; */
+    background-image: url(login-page-lines.png);
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-color: #f5f8fa;
+    display: flex;
+
+    flex-direction: row;
+    min-height: 100%;
+    flex-wrap: nowrap;
+    justify-content: space-around;
+    align-items: center;
+
+}
+
+* {
+    font-size: 13px !important;
+}
+
+body {
+    font-family: Poppins, Roboto !important;
+}
+
+#login_h3 {
+
+    text-align: center;
+    color: rgb(74, 85, 95);
+    font-weight: 700;
+    margin-bottom: 0px !important;
+    margin-top: 2.5rem !important;
+    font-size: 1.5rem !important;
+    line-height: 2rem;
+
+}
+
+#login_h2 {
+    color: rgb(239, 139, 30);
+    text-align: center;
+    font-size: 1rem !important;
+    font-weight: 500;
+}
+
+#login_copyright {
+    position: absolute;
+    z-index: 10;
+    left: 60px;
+    bottom: 20px;
+}
+
+#login_copyright p {
+    color: rgb(74, 85, 95);
+    font-size: 0.8rem;
+}
+
+.login #container {
+    margin: 0px !important;
+    min-width: 375px;
+    height: 502px;
+    max-width: 450px;
+}
+
+#login_img {
+    margin: 20px;
+    height: 335px;
+
+    display: flex;
+    width: 100%;
+    display: block;
+}
+
+#container.no-auth #site-name {
+    display: block;
+    /* background-color: #3c2edd !important; */
+}
+
+#main .submit-row input {
+    font-size: 14px;
+
+    background-color: #ee8e21 !important;
+}
+
+#login-form .submit-row input {
+    width: 100%;
+}
+
+.login #site-name a {
+    background: url(Nexapp-Logo.png) no-repeat scroll 0 50% / 100% !important;
+    text-indent: -2000px;
+    width: 150px;
+    height: 86px;
+    margin: auto;
+}
+
+#site-name a {
+    /* display: block;
+    width: 165px;
+    height: 95px;
+    margin: auto; */
+    background: url(Nexapp.png) no-repeat scroll 0 50% / 100% !important;
+    /* text-indent: -2000px; */
+}
+
+.ow-dashboard-icon {
+    -webkit-mask-image: url(home.png) !important;
+}
+.ow-datamonitoring-icon{
+    -webkit-mask-image: url(datamonitoring.png) !important;
+
+
+}
+
+.ow-device {
+
+    -webkit-mask-image: url(devices.png) !important;
+}
+
+.ow-config {
+    -webkit-mask-image: url(configuration.png) !important;
+}
+
+.ow-template {
+    -webkit-mask-image: url(template.png) !important;
+}
+
+.ow-vpn {
+    -webkit-mask-image: url(vpnServer.png) !important;
+}
+
+.user {
+    -webkit-mask-image: url(group.png) !important;
+}
+
+.ow-access-credential {
+    -webkit-mask-image: url(accept.png) !important;
+}
+
+.ow-user-and-org {
+    -webkit-mask-image: url(organisation.png) !important;
+}
+
+.ow-geo {
+    -webkit-mask-image: url(geographical.png) !important;
+}
+
+.ow-cer-group {
+    -webkit-mask-image: url(certificates.png) !important;
+}
+
+.ow-monitoring {
+    -webkit-mask-image: url(monitor.png) !important;
+}
+
+.ow-monitoring-checks {
+    -webkit-mask-image: url(graph.png) !important;
+}
+
+a.menu-item,
+.mg-link,
+.mg-head {
+
+
+    color: black !important;
+    text-decoration: none !important;
+}
+
+.mg-head:hover {
+    color: #EF8B1E !important;
+
+}
+
+.mg-link:hover {
+    color: #EF8B1E !important;
+
+}
+
+
+a.menu-item:hover {
+    color: #EF8B1E !important;
+    background-color: rgb(255, 255, 255 / 46%) !important;
+
+}
+
+.mg-head:active {
+    color: #ef8b1e !important;
+    background: white !important;
+
+}
+
+.mg-link:active {
+    color: #ef8b1e !important;
+    background: white !important;
+
+}
+
+a.menu-item:active {
+    color: #ef8b1e !important;
+    background: white !important;
+
+}
+
+a.menu-item:focus {
+    color: #ef8b1e !important;
+    background: white !important;
+}
+
+.mg-head:focus {
+    color: #ef8b1e !important;
+    background: white !important;
+}
+
+.mg-link:focus {
+    color: #ef8b1e !important;
+    background: white !important;
+}
+
+.menu-group.active .mg-head {
+    color: #ef8b1e;
+    background: white !important;
+
+}
+
+#menu .mg-link:hover {
+    color: #EF8B1E !important;
+    background: white !important;
+
+}
+
+#menu .mg-link:active {
+    color: #EF8B1E !important;
+    background: white !important;
+
+}
+
+.menu-item:hover .icon,
+.mg-head:hover .icon,
+.menu-item:focus .icon,
+.mg-head:focus .icon,
+.mg-head:hover .mg-arrow,
+.mg-head:focus .mg-arrow,
+.menu-group.active .mg-head .icon,
+.menu-group.active .mg-head .mg-arrow,
+.menu-group.active-mg .mg-head .icon,
+.menu-group.active-mg .mg-head .mg-arrow,
+.mg-link:hover .icon,
+.mg-link:focus .icon,
+#menu a.active .icon {
+    background: #EF8B1E !important;
+}
+
+#menu a.active {
+    background: white !important;
+    color: #EF8B1E !important;
+}
+
+.menu-item:hover,
+.mg-head:hover,
+#menu .mg-link:hover,
+.menu-item:focus,
+.mg-head:focus,
+#menu .mg-link:focus,
+.select2-results__option--highlighted[aria-selected],
+.select2-results__option[aria-selected="true"] {
+    color: #EF8B1E !important;
+    background-color: white !important;
+}
+
+a.menu-item,
+.mg-link,
+.mg-head {
+
+    color: black !important;
+}
+
+#main-content .breadcrumbs a {
+    color: #EF8B1E !important;
+
+}
+
+.danger-btn,
+div.submit-row a.deletelink,
+.delete-confirmation form input[type="submit"] {
+
+    background: #EF8B1E !important;
+
+    color: #fff !important;
+}
+
+.menu-item .icon,
+.mg-heading .icon,
+.mg-link .icon {
+    background: black !important;
+
+}
+
+#main-content .breadcrumbs a,
+a.section:link,
+a.section:visited,
+.module th a,
+#main .help a,
+#main .helptext a,
+fieldset.collapsed a.collapse-toggle,
+fieldset a.collapse-toggle {
+    /* color: #9e580a !important; */
+    color: #e2802b !important;
+}
+
+.menu-item .icon,
+.mg-heading .icon,
+.mg-link .icon {
+    background: black !important;
+
+}
+
+.mg-dropdown {
+
+    background: rgb(245, 246, 235) !important;
+}
+
+.menu-toggle {
+
+    background: rgb(1, 22, 43) !important;
+}
+
+
+
+.menu-group.active .mg-head .icon {
+    background: #020202 !important;
+}
+
+.account-button:hover,
+.account-button:focus {
+    color: #EF8B1E !important;
+}
+
+.menu-group.active-mg:not(.active) .mg-head {
+    background: #ffffff !important;
+}
+
+.daterangepicker .ranges ul li.active {
+    background-color: #f3f3f3 !important;
+    color: #ff9400 !important;
+
+}
+
+#menu a.active:hover {
+    background: #f4f4f4 !important;
+}
+
+.ow-filter.ow-active .filter-title {
+    border-color: #f99302 !important;
+    color: #eda400 !important;
+}
+
+.filter-options .selected,
+.filter-options .selected:hover,
+.filter-options .selected:focus {
+    background: #e2802b !important;
+
+}
+
+.filter-options a:hover,
+.filter-options a:focus {
+    background: #f4f4f4 !important;
+    color: #e2802b !important;
+}
+
+
+#main-content div.breadcrumbs {
+    font-weight: 600 !important;
+    z-index: 4 !important;
+    background-color: #f9f9f9 !important;
+    position: sticky !important;
+    top: 0 !important;
+}
+
+#main-content div.breadcrumbs {
+    font-weight: 600 !important;
+}
+
+.daterangepicker .ranges ul li:hover {
+    background: #f4f4f4 !important;
+    color: #e2802b !important;
+}
+
+@media (max-width: 768px) {
+    #site-name a {
+        width: 6.5rem !important;
+    }
+}
+
+/* Remove css--------------- */
+
+#menu .nav {
+    background-color: #4a555f;
+    color: white;
+}
+
+a.menu-item,
+.mg-link,
+.mg-head {
+    font-size: .75 !important;
+    color: #ffffff !important;
+}
+
+.menu-item .icon,
+.mg-heading .icon,
+.mg-link .icon {
+    background: #ffffff !important;
+}
+
+.menu-item .icon,
+.mg-heading .icon,
+.mg-link .icon {
+    background: #ffffff !important;
+}
+
+.mg-dropdown {
+    padding-left: 20px !important;
+    background: #4a555f !important;
+}
+
+.menu-group.active .mg-head {
+    color: #e2802b;
+    background: #4a555f !important;
+}
+
+#menu a.active {
+    background: #4a555f !important;
+    color: #e2802b !important;
+}
+
+.menu-group.active .mg-head .icon {
+    background: #e2802b !important;
+}
+
+.mg-head:focus {
+    color: #e2802b !important;
+}
+
+.menu-group.active-mg:not(.active) .mg-head {
+    background: #4a555f !important;
+}
+
+.menu-item:hover,
+.mg-head:hover,
+#menu .mg-link:hover,
+.menu-item:focus,
+.mg-head:focus,
+#menu .mg-link:focus,
+.select2-results__option--highlighted[aria-selected],
+.select2-results__option[aria-selected="true"] {
+    color: #e2802b !important;
+    background-color: #4a555f !important;
+}
+
+#menu a.active:hover {
+    color: #e2802b !important;
+    background-color: #4a555f !important;
+}
+
+.menu-toggle {
+    background: #4a555f !important;
+}
+
+.menu-group.active .mg-head .mg-heading .label {
+    color: #e2802b !important;
+}
+
+a.menu-item:focus {
+    color: #e2802b !important;
+    background: #4a555f !important;
+}
+
+.menu-bar {
+    background: #4a555f !important;
+    border-bottom: 1px solid rgb(230 230 230 / 97%);
+}
+
+
+.default-btn:hover,
+.default-btn:active,
+.button.default:hover,
+.button.default:active,
+.button.default:focus,
+input[type="submit"].default:hover,
+input[type="submit"].default:active,
+input[type="submit"].default:focus,
+.default-btn:focus,
+.object-tools a:hover,
+.object-tools a:active,
+.object-tools a:focus,
+.object-tools button:hover,
+.object-tools button:focus,
+.button:active,
+button[type="submit"]:active,
+button[type="submit"]:hover,
+button[type="submit"]:focus,
+input[type="submit"]:active,
+input[type="button"]:active,
+.button:focus,
+input[type="submit"]:focus,
+input[type="button"]:focus,
+.button:hover,
+input[type="submit"]:hover,
+input[type="button"]:hover,
+.delete-confirmation form .cancel-link:hover {
+    outline: 0 none;
+    background: rgba(29, 40, 69, 0.89) !important;
+
+}
+
+.default-btn,
+.button.default,
+input[type="submit"].default,
+.object-tools a,
+.object-tools a:link,
+.object-tools a:visited,
+.button,
+button[type="submit"],
+input[type="submit"],
+input[type="button"],
+.submit-row input,
+.delete-confirmation form .cancel-link,
+a.button,
+.object-tools button {
+
+    background: #24415d !important;
+
+}
+
+@media (min-width: 769px) {
+
+    .toggle-menu .mg-dropdown-label,
+    .toggle-menu .mg-list {
+        color: white !important;
+        /* border-radius: .5rem; */
+        background: #4a555f !important;
+    }
+}
+
+.login .menu-bar {
+    background: #ffffff !important;
+    /* border-bottom: 1px solid rgb(230 230 230 / 97%); */
+}
+
+@media (max-width: 768px) {
+    h1#site-name {
+
+        margin-left: 7px !important;
+    }
+}
+
+#container #main-content .helptext {
+    font-size: 14px !important;
+    line-height: 20px;
+    color: rgba(0, 0, 0, 0.45);
+}
+
+.svg-container {
+    border-radius: 0px 0px 10px 10px !important;
+    position: relative;
+    height: 300px !important;
+    box-shadow: rgba(0, 0, 0, 0.08) 0px 2px 5px -1px, rgba(0, 0, 0, 0.06) 0px 2px 4px -1px !important;
+    margin: 4px 10px !important;
+}
+
+.quick-link-container .button.quick-link {
+    padding: .3rem .8rem !important;
+    color: #d18838 !important;
+    background-color: white !important;
+    top: -23px !important;
+}
+
+.module th a,
+fieldset.collapsed a.collapse-toggle,
+fieldset a.collapse-toggle {
+    color: #666 !important;
+    /* color: #e2802b !important; */
+}
+
+ul.tabs a,
+ul.tabs a:hover,
+ul.tabs a:focus {
+
+    color: #ffffff !important;
+
+}
+
+#id_metric_collection_consent_form .helptext {
+    display: none !important;
+}
+
+
+/* 
+td.field-backend {
+    display: none !important;
+} */
+/* 
+.leaflet-bottom.leaflet-right {
+    display: none !important;
+}
+
+.field-health_status .help:nth-of-type(2) {
+    display: none !important;
+}
+
+#result_list th.column-backend {
+    display: none !important;
+}
+
+
+#change-history {
+    display: none !important;
+
+
+} */
+
+a.menu-item,
+.mg-link,
+.mg-head {
+
+
+    font-size: 13px !important;
+}
+
+#id_config-0-backend_helptext {
+    display: none !important;
+}
+
+
+#overview-group .form-row.field-system {
+    display: none !important;
+}
+
+.form-row.field-backend #id_backend_helptext {
+    display: none !important;
+}
+
+/* ---------------- */
+.submit-row .previewlink {
+    display: none !important;
+}
+
+.percircle-container {
+    display: none !important;
+
+}
+
+#ow-chart-contents {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 25px !important;
+}
+
+#content {
+    margin-top: 20px !important;
+}
+
+h1 {
+    font-weight: 500;
+    font-size: 17px !important;
+}
+.ow-object-notification-option-container .ow-notification-option{
+    background-color: #efefef !important;
+}
+
+.ow-device-command-option-container .ow-command-btn{
+    background-color: #efefef !important;
+
+}
+@media (min-width: 769px) {
+    a.menu-item, .mg-link, .mg-head {
+        width: 223px !important;
+    }
+}
+/* ----------- */

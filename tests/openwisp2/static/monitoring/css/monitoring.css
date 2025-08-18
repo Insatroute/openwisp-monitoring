@@ -1,0 +1,93 @@
+#ow-device-status > fieldset > .inline-related {
+  padding: 0 1px;
+}
+#ow-device-status h2 {
+  color: #333;
+  background-color: rgba(0, 0, 0, 0.05);
+  outline: 1px solid rgba(0, 0, 0, 0.3);
+  padding: 15px;
+}
+#ow-device-status .form-row,
+#ow-device-status table th,
+#ow-device-status table td {
+  padding: 15px 20px !important;
+}
+#ow-device-status .form-row label,
+#ow-device-status .form-row div,
+#ow-device-status table td,
+#ow-device-status table th {
+  font-size: 15px !important;
+}
+#ow-device-status .form-row label {
+  padding-top: 2px;
+}
+#ow-device-status .inline-group {
+  margin-bottom: 0;
+  padding-top: 1px;
+}
+#ow-device-status table {
+  width: 100%;
+  margin: 0;
+}
+#ow-device-status th {
+  border-top: 0 none;
+  background: #f9f9f9 !important;
+}
+td.field-health_status,
+.field-health_status .readonly {
+  font-weight: bold;
+  text-transform: uppercase;
+}
+.health-deactivated {
+  color: #000;
+}
+.health-unknown {
+  color: grey;
+}
+.health-ok {
+  color: green;
+}
+.health-problem {
+  color: orange;
+}
+.health-critical {
+  color: red;
+}
+#ow-device-status table.addresses td {
+  width: 50%;
+}
+.wifi-clients th.ht,
+.wifi-clients th.vht,
+.wifi-clients th.wmm,
+.wifi-clients th.wds,
+.wifi-clients th.wps {
+  cursor: default;
+}
+#monitoring-metric-content_type-object_id-group .inline-related h3 {
+  padding: 10px 20px;
+}
+#monitoring-metric-content_type-object_id-group
+  .djn-group-nested
+  fieldset.djn-fieldset.module
+  > h2,
+#monitoring-metric-content_type-object_id-group
+  .djn-group-nested
+  fieldset.djn-fieldset.module
+  .djn-inline-form
+  > h3 {
+  display: none;
+}
+#monitoring-metric-content_type-object_id-group {
+  padding-top: 0 !important;
+}
+.form-row.field-health_checks div.readonly {
+  margin-left: 0px !important;
+}
+.form-row.field-health_checks
+  div
+  div.flex-container
+  div.readonly
+  ul.health_checks {
+  margin-left: 0px !important;
+  padding-left: 0px !important;
+}

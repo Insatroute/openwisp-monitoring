@@ -113,13 +113,37 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = "openwisp2.urls"
 
-TIME_ZONE = "Europe/Rome"
+OPENWISP_ADMIN_THEME_LINKS = [
+ {
+ "type": "text/css",
+ "href": "/static/admin/css/openwisp.css",
+ "rel": "stylesheet",
+ "media": "all",
+ },
+ {
+ "type": "text/css",
+ "href": "/static/custom.css",
+ "rel": "stylesheet",
+ "media": "all",
+ },
+ {
+ "type": "image/x-icon",
+ "href": "/static/favicon.png",
+ "rel": "icon",
+ },
+]
+
+TIME_ZONE = "Asia/Kolkata"
 LANGUAGE_CODE = "en-gb"
 USE_TZ = True
 USE_I18N = False
 STATIC_URL = "/static/"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = "{0}/media/".format(BASE_DIR)
+MEDIA_URL = "/media/"
+MEDIA_ROOT = f"{os.path.dirname(BASE_DIR)}/media/"
+STATIC_ROOT = os.path.join(BASE_DIR, 'static')
+STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static_custom')]
 
 TEMPLATES = [
     {
