@@ -1,589 +1,431 @@
 {% extends "admin/config/device/change_form.html" %}
 {% load i18n static %}
 {% block after_field_sets %}
-{% comment %} {% if not add and device_data %} {% endcomment %}
+
 <div class="inline-group" id="ow-device-status">
-    <fieldset class="module">
-        <h2>{% trans 'Status' %}</h2>
-        <div class="inline-related">
-            <fieldset class="module aligned">
-              {% comment %} {% if device_data.general %}
-              {% if device_data.general.local_time %} {% endcomment %}
-              <div class="form-row">
-                  <label>{% trans 'Local time' %}:</label>
-                  <div class="readonly">
-                      {{ device_data.general.local_time }}
-                  </div>
-              </div>
-              {% comment %} {% endif %} {% endcomment %}
-              {% comment %} {% if device_data.general.uptime %} {% endcomment %}
-              <div class="form-row">
-                  <label>{% trans 'Uptime' %}:</label>
-                  <div class="readonly">
-                      {{ device_data.general.uptime }}
-                  </div>
-              </div>
-              {% comment %} {% endif %}
-              {% endif %} {% endcomment %}
-              {% if device_data.resources %}
-              {% if device_data.resources.load or device_data.resources.cpus %}
-              <h2>{% trans 'CPU' %}</h2>
-              {% endif %}
-              {% if device_data.resources.load %}
-              <div class="form-row">
-                  <label>{% trans 'Load average' %}:</label>
-                  <div class="readonly">
-                      {{ device_data.resources.load|join:", &nbsp;" }}
-                  </div>
-              </div>
-              {% endif %}
-              {% if device_data.resources.cpus %}
-              <div class="form-row">
-                  <label>{% trans 'Cores' %}:</label>
-                  <div class="readonly">
-                      {{ device_data.resources.cpus }}
-                  </div>
-              </div>
-              {% endif %}
-              {% if device_data.resources.memory %}
-              <h2>{% trans 'RAM status' %}</h2>
-              <div class="form-row">
-                  <label>{% trans 'Total' %}:</label>
-                  <div class="readonly">
-                      {{ device_data.resources.memory.total|filesizeformat }}
-                  </div>
-              </div>
-              <div class="form-row">
-                  <label>{% trans 'Free' %}:</label>
-                  <div class="readonly">
-                      {{ device_data.resources.memory.free|filesizeformat }}
-                  </div>
-              </div>
-              {% if device_data.resources.memory.available %}
-              <div class="form-row">
-                <label>{% trans 'Available' %}:</label>
-                <div class="readonly">
-                    {{ device_data.resources.memory.available|filesizeformat }}
-                </div>
-              </div>
-              {% endif %}
-              <div class="form-row">
-                  <label>{% trans 'Buffered' %}:</label>
-                  <div class="readonly">
-                      {{ device_data.resources.memory.buffered|filesizeformat }}
-                  </div>
-              </div>
-              <div class="form-row">
-                  <label>{% trans 'Shared' %}:</label>
-                  <div class="readonly">
-                      {{ device_data.resources.memory.shared|filesizeformat }}
-                  </div>
-              </div>
-              {% endif %}
-              {% if device_data.resources.disk %}
-              <h2>{% trans 'Storage' %}</h2>
-              <table class="disk">
-                  <thead>
-                      <tr>
-                          <th class="filesystem">{% trans 'Filesystem' %}</th>
-                          <th class="used_bytes">{% trans 'Used space' %}</th>
-                          <th class="available_bytes">{% trans 'Available space' %}</th>
-                          <th class="size_bytes">{% trans 'Total space' %}</th>
-                          <th class="used_percent">{% trans 'Percent Used' %}</th>
-                          <th class="mount_point">{% trans 'Mounted on' %}</th>
-                      </tr>
-                  </thead>
-                  <tbody>
-                      {% for disk in device_data.resources.disk %}
-                      <tr>
-                          <td class="filesystem">{{ disk.filesystem }}</td>
-                          <td class="used_bytes">{{ disk.used_bytes|filesizeformat }}</td>
-                          <td class="available_bytes">{{ disk.available_bytes|filesizeformat }}</td>
-                          <td class="size_bytes">{{ disk.size_bytes|filesizeformat }}</td>
-                          <td class="used_percent">{{ disk.used_percent }}%</td>
-                          <td class="mount_point">{{ disk.mount_point }}</td>
-                      </tr>
-                      {% endfor %}
-                  </tbody>
-              </table>
-              {% endif %}
-              {% endif %}
-              {% if device_data.interfaces %}
-              {% for interface in device_data.interfaces %}
-              <div class="inline-group" id="status-if-{{ interface.name }}">
-                  <h2>{% trans 'Interface status' %}: {{ interface.name }}</h2>
-                  {% if interface.mac %}
-                  <div class="form-row">
-                      <label>{% trans 'MAC Address' %}:</label>
-                      <div class="readonly">
-                          {{ interface.mac }}
-                      </div>
-                  </div>
-                  {% endif %}
-                  {% if interface.type %}
-                  <div class="form-row">
-                      <label>{% trans 'Type' %}:</label>
-                      <div class="readonly">
-                          {{ interface.type }}
-                      </div>
-                  </div>
-                  {% endif %}
-                  {% if interface.wireless %}
-                  <div class="form-row">
-                      <label>{% trans 'Mode' %}:</label>
-                      <div class="readonly">
-                          {{ interface.wireless.mode }}
-                      </div>
-                  </div>
-                  {% if interface.wireless.htmode %}
-                  <div class="form-row">
-                      <label>{% trans 'WiFi Version' %}:</label>
-                      <div class="readonly">
-                          {{ interface.wireless.htmode }}
-                      </div>
-                  </div>
-                  {% endif %}
-                  <div class="form-row">
-                      <label>{% trans 'SSID' %}:</label>
-                      <div class="readonly">
-                          {{ interface.wireless.ssid }}
-                      </div>
-                  </div>
-                  <div class="form-row">
-                      <label>{% trans 'Channel' %}:</label>
-                      <div class="readonly">
-                          {{ interface.wireless.channel }}
-                      </div>
-                  </div>
-                  <div class="form-row">
-                      <label>{% trans 'Frequency' %}:</label>
-                      <div class="readonly">
-                          {{ interface.wireless.frequency }} GHz
-                      </div>
-                  </div>
-                  <div class="form-row">
-                      <label>{% trans 'Transmission Power' %}:</label>
-                      <div class="readonly">
-                          {{ interface.wireless.tx_power }} dBm
-                      </div>
-                  </div>
-                  {% if interface.wireless.signal %}
-                  <div class="form-row">
-                      <label>{% trans 'Signal' %}:</label>
-                      <div class="readonly">
-                          {{ interface.wireless.signal }} dBm
-                      </div>
-                  </div>
-                  {% endif %}
-                  {% if interface.wireless.bitrate %}
-                  <div class="form-row">
-                      <label>{% trans 'Bitrate' %}:</label>
-                      <div class="readonly">
-                          {{ interface.wireless.bitrate }} MBits/s
-                      </div>
-                  </div>
-                  {% endif %}
-                  {% if interface.wireless.quality and interface.wireless.quality_max %}
-                  <div class="form-row">
-                      <label>{% trans 'Quality' %}:</label>
-                      <div class="readonly">
-                          {{ interface.wireless.quality }} / {{ interface.wireless.quality_max }}
-                      </div>
-                  </div>
-                  {% endif %}
-                  <div class="form-row">
-                      <label>{% trans 'Noise' %}:</label>
-                      <div class="readonly">
-                          {{ interface.wireless.noise }} dBm
-                      </div>
-                  </div>
-                  {% if interface.wireless.clients %}
-                  <div class="form-row">
-                      <label>{% trans 'Associated clients' %}:</label>
-                      <div class="readonly">
-                          {{ interface.wireless.clients|length }}
-                      </div>
-                  </div>
-                  {% endif %}
-                  {% endif %}
-                  {% if interface.mobile %}
-                  <div class="form-row">
-                      <label>{% trans 'Connection status' %}:</label>
-                      <div class="readonly">
-                          {{ interface.mobile.connection_status }}
-                      </div>
-                  </div>
-                  <div class="form-row">
-                      <label>{% trans 'Power status' %}:</label>
-                      <div class="readonly">
-                          {{ interface.mobile.power_status }}
-                      </div>
-                  </div>
-                  <div class="form-row">
-                      <label>{% trans 'Operator name' %}:</label>
-                      <div class="readonly">
-                          {{ interface.mobile.operator_name }}
-                      </div>
-                  </div>
-                  <div class="form-row">
-                      <label>{% trans 'Operator code' %}:</label>
-                      <div class="readonly">
-                          {{ interface.mobile.operator_code }}
-                      </div>
-                  </div>
-                  <div class="form-row">
-                      <label>{% trans 'Manufacturer' %}:</label>
-                      <div class="readonly">
-                          {{ interface.mobile.manufacturer }}
-                      </div>
-                  </div>
-                  <div class="form-row">
-                      <label>{% trans 'Model' %}:</label>
-                      <div class="readonly">
-                          {{ interface.mobile.model }}
-                      </div>
-                  </div>
-                  <div class="form-row">
-                      <label>{% trans 'IMEI' %}:</label>
-                      <div class="readonly">
-                          {{ interface.mobile.imei }}
-                      </div>
-                  </div>
-                  {% if interface.mobile.signal %}
-                      {% if interface.mobile.signal.cdma1x %}
-                      <div class="form-row">
-                          <label>{% trans 'Signal Strength' %} (CDMA2000 1X):</label>
-                          <div class="readonly">
-                              {{ interface.mobile.signal.cdma1x.rssi }} dBm
-                          </div>
-                      </div>
-                      <div class="form-row">
-                          <label>{% trans 'Energy to Interference Ratio' %} (CDMA2000 1X):</label>
-                          <div class="readonly">
-                              {{ interface.mobile.signal.cdma1x.ecio }} dB
-                          </div>
-                      </div>
-                      {% endif %}
-                      {% if interface.mobile.signal.evdo %}
-                      <div class="form-row">
-                          <label>{% trans 'Signal Strength' %} (EVDO):</label>
-                          <div class="readonly">
-                              {{ interface.mobile.signal.evdo.rssi }} dBm
-                          </div>
-                      </div>
-                      <div class="form-row">
-                          <label>{% trans 'Energy to Interference Ratio' %} (EVDO):</label>
-                          <div class="readonly">
-                              {{ interface.mobile.signal.evdo.ecio }} dB
-                          </div>
-                      </div>
-                      <div class="form-row">
-                          <label>{% trans 'Interference' %} (EVDO):</label>
-                          <div class="readonly">
-                              {{ interface.mobile.signal.evdo.io }} dBm
-                          </div>
-                      </div>
-                      <div class="form-row">
-                          <label>{% trans 'Signal to Interference­ + ­Noise Ratio' %} (EVDO):</label>
-                          <div class="readonly">
-                              {{ interface.mobile.signal.evdo.sinr }} dB
-                          </div>
-                      </div>
-                      {% endif %}
-                      {% if interface.mobile.signal.gsm %}
-                      <div class="form-row">
-                          <label>{% trans 'Signal Strength' %} (GSM):</label>
-                          <div class="readonly">
-                              {{ interface.mobile.signal.gsm.rssi }} dBm
-                          </div>
-                      </div>
-                      {% endif %}
-                      {% if interface.mobile.signal.lte %}
-                      <div class="form-row">
-                          <label>{% trans 'Signal Strength' %} (LTE):</label>
-                          <div class="readonly">
-                              {{ interface.mobile.signal.lte.rssi }} dBm
-                          </div>
-                      </div>
-                      <div class="form-row">
-                          <label>{% trans 'Signal Power' %} (LTE):</label>
-                          <div class="readonly">
-                              {{ interface.mobile.signal.lte.rsrp }} dBm
-                          </div>
-                      </div>
-                      <div class="form-row">
-                          <label>{% trans 'Signal Quality' %} (LTE):</label>
-                          <div class="readonly">
-                              {{ interface.mobile.signal.lte.rsrq }} dB
-                          </div>
-                      </div>
-                      <div class="form-row">
-                          <label>{% trans 'Signal to noise ratio' %} (LTE):</label>
-                          <div class="readonly">
-                              {{ interface.mobile.signal.lte.snr }} dB
-                          </div>
-                      </div>
-                      {% endif %}
-                      {% if interface.mobile.signal.umts %}
-                      <div class="form-row">
-                          <label>{% trans 'Signal Strength' %} (UMTS):</label>
-                          <div class="readonly">
-                              {{ interface.mobile.signal.umts.rssi }} dBm
-                          </div>
-                      </div>
-                      <div class="form-row">
-                          <label>{% trans 'Received Signal Code Power' %} (UMTS):</label>
-                          <div class="readonly">
-                              {{ interface.mobile.signal.umts.rscp }} dBm
-                          </div>
-                      </div>
-                      <div class="form-row">
-                          <label>{% trans 'Energy to Interference Ratio' %} (UMTS):</label>
-                          <div class="readonly">
-                              {{ interface.mobile.signal.umts.ecio }} dB
-                          </div>
-                      </div>
-                      {% endif %}
-                  {% endif %}
-                  {% endif %}
-                  {% if interface.type == 'ethernet' and interface.speed %}
-                  <div class="form-row">
-                      <label>{% trans 'Speed' %}:</label>
-                      <div class="readonly">
-                          {{ interface.speed }}
-                      </div>
-                  </div>
-                  {% endif %}
-                  {% if interface.bridge_members %}
-                  <div class="form-row">
-                      <label>{% trans 'Bridge Members' %}:</label>
-                      <div class="readonly">
-                          {% for element in interface.bridge_members %}
-                          <a class="bridge-member" href="javascript:scrollToElement('status-if-{{ element }}')">{{ element }}</a>{% if not forloop.last %}, {% endif %}
-                          {% endfor %}
-                      </div>
-                  </div>
-                  {% endif %}
-                  {% if interface.stp != None %}
-                  <div class="form-row">
-                      <label>{% trans 'Spanning Tree Protocol' %}:</label>
-                      <div class="readonly">
-                          <img src="{% get_static_prefix %}admin/img/icon-{{ interface.stp|yesno:'yes,no,no' }}.svg">
-                      </div>
-                  </div>
-                  {% endif %}
-                  {% if interface.up != None %}
-                  <div class="form-row">
-                      <label>{% trans 'Up' %}:</label>
-                      <div class="readonly">
-                          <img src="{% get_static_prefix %}admin/img/icon-{{ interface.up|yesno:'yes,no,no' }}.svg">
-                      </div>
-                  </div>
-                  {% endif %}
-                  {% if interface.multicast != None %}
-                  <div class="form-row">
-                      <label>{% trans 'Multicast' %}:</label>
-                      <div class="readonly">
-                           <img src="{% get_static_prefix %}admin/img/icon-{{ interface.multicast|yesno:'yes,no,no' }}.svg">
-                      </div>
-                  </div>
-                  {% endif %}
-                  {% if interface.mtu %}
-                  <div class="form-row">
-                      <label>{% trans 'MTU' %}:</label>
-                      <div class="readonly">
-                          {{ interface.mtu }}
-                      </div>
-                  </div>
-                  {% endif %}
-                  {% if interface.txqueuelen != None %}
-                  <div class="form-row">
-                      <label>{% trans 'Transmit Queue Length' %}:</label>
-                      <div class="readonly">
-                          {{ interface.txqueuelen }}
-                      </div>
-                  </div>
-                  {% endif %}
-                  {% if interface.wireless and interface.wireless.clients %}
-                  <table class="wifi-clients">
-                      <thead>
-                          <tr>
-                              <th class="mac">
-                                  {% if interface.wireless.mode == 'station' %}
-                                  {% trans 'Access Point' %}
-                                  {% else %}
-                                  {% trans 'Associated client' %}
-                                  {% endif %}
-                                  {% trans 'MAC address' %}
-                              </th>
-                              {% if MAC_VENDOR_DETECTION %}
-                              <th class="vendor">
-                                  {% trans 'Vendor' %}
-                              </th>
-                              {% endif %}
-                              <th class="vht" title="{% trans 'High Efficiency (802.11ax)' %}">
-                                WiFi 6 (802.11ax)
-                              </th>
-                              <th class="vht" title="{% trans 'Very High Throughput (802.11ac)' %}">
-                                WiFi 5 (802.11ac)
-                              </th>
-                              <th class="ht" title="{% trans 'High Throughput (802.11n)' %}">
-                                WiFi 4 (802.11n)
-                              </th>
-                              <th class="wmm" title="{% trans 'Wi-Fi Multimedia' %}">
-                                  WMM
-                              </th>
-                              <th class="wds" title="{% trans 'Wireless Distribution System' %}">
-                                  WDS
-                              </th>
-                              <th class="wps" title="{% trans 'Wi-Fi Protected Setup' %}">
-                                  WPS
-                              </th>
-                          </tr>
-                      </thead>
-                      {% for client in interface.wireless.clients %}
-                      <tr>
-                          <td class="mac">{{ client.mac }}</td>
-                          {% if MAC_VENDOR_DETECTION %}
-                          <td class="vendor">
-                              {{ client.vendor }}
-                          </td>
-                          {% endif %}
-                          <td class="he">
-                            <img src="{% get_static_prefix %}admin/img/icon-{{ client.he|yesno:'yes,no,unknown' }}.svg">
-                          </td>
-                          <td class="vht">
-                            <img src="{% get_static_prefix %}admin/img/icon-{{ client.vht|yesno:'yes,no,unknown' }}.svg">
-                          </td>
-                          <td class="ht">
-                              <img src="{% get_static_prefix %}admin/img/icon-{{ client.ht|yesno:'yes,no,unknown' }}.svg">
-                          </td>
-                          <td class="wmm">
-                              <img src="{% get_static_prefix %}admin/img/icon-{{ client.wmm|yesno:'yes,no,no' }}.svg">
-                          </td>
-                          <td class="wds">
-                              <img src="{% get_static_prefix %}admin/img/icon-{{ client.wds|yesno:'yes,no,no' }}.svg">
-                          </td>
-                          <td class="wps">
-                              <img src="{% get_static_prefix %}admin/img/icon-{{ client.wps|yesno:'yes,no,no' }}.svg">
-                          </td>
-                      </tr>
-                      {% endfor %}
-                  </table>
-                  {% endif %}
-                  {% if interface.addresses %}
-                  <table class="addresses">
-                  <thead>
-                      <tr>
-                          <th>{% trans 'Address' %} / {% trans 'Mask' %}</th>
-                          <th>{% trans 'Protocol' %}</th>
-                      </tr>
-                  </thead>
-                  {% for address in interface.addresses %}
-                  <tr>
-                      <td class="address-mask">{{ address.address }} / {{ address.mask }}</td>
-                      <td class="proto">{{ address.proto }}</td>
-                  </tr>
-                  {% endfor %}
-              </table>
-              {% endif %}
-              </div>
-              {% endfor %}
-              {% endif %}
-              {% if device_data.dhcp_leases %}
-              <h2>{% trans 'DHCP leases' %}</h2>
-              <table class="dhcp-leases">
-                  <thead>
-                      <tr>
-                          <th class="ip">{% trans 'IP Address' %}</th>
-                          <th class="mac">{% trans 'MAC Address' %}</th>
-                          {% if MAC_VENDOR_DETECTION %}
-                          <th class="vendor">{% trans 'Vendor' %}</th>
-                          {% endif %}
-                          <th class="client-name">{% trans 'Client Name' %}</th>
-                          <th class="client-id">{% trans 'Client ID' %}</th>
-                          <th class="expiry">{% trans 'Expiry' %}</th>
-                      </tr>
-                  </thead>
-                  <tbody>
-                      {% for lease in device_data.dhcp_leases %}
-                      <tr>
-                          <td class="ip">{{ lease.ip }}</td>
-                          <td class="mac">{{ lease.mac }}</td>
-                          {% if MAC_VENDOR_DETECTION %}
-                          <td class="vendor">{{ lease.vendor }}</td>
-                          {% endif %}
-                          <td class="client-name">{{ lease.client_name }}</td>
-                          <td class="client-id">{{ lease.client_id }}</td>
-                          <td class="expiry">{{ lease.expiry }}</td>
-                      </tr>
-                      {% endfor %}
-                  </tbody>
-              </table>
-              {% endif %}
-              {% if device_data.neighbors %}
-              <h2>{% trans 'Neighbors' %}</h2>
-              <table class="neighbors">
-                  <thead>
-                      <tr>
-                          <th class="ip">{% trans 'IP Address' %}</th>
-                          <th class="mac">{% trans 'MAC Address' %}</th>
-                          {% if MAC_VENDOR_DETECTION %}
-                          <th class="vendor">{% trans 'Vendor' %}</th>
-                          {% endif %}
-                          <th class="if">{% trans 'Interface' %}</th>
-                          <th class="state">{% trans 'State' %}</th>
-                      </tr>
-                  </thead>
-                  <tbody>
-                      {% for neighbor in device_data.neighbors %}
-                      <tr>
-                          <td class="ip">{{ neighbor.ip }}</td>
-                          <td class="mac">{{ neighbor.mac }}</td>
-                          {% if MAC_VENDOR_DETECTION %}
-                          <td class="vendor">{{ neighbor.vendor }}</td>
-                          {% endif %}
-                          <td class="if">{{ neighbor.interface }}</td>
-                          <td class="state">{{ neighbor.state }}</td>
-                      </tr>
-                      {% endfor %}
-                  </tbody>
-              </table>
-              {% endif %}
-            </fieldset>
+  <fieldset class="module">
+    <h2>{% trans 'Status' %}</h2>
+    <div class="status-tabs-container">
+      <!-- MAIN TABS -->
+      <div class="status-main-tabs" id="mainTabs">
+        <button class="status-tab-system active" data-target="tab-system">
+          System
+        </button>
+        <button class="status-tab-network" data-target="tab-network">
+          Network
+        </button>
+        <button class="status-tab-users" data-target="tab-users">Users</button>
+        <button class="status-tab-firewall" data-target="tab-firewall">
+          Firewall
+        </button>
+        <button class="status-tab-security" data-target="tab-security">
+          Security
+        </button>
+        <button class="status-tab-vpn" data-target="tab-vpn">VPN</button>
+
+        <!-- add your other 3 here -->
+      </div>
+
+      <!-- TAB PANELS -->
+      <div id="tab-system" class="status-tab-panel active">
+        <div class="status-sub-tabs">
+          <button class="active" data-target="tab-system-general">General</button>
+          <button data-target="tab-system-snmp">SNMP</button>
+          <button data-target="tab-system-icmp">ICMP Check</button>
+          <button data-target="tab-system-schedule">Schedule</button>       
         </div>
-    </fieldset>
+         <div class="status-sub-contents">
+          <div id="tab-system-general" class="status-sub-content active">   
+            {% include 'monitoring/paritals/general.html' %}
+          </div>
+           <div id="tab-system-snmp" class="status-sub-content ">
+            {% include 'monitoring/paritals/system/snmp.html' %}      
+          </div>
+           <div id="tab-system-icmp" class="status-sub-content ">
+            {% include 'monitoring/paritals/system/icmp.html' %}      
+          </div>
+           <div id="tab-system-schedule" class="status-sub-content ">
+            {% include 'monitoring/paritals/system/schedule.html' %}   
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB PANEL Users -->
+
+      <div id="tab-users" class="status-tab-panel">
+        <div class="status-sub-tabs">
+          <button class="active">User Database</button>
+          <button>Objects</button>      
+        </div>
+        <div class="sub-content">Content for Network...</div>
+      </div>
+
+      <!-- TAB PANEL Network -->
+
+  <div id="tab-network" class="status-tab-panel">
+        <div class="status-sub-tabs">
+          <button class="active" data-target="tab-network-interface">Interface</button>
+          <button data-target="tab-network-dnsdhcp">DNS/DHCP</button>
+          <button data-target="tab-network-routes">Routes</button>
+          <button data-target="tab-network-vxlan">VXLAN</button>
+          <button data-target="tab-network-multiwan">FlowEdge</button>
+          <button data-target="tab-network-performance">Performance SLA</button>
+          <button data-target="tab-network-reverseproxy">Reverse Proxy</button>
+          <button data-target="tab-network-advqos">Advance QoS</button>
+          <button data-target="tab-network-rip">RIP</button>
+          <button data-target="tab-network-ospf">OSPF</button>
+          <button data-target="tab-network-bgp">BGP</button>
+          <button data-target="tab-network-vrf">VRF</button>
+        </div>
+        <div class="status-sub-contents">
+          <div id="tab-network-interface" class="status-sub-content active">
+            <h3>Interface</h3>
+            {% include 'monitoring/paritals/interface.html' %}
+          </div>
+          <div id="tab-network-dnsdhcp" class="status-sub-content">
+             {% include 'monitoring/paritals/dns-dhcp.html' %}
+          </div>
+          <div id="tab-network-routes" class="status-sub-content">
+             {% include 'monitoring/paritals/routes.html' %}
+          </div>
+          <div id="tab-network-vxlan" class="status-sub-content">
+              {% include 'monitoring/paritals/network-vxlan.html' %}
+          </div>
+          <div id="tab-network-multiwan" class="status-sub-content">
+             {% include 'monitoring/paritals/network-flowedge.html' %}
+          </div>
+
+          <div id="tab-network-reverseproxy" class="status-sub-content">
+            {% include 'monitoring/paritals/network/reverse_proxy.html' %}
+          </div>
+          <div id="tab-network-advqos" class="status-sub-content">
+            {% include 'monitoring/paritals/network/advance_qos.html' %}
+          </div>
+          <div id="tab-network-rip" class="status-sub-content">
+            {% include 'monitoring/paritals/network/rip.html' %}
+          </div>
+          <div id="tab-network-ospf" class="status-sub-content">
+            {% include 'monitoring/paritals/network/ospf.html' %}
+          </div>
+          <div id="tab-network-bgp" class="status-sub-content">
+            {% include 'monitoring/paritals/network/bgp.html' %}
+          </div>
+          <div id="tab-network-vrf" class="status-sub-content">
+            {% include 'monitoring/paritals/network/vrf.html' %}
+          </div>
+        </div>
+      </div>
+       <!-- TAB PANEL Firewall -->
+      <div id="tab-firewall" class="status-tab-panel">
+        <div class="status-sub-tabs">
+          <button data-target="tab-firewall-port" class="active">Port Forward</button>
+          <button data-target="tab-firewall-nat" >NAT</button>
+          <button data-target="tab-firewall-rules">Rules</button>
+          <button data-target="tab-firewall-connections">Connections</button>
+          <button data-target="tab-firewall-zones">Zones and Policies</button>
+        </div>
+         <div class="status-sub-contents">
+          <div id="tab-firewall-port" class="status-sub-content active">
+             {% include 'monitoring/paritals/port-forward.html' %}
+          </div>
+
+           <div id="tab-firewall-nat" class="status-sub-content ">
+             {% include 'monitoring/paritals/nat.html' %}
+          </div>
+
+           <div id="tab-firewall-rules" class="status-sub-content ">
+             {% include 'monitoring/paritals/rules.html' %}
+          </div>
+
+           <div id="tab-firewall-connections" class="status-sub-content ">
+            {% include 'monitoring/paritals/connections.html' %}
+          </div>
+
+          <div id="tab-firewall-zones" class="status-sub-content">
+            {% include 'monitoring/paritals/firewall-zones.html' %}
+          </div>
+        </div>
+      </div>
+
+
+
+        <!-- TAB PANEL Security -->
+      <div id="tab-security" class="status-tab-panel">
+        <div class="status-sub-tabs">
+          <button data-target="tab-security-instaip" class="active">InstaShield IP</button>
+          <button data-target="tab-security-instadns">InstaShield DNS</button>
+          <button data-target="tab-security-dpi">DPI Filter</button>
+          <button data-target="tab-security-ips">IPS</button>
+          <button data-target="tab-security-antivirus">Anti Virus</button>
+          <button data-target="tab-security-antispam">Anti Spam</button>
+        </div>
+        <div class="status-sub-contents">
+          <div id="tab-security-instaip" class="status-sub-content active">
+             {% include 'monitoring/paritals/security/instaip.html' %}
+          </div>
+          <div id="tab-security-instadns" class="status-sub-content">
+             {% include 'monitoring/paritals/security/instadns.html' %}
+          </div>
+          <div id="tab-security-dpi" class="status-sub-content">
+             {% include 'monitoring/paritals/security/dpi.html' %}
+          </div>
+          <div id="tab-security-ips" class="status-sub-content">
+             {% include 'monitoring/paritals/security/ips.html' %}
+          </div>
+          <div id="tab-security-instaip" class="status-sub-content">
+             {% include 'monitoring/paritals/security/instaip.html' %}
+          </div>
+          <div id="tab-security-antispam" class="status-sub-content">
+             {% include 'monitoring/paritals/security/antispam.html' %}
+          </div>
+        </div>
+      </div>
+
+        <!-- TAB PANEL VPN -->
+      <div id="tab-vpn" class="status-tab-panel">
+        <div class="status-sub-tabs">
+          <button data-target="tab-security-ipsec" class="active">IPsec Tunnel</button>
+          <button data-target="tab-security-l2tp">L2TP</button>
+          <button data-target="tab-security-gre">GRE</button>
+          <button data-target="tab-security-vrrp">VRRP</button>
+          <button data-target="tab-security-zerotier">Zerotier</button>
+          <button data-target="tab-security-wireguard">Wireguard</button>
+          <button data-target="tab-security-openvpn">OpenVPN</button>
+        </div>
+          <div class="status-sub-contents">
+            <div id="tab-security-ipsec" class="status-sub-content active">
+              {% include 'monitoring/paritals/vpn/vrrp.html' %}
+            </div>
+            <div id="tab-security-l2tp" class="status-sub-content ">
+              {% include 'monitoring/paritals/security/instaip.html' %}
+            </div>
+            <div id="tab-security-gre" class="status-sub-content ">
+              {% include 'monitoring/paritals/security/instaip.html' %}
+            </div>
+            <div id="tab-security-vrrp" class="status-sub-content ">
+              {% include 'monitoring/paritals/vpn/vrrp.html' %}
+            </div>
+            <div id="tab-security-zerotier" class="status-sub-content ">
+              {% include 'monitoring/paritals/vpn/vrrp.html' %}
+            </div>
+            <div id="tab-security-wireguard" class="status-sub-content ">
+              {% include 'monitoring/paritals/vpn/wireguard.html' %}
+            </div>
+            <div id="tab-security-openvpn" class="status-sub-content ">
+              {% include 'monitoring/paritals/vpn/openvpn.html' %}
+            </div>
+          </div>
+      </div>
+      <!-- repeat panels for each main tab -->
+    </div>
+  </fieldset>
 </div>
-{% comment %} {% endif %} {% endcomment %}
-{% if not add %}
+
+ {% if not add %}
 <div class="inline-group" id="ow-chart-container">
-    <fieldset class="module">
-        <h2>{% trans 'Charts' %}</h2>
-        {% include 'monitoring/paritals/chart.html' %}
-    </fieldset>
+  <fieldset class="module">
+    <h2>{% trans 'Charts' %}</h2>
+    {% include 'monitoring/paritals/chart.html' %}
+  </fieldset>
 </div>
+
+<style>
+    .change-form{
+     margin: 0 !important;
+    }
+  .status-tabs-container {
+    width: 100%;
+  }
+  .status-main-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    border-bottom: 1px solid #ddd;
+   
+  }
+  .status-main-tabs button {
+    flex: 1 1 auto;
+    height: 2.5rem;
+    padding: 0 0rem;
+    border: none;
+    background: #f8f8f8;
+    margin-right: 10px;
+    font-weight: 600;
+    border-radius: 10px 10px 0px 0px;
+    color: #666;
+    cursor: pointer;
+    text-align: center;
+    white-space: nowrap;
+
+    
+  }
+  .status-main-tabs button.active {
+    color: #11274b;
+    border-bottom: 2px solid #253a5d;
+  }
+
+  .status-sub-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    border-bottom: 1px solid #ddd;
+    background: #fff;
+  }
+  .status-sub-tabs button {
+    flex: 1 1 auto;
+    height: 2.4rem;
+    padding: 0 0.75rem;
+    border: none;
+    background: none;
+    color: #666;
+    cursor: pointer;
+    text-align: center;
+    font-size: 0.9rem;
+    white-space: nowrap;
+  }
+  .status-sub-tabs button.active {
+    color: #11274b;
+    border-bottom: 2px solid #253a5d;
+  }
+
+  .status-tab-panel {
+    display: none;
+    padding: 1rem;
+  }
+  .status-tab-panel.active {
+    display: block;
+  }
+.status-sub-content { display: none; padding: 1rem; }
+.status-sub-content.active { display: block; }
+  @media (max-width: 768px) {
+    .status-main-tabs,
+    .status-sub-tabs {
+      flex-direction: column;
+    }
+    .status-main-tabs button,
+    .status-sub-tabs button {
+      text-align: left;
+    }
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    margin-bottom: 10px;
+    margin-top: 15px;
+  }
+  .status-card {
+    background-color: #ffffff;
+    border-radius: 0.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+  }
+  .status-card .title {
+    font-size: 0.875rem;
+    color: #6b7280;
+  }
+  .status-card .value {
+    font-size: 1.25rem;
+    font-weight: 500;
+    margin-top: 0.5rem;
+    color: #111827;
+  }
+  #ow-device-status h2 {
+    color: #333;
+    background-color: rgba(0, 0, 0, 0.05);
+    outline: 1px solid rgba(0, 0, 0, 0.3);
+    padding: 10px !important;
+    margin-top: 20px;
+  }
+
+  #ow-device-status .form-row,
+  #ow-device-status table th,
+  #ow-device-status table td {
+    padding: 10px 20px !important;
+    font-size: 13px !important;
+  }
+  .icon-arrow {
+    vertical-align: middle;
+    color: green;
+  }
+  .icon-reject{
+     vertical-align: middle;
+    color: red;
+  }
+  #tab-firewall-rules h3 {
+    margin-bottom: 0px;
+    background-color: #49535f;
+    padding-top: 2px;
+    padding-bottom: 2px;
+    width: 16%;
+    margin-top: 14px;
+    font-weight: 500;
+    color: #ffff;
+    border-radius: 0px 16px 0px 0px;
+  }
+  #tab-firewall-rules .firewall-label {
+    background-color: #e0e7ff;
+    padding: 2px 10px 2px 10px;
+    border-radius: 15px;
+    color: #3730a3;
+  }
+  .alert {
+      padding: 0rem 0rem !important;
+    
+}
+</style>
 <script>
-  django.jQuery(function($) {
-    $(document).ready(function() {
-        // load charts only when tab is shown
-        $(document).on('tabshown', function(e){
-          if (e.tabId === '#ow-chart-container') {
-            triggerChartLoading();
-          } else {
-            clearInterval(window.owChartRefresh);
-          }
-        });
-        if (window.location.hash == '#ow-chart-container') {
-            $.event.trigger({
-              type: 'tabshown',
-              tabId: window.location.hash,
-            });
+    function setActive(container, selector, activeElem) {
+    container.querySelectorAll(selector).forEach(el => el.classList.remove('active'));
+    activeElem.classList.add('active');
+  }
+
+  // Main tabs
+  document.getElementById('mainTabs').addEventListener('click', e => {
+    if (e.target.tagName !== 'BUTTON') return;
+    e.preventDefault();
+    setActive(document.querySelector('.status-main-tabs'), 'button', e.target);
+    document.querySelectorAll('.status-tab-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById(e.target.dataset.target).classList.add('active');
+  });
+
+  // Sub-tabs
+  document.querySelectorAll('.status-sub-tabs').forEach(subContainer => {
+    subContainer.addEventListener('click', e => {
+      if (e.target.tagName !== 'BUTTON') return;
+      e.preventDefault();
+      setActive(subContainer, 'button', e.target);
+      const panel = subContainer.closest('.status-tab-panel');
+      const target = e.target.dataset.target;
+      panel.querySelectorAll('.status-sub-content').forEach(c => c.classList.remove('active'));
+      panel.querySelector(`#${target}`).classList.add('active');
+    });
+  });
+</script>
+
+
+<script>
+  django.jQuery(function ($) {
+    $(document).ready(function () {
+      // load charts only when tab is shown
+      $(document).on("tabshown", function (e) {
+        if (e.tabId === "#ow-chart-container") {
+          triggerChartLoading();
+        } else {
+          clearInterval(window.owChartRefresh);
         }
+      });
+      if (window.location.hash == "#ow-chart-container") {
+        $.event.trigger({
+          type: "tabshown",
+          tabId: window.location.hash,
+        });
+      }
     });
   });
   function scrollToElement(id) {
     document.getElementById(id).scrollIntoView();
   }
 </script>
-{% endif %}
-{% endblock %}
+{% endif %} {% endblock %}

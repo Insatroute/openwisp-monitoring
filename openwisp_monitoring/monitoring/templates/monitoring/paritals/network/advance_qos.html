@@ -1,0 +1,89 @@
+{% load i18n static %}
+
+{# ==================== Advanced QoS — Rules ==================== #}
+<h3>{% trans "Advanced QoS — Rules" %}</h3>
+<table class="disk no-stack" id="adv-qos-rules">
+  <thead>
+    <tr>
+      <th>{% trans "Name" %}</th>
+      <th>{% trans "Protocol" %}</th>
+      <th>{% trans "Dst Ports" %}</th>
+      <th>{% trans "Priority" %}</th>
+      <th>{% trans "Service" %}</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% with aqos=device_data.network.Advanced_QoS %}
+      {% if aqos %}
+        {% for row in aqos %}
+          {% if row.type == 'rule' %}
+          <tr>
+            <td data-label="{% trans 'Name' %}">{{ row.name|default:"-" }}</td>
+            <td data-label="{% trans 'Protocol' %}">{{ row.protocol|default:"-"|upper }}</td>
+            <td data-label="{% trans 'Dst Ports' %}">
+              {% if row.dport %}{{ row.dport|join:", " }}{% else %}-{% endif %}
+            </td>
+            <td data-label="{% trans 'Priority' %}">{{ row.priority|default:"-"|capfirst }}</td>
+            <td data-label="{% trans 'Service' %}">
+              {% if row.rule_service == 'enable' or row.rule_service == 'enabled' or row.rule_service == True %}
+                {% trans "Enabled" %}
+              {% else %}
+                {% trans "Disabled" %}
+              {% endif %}
+            </td>
+          </tr>
+          {% endif %}
+        {% endfor %}
+      {% else %}
+        <tr><td colspan="5">{% trans "No Advanced QoS rules found." %}</td></tr>
+      {% endif %}
+    {% endwith %}
+  </tbody>
+</table>
+
+{# ==================== Advanced QoS — Interface / Queues ==================== #}
+<h3 style="margin-top:18px;">{% trans "Advanced QoS — Interfaces / Queues" %}</h3>
+<table class="disk no-stack" id="adv-qos-conn">
+  <thead>
+    <tr>
+      <th>{% trans "Name" %}</th>
+      <th>{% trans "Interfaces" %}</th>
+      <th>{% trans "Total bandwidth" %}</th>
+      <th>{% trans "Rates (Low / Middle / High)" %}</th>
+      <th>{% trans "Ceil (Low / Middle / High)" %}</th>
+      <th>{% trans "Service" %}</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% with aqos=device_data.network.Advanced_QoS %}
+      {% if aqos %}
+        {% for row in aqos %}
+          {% if row.type == 'conn' %}
+          <tr>
+            <td data-label="{% trans 'Name' %}">{{ row.name|default:"-" }}</td>
+            <td data-label="{% trans 'Interfaces' %}">
+              {% if row.interface %}{{ row.interface|join:", " }}{% else %}-{% endif %}
+            </td>
+            <td data-label="{% trans 'Total bandwidth' %}">{{ row.total_bandwidth|default:"-" }}</td>
+            <td data-label="{% trans 'Rates (Low / Middle / High)' %}">
+              {{ row.rate_low|default:"-" }} / {{ row.rate_middle|default:"-" }} / {{ row.rate_high|default:"-" }}
+            </td>
+            <td data-label="{% trans 'Ceil (Low / Middle / High)' %}">
+              {{ row.ceil_low|default:"-" }} / {{ row.ceil_middle|default:"-" }} / {{ row.ceil_high|default:"-" }}
+            </td>
+            <td data-label="{% trans 'Service' %}">
+              {% if row.service == 'enable' or row.service == 'enabled' or row.service == True %}
+                {% trans "Enabled" %}
+              {% else %}
+                {% trans "Disabled" %}
+              {% endif %}
+            </td>
+          </tr>
+          {% endif %}
+        {% endfor %}
+      {% else %}
+        <tr><td colspan="6">{% trans "No Advanced QoS interface entries found." %}</td></tr>
+      {% endif %}
+    {% endwith %}
+  </tbody>
+</table>

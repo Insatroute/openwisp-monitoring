@@ -1,0 +1,68 @@
+{% load i18n static %}
+
+<h3>{% trans "OpenVPN — Configuration" %}</h3>
+<div class="table-wrap">
+  <table class="disk no-stack">
+    <thead>
+      <tr>
+        <th>{% trans "Enabled" %}</th>
+        <th>{% trans "Proto" %}</th>
+        <th>{% trans "Port" %}</th>
+        <th>{% trans "Dev type" %}</th>
+        <th>{% trans "Topology" %}</th>
+        <th>{% trans "Server" %}</th>
+        <th>{% trans "Ifconfig pool" %}</th>
+        <th>{% trans "Local networks" %}</th>
+        <th>{% trans "Public IPs" %}</th>
+        <th>{% trans "Client-to-client" %}</th>
+        <th>{% trans "TLS min" %}</th>
+        <th>{% trans "Auth" %}</th>
+        <th>{% trans "Cipher" %}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% with cfg=device_data.vpn.OpenVPN.Configuration %}
+        {% if cfg %}
+        <tr>
+          <td>{{ cfg.enabled|default:"-" }}</td>
+          <td>{{ cfg.proto|default:"-" }}</td>
+          <td>{{ cfg.port|default:"-" }}</td>
+          <td>{{ cfg.dev_type|default:"-" }}</td>
+          <td>{{ cfg.topology|default:"-" }}</td>
+          <td>{{ cfg.server|default:"-" }}</td>
+          <td>{% if cfg.ifconfig_pool %}{{ cfg.ifconfig_pool|join:", " }}{% else %}-{% endif %}</td>
+          <td>{% if cfg.ns_local %}{{ cfg.ns_local|join:", " }}{% else %}-{% endif %}</td>
+          <td>{% if cfg.ns_public_ip %}{{ cfg.ns_public_ip|join:", " }}{% else %}-{% endif %}</td>
+          <td>{{ cfg.client_to_client|default:"-" }}</td>
+          <td>{{ cfg.tls_version_min|default:"-" }}</td>
+          <td>{{ cfg.auth|default:"-" }}</td>
+          <td>{{ cfg.cipher|default:"-" }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="13" class="muted">{% trans "No OpenVPN configuration found." %}</td></tr>
+        {% endif %}
+      {% endwith %}
+    </tbody>
+  </table>
+</div>
+
+<style>
+.table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.disk {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 900px; /* force scroll for small screens */
+}
+.disk th, .disk td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #eef0f2;
+  text-align: left;
+  white-space: nowrap;
+}
+.no-stack tr { display: table-row !important; }
+.no-stack th, .no-stack td { display: table-cell !important; vertical-align: middle; }
+.muted { color: #6b7280; }
+</style>

@@ -1,0 +1,184 @@
+{% load i18n static %}
+{# -------- Configured IPv4 routes (top table) -------- #}
+<h3>IPv4</h3>
+
+<div class="routes-section">
+  <table class="disk" id="ipv4-routes-table">
+    <thead>
+      <tr>
+        <th>Route name</th>
+        <th>Interface</th>
+        <th>Network address</th>
+        <th>Gateway</th>
+        <th>Metric</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody id="ipv4-routes-body">
+      {% for rid, route in device_data.network.Routes.IPV4_Routes.routes.items %}
+      <tr>
+        <td data-label="Route name">
+          {# Prefer description; if target is default, show 'default' #}
+          {% if route.ns_description %}{{ route.ns_description }}
+          {% elif route.target == '0.0.0.0/0' %}default
+          {% else %}{{ route.target }}
+          {% endif %}
+        </td>
+        <td data-label="Interface">
+          {% if route.interface %}{{ route.interface }}{% else %}Any{% endif %}
+        </td>
+        <td data-label="Network address">
+          {{ route.target|default:"-" }}
+        </td>
+        <td data-label="Gateway">
+          {{ route.gateway|default:"-" }}
+        </td>
+        <td data-label="Metric">
+          {{ route.metric|default:"-" }}
+        </td>
+       <td data-label="Status">
+  {% if route.disabled == '0' %}
+    <span class="chip on">✔ Enabled</span>
+  {% else %}
+    <span class="chip off">✖ Disabled</span>
+  {% endif %}
+</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div id="ipv4-routes-pager" class="pager"></div>
+</div>
+
+<h3 style="margin:18px 0 8px;">Main table active routes</h3>
+
+{# -------- Main table active routes (bottom table) -------- #}
+<div class="routes-section">
+  <table class="disk" id="maintable-table">
+    <thead>
+      <tr>
+        <th>Interface</th>
+        <th>Network address</th>
+        <th>Gateway</th>
+        <th>Metric</th>
+        <th>Protocol</th>
+      </tr>
+    </thead>
+    <tbody id="maintable-body">
+      {% for row in device_data.network.Routes.IPV4_Maintable.table %}
+      <tr>
+        <td data-label="Interface">{{ row.interface }}</td>
+        <td data-label="Network address">{{ row.network }}</td>
+        <td data-label="Gateway">{{ row.gateway|default:"-" }}</td>
+        <td data-label="Metric">{{ row.metric|default:"-" }}</td>
+        <td data-label="Protocol">{{ row.protocol|default:"-" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div id="maintable-pager" class="pager"></div>
+</div>
+
+<style>
+.disk { width:100%; border-collapse:collapse; }
+.disk th, .disk td { padding:12px; border-bottom:1px solid #eef0f2; text-align:left; }
+.w-actions { width:120px; }
+.actions { white-space:nowrap; }
+.link { color:#2563eb; text-decoration:none; font-weight:600; margin-right:8px; }
+.menu { color:#6b7280; cursor:default; }
+
+.chip { padding:3px 10px; border-radius:999px; font-size:12px; font-weight:600; }
+.chip.on  { background:#d1fae5; color:#047857; }
+.chip.off { background:#f3f4f6; color:#374151; }
+
+.pager { display:flex; justify-content:space-between; align-items:center; padding:8px 12px; }
+.pager-left { display:flex; align-items:center; gap:12px; }
+.pager .show select { padding:4px 8px; border:1px solid #e5e7eb; border-radius:6px; background:#fff; }
+.pager-right { display:flex; align-items:center; gap:8px; }
+.pager button { padding:6px 10px; border:1px solid #e5e7eb; background:#fff; border-radius:6px; cursor:pointer; }
+.pager button:disabled { opacity:.5; cursor:not-allowed; }
+.pager .page-no { min-width:28px; text-align:center; border:1px solid #e5e7eb; border-radius:6px; padding:6px 10px; background:#fff; }
+</style>
+
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  function initPager(tbodyId, pagerId, defaultRpp = 10) {
+    const tbody = document.getElementById(tbodyId);
+    const pager = document.getElementById(pagerId);
+    const rows = Array.from(tbody.querySelectorAll("tr"));
+    let rpp = defaultRpp;
+    let page = 1;
+
+    function totalPages() {
+      return Math.max(1, Math.ceil(rows.length / rpp));
+    }
+
+    function renderRows() {
+      const start = (page - 1) * rpp;
+      const end = start + rpp;
+      rows.forEach((tr, i) => {
+        tr.style.display = (i >= start && i < end) ? "" : "none";
+      });
+    }
+
+    function updateRangeText() {
+      const total = rows.length;
+      const start = total ? (page - 1) * rpp + 1 : 0;
+      const end = Math.min(page * rpp, total);
+      pager.querySelector(".range").textContent = `${start} - ${end} of ${total}`;
+      pager.querySelector(".page-no").textContent = page;
+      pager.querySelector(".prev").disabled = (page <= 1);
+      pager.querySelector(".next").disabled = (page >= totalPages());
+    }
+
+    function buildPager() {
+      pager.innerHTML = `
+        <div class="pager-left">
+          <span class="range">0 - 0 of 0</span>
+          <label class="show">Show
+            <select class="rpp">
+              <option value="10">10</option>
+              <option value="25">25</option>
+              <option value="50">50</option>
+            </select>
+          </label>
+        </div>
+        <div class="pager-right">
+          <button class="prev" aria-label="Previous">‹</button>
+          <span class="page-no">1</span>
+          <button class="next" aria-label="Next">›</button>
+        </div>
+      `;
+
+      // set default rpp
+      pager.querySelector(".rpp").value = String(rpp);
+
+      pager.querySelector(".prev").addEventListener("click", function (e) {
+        e.preventDefault();
+        if (page > 1) { page--; renderRows(); updateRangeText(); }
+      });
+      pager.querySelector(".next").addEventListener("click", function (e) {
+        e.preventDefault();
+        if (page < totalPages()) { page++; renderRows(); updateRangeText(); }
+      });
+      pager.querySelector(".rpp").addEventListener("change", function (e) {
+        rpp = parseInt(e.target.value, 10);
+        page = 1; // reset to first page on page size change
+        renderRows(); updateRangeText();
+      });
+    }
+
+    buildPager();
+    renderRows();
+    updateRangeText();
+  }
+
+  // Attach pagers
+  initPager("ipv4-routes-body", "ipv4-routes-pager", 10);
+  initPager("maintable-body", "maintable-pager", 10);
+});
+</script>
+

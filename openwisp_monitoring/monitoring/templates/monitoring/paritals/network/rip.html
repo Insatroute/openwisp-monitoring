@@ -1,0 +1,50 @@
+{% load i18n static %}
+
+
+{# ==================== RIP ==================== #}
+<h3 style="margin-top:18px;">{% trans "RIP" %}</h3>
+<div class="table-wrap">
+  <table class="disk no-stack">
+    <thead>
+      <tr>
+        <th>{% trans "Neighbor" %}</th>
+        <th>{% trans "Network" %}</th>
+        <th>{% trans "Protocol" %}</th>
+        <th>{% trans "Redistribute" %}</th>
+        <th>{% trans "Type" %}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% with rip_list=device_data.network.RIP %}
+        {% if rip_list and rip_list|length %}
+          {% for row in rip_list %}
+          <tr>
+            <td data-label="{% trans 'Neighbor' %}">{{ row.neighbor|default:"-" }}</td>
+            <td data-label="{% trans 'Network' %}">{{ row.network|default:"-" }}</td>
+            <td data-label="{% trans 'Protocol' %}">{{ row.protocol|default:"-" }}</td>
+            <td data-label="{% trans 'Redistribute' %}">{{ row.redistribute|default:"-" }}</td>
+            <td data-label="{% trans 'Type' %}">{{ row.type|default:"-" }}</td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr><td colspan="5" class="muted">{% trans "No RIP entries." %}</td></tr>
+        {% endif %}
+      {% endwith %}
+    </tbody>
+  </table>
+</div>
+
+<style>
+/* Responsive wrapper: horizontal scroll on small screens */
+.table-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; margin-bottom:16px; }
+
+/* Base table styling */
+.disk { width:100%; border-collapse:collapse; min-width:720px; }
+.disk th, .disk td { padding:10px 12px; border-bottom:1px solid #eef0f2; text-align:left; white-space:nowrap; }
+
+/* Keep tabular layout (no stacking) */
+.no-stack tr { display:table-row !important; }
+.no-stack th, .no-stack td { display:table-cell !important; vertical-align:middle; }
+
+.muted { color:#6b7280; }
+</style>

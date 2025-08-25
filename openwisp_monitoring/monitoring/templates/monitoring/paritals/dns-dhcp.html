@@ -1,0 +1,121 @@
+{% load i18n static %}
+{# Interfaces cards #}
+<h3>Interfaces</h3>
+
+<div class="iface-grid">
+  {# DHCP_MAC is a dict like {"lan": {...}, "guest": {...}} #}
+  {% for name, iface in device_data.network.DNS_DHCP.DHCP_MAC.items %}
+    <div class="iface-card">
+      <div class="iface-card__header">
+        <div class="iface-title">
+          <span class="iface-pin">●</span>
+          <div>
+            <div class="iface-name">{{ name }}</div>
+            <div class="iface-device">{{ iface.device }}</div>
+          </div>
+        </div>
+
+       
+      </div>
+
+      <div class="iface-divider"></div>
+
+      <div class="iface-row">
+        <span class="muted">MAC Binding:</span>
+        {% if iface.ns_binding %}
+          <span class="status-chip off"><span class="dot">✖</span> Enabled</span>
+        {% else %}
+          <span class="status-chip off"><span class="dot">✖</span> Disabled</span>
+        {% endif %}
+      </div>
+
+      <div class="iface-divider thin"></div>
+
+      <div class="iface-row spread">
+        <span class="muted">DHCP</span>
+        {% if iface.active %}
+          <span class="status-chip on"><span class="dot">✔</span> Enabled</span>
+        {% else %}
+          <span class="status-chip off"><span class="dot">✖</span> Disabled</span>
+        {% endif %}
+      </div>
+
+      <div class="iface-row">
+        <span class="muted">IP range:</span>
+        <span>{{ iface.first }} - {{ iface.last }}</span>
+      </div>
+
+      <div class="iface-row">
+        <span class="muted">Lease time:</span>
+        <span>{{ iface.options.leasetime|default:"-" }}</span>
+      </div>
+    </div>
+  {% empty %}
+    <p class="muted">No interfaces found.</p>
+  {% endfor %}
+</div>
+<style>
+/* 2 cards per row; wraps nicely on small screens */
+.iface-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+/* Card */
+.iface-card {
+  background: #fff;
+  border-radius: 10px;
+  border-left: 4px solid #24415d;   /* green accent like screenshot */
+  box-shadow: 0 1px 8px rgba(0,0,0,.06);
+  padding: 14px 16px;
+}
+
+/* Header */
+.iface-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.iface-title { display:flex; align-items:center; gap:10px; }
+.iface-pin { color:#21a453; font-size:18px; line-height:1; }
+.iface-name { font-weight: 600; }
+.iface-device { color:#6b7280; font-size: 13px; }
+
+/* Edit link (placeholder) */
+.iface-edit {
+  color:#2563eb; text-decoration:none; font-weight:600; font-size:14px;
+}
+.iface-edit:hover { text-decoration:underline; }
+
+/* Rows */
+.iface-row {
+  display:flex;
+  gap:8px;
+  align-items:center;
+  margin: 8px 0;
+}
+.iface-row.spread { justify-content: space-between; }
+
+.muted { color:#6b7280; }
+
+/* Dividers */
+.iface-divider {
+  height:1px; background:#e5e7eb; margin:10px 0;
+}
+.iface-divider.thin { opacity:.7; }
+
+/* Status chips */
+.status-chip {
+  display:inline-flex; align-items:center; gap:6px;
+  padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight:600;
+}
+.status-chip.on   { background:#d1fae5; color:#047857; }  /* green */
+.status-chip.off  { background:#f3f4f6; color:#374151; }  /* gray */
+.dot { font-weight:700; }
+  
+/* Responsive: stack to 1 card per row on small screens */
+@media (max-width: 720px) {
+  .iface-grid { grid-template-columns: 1fr; }
+}
+</style>

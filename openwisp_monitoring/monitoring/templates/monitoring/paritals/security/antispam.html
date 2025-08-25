@@ -1,0 +1,72 @@
+{% load i18n static %}
+
+<h3>{% trans "Antispam" %}</h3>
+<div class="table-wrap">
+  <table class="disk no-stack" id="antispam-table">
+    <thead>
+      <tr>
+        <th>{% trans "Name" %}</th>
+        <th>{% trans "Port" %}</th>
+        <th>{% trans "Reject score" %}</th>
+        <th>{% trans "Relayhost" %}</th>
+        <th>{% trans "Service" %}</th>
+        <th>{% trans "SMTP SASL Auth Enable" %}</th>
+        <th>{% trans "SMTP TLS Wrapper Mode" %}</th>
+        <th>{% trans "SMTPD TLS Security Level" %}</th>
+        <th>{% trans "Timeout" %}</th>
+        <th>{% trans "Type" %}</th>
+        <th>{% trans "Worker Normal Socket" %}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% with antispam=device_data.security.Antispam %}
+        {% if antispam and antispam|length %}
+          {% for config in antispam %}
+            <tr>
+              <td>{{ config.name|default:"-" }}</td>
+              <td>{{ config.port|default:"-" }}</td>
+              <td>{{ config.reject_score|default:"-" }}</td>
+              <td>{{ config.relayhost|default:"-" }}</td>
+              <td>{{ config.service|default:"-" }}</td>
+              <td>{{ config.smtp_sasl_auth_enable|default:"-" }}</td>
+              <td>{{ config.smtp_tls_wrappermode|default:"-" }}</td>
+              <td>{{ config.smtpd_tls_security_level|default:"-" }}</td>
+              <td>{{ config.timeout|default:"-" }}</td>
+              <td>{{ config.type|default:"-" }}</td>
+              <td>{{ config.worker_normal_socket|default:"-" }}</td>
+            </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="11" class="muted">{% trans "No Antispam configuration found." %}</td>
+          </tr>
+        {% endif %}
+      {% endwith %}
+    </tbody>
+  </table>
+</div>
+
+<style>
+.table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+
+.disk {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 900px; 
+}
+.disk th, .disk td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #eef0f2;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.no-stack tr { display: table-row !important; }
+.no-stack th, .no-stack td { display: table-cell !important; vertical-align: middle; }
+
+.muted { color: #6b7280; }
+</style>

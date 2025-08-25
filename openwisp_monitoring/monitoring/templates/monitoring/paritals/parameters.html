@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <style>
+      .form-container {
+        margin-top: 30px;
+        padding-left: 20px;
+        font-size: 12px !important;
+      }
+      .form-row {
+        display: flex;
+        align-items: center;
+        margin-bottom: 16px;
+      }
+      .form-row label {
+        width: 120px;
+        font-weight: bold;
+      }
+      .form-row input[type="text"],
+      .form-row select {
+        flex: 1;
+        height: 28px;
+
+        padding: 0px 8px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+      }
+
+      .form-actions {
+        text-align: right;
+      }
+      .form-actions button {
+        padding: 8px 16px;
+        border: none;
+        background: #007bff;
+        color: white;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      .form-actions button:hover {
+        background: #0056b3;
+      }
+      .form-row {
+        display: flex;
+        align-items: center;
+        margin-bottom: 16px;
+        border-bottom: 0px;
+      }
+      .form-row label {
+        width: 120px;
+        font-weight: bold;
+      }
+      /* container for switch + text */
+      .paramtoggle-container {
+        display: flex;
+        align-items: center;
+      }
+      /* hidden checkbox */
+      .paramtoggle-container input[type="checkbox"] {
+        position: absolute;
+        opacity: 0;
+        pointer-events: none;
+      }
+      /* the track */
+      .paramtoggle1-switch {
+        position: relative;
+        width: 50px !important;
+        height: 24px;
+        background: #ccc;
+        border-radius: 12px;
+        transition: background 0.2s;
+        cursor: pointer;
+      }
+      /* the knob */
+      .paramtoggle1-switch::before {
+        content: "";
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 20px;
+        height: 20px;
+        background: white;
+        border-radius: 50%;
+        transition: transform 0.2s;
+      }
+      /* when checked */
+      .paramtoggle-container input:checked + .paramtoggle1-switch {
+        background: #007bff;
+      }
+      .paramtoggle-container input:checked + .paramtoggle1-switch::before {
+        transform: translateX(26px);
+      }
+      /* the text */
+      .paramtoggle-text {
+        margin-left: 8px;
+        font-size: 12px;
+        user-select: none;
+        color: #333;
+      }
+
+      /* disabled style */
+      .paramtoggle-container input:disabled + .paramtoggle1-switch {
+        background: #eee;
+        cursor: not-allowed;
+      }
+      .paramtoggle-container input:disabled + .paramtoggle1-switch::before {
+        background: #ddd;
+      }
+      .paramtoggle-container input:disabled ~ .paramtoggle-text {
+        color: #999;
+      }
+      .multiselect-wrapper {
+        flex: 1;
+      }
+      /* basic select styling */
+      .multiselect-wrapper select {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        /* keep it from showing too tall */
+        max-height: 150px;
+        overflow-y: auto;
+      }
+      /* tags container */
+      .selected-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 8px;
+      }
+      .selected-tags .tag {
+        background: #e0f3ff;
+        color: #0366d6;
+        border-radius: 12px;
+        padding: 4px 8px;
+        font-size: 13px;
+        display: flex;
+        align-items: center;
+      }
+      .selected-tags .tag .remove {
+        display: inline-block;
+        margin-left: 6px;
+        cursor: pointer;
+        font-weight: bold;
+      }
+      #paramserviceRow #paramservicelabel,
+      #paramprotoRow #paramprotolabel,
+      #protointerfaceRow #protointerfacelabel,
+      #paramserverRow #paramserverlabel,
+      #paramslaRow #paramslalabel,
+      #paramjitRow #paramjitlabel,
+      #paramintRow #paramintlabel,
+      #paramfailRow #paramfaillabel,
+      #paramlatRow #paramlatlabel,
+      #paramresRow #paramreslabel,
+      #paramlossRow #paramlosslabel {
+        font-size: 13px !important;
+      }
+
+      .paramtoggle1-switch {
+        width: 40px !important;
+        height: 20px;
+        border-radius: 10px;
+      }
+
+      .paramtoggle1-switch::before {
+        width: 16px;
+        height: 16px;
+        top: 2px;
+        left: 2px;
+      }
+
+      .paramtoggle-container input:checked + .paramtoggle1-switch::before {
+        transform: translateX(20px);
+      }
+         #protointerfaceRow #cntrolinfo{
+          font-size: 10px !important;
+    }
+    .cidrformat { 
+    display: none; 
+    color: #d93025; 
+    font-size: 8px; 
+    margin-top: 4px; 
+  }
+  /* show message only after the user types something and it's invalid */
+  #paramservername:invalid:not(:placeholder-shown) + .cidrformat {
+    display: block;
+  }
+    </style>
+  </head>
+  <body>
+    <div class="form-container">
+      <form action="#" method="post">
+        <div class="form-row" id="paramserviceRow">
+          <label id="paramservicelabel" for="paramservice">Service:</label>
+          <div class="paramtoggle-container">
+            <input type="checkbox" id="paramservice" name="service" />
+            <label class="paramtoggle1-switch" for="paramservice"></label>
+            <span class="paramtoggle-text">Enable</span>
+          </div>
+        </div>
+
+        <div class="form-row" id="paramprotoRow">
+          <label id="paramprotolabel" for="paramprotoname">Protocol:</label>
+          <select id="paramprotoname" name="paramprotoname">
+            <option value="" disabled selected>Select protocol…</option>
+            <option value="ping">Ping</option>
+            <option value="http">HTTP</option>
+            <option value="udp">UDP</option>
+          </select>
+        </div>
+
+        <!-- <div class="form-row" id="protointerfaceRow">
+          <label id="protointerfacelabel" for="protointerface"
+            >Participants:</label
+          >
+          <select id="protointerface" name="protointerface">
+            <option value="" disabled selected>Loading…</option>
+          </select>
+        </div> -->
+
+        <div class="form-row" id="protointerfaceRow">
+          <label id="protointerfacelabel" for="protointerface"
+            >Participants :</label
+          >
+          <div class="multiselect-wrapper">
+            <select id="protointerface" name="protointerface" multiple>
+              <option disabled>Loading…</option>
+            </select>
+            <div class="selected-tags" id="selected-protointerfaces"></div>
+            <div id="cntrolinfo" style="font-size: 10px">
+              hold CNTRL for select multiple
+            </div>
+          </div>
+        </div>
+
+        <div class="form-row" id="paramserverRow">
+          <label id="paramserverlabel" for="paramservername">Server:</label>
+          <!-- <input type="text" id="paramservername" name="paramservername" /> -->
+          <input
+  id="paramservername"
+  name="paramservername"
+  placeholder="3.6.121.36"
+  inputmode="decimal"
+  required
+  title="IPv4 only, e.g. 3.6.121.36"
+  pattern="^(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)(?:\.(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)){3}$"
+/>
+        <div class="cidrformat">IPv4 only, e.g. 3.6.121.36"</div>
+
+        </div>
+
+        <div class="form-row" id="paramslaRow">
+          <label id="paramslalabel" for="paramsla">SLA Target:</label>
+          <div class="paramtoggle-container">
+            <input type="checkbox" id="paramsla" name="paramsla" />
+            <label class="paramtoggle1-switch" for="paramsla"></label>
+            <span class="paramtoggle-text">Enable</span>
+          </div>
+        </div>
+
+        <div class="form-row" id="paramlatRow">
+          <label id="paramlatlabel" for="paramlatname"
+            >Latency Threshold (ms):</label
+          >
+          <input type="number" id="paramlatname" name="paramlatname" />
+        </div>
+
+        <div class="form-row" id="paramjitRow">
+          <label id="paramjitlabel" for="paramjitname"
+            >Jitter Threshold (ms):</label
+          >
+          <input type="number" id="paramjitname" name="paramjitname" />
+        </div>
+
+        <div class="form-row" id="paramintRow">
+          <label id="paramintlabel" for="paramintname"
+            >Check Interval (s):</label
+          >
+          <input type="number" id="paramintname" name="paramintname" />
+        </div>
+
+        <div class="form-row" id="paramfailRow">
+          <label id="paramfaillabel" for="paramfailname"
+            >Failures Before Inactive:</label
+          >
+          <input type="number" id="paramfailname" name="paramfailname" />
+        </div>
+
+        <div class="form-row" id="paramresRow">
+          <label id="paramreslabel" for="paramresname"
+            >Restore Link After (s):</label
+          >
+          <input type="number" id="paramresname" name="paramresname" />
+        </div>
+
+        <div class="form-row" id="paramlossRow">
+          <label id="paramlosslabel" for="paramlossname">Packet Loss:</label>
+          <input type="number" id="paramlossname" name="paramlossname" />
+        </div>
+
+        <div class="form-actions">
+          <!-- change type to "button" and give it an ID -->
+          <button type="button" id="paramsaveBtn">Save</button>
+        </div>
+      </form>
+    </div>
+
+    <script>
+            document.addEventListener("DOMContentLoaded", async () => {
+              const paramserviceRow = document.getElementById("paramserviceRow");
+              const paramprotoRow = document.getElementById("paramprotoRow");
+              const protointerfaceRow = document.getElementById("protointerfaceRow");
+              const paramserverRow = document.getElementById("paramserverRow");
+              const paramslaRow = document.getElementById("paramslaRow");
+              const paramjitRow = document.getElementById("paramjitRow");
+              const paramintRow = document.getElementById("paramintRow");
+              const paramfailRow = document.getElementById("paramfailRow");
+              const paramlatRow = document.getElementById("paramlatRow");
+              const paramresRow = document.getElementById("paramresRow");
+              const paramlossRow = document.getElementById("paramlossRow");
+
+              const paramlossname = document.getElementById("paramlossname");
+              const paramprotoname = document.getElementById("paramprotoname");
+              const paramresname = document.getElementById("paramresname");
+              const paramfailname = document.getElementById("paramfailname");
+              const paramintname = document.getElementById("paramintname");
+              const paramjitname = document.getElementById("paramjitname");
+              const paramlatname = document.getElementById("paramlatname");
+              const paramservername = document.getElementById("paramservername");
+              const paramsla = document.getElementById("paramsla");
+
+
+              const paramselect = document.getElementById("protointerface");
+              const paramserviceToggle = document.getElementById("paramservice");
+              const paramsaveBtn = document.getElementById("paramsaveBtn");
+              const paramtoggleText = document.querySelector(".paramtoggle-text");
+              paramtoggleText.textContent = paramserviceToggle.checked ? "Enable" : "Disable";
+
+              paramserviceToggle.addEventListener("change", () => {
+                paramtoggleText.textContent = paramserviceToggle.checked ? "Enable" : "Disable";
+              });
+
+              function syncRows() {
+                const show = paramserviceToggle.checked;
+                paramprotoRow.style.display = show ? "flex" : "none";
+                protointerfaceRow.style.display = show ? "flex" : "none";
+                paramserverRow.style.display = show ? "flex" : "none";
+                paramslaRow.style.display = show ? "flex" : "none";
+                paramjitRow.style.display = show ? "flex" : "none";
+                paramintRow.style.display = show ? "flex" : "none";
+                paramfailRow.style.display = show ? "flex" : "none";
+                paramlatRow.style.display = show ? "flex" : "none";
+                paramresRow.style.display = show ? "flex" : "none";
+                paramlossRow.style.display = show ? "flex" : "none";
+              }
+
+              // initial setup
+              syncRows();
+              // whenever the toggle flips
+              paramserviceToggle.addEventListener("change", syncRows);
+
+              const CONTROLLER_API_URL =
+                "https://3.6.121.36/api/v1/controller/device/";
+
+              const AUTH_TOKEN =
+                sessionStorage.getItem("cachedToken") ||
+                "709a479602b572990248897cdf754a8dbc8411d5";
+
+              // Extract deviceId from URL
+              const match = window.location.pathname.match(
+                /device\/([0-9a-fA-F\-]+)(?:\/|$)/
+              );
+              if (!match) {
+                console.error("Cannot find device ID in URL");
+                return;
+              }
+              const deviceId = match[1];
+
+              // Fetch last_ip for this device
+              async function paramfetchLastIpByDeviceId(id) {
+                try {
+                  const res = await fetch(CONTROLLER_API_URL, {
+                    method: "GET",
+                    headers: {
+                      Accept: "application/json",
+                      Authorization: `Bearer ${AUTH_TOKEN}`,
+                    },
+                    credentials: "include",
+                  });
+                  if (!res.ok) {
+                    console.error(`Controller API HTTP ${res.status}`);
+                    return null;
+                  }
+                  const json = await res.json();
+                  const dev = (json.results || []).find((d) => d.id === id);
+                  return dev ? dev.last_ip : null;
+                } catch (e) {
+                  console.error("Error fetching device list:", e);
+                  return null;
+                }
+              }
+
+              const paramlastIp = await paramfetchLastIpByDeviceId(deviceId);
+              if (!paramlastIp) return;
+
+              // Proxy SLA call through Django
+              let paramslaJson;
+              try {
+                const proxyRes = await fetch("/api/device-sla-proxy/", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ last_ip: paramlastIp }),
+                });
+                if (!proxyRes.ok) {
+                  console.error(`SLA proxy returned HTTP ${proxyRes.status}`);
+                  return;
+                }
+                paramslaJson = await proxyRes.json();
+              } catch (err) {
+                console.error("Error calling SLA proxy:", err);
+                return;
+              }
+
+              // Populate interface dropdown
+              const upIfnames = paramslaJson.data?.up_ifname || [];
+              paramselect.innerHTML = "";
+              if (upIfnames.length === 0) {
+                paramselect.add(new Option("No interfaces up", ""));
+              } else {
+                upIfnames.forEach((name) => paramselect.add(new Option(name, name)));
+              }
+
+              // 4) on form submit, send set-zone
+    
+              paramsaveBtn.addEventListener("click", async () => {
+                // 1) collect data
+                 if (!paramservername.checkValidity()) { paramservername.reportValidity(); return; }
+              const paramparticipants = Array.from(paramselect.selectedOptions).map(o => o.value);
+
+                const service = paramserviceToggle.checked ? "enable" : "disable";
+                const paramslatoggle = paramsla.checked ? "enable" : "disable";
+                const base_server = paramservername.value;
+                const base_protocol = paramprotoname.value;
+                const sla_latency = paramlatname.value;
+                const sla_jitter = paramjitname.value;
+                const sla_check_interval = paramintname.value;
+                const sla_fail_interval = paramfailname.value;
+                const sla_restore_interval = paramresname.value;
+                const sla_packet_loss = paramlossname.value;
+                const payload = {
+                  method: "set-base",
+                  payload: {
+                    base_protocol,
+                    update_static_route:service,
+                    base_particpants: paramparticipants,
+                    sla_target :paramslatoggle ,
+                    base_server,
+                    sla_latency,
+                    sla_jitter,
+                    sla_check_interval,
+                    sla_fail_interval,
+                    sla_restore_interval,
+                    sla_packet_loss
+
+
+                  },
+                };
+
+              
+
+
+                // 2) call your proxy
+                try {
+                  const res = await fetch("/api/device-sla-proxy/", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ last_ip: paramlastIp, ...payload }),
+                  });
+                  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                  const result = await res.json();
+                  console.log("✅ set-zone result:", result);
+                  alert("Saved successfully!");
+                } catch (err) {
+                  console.error("❌ Save failed:", err);
+                  alert("Save failed: " + err.message);
+                }
+              });
+            });
+    </script>
+  </body>
+</html>

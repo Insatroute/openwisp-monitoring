@@ -1,0 +1,192 @@
+{% load i18n static %}
+
+{# ========================= DPI — Rules ========================= #}
+<h3>{% trans "DPI — Rules" %}</h3>
+<div class="cards-grid">
+  {% with rules=device_data.security.DPI.rules.values %}
+    {% if rules and rules|length %}
+      {% for rule in rules %}
+      <article class="dpi-card">
+        <div class="dpi-card__accent accent-green"></div>
+        <header class="dpi-card__head">
+          <div class="dpi-card__title">
+            <strong>{{ rule.interface|default:"-" }}</strong>
+            <span class="muted"> {{ rule.device|default:"-" }}</span>
+          </div>
+          <div class="dpi-card__actions">
+            <span class="badge {{ rule.enabled|yesno:'on,off' }}">
+              {% if rule.enabled %}{% trans "Enabled" %}{% else %}{% trans "Disabled" %}{% endif %}
+            </span>
+            <span class="badge badge-action {{ rule.action|default:'block'|lower }}">
+              {{ rule.action|capfirst }}
+            </span>
+          </div>
+        </header>
+
+        <section class="dpi-card__panel">
+          <div class="panel-title">{% trans "Blocked apps and protocols" %}</div>
+          <ul class="criteria-list">
+            {% for c in rule.criteria %}
+              <li class="criteria-item">
+                <span class="criteria-dot" aria-hidden="true"></span>
+                <span class="criteria-name">{{ c.name|default:"-"|cut:"netify." }}</span>
+                <span class="criteria-meta muted">({{ c.type|default:"-"|capfirst }} • {{ c.category.name|default:"-"|capfirst }})</span>
+              </li>
+            {% empty %}
+              <li class="muted">{% trans "No criteria." %}</li>
+            {% endfor %}
+          </ul>
+        </section>
+      </article>
+      {% endfor %}
+    {% else %}
+      <div class="muted">{% trans "No DPI rules configured." %}</div>
+    {% endif %}
+  {% endwith %}
+</div>
+
+{# ======================= DPI — Exceptions ====================== #}
+<div class="rules-top-gap"></div>
+<h3>{% trans "DPI — Exceptions" %}</h3>
+<div class="cards-grid">
+  {% with exceptions=device_data.security.DPI.exceptions.values %}
+    {% if exceptions and exceptions|length %}
+      {% for ex in exceptions %}
+      <article class="dpi-card">
+        <div class="dpi-card__accent accent-purple"></div>
+        <header class="dpi-card__head">
+          <div class="dpi-card__title">
+            <strong>
+              {% if ex.description %}
+                {{ ex.description }}
+              {% else %}
+                {# fallback to ex["config-name"] without custom filters #}
+                {% for item in ex.items %}
+                  {% if item.0 == 'config-name' %}
+                    {{ item.1 }}
+                  {% endif %}
+                {% endfor %}
+              {% endif %}
+            </strong>
+          </div>
+          <div class="dpi-card__actions">
+            <span class="badge {{ ex.enabled|yesno:'on,off' }}">
+              {% if ex.enabled %}{% trans "Enabled" %}{% else %}{% trans "Disabled" %}{% endif %}
+            </span>
+          </div>
+        </header>
+
+        <section class="dpi-card__panel">
+          {% if ex.criteria %}
+            <div class="criteria-inline">{{ ex.criteria }}</div>
+          {% else %}
+            <span class="muted">{% trans "No criteria." %}</span>
+          {% endif %}
+        </section>
+      </article>
+      {% endfor %}
+    {% else %}
+      <div class="muted">{% trans "No DPI exceptions configured." %}</div>
+    {% endif %}
+  {% endwith %}
+</div>
+
+<style>
+/* ========= layout: two cards per row (1 on small) ========= */
+.cards-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+@media (min-width: 900px) {
+  .cards-grid { grid-template-columns: 1fr 1fr; }
+}
+.rules-top-gap { height: 8px;
+
+  margin-top: 20px;
+}
+
+/* ====================== card styles ======================= */
+.dpi-card {
+  position: relative;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+  padding: 14px 16px 12px 16px;
+}
+.dpi-card__accent {
+  position: absolute;
+  left: 6px;
+  top: 8px;
+  bottom: 8px;
+  width: 4px;
+  border-radius: 4px;
+}
+.accent-green { background: #22c55e; }
+.accent-purple { background: #8b5cf6; }
+
+.dpi-card__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding-left: 8px; /* space from accent */
+}
+.dpi-card__title { font-size: 15px; font-weight: 700; }
+.muted { color: #6b7280; font-weight: 500; }
+
+.dpi-card__actions { display: flex; align-items: center; gap: 8px; }
+
+/* ======================= badges ========================== */
+.badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid transparent;
+}
+.badge.on    { background: #ecfdf5; color: #065f46; border-color: #a7f3d0; }
+.badge.off   { background: #f9fafb; color: #6b7280; border-color: #e5e7eb; }
+.badge-action { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
+.badge-action.block { background: #fef2f2; color: #991b1b; border-color: #fecaca; }
+.badge-action.allow { background: #ecfdf5; color: #065f46; border-color: #a7f3d0; }
+
+/* =================== inner light panel =================== */
+.dpi-card__panel {
+  margin-top: 12px;
+  background: #f6f7fb;
+  border-radius: 10px;
+  padding: 12px 14px;
+  border: 1px solid #ebeef3;
+}
+.panel-title {
+  font-weight: 700;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+/* ==================== criteria list ====================== */
+.criteria-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+.criteria-item { display: flex; align-items: center; gap: 8px; }
+.criteria-dot {
+  width: 18px; height: 18px; border-radius: 50%;
+  background: #1118270f; border: 1px solid #e5e7eb;
+}
+.criteria-name { font-weight: 600; text-transform: capitalize; }
+.criteria-meta { font-size: 12px; }
+
+/* ========================= chips ========================= */
+.chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  display: inline-block;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #eef6ff;
+  color: #1f4f8a;
+  font-weight: 600;
+  font-size: 12px;
+  border: 1px solid #dbeafe;
+}
+</style>

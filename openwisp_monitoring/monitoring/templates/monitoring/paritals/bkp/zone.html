@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Device SLA Form</title>
+  <style>
+   
+    .form-container {
+      margin-top: 30px;
+      padding-left: 20px;
+      font-size: 12px !important;
+     
+    }
+    .form-row {
+      display: flex;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    .form-row label {
+      width: 120px;
+      font-weight: bold;
+    }
+    .form-row input[type="text"],
+    .form-row select {
+      flex: 1;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+
+
+    .form-actions {
+      text-align: right;
+    }
+    .form-actions button {
+      padding: 8px 16px;
+      border: none;
+      background: #007bff;
+      color: white;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .form-actions button:hover {
+      background: #0056b3;
+    }
+    .form-row {
+      display: flex;
+      align-items: center;
+      margin-bottom: 16px;
+          border-bottom: 0px;
+    }
+    .form-row label {
+      width: 120px;
+      font-weight: bold;
+    }
+    /* container for switch + text */
+    .toggle-container {
+      display: flex;
+      align-items: center;
+    }
+    /* hidden checkbox */
+    .toggle-container input[type="checkbox"] {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+    /* the track */
+    .toggle1-switch {
+      position: relative;
+      width: 50px !important;
+      height: 24px;
+      background: #ccc;
+      border-radius: 12px;
+      transition: background 0.2s;
+      cursor: pointer;
+    }
+    /* the knob */
+    .toggle1-switch::before {
+      content: "";
+      position: absolute;
+      top: 2px; left: 2px;
+      width: 20px; height: 20px;
+      background: white;
+      border-radius: 50%;
+      transition: transform 0.2s;
+    }
+    /* when checked */
+    .toggle-container input:checked + .toggle1-switch {
+      background: #007bff;
+    }
+    .toggle-container input:checked + .toggle1-switch::before {
+      transform: translateX(26px);
+    }
+    /* the text */
+    .toggle-text {
+      margin-left: 8px;
+      font-size: 12px;
+      user-select: none;
+      color: #333;
+    }
+    
+    /* disabled style */
+    .toggle-container input:disabled + .toggle1-switch {
+      background: #eee;
+      cursor: not-allowed;
+    }
+    .toggle-container input:disabled + .toggle1-switch::before {
+      background: #ddd;
+    }
+    .toggle-container input:disabled ~ .toggle-text {
+      color: #999;
+    }
+    .multiselect-wrapper {
+      flex: 1;
+    }
+    /* basic select styling */
+    .multiselect-wrapper select {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      /* keep it from showing too tall */
+      max-height: 150px;
+      overflow-y: auto;
+    }
+    /* tags container */
+    .selected-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+    .selected-tags .tag {
+      background: #e0f3ff;
+      color: #0366d6;
+      border-radius: 12px;
+      padding: 4px 8px;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+    }
+    .selected-tags .tag .remove {
+      display: inline-block;
+      margin-left: 6px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    #zoneRow #zonelabel , #interfaceRow #interfacelabel, #serviceRow #servicelabel{
+          font-size: 13px !important;
+    }
+   #interfaceRow #cntrolinfo{
+          font-size: 10px !important;
+    }
+
+
+    .toggle1-switch {
+  width: 40px !important;
+  height: 20px;
+  border-radius: 10px;
+}
+
+.toggle1-switch::before {
+  width: 16px;
+  height: 16px;
+  top: 2px;
+  left: 2px;
+}
+
+.toggle-container input:checked + .toggle1-switch::before {
+  transform: translateX(20px);
+}
+  </style>
+</head>
+<body>
+
+  <div class="form-container">
+    <form action="#" method="post">
+<div class="form-row" id="serviceRow">
+    <label id="servicelabel" for="service">Service:</label>
+    <div class="toggle-container">
+      <input type="checkbox" id="service" name="service">
+      <label class="toggle1-switch" for="service"></label>
+      <span class="toggle-text">Enable</span>
+    </div>
+  </div>
+
+      <div class="form-row" id="zoneRow">
+        <label id="zonelabel" for="zonename">Zone Name:</label>
+        <input type="text" id="zonename" name="zonename">
+      </div>
+ <div class="form-row" id="interfaceRow">
+        <label  id="interfacelabel" for="interface">Interface Name:</label>
+        <div class="multiselect-wrapper">
+          <select id="interface" name="interface" multiple>
+            <option disabled>Loading…</option>
+          </select>
+          <div class="selected-tags" id="selected-interfaces"></div>
+          <div id="cntrolinfo" style="font-size: 10px;">hold CNTRL for select multiple </div>
+        </div>
+
+      </div>
+
+     <div class="form-actions">
+    <!-- change type to "button" and give it an ID -->
+    <button type="button" id="saveBtn">Save</button>
+  </div>
+    </form>
+  </div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", async () => {
+const zoneRow      = document.getElementById("zoneRow");
+const interfaceRow = document.getElementById("interfaceRow");
+    const select = document.getElementById("interface");
+    const serviceToggle = document.getElementById("service");
+    const saveBtn = document.getElementById("saveBtn");
+    const toggleText = document.querySelector(".toggle-text");
+    toggleText.textContent = serviceToggle.checked ? "Enable" : "Disable";
+
+ serviceToggle.addEventListener("change", () => {
+    toggleText.textContent = serviceToggle.checked ? "Enable" : "Disable";
+  });
+
+  function syncRows() {
+  const show = serviceToggle.checked;
+  zoneRow.style.display      = show ? "flex" : "none";
+  interfaceRow.style.display = show ? "flex" : "none";
+}
+
+// initial setup
+syncRows();
+
+// whenever the toggle flips
+serviceToggle.addEventListener("change", syncRows);
+
+
+      const CONTROLLER_API_URL = "https://3.6.121.36/api/v1/controller/device/";
+      
+      const AUTH_TOKEN = sessionStorage.getItem('cachedToken') ||
+                         "709a479602b572990248897cdf754a8dbc8411d5";
+
+      // Extract deviceId from URL
+      const match = window.location.pathname.match(/device\/([0-9a-fA-F\-]+)(?:\/|$)/);
+      if (!match) {
+        console.error("Cannot find device ID in URL");
+        return;
+      }
+      const deviceId = match[1];
+
+      // Fetch last_ip for this device
+      async function fetchLastIpByDeviceId(id) {
+        try {
+          const res = await fetch(CONTROLLER_API_URL, {
+            method: "GET",
+            headers: {
+              "Accept": "application/json",
+              "Authorization": `Bearer ${AUTH_TOKEN}`
+            },
+            credentials: "include"
+          });
+          if (!res.ok) {
+            console.error(`Controller API HTTP ${res.status}`);
+            return null;
+          }
+          const json = await res.json();
+          const dev = (json.results || []).find(d => d.id === id);
+          return dev ? dev.last_ip : null;
+        } catch (e) {
+          console.error("Error fetching device list:", e);
+          return null;
+        }
+      }
+
+      const lastIp = await fetchLastIpByDeviceId(deviceId);
+      if (!lastIp) return;
+
+      // Proxy SLA call through Django
+      let slaJson;
+      try {
+        const proxyRes = await fetch("/api/device-sla-proxy/", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ last_ip: lastIp })
+        });
+        if (!proxyRes.ok) {
+          console.error(`SLA proxy returned HTTP ${proxyRes.status}`);
+          return;
+        }
+        slaJson = await proxyRes.json();
+      } catch (err) {
+        console.error("Error calling SLA proxy:", err);
+        return;
+      }
+
+      // Populate interface dropdown
+      const upIfnames = slaJson.data?.up_ifname || [];
+      select.innerHTML = "";
+      if (upIfnames.length === 0) {
+        select.add(new Option("No interfaces up", ""));
+      } else {
+        upIfnames.forEach(name => select.add(new Option(name, name)));
+      }
+
+       // 4) on form submit, send set-zone
+  saveBtn.addEventListener("click", async () => {
+      // 1) collect data
+      const zone_ifname = Array.from(select.selectedOptions).map(o => o.value);
+      const service = serviceToggle.checked ? "enable" : "disable";
+
+      const payload = {
+        method: "set-zone",
+        payload: {
+          service,
+          zone_name: document.getElementById("zonename").value || "sla_interface",
+          zone_ifname
+        }
+      };
+
+      // 2) call your proxy
+      try {
+        const res = await fetch("/api/device-sla-proxy/", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ last_ip: lastIp, ...payload })
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const result = await res.json();
+        console.log("✅ set-zone result:", result);
+         alert("Saved successfully!");
+      } catch (err) {
+        console.error("❌ Save failed:", err);
+         alert("Save failed: " + err.message);
+      }
+    });
+  });
+  </script>
+</body>
+</html>

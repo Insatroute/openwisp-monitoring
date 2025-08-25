@@ -1,0 +1,118 @@
+{% load i18n static %}
+
+{# -------------------- IPS — Filter bypass -------------------- #}
+<h3>{% trans "IPS — Filter bypass" %}</h3>
+<div class="table-wrap">
+  <table class="disk no-stack" id="ips-bypass-table">
+    <thead>
+      <tr>
+        <th>{% trans "IP" %}</th>
+        <th>{% trans "Protocol" %}</th>
+        <th>{% trans "Direction" %}</th>
+        <th>{% trans "Description" %}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% with bypasses=device_data.security.IPS.filter_bypass.bypasses %}
+        {% if bypasses and bypasses|length %}
+          {% for row in bypasses %}
+          <tr>
+            <td data-label="{% trans 'IP' %}">{{ row.ip|default:"-" }}</td>
+            <td data-label="{% trans 'Protocol' %}">{{ row.protocol|default:"-" }}</td>
+            <td data-label="{% trans 'Direction' %}">{{ row.direction|default:"-" }}</td>
+            <td data-label="{% trans 'Description' %}">{{ row.description|default:"-" }}</td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr><td colspan="4" class="muted">{% trans "No filter-bypass entries." %}</td></tr>
+        {% endif %}
+      {% endwith %}
+    </tbody>
+  </table>
+</div>
+
+{# ------------------ IPS — Suppressed alerts ------------------ #}
+<h3 style="margin-top:18px;">{% trans "IPS — Suppressed alerts" %}</h3>
+<div class="table-wrap">
+  <table class="disk no-stack" id="ips-suppressed-table">
+    <thead>
+      <tr>
+        <th>{% trans "GID" %}</th>
+        <th>{% trans "SID" %}</th>
+        <th>{% trans "IP" %}</th>
+        <th>{% trans "Direction" %}</th>
+        <th>{% trans "Description" %}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% with alerts=device_data.security.IPS.suppressed_alerts.alerts %}
+        {% if alerts and alerts|length %}
+          {% for row in alerts %}
+          <tr>
+            <td data-label="{% trans 'GID' %}">{{ row.gid|default:"-" }}</td>
+            <td data-label="{% trans 'SID' %}">{{ row.sid|default:"-" }}</td>
+            <td data-label="{% trans 'IP' %}">{{ row.ip|default:"-" }}</td>
+            <td data-label="{% trans 'Direction' %}">{{ row.direction|default:"-" }}</td>
+            <td data-label="{% trans 'Description' %}">{{ row.description|default:"-" }}</td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr><td colspan="5" class="muted">{% trans "No suppressed alerts." %}</td></tr>
+        {% endif %}
+      {% endwith %}
+    </tbody>
+  </table>
+</div>
+
+{# ------------------- IPS — Today's events -------------------- #}
+<h3 style="margin-top:18px;">{% trans "IPS — Today’s events" %}</h3>
+<div class="table-wrap">
+  <table class="disk no-stack" id="ips-events-table">
+    <thead>
+      <tr>
+        <th>{% trans "Key" %}</th>
+        <th>{% trans "Value" %}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% with events=device_data.security.IPS.today_event_list.events %}
+        {% if events and events|length %}
+          {# events is a dict; render key/value pairs generically #}
+          {% for kv in events.items %}
+          <tr>
+            <td data-label="{% trans 'Key' %}">{{ kv.0 }}</td>
+            <td data-label="{% trans 'Value' %}">
+              {{ kv.1 }}
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr><td colspan="2" class="muted">{% trans "No events today." %}</td></tr>
+        {% endif %}
+      {% endwith %}
+    </tbody>
+  </table>
+</div>
+
+<style>
+/* Responsive table wrapper (horizontal scroll on small screens) */
+.table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin: 0;
+}
+
+/* Table styling (matches earlier snippets) */
+.disk { width: 100%; border-collapse: collapse; min-width: 640px; }
+.disk th, .disk td {
+  padding: 12px;
+  border-bottom: 1px solid #eef0f2;
+  text-align: left;
+}
+
+/* Keep tabular layout; no stacking */
+.no-stack tr { display: table-row !important; }
+.no-stack th, .no-stack td { display: table-cell !important; vertical-align: middle; }
+
+.muted { color: #6b7280; }
+</style>

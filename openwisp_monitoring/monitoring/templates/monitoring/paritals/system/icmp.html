@@ -1,0 +1,47 @@
+{% load i18n static %}
+
+{# ---------- ICMP Check ---------- #}
+<h3>{% trans "ICMP Checks" %}</h3>
+<table class="disk no-stack" id="icmpcheck-table">
+  <thead>
+    <tr>
+      <th>{% trans "Name" %}</th>
+      <th>{% trans "Destination" %}</th>
+      <th>{% trans "Source interface" %}</th>
+      <th>{% trans "Interval" %}</th>
+      <th>{% trans "Retry times" %}</th>
+      <th>{% trans "Timeout action" %}</th>
+      <th>{% trans "Service" %}</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% with icmps=device_data.system.icmpcheck %}
+      {% if icmps %}
+        {% for row in icmps %}
+          <tr>
+            <td data-label="{% trans 'Name' %}">{{ row.name|default:"-" }}</td>
+            <td data-label="{% trans 'Destination' %}">{{ row.destination|default:"-" }}</td>
+            <td data-label="{% trans 'Source interface' %}">{{ row.source_interface|default:"-" }}</td>
+            <td data-label="{% trans 'Interval' %}">{{ row.time_interval|default:"-" }}</td>
+            <td data-label="{% trans 'Retry times' %}">{{ row.retry_times|default:"-" }}</td>
+            <td data-label="{% trans 'Timeout action' %}">
+              {% if row.time_out_action %}
+                {{ row.time_out_action }}
+                {% if row.time_out_action == 'custom' and row.custom_command %} ({{ row.custom_command }}){% endif %}
+              {% else %}-{% endif %}
+            </td>
+            <td data-label="{% trans 'Service' %}">
+              {% if row.service == 'enabled' or row.service == 'enable' or row.service == 'on' or row.service == 'true' or row.service == '1' %}
+                {% trans "Enabled" %}
+              {% else %}
+                {% trans "Disabled" %}
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      {% else %}
+        <tr><td colspan="7">{% trans "No ICMP checks found." %}</td></tr>
+      {% endif %}
+    {% endwith %}
+  </tbody>
+</table>

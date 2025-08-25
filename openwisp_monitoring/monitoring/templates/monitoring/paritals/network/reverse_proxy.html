@@ -1,0 +1,40 @@
+{% load i18n static %}
+{# ==================== Reverse Proxy ==================== #}
+<h3 style="margin-top:18px;">{% trans "Reverse Proxy" %}</h3>
+<table class="disk no-stack" id="reverse-proxy-table">
+  <thead>
+    <tr>
+      <th>{% trans "Description" %}</th>
+      <th>{% trans "Location" %}</th>
+      <th>{% trans "Destination" %}</th>
+      <th>{% trans "Allow" %}</th>
+      <th>{% trans "Type" %}</th>
+      <th>{% trans "ID" %}</th>
+    </tr>
+  </thead>
+  <tbody>
+    {# Reverse_Proxy is a list of groups; each group has .data list #}
+    {% with rp_groups=device_data.network.Reverse_Proxy %}
+      {% if rp_groups %}
+        {% for grp in rp_groups %}
+          {% if grp.data %}
+            {% for item in grp.data %}
+            <tr>
+              <td data-label="{% trans 'Description' %}">{{ item.description|default:"-" }}</td>
+              <td data-label="{% trans 'Location' %}">{{ item.location|default:"-" }}</td>
+              <td data-label="{% trans 'Destination' %}">{{ item.destination|default:"-" }}</td>
+              <td data-label="{% trans 'Allow' %}">
+                {% if item.allow %}{{ item.allow|join:", " }}{% else %}-{% endif %}
+              </td>
+              <td data-label="{% trans 'Type' %}">{{ item.type|default:"-"|capfirst }}</td>
+              <td data-label="{% trans 'ID' %}">{{ item.id|default:"-" }}</td>
+            </tr>
+            {% endfor %}
+          {% endif %}
+        {% endfor %}
+      {% else %}
+        <tr><td colspan="6">{% trans "No reverse proxy entries found." %}</td></tr>
+      {% endif %}
+    {% endwith %}
+  </tbody>
+</table>

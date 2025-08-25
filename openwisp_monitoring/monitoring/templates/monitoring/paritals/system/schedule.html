@@ -1,0 +1,38 @@
+{% load i18n static %}
+
+{# ---------- Schedule ---------- #}
+<h3 style="margin-top:18px;">{% trans "Schedules" %}</h3>
+<table class="disk no-stack" id="schedule-table">
+  <thead>
+    <tr>
+      <th>{% trans "Name" %}</th>
+      <th>{% trans "Time mode" %}</th>
+      <th>{% trans "Interval" %}</th>
+      <th>{% trans "Service" %}</th>
+      <th>{% trans "Last action time" %}</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% with schedules=device_data.system.schedule %}
+      {% if schedules %}
+        {% for row in schedules %}
+          <tr>
+            <td data-label="{% trans 'Name' %}">{{ row.name|default:"-" }}</td>
+            <td data-label="{% trans 'Time mode' %}">{{ row.time_mode|default:"-" }}</td>
+            <td data-label="{% trans 'Interval' %}">{{ row.time_interval|default:"-" }}</td>
+            <td data-label="{% trans 'Service' %}">
+              {% if row.service == 'enabled' or row.service == 'enable' or row.service == 'on' or row.service == 'true' or row.service == '1' %}
+                {% trans "Enabled" %}
+              {% else %}
+                {% trans "Disabled" %}
+              {% endif %}
+            </td>
+            <td data-label="{% trans 'Last action time' %}">{{ row.last_action_time|default:"-" }}</td>
+          </tr>
+        {% endfor %}
+      {% else %}
+        <tr><td colspan="5">{% trans "No schedules found." %}</td></tr>
+      {% endif %}
+    {% endwith %}
+  </tbody>
+</table>

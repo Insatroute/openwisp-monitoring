@@ -1,0 +1,117 @@
+{% load i18n static %}
+
+<!--  Forward Rule -->
+<h2>{% trans 'Firewall rules' %}</h2>
+<h3>Forward Rules</h3>
+<table class="disk">
+  <thead>
+    <tr>
+      <th>{% trans 'Name' %}</th>
+      <th>{% trans 'Source' %}</th>
+      <th>{% trans 'Destination' %}</th>
+      <th>{% trans 'Service' %}</th>
+      <th>{% trans 'Action' %}</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for rule in device_data.firewall.rules.forward_rules.rules %}
+    <tr>
+      <!-- Name -->
+      <td data-label="{% trans 'Name' %}">{{ rule.name }}</td>
+      <!-- Source -->
+      <td data-label="{% trans 'Source' %}">
+        {% if rule.src == '*' %} {% trans 'Any' %} {% else %} {{ rule.src }} 
+        {%endif %}
+      </td>
+      <!-- Destination -->
+      <td data-label="{% trans 'Destination' %}">
+        {% if rule.dest == '*' %} {% trans 'Any' %} {% else %} {{ rule.dest }}
+        {% endif %}
+      </td>
+      <!-- Service -->
+      <td data-label="{% trans 'Service' %}">
+        {% if rule.ns_service == '*' %} {% trans 'Any' %} {% else %} 
+        {{rule.ns_service }} {% endif %}
+      </td>
+      <!-- Action -->
+      <td data-label="{% trans 'Action' %}" class="action">
+        <svg
+          class="icon-arrow"
+          xmlns="http://www.w3.org/2000/svg"
+          width="16"
+          height="16"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="M13 7l5 5m0 0l-5 5m5-5H6"
+          />
+        </svg>
+        {{ rule.target|upper }}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+<!--  Forward Rule End -->
+
+<!--  Input Rule -->
+
+<h3>Input Rules</h3>
+<table class="disk">
+  <thead>
+    <tr>
+      <th>{% trans 'Name' %}</th>
+      <th>{% trans 'Source' %}</th>
+      <th>{% trans 'Destination' %}</th>
+      <th>{% trans 'Service' %}</th>
+      <th>{% trans 'Action' %}</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for rule in device_data.firewall.rules.input_rules.rules %}
+    <tr>
+      <!-- Name -->
+      <td data-label="{% trans 'Name' %}">{{ rule.name }}</td>
+      <!-- Source -->
+      <td data-label="{% trans 'Source' %}">
+        {% if rule.src == '*' %} {% trans 'Any' %} {% else %} {{ rule.src }} 
+        {%endif %}
+      </td>
+      <!-- Destination -->
+      <td data-label="{% trans 'Destination' %}">
+        <span class="firewall-label">Firewall</span>
+      </td>
+      <!-- Service -->
+      <td data-label="{% trans 'Service' %}">
+        {% if rule.ns_service == '*' %} {% trans 'Any' %} {% else %} 
+        {{rule.proto|join:", " }} Ports: {{ rule.dest_port|join:", " }} {% endif%}
+      </td>
+      <!-- Action -->
+      <td data-label="{% trans 'Action' %}" class="action">
+        <svg
+          class="icon-arrow"
+          xmlns="http://www.w3.org/2000/svg"
+          width="16"
+          height="16"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="M13 7l5 5m0 0l-5 5m5-5H6"
+          />
+        </svg>
+        {{ rule.target|upper }}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>

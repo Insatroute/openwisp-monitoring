@@ -1,0 +1,64 @@
+{% load i18n static %}
+
+
+{# =========================== VRRP =========================== #}
+<h3 style="margin-top:18px;">{% trans "VRRP" %}</h3>
+<div class="table-wrap">
+  <table class="disk no-stack" id="vrrp-table">
+    <thead>
+      <tr>
+        <th>{% trans "Name" %}</th>
+        <th>{% trans "Interface" %}</th>
+        <th>{% trans "State" %}</th>
+        <th>{% trans "Service" %}</th>
+        <th>{% trans "Type" %}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% with vrrp_list=device_data.vpn.VRRP %}
+        {% if vrrp_list and vrrp_list|length %}
+          {% for row in vrrp_list %}
+          <tr>
+            <td>{{ row.name|default:"-" }}</td>
+            <td>{{ row.interface_name|default:"-" }}</td>
+            <td>{{ row.state|default:"-" }}</td>
+            <td>{{ row.service|default:"-" }}</td>
+            <td>{{ row.type|default:"-" }}</td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr><td colspan="5" class="muted">{% trans "No VRRP entries found." %}</td></tr>
+        {% endif %}
+      {% endwith %}
+    </tbody>
+  </table>
+</div>
+
+
+<style>
+/* Responsive wrapper (enables horizontal scroll on small screens) */
+.table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin: 0;
+}
+
+/* Base table look */
+.disk {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 900px; /* encourage scroll for many columns */
+}
+.disk th, .disk td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #eef0f2;
+  text-align: left;
+  white-space: nowrap;
+}
+
+/* Keep tabular layout (no vertical stacking) */
+.no-stack tr { display: table-row !important; }
+.no-stack th, .no-stack td { display: table-cell !important; vertical-align: middle; }
+
+.muted { color: #6b7280; }
+</style>

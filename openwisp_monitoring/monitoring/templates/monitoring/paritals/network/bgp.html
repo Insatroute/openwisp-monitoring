@@ -1,0 +1,63 @@
+{% load i18n static %}
+
+{# ==================== BGP ==================== #}
+<h3>{% trans "BGP" %}</h3>
+<div class="table-wrap">
+  <table class="disk no-stack">
+    <thead>
+      <tr>
+        <th>{% trans "Router ID" %}</th>
+        <th>{% trans "Neighbor" %}</th>
+        <th>{% trans "Network" %}</th>
+        <th>{% trans "Protocol" %}</th>
+        <th>{% trans "Type" %}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% with bgp_list=device_data.network.BGP %}
+        {% if bgp_list and bgp_list|length %}
+          {% for row in bgp_list %}
+          <tr>
+            {# Router ID: key is literally 'bgp_router-id' #}
+            <td data-label="{% trans 'Router ID' %}">
+              {% for kv in row.items %}{% if kv.0 == 'bgp_router-id' %}{{ kv.1 }}{% endif %}{% endfor %}
+            </td>
+
+            {# Neighbor: key looks like 'neighbor_<IP>_remote-as' -> extract <IP> #}
+            <td data-label="{% trans 'Neighbor' %}">
+              {% for kv in row.items %}
+                {% if 'neighbor_' in kv.0 and '_remote-as' in kv.0 %}
+                  {{ kv.0|cut:'neighbor_'|cut:'_remote-as' }}
+                {% endif %}
+              {% endfor %}
+            </td>
+
+            <td data-label="{% trans 'Network' %}">{{ row.network|default:"-" }}</td>
+            <td data-label="{% trans 'Protocol' %}">{{ row.protocol|default:"-" }}</td>
+            <td data-label="{% trans 'Type' %}">{{ row.type|default:"-" }}</td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr><td colspan="5" class="muted">{% trans "No BGP entries." %}</td></tr>
+        {% endif %}
+      {% endwith %}
+    </tbody>
+  </table>
+</div>
+
+
+
+<style>
+/* Responsive wrapper: horizontal scroll on small screens */
+.table-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; margin-bottom:16px; }
+
+/* Base table styling */
+.disk { width:100%; border-collapse:collapse; min-width:720px; }
+.disk th, .disk td { padding:10px 12px; border-bottom:1px solid #eef0f2; text-align:left; white-space:nowrap; }
+
+/* Keep tabular layout (no stacking) */
+.no-stack tr { display:table-row !important; }
+.no-stack th, .no-stack td { display:table-cell !important; vertical-align:middle; }
+
+.muted { color:#6b7280; }
+</style>

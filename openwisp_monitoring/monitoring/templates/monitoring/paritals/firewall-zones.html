@@ -1,0 +1,89 @@
+{% load i18n %}
+<h2>{% trans "Firewall rules" %}</h2>
+<h3>{% trans "Zone summary" %}</h3>
+<table class="disk">
+  <thead>
+    <tr>
+      <th>{% trans "Zone" %}</th>
+      <th>{% trans "Allow forwards to" %}</th>
+      <th>{% trans "Traffic to WAN" %}</th>
+      <th>{% trans "Traffic to firewall" %}</th>
+      <th>{% trans "Traffic to same zone" %}</th>
+      <th>{% trans "Interfaces" %}</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for key, zone in device_data.firewall.rules.zones.items %}
+    <tr>
+      <!-- Zone name -->
+      <td data-label="{% trans 'Zone' %}">{{ zone.name|capfirst }}</td>
+
+      <!-- Allow forwards to (if you have specific allowed destinations, replace this) -->
+      <td data-label="{% trans 'Allow forwards to' %}">
+        {# if you have a list like zone.allowed_zones use join; otherwise show – #}
+        {% if zone.allowed_zones %}
+          {{ zone.allowed_zones|join:", " }}
+        {% else %}
+          &ndash;
+        {% endif %}
+      </td>
+
+      <!-- Traffic to WAN (we map this to the zone.output policy) -->
+      <td data-label="{% trans 'Traffic to WAN' %}">
+        {% if zone.output == "ACCEPT" %}
+          <svg class="icon-arrow" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none"
+               viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+          </svg>
+          {% trans "ACCEPT" %}
+        {% else %}
+          <svg class="icon-reject" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none"
+               viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M18 6L6 18M6 6l12 12"/>
+          </svg>
+          {{ zone.output|upper }}
+        {% endif %}
+      </td>
+
+      <!-- Traffic to firewall (maps to zone.input) -->
+      <td data-label="{% trans 'Traffic to firewall' %}">
+        {% if zone.input == "ACCEPT" %}
+          <svg class="icon-arrow" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none"
+               viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+          </svg>
+          {% trans "ACCEPT" %}
+        {% else %}
+          <svg class="icon-reject" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none"
+               viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M18 6L6 18M6 6l12 12"/>
+          </svg>
+          {{ zone.input|upper }}
+        {% endif %}
+      </td>
+
+      <!-- Traffic within same zone (maps to zone.forward) -->
+      <td data-label="{% trans 'Traffic to same zone' %}">
+        {% if zone.forward == "ACCEPT" %}
+          <svg class="icon-arrow" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none"
+               viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+          </svg>
+          {% trans "ACCEPT" %}
+        {% else %}
+          <svg class="icon-reject" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none"
+               viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M18 6L6 18M6 6l12 12"/>
+          </svg>
+          {{ zone.forward|upper }}
+        {% endif %}
+      </td>
+
+      <!-- Interfaces -->
+      <td data-label="{% trans 'Interfaces' %}">
+        {{ zone.network|join:", " }}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>

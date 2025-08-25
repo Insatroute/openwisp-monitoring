@@ -1,0 +1,92 @@
+{% load i18n static %}
+<table class="disk" id="conntrack-table">
+  <thead>
+    <tr>
+      <th>Source</th>
+      <th>Destination</th>
+      <th>Protocol</th>
+      <th>Download / Upload</th>
+      <th>State</th>
+      <th>Timeout</th>
+    </tr>
+  </thead>
+  <tbody id="conntrack-body">
+    {% for item in device_data.firewall.connections.0.data %}
+    <tr>
+      <td>{{ item.source }}:{{ item.source_port }}</td>
+      <td>{{ item.destination }}:{{ item.destination_port }}</td>
+      <td>{{ item.protocol|upper }}</td>
+      <td>{{ item.destination_stats.bytes }} B / {{ item.source_stats.bytes }} B</td>
+      <td>{{ item.state|default:"-" }}</td>
+      <td>{{ item.timeout }} s</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+<div id="pagination" class="pagination-controls"></div>
+
+<style>
+.pagination-controls {
+  margin-top: 1em;
+  text-align: center;
+}
+.page-btn {
+  margin: 0 4px;
+  padding: 6px 12px;
+  border: 1px solid #ccc;
+  background-color: white;
+  cursor: pointer;
+  border-radius: 4px;
+}
+.page-btn.active {
+  background-color: #007bff;
+  color: white;
+}
+</style>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const rowsPerPage = 10;
+  const table = document.getElementById("conntrack-table");
+  const tbody = document.getElementById("conntrack-body");
+  const rows = tbody.getElementsByTagName("tr");
+  const totalPages = Math.ceil(rows.length / rowsPerPage);
+  const pagination = document.getElementById("pagination");
+
+  function showPage(page) {
+    const start = (page - 1) * rowsPerPage;
+    const end = start + rowsPerPage;
+    Array.from(rows).forEach((row, index) => {
+      row.style.display = index >= start && index < end ? "" : "none";
+    });
+  }
+
+  function setupPagination() {
+    pagination.innerHTML = "";
+
+    for (let i = 1; i <= totalPages; i++) {
+      const btn = document.createElement("button");
+      btn.innerText = i;
+      btn.className = "page-btn";
+      btn.addEventListener("click", function (e) {
+        e.preventDefault();  // Prevent form submission or URL change
+        showPage(i);
+        setActivePage(i);
+      });
+      pagination.appendChild(btn);
+    }
+  }
+
+  function setActivePage(page) {
+    document.querySelectorAll(".page-btn").forEach(btn => {
+      btn.classList.remove("active");
+    });
+    const activeBtn = pagination.children[page - 1];
+    if (activeBtn) activeBtn.classList.add("active");
+  }
+
+  setupPagination();
+  showPage(1);
+  setActivePage(1);
+});
+</script>

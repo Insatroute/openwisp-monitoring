@@ -1,0 +1,259 @@
+{% load i18n static %}
+
+{# =================== InstaShield DNS — Filter bypass (card) =================== #}
+<h3>{% trans "InstaShield DNS — Filter bypass" %}</h3>
+<div class="card pad">
+  {% with bypass=device_data.security.Instashield_DNS.Filter_bypass.data %}
+    {% if bypass and bypass|length %}
+      <div class="chip-row">
+        {% for cidr in bypass %}
+          <span class="chip">{{ cidr }}</span>
+        {% endfor %}
+      </div>
+    {% else %}
+      <span class="muted">{% trans "No filter-bypass entries." %}</span>
+    {% endif %}
+  {% endwith %}
+</div>
+
+{# =================== InstaShield DNS — Blocklist sources (PAGINATED) =================== #}
+<h3 style="margin-top:18px;">{% trans "InstaShield DNS — Blocklist sources" %}</h3>
+<div class="table-wrap">  {# responsive scroll container #}
+  <table class="disk no-stack" id="isdns-sources-table">
+    <thead>
+      <tr>
+        <th>{% trans "Name" %}</th>
+        <th>{% trans "Type" %}</th>
+        <th>{% trans "Confidence" %}</th>
+        <th>{% trans "Status" %}</th>
+        <th>{% trans "Description" %}</th>
+      </tr>
+    </thead>
+    <tbody id="isdns-sources-body">
+      {% for row in device_data.security.Instashield_DNS.blocklist_sources.data %}
+      <tr>
+        <td data-label="{% trans 'Name' %}">{{ row.name|default:"-" }}</td>
+        <td data-label="{% trans 'Type' %}">{{ row.type|default:"community"|capfirst }}</td>
+        <td data-label="{% trans 'Confidence' %}">
+          {% if row.confidence == -1 %}{% trans "Unknown" %}{% else %}{{ row.confidence }}{% endif %}
+        </td>
+        <td data-label="{% trans 'Status' %}">
+          <span class="muted">{% if row.enabled %}{% trans "Enabled" %}{% else %}{% trans "Disabled" %}{% endif %}</span>
+        </td>
+        <td data-label="{% trans 'Description' %}">{{ row.description|default:"-" }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="5" class="muted">{% trans "No blocklist sources found." %}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<div id="isdns-sources-pager" class="pager"></div>
+
+{# =================== InstaShield DNS — Local blocklist (no pagination) =================== #}
+<h3 style="margin-top:18px;">{% trans "InstaShield DNS — Local blocklist" %}</h3>
+<div class="table-wrap">  {# responsive scroll container #}
+  <table class="disk no-stack" id="isdns-block-table">
+    <thead>
+      <tr>
+        <th>{% trans "Address" %}</th>
+        <th>{% trans "Description" %}</th>
+      </tr>
+    </thead>
+    <tbody id="isdns-block-body">
+      {% for row in device_data.security.Instashield_DNS.local_blocklist.data %}
+      <tr>
+        <td data-label="{% trans 'Address' %}">{{ row.address|default:"-" }}</td>
+        <td data-label="{% trans 'Description' %}">{{ row.description|default:"-" }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="2" class="muted">{% trans "No blocklist entries." %}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<script>
+(function () {
+  // Pagination ONLY for blocklist_sources
+  function wirePager(tbodyId, pagerId, initialRpp = 10) {
+    const tbody = document.getElementById(tbodyId);
+    const pager = document.getElementById(pagerId);
+
+    if (!tbody || !pager) return;
+
+    const allRows = Array
+      .from(tbody.querySelectorAll("tr"))
+      .filter(tr => !tr.querySelector('td[colspan]')); // ignore empty-state row
+
+    if (allRows.length === 0) { pager.style.display = "none"; return; }
+
+    let rpp = initialRpp;
+    let page = 1;
+
+    const pages = () => Math.max(1, Math.ceil(allRows.length / rpp));
+
+    function renderRows() {
+      const start = (page - 1) * rpp;
+      const end = start + rpp;
+      for (let i = 0; i < allRows.length; i++) {
+        if (i >= start && i < end) allRows[i].classList.remove("hidden-row");
+        else allRows[i].classList.add("hidden-row");
+      }
+    }
+
+    function rebuildNumbers() {
+      const wrap = pager.querySelector(".nums");
+      wrap.innerHTML = "";
+      const total = pages();
+      for (let i = 1; i <= total; i++) {
+        const b = document.createElement("button");
+        b.className = "num";
+        b.textContent = i;
+        if (i === page) b.classList.add("active");
+        b.addEventListener("click", (e) => {
+          e.preventDefault();
+          page = i;
+          renderRows(); updateMeta(); rebuildNumbers(); togglePagerVisibility();
+        });
+        wrap.appendChild(b);
+      }
+    }
+
+    function updateMeta() {
+      const total = allRows.length;
+      const start = total ? (page - 1) * rpp + 1 : 0;
+      const end = Math.min(page * rpp, total);
+      pager.querySelector(".range").textContent = `${start} - ${end} of ${total}`;
+      pager.querySelector(".prev").disabled = (page <= 1);
+      pager.querySelector(".next").disabled = (page >= pages());
+      pager.querySelector(".rpp").value = String(rpp);
+    }
+
+    function togglePagerVisibility() {
+      pager.style.display = (pages() === 1) ? "none" : "";
+    }
+
+    function buildUI() {
+      pager.innerHTML = `
+        <div class="pager-left">
+          <span class="range">0 - 0 of 0</span>
+          <label class="show">Show
+            <select class="rpp">
+              <option value="5">5</option>
+              <option value="10">10</option>
+              <option value="25">25</option>
+              <option value="50">50</option>
+            </select>
+          </label>
+        </div>
+        <div class="pager-right">
+          <button class="prev" aria-label="Previous">‹</button>
+          <div class="nums"></div>
+          <button class="next" aria-label="Next">›</button>
+        </div>
+      `;
+
+      pager.querySelector(".prev").addEventListener("click", (e) => {
+        e.preventDefault();
+        if (page > 1) { page--; renderRows(); updateMeta(); rebuildNumbers(); togglePagerVisibility(); }
+      });
+
+      pager.querySelector(".next").addEventListener("click", (e) => {
+        e.preventDefault();
+        if (page < pages()) { page++; renderRows(); updateMeta(); rebuildNumbers(); togglePagerVisibility(); }
+      });
+
+      pager.querySelector(".rpp").addEventListener("change", (e) => {
+        rpp = parseInt(e.target.value, 10) || 10;
+        page = 1;
+        renderRows(); updateMeta(); rebuildNumbers(); togglePagerVisibility();
+      });
+    }
+
+    buildUI();
+    renderRows();
+    updateMeta();
+    rebuildNumbers();
+    togglePagerVisibility();
+  }
+
+  function init() {
+    // paginate ONLY the sources table; start with 5 rows/page so pager appears with 8 rows
+    wirePager("isdns-sources-body", "isdns-sources-pager", 5);
+  }
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
+  else init();
+
+  document.body?.addEventListener?.("htmx:afterSwap", init);
+})();
+</script>
+
+<style>
+/* Card used only for Filter bypass */
+.card {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.06);
+}
+.card.pad { padding: 12px; }
+
+/* Responsive table wrapper */
+.table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin: 0;            /* keeps alignment tight */
+}
+.disk {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 640px;     /* helps avoid cramped columns on small screens */
+}
+.disk th, .disk td {
+  padding: 12px;
+  border-bottom: 1px solid #eef0f2;
+  text-align: left;
+}
+
+/* Keep tabular layout; we use horizontal scroll instead of stacking */
+.no-stack tr { display: table-row !important; }
+.no-stack th, .no-stack td { display: table-cell !important; vertical-align: middle; }
+
+/* Chips for filter-bypass */
+.chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  display: inline-block;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #eef6ff;
+  color: #1f4f8a;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+/* Muted text */
+.muted { color: #6b7280; }
+
+/* Pager */
+.pager {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;       /* tighter now tables lost the card padding */
+  gap: 12px;
+}
+.pager-left { display: flex; align-items: center; gap: 12px; }
+.pager .show select {
+  padding: 4px 8px; border: 1px solid #e5e7eb; border-radius: 6px; background: #fff;
+}
+.pager-right { display: flex; align-items: center; gap: 8px; }
+.pager .prev, .pager .next, .pager .num {
+  padding: 6px 10px; border: 1px solid #e5e7eb; background: #fff; border-radius: 6px; cursor: pointer;
+}
+.pager .num.active { background: #111827; color: #fff; border-color: #111827; }
+.pager button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Crucial: allow JS to hide rows despite .no-stack rule (specificity) */
+.no-stack tr.hidden-row { display: none !important; }
+</style>

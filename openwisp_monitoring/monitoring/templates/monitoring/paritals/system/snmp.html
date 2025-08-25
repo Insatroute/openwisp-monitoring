@@ -1,0 +1,37 @@
+{% load i18n static %}
+
+{# Ensure your view passes: render(..., {"device_data": data.data_user_friendly}) #}
+
+<table class="disk no-stack" id="snmp-table">
+  <thead>
+    <tr>
+      <th>{% trans "Version" %}</th>
+      <th>{% trans "Port" %}</th>
+      <th>{% trans "Type" %}</th>
+      <th>{% trans "IP" %}</th>
+    </tr>
+  </thead>
+  <tbody id="snmp-body">
+    {# Grab the list once; if any segment is missing this becomes empty #}
+    {% with snmp_list=device_data.system.snmp %}
+      {% if snmp_list %}
+        {% for row in snmp_list %}
+          {% if row.type == 'snmp' %}
+          <tr>
+            <td data-label="{% trans 'Version' %}">{{ row.version|default:"-" }}</td>
+            <td data-label="{% trans 'Port' %}">
+              {% if row.snmpv3_port %}{{ row.snmpv3_port }}
+              {% elif row.port %}{{ row.port }}
+              {% else %}-{% endif %}
+            </td>
+            <td data-label="{% trans 'Type' %}">{{ row.type|default:"-" }}</td>
+            <td data-label="{% trans 'snmpv3_clientaddr' %}">{{ row.snmpv3_clientaddr|default:"-" }}</td>
+          </tr>
+          {% endif %}
+        {% endfor %}
+      {% else %}
+        <tr><td colspan="4">{% trans "No SNMP entries." %}</td></tr>
+      {% endif %}
+    {% endwith %}
+  </tbody>
+</table>

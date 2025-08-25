@@ -1,0 +1,127 @@
+{% load i18n static %}
+
+{% if device_data.interfaces %}
+    {% for interface in device_data.interfaces %}
+        <h2 class="interface-header">
+            {% trans "Interface" %}: {{ interface.name }}
+            <img
+                src="{% get_static_prefix %}admin/img/icon-{{ interface.up|yesno:'yes,no,no' }}.svg"
+                alt="{% if interface.up %}{% trans "Up" %}{% else %}{% trans "Down" %}{% endif %}"
+            >
+        </h2>
+        <div class="grid">
+            {% if interface.mac %}
+                <div class="status-card">
+                    <div class="title">{% trans "MAC Address" %}</div>
+                    <div class="value">{{ interface.mac }}</div>
+                </div>
+            {% endif %}
+            {% if interface.type %}
+                <div class="status-card">
+                    <div class="title">{% trans "Type" %}</div>
+                    <div class="value">{{ interface.type }}</div>
+                </div>
+            {% endif %}
+            {% if interface.bridge_members %}
+                <div class="status-card">
+                    <div class="title">{% trans "Bridge Member" %}</div>
+                    <div class="value">
+                        {% for element in interface.bridge_members %}
+                            <a
+                                class="bridge-member"
+                                href="javascript:scrollToElement('status-if-{{ element }}')"
+                            >
+                                {{ element }}
+                            </a>{% if not forloop.last %}, {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+            {% if interface.up is not None %}
+                <div class="status-card">
+                    <div class="title">{% trans "Up" %}</div>
+                    <div class="value">
+                        <img
+                            src="{% get_static_prefix %}admin/img/icon-{{ interface.up|yesno:'yes,no,no' }}.svg"
+                            alt="{% if interface.up %}{% trans "Yes" %}{% else %}{% trans "No" %}{% endif %}"
+                        >
+                    </div>
+                </div>
+            {% endif %}
+            {% if interface.multicast is not None %}
+                <div class="status-card">
+                    <div class="title">{% trans "Multicast" %}</div>
+                    <div class="value">
+                        <img
+                            src="{% get_static_prefix %}admin/img/icon-{{ interface.multicast|yesno:'yes,no,no' }}.svg"
+                            alt="{% if interface.multicast %}{% trans "Yes" %}{% else %}{% trans "No" %}{% endif %}"
+                        >
+                    </div>
+                </div>
+            {% endif %}
+            {% if interface.mtu %}
+                <div class="status-card">
+                    <div class="title">{% trans "MTU" %}</div>
+                    <div class="value">{{ interface.mtu }}</div>
+                </div>
+            {% endif %}
+            {% if interface.txqueuelen %}
+                <div class="status-card">
+                    <div class="title">{% trans "Transmit Queue Length" %}</div>
+                    <div class="value">{{ interface.txqueuelen }}</div>
+                </div>
+            {% endif %}
+            {% if interface.wireless %}
+                <div class="status-card">
+                    <div class="title">{% trans "Mode" %}</div>
+                    <div class="value">{{ interface.wireless.mode }}</div>
+                </div>
+                {% if interface.wireless.ssid %}
+                    <div class="status-card">
+                        <div class="title">{% trans "SSID" %}</div>
+                        <div class="value">{{ interface.wireless.ssid }}</div>
+                    </div>
+                {% endif %}
+                {% if interface.wireless.channel %}
+                    <div class="status-card">
+                        <div class="title">{% trans "Channel" %}</div>
+                        <div class="value">{{ interface.wireless.channel }}</div>
+                    </div>
+                {% endif %}
+            {% endif %}
+            {% if interface.speed %}
+                <div class="status-card">
+                    <div class="title">{% trans "Speed" %}</div>
+                    <div class="value">{{ interface.speed }}</div>
+                </div>
+            {% endif %}
+        </div>
+
+        {% if interface.addresses %}
+            <table class="addresses">
+                <thead>
+                    <tr>
+                         <th>{% trans 'Address' %} / {% trans 'Mask' %}</th>
+                          <th>{% trans 'Protocol' %}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for address in interface.addresses %}
+                        <tr>
+                            <td class="address-mask">
+                               
+                                {{ address.address }} / {{ address.mask }}
+                            </td>
+                            <td class="proto">
+                            
+                                {{ address.proto }}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+    {% endfor %}
+{% else %}
+    <p>{% trans "No interfaces available." %}</p>
+{% endif %}

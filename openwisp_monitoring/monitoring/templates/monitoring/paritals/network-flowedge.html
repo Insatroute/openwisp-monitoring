@@ -1,0 +1,181 @@
+{% load i18n static %}
+<h3>FlowEdge</h3>
+<h2>Policy</h2>
+<p class="subtle">
+  List of available policies, if there are multiple WANs the default policy is mandatory and cannot be deleted.
+</p>
+
+<div class="">
+  <table class="disk no-stack" id="mw-policy-table">
+    <thead>
+      <tr>
+        <th>Policy Name</th>
+        <th>Gateways</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for policy in device_data.network.FlowEdge_Multiwan.Multiwan_Manager.Manager_Policy.values %}
+      <tr>
+        <td class="policy-name">
+          <span class="lock">🔒</span>
+          <span class="name">{{ policy.label|default:"Default" }}</span>
+        </td>
+        <td class="gateways-cell">
+          <span class="policy-type"><span class="scale">⚖</span> {{ policy.type|capfirst }}</span>
+
+          {# policy.members is a dict like {"10": [ {...}, {...} ]} #}
+          {% for metric, gws in policy.members.items %}
+            {% for gw in gws %}
+              <span class="gateway-chip {% if gw.status == 'online' %}on{% else %}off{% endif %}">
+                <span class="dot">{% if gw.status == 'online' %}✔{% else %}✖{% endif %}</span>
+                {{ gw.interface|default:"wan" }}
+                <span class="gw-weight">weight: {{ gw.weight|default:"-" }}</span>
+              </span>
+            {% endfor %}
+          {% endfor %}
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="2" class="muted">No policies found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<h2 style="margin-top:20px;">Rules</h2>
+<p class="subtle">
+  Routing policies are assigned to hosts via rules. To use a different policy than the default, create a rule and place it above the default rule.
+</p>
+
+<div class="">
+  <table class="disk" id="mw-rules-table">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Policy</th>
+        <th>Source</th>
+        <th>Destination</th>
+        <th>Protocol</th>
+      </tr>
+    </thead>
+    <tbody id="mw-rules-body">
+      {% for r in device_data.network.FlowEdge_Multiwan.Multiwan_Manager.Manager_Rules.values %}
+        {# Each r has: label, name, policy {label, name}, sticky ... #}
+        <tr>
+          <td data-label="Policy">{{ r.policy.label|default:"Default" }}</td>
+
+          {# Your sample doesn’t include src/dst/proto; fall back to Any/All like screenshot #}
+          <td data-label="Source">{{ r.src|default:"Any" }}</td>
+          <td data-label="Destination">{{ r.dest|default:"Any" }}</td>
+          <td data-label="Protocol">{{ r.protocol|default:"All" }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="5" class="muted">No rules found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div id="mw-rules-pager" class="pager"></div>
+</div>
+
+<style>
+.subtle {
+	color: #6b7280;
+	margin: .25rem 0 1rem
+}
+
+.card {
+	background: #fff;
+	border-radius: 8px;
+	box-shadow: 0 1px 6px rgba(0, 0, 0, .06);
+	padding: 0
+}
+
+.disk {
+	width: 100%;
+	border-collapse: collapse
+}
+
+.disk th,
+.disk td {
+	padding: 12px;
+	border-bottom: 1px solid #eef0f2;
+	text-align: left
+}
+
+.policy-name {
+	display: flex;
+	align-items: center;
+	gap: 8px
+}
+
+.policy-name .lock {
+	opacity: .8
+}
+
+.gateways-cell {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	flex-wrap: wrap
+}
+
+.policy-type {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	margin-right: 8px;
+	color: #374151
+}
+
+.scale {
+	opacity: .9
+}
+
+.gateway-chip {
+  margin-left: 10px;
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	padding: 6px 12px;
+	border-radius: 999px;
+	background: #f3f4f6;
+	color: #111827;
+	font-weight: 600
+    margin-right: 10px;
+}
+
+.gateway-chip .dot {
+	font-weight: 700
+}
+
+.gateway-chip.on {
+	background: #d1fae5;
+	color: #047857
+}
+
+.gw-weight {
+	opacity: .85;
+	margin-left: 4px
+}
+
+.drag {
+	color: #9ca3af;
+	margin-right: 8px
+}
+
+.muted {
+	color: #6b7280
+}
+
+.no-stack tr { display: table-row !important; }
+.no-stack th,
+.no-stack td { display: table-cell !important; vertical-align: middle; }
+.no-stack th { white-space: nowrap; }
+.gateways-cell { display: flex; gap: 10px; flex-wrap: wrap; }
+@media (max-width: 640px) {
+  .disk:not(.no-stack) tr { display: block; }
+  .disk:not(.no-stack) td, .disk:not(.no-stack) th { display: block; }
+}
+
+</style>

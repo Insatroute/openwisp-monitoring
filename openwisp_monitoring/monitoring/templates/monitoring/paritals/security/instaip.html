@@ -1,0 +1,287 @@
+{% load i18n static %}
+
+{# =================== InstaShield Field — Blocklist Feeds =================== #}
+<h3>{% trans "InstaShield Field — Blocklist feeds" %}</h3>
+<div class=" pad">
+  <table class="disk no-stack" id="isf-feeds-table">
+    <thead>
+      <tr>
+        <th>{% trans "Name" %}</th>
+        <th>{% trans "Type" %}</th>
+        <th>{% trans "Confidence" %}</th>
+        <th>{% trans "Status" %}</th>
+      </tr>
+    </thead>
+    <tbody id="isf-feeds-body">
+      {% for row in device_data.security.InstaShield_Field.blocklist_feeds.data %}
+      <tr>
+        <td data-label="{% trans 'Name' %}">{{ row.description|default:"-" }}</td>
+        <td data-label="{% trans 'Type' %}">
+          <span class="icon-users">👥</span> {{ row.type|default:"community"|capfirst }}
+        </td>
+        <td data-label="{% trans 'Confidence' %}">
+          {% if row.confidence == -1 %}{% trans "Unknown" %}{% else %}{{ row.confidence }}{% endif %}
+        </td>
+        <td data-label="{% trans 'Status' %}">
+          <span class="muted">{% if row.enabled %}{% trans "Enabled" %}{% else %}{% trans "Disabled" %}{% endif %}</span>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="4" class="muted">{% trans "No feeds found." %}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <div id="isf-feeds-pager" class="pager"></div>
+</div>
+
+{# =================== InstaShield Field — Local allowlist =================== #}
+<h3 style="margin-top:18px;">{% trans "InstaShield Field — Local allowlist" %}</h3>
+<div class=" pad">
+  <table class="disk no-stack" id="isf-allow-table">
+    <thead>
+      <tr>
+        <th>{% trans "Address" %}</th>
+        <th>{% trans "Description" %}</th>
+      </tr>
+    </thead>
+    <tbody id="isf-allow-body">
+      {% for row in device_data.security.InstaShield_Field.local_allowlist.data %}
+      <tr>
+        <td data-label="{% trans 'Address' %}">{{ row.address|default:"-" }}</td>
+        <td data-label="{% trans 'Description' %}">{{ row.description|default:"-" }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="2" class="muted">{% trans "No allowlist entries." %}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <div id="isf-allow-pager" class="pager"></div>
+</div>
+
+{# =================== InstaShield Field — Local blocklist =================== #}
+<h3 style="margin-top:18px;">{% trans "InstaShield Field — Local blocklist" %}</h3>
+<div class=" pad">
+  <table class="disk no-stack" id="isf-block-table">
+    <thead>
+      <tr>
+        <th>{% trans "Address" %}</th>
+        <th>{% trans "Description" %}</th>
+      </tr>
+    </thead>
+    <tbody id="isf-block-body">
+      {% for row in device_data.security.InstaShield_Field.local_blocklist.data %}
+      <tr>
+        <td data-label="{% trans 'Address' %}">{{ row.address|default:"-" }}</td>
+        <td data-label="{% trans 'Description' %}">{{ row.description|default:"-" }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="2" class="muted">{% trans "No blocklist entries." %}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <div id="isf-block-pager" class="pager"></div>
+</div>
+
+<script>
+(function () {
+  // Build a pager UI for a given tbody + pager IDs
+  function wirePager(tbodyId, pagerId, initialRpp = 10) {
+    const tbody = document.getElementById(tbodyId);
+    const pager = document.getElementById(pagerId);
+
+    if (!tbody) { console.warn(`[pager] tbody #${tbodyId} not found`); return; }
+    if (!pager) { console.warn(`[pager] pager #${pagerId} not found`); return; }
+
+    // Exclude any "empty" sentinel row (single td with colspan)
+    const allRows = Array
+      .from(tbody.querySelectorAll("tr"))
+      .filter(tr => !tr.querySelector('td[colspan]'));
+
+    if (allRows.length === 0) {
+      pager.style.display = "none";
+      console.info(`[pager] #${tbodyId}: no rows`);
+      return;
+    }
+
+    let rpp = initialRpp;
+    let page = 1;
+
+    function pages() { return Math.max(1, Math.ceil(allRows.length / rpp)); }
+
+    function renderRows() {
+      const start = (page - 1) * rpp;
+      const end = start + rpp;
+      for (let i = 0; i < allRows.length; i++) {
+        if (i >= start && i < end) {
+          allRows[i].classList.remove("hidden-row");
+        } else {
+          allRows[i].classList.add("hidden-row");
+        }
+      }
+    }
+
+    function rebuildNumbers() {
+      const wrap = pager.querySelector(".nums");
+      wrap.innerHTML = "";
+      const total = pages();
+
+      // Optional: collapse long lists with first/last + neighbors
+      for (let i = 1; i <= total; i++) {
+        const b = document.createElement("button");
+        b.className = "num";
+        b.textContent = i;
+        if (i === page) b.classList.add("active");
+        b.addEventListener("click", (e) => {
+          e.preventDefault();
+          page = i;
+          renderRows(); updateMeta(); rebuildNumbers(); togglePagerVisibility();
+        });
+        wrap.appendChild(b);
+      }
+    }
+
+    function updateMeta() {
+      const total = allRows.length;
+      const start = total ? (page - 1) * rpp + 1 : 0;
+      const end = Math.min(page * rpp, total);
+      pager.querySelector(".range").textContent = `${start} - ${end} of ${total}`;
+      pager.querySelector(".prev").disabled = (page <= 1);
+      pager.querySelector(".next").disabled = (page >= pages());
+      pager.querySelector(".rpp").value = String(rpp);
+    }
+
+    function togglePagerVisibility() {
+      pager.style.display = (pages() === 1) ? "none" : "";
+    }
+
+    function buildUI() {
+      pager.innerHTML = `
+        <div class="pager-left">
+          <span class="range">0 - 0 of 0</span>
+          <label class="show">Show
+            <select class="rpp">
+              <option value="10">10</option>
+              <option value="25">25</option>
+              <option value="50">50</option>
+            </select>
+          </label>
+        </div>
+        <div class="pager-right">
+          <button class="prev" aria-label="Previous">‹</button>
+          <div class="nums"></div>
+          <button class="next" aria-label="Next">›</button>
+        </div>
+      `;
+
+      pager.querySelector(".prev").addEventListener("click", (e) => {
+        e.preventDefault();
+        if (page > 1) {
+          page--;
+          renderRows(); updateMeta(); rebuildNumbers(); togglePagerVisibility();
+        }
+      });
+
+      pager.querySelector(".next").addEventListener("click", (e) => {
+        e.preventDefault();
+        if (page < pages()) {
+          page++;
+          renderRows(); updateMeta(); rebuildNumbers(); togglePagerVisibility();
+        }
+      });
+
+      pager.querySelector(".rpp").addEventListener("change", (e) => {
+        rpp = parseInt(e.target.value, 10) || 10;
+        page = 1;
+        renderRows(); updateMeta(); rebuildNumbers(); togglePagerVisibility();
+      });
+    }
+
+    buildUI();
+    renderRows();
+    updateMeta();
+    rebuildNumbers();
+    togglePagerVisibility();
+  }
+
+  // Initialize all pagers (call once, after DOM is present)
+  function init() {
+    wirePager("isf-feeds-body",   "isf-feeds-pager",   10);
+    wirePager("isf-allow-body",   "isf-allow-pager",   10);
+    wirePager("isf-block-body",   "isf-block-pager",   10);
+  }
+
+  // If content is static HTML:
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
+
+  // If you load content via HTMX/Turbo, also listen to swaps:
+  document.body?.addEventListener?.("htmx:afterSwap", init);
+})();
+</script>
+
+<style>
+
+
+
+
+.disk { width: 100%; border-collapse: collapse; }
+.disk th, .disk td {
+  padding: 12px;
+  border-bottom: 1px solid #eef0f2;
+  text-align: left;
+}
+
+.no-stack tr.hidden-row { display: none !important; }
+.no-stack th, .no-stack td { display: table-cell !important; vertical-align: middle; }
+
+.muted { color: #6b7280; }
+.icon-users { margin-right: 6px; opacity: 0.9; }
+
+.chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  display: inline-block;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #eef6ff;
+  color: #1f4f8a;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.switch { position: relative; display: inline-block; width: 42px; height: 22px; vertical-align: middle; margin-right: 8px; }
+.switch input { display: none; }
+.slider {
+  position: absolute; cursor: default; top: 0; left: 0; right: 0; bottom: 0;
+  background: #e5e7eb; border-radius: 999px; transition: all 0.2s;
+}
+.slider:before {
+  content: ""; position: absolute; height: 18px; width: 18px; left: 2px; bottom: 2px;
+  background: #fff; border-radius: 50%; transition: all 0.2s;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+.switch input:checked + .slider { background: #34d399; }
+.switch input:checked + .slider:before { transform: translateX(20px); }
+
+
+.pager {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 8px 12px;
+}
+.pager-left { display: flex; align-items: center; gap: 12px; }
+.pager .show select {
+  padding: 4px 8px; border: 1px solid #e5e7eb; border-radius: 6px; background: #fff;
+}
+.pager-right { display: flex; align-items: center; gap: 8px; }
+.pager .prev, .pager .next, .pager .num {
+  padding: 6px 10px; border: 1px solid #e5e7eb; background: #fff;
+  border-radius: 6px; cursor: pointer;
+}
+.pager .num.active { background: #111827; color: #fff; border-color: #111827; }
+.pager button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.hidden-row { display: none !important; }
+
+</style>

@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Device SLA Test</title>
+  <style>
+   
+    .form-container {
+      padding: 20px;
+      max-width: 500px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+    .form-row {
+      display: flex;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    .form-row label {
+      width: 120px;
+      font-weight: bold;
+    }
+    select, input[type="text"] {
+      flex: 1;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    #debug {
+      white-space: pre-wrap;
+      background: #f0f0f0;
+      padding: 10px;
+      margin-top: 20px;
+      border-radius: 4px;
+      max-height: 200px;
+      overflow: auto;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="form-container">
+    <h2>Device SLA Interface Test</h2>
+    <div class="form-row">
+      <label for="interface">Interface Name:</label>
+      <select id="interface" name="interface">
+        <option>Loading…</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <label for="debug">Debug Log:</label>
+      <div id="debug">Starting…</div>
+    </div>
+  </div>
+
+  <script>
+    // simple logger: writes to console + on-page debug box
+    function log(msg) {
+      console.log(msg);
+      const dbg = document.getElementById('debug');
+      dbg.textContent += "\n" + msg;
+    }
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      const CONTROLLER_API_URL = "https://3.6.121.36/api/v1/controller/device/";
+      const AUTH_TOKEN = "709a479602b572990248897cdf754a8dbc8411d5";
+
+      // 1) extract deviceId
+      const m = window.location.pathname.match(/device\/([0-9a-fA-F\-]+)(?:\/|$)/);
+      if (!m) {
+        log("❌ Cannot find device ID in URL");
+        return;
+      }
+      const deviceId = m[1];
+      log("✅ Found deviceId: " + deviceId);
+
+      // 2) fetch last_ip
+      async function fetchLastIpByDeviceId(id) {
+        try {
+          const res = await fetch(CONTROLLER_API_URL, {
+            method: "GET",
+            headers: {
+              "Accept": "application/json",
+              "Authorization": `Bearer ${AUTH_TOKEN}`
+            },
+            credentials: "include"
+          });
+          if (!res.ok) {
+            log("❌ Controller API returned HTTP " + res.status);
+            return null;
+          }
+          const json = await res.json();
+          const dev = (json.results || []).find(d => d.id === id);
+          if (!dev) {
+            log("❌ No matching device in controller API");
+            return null;
+          }
+          log("✅ last_ip for “" + id + "”: " + dev.last_ip);
+          return dev.last_ip;
+        } catch (e) {
+          log("❌ Error fetching controller API: " + e);
+          return null;
+        }
+      }
+
+      const lastIp = await fetchLastIpByDeviceId(deviceId);
+      if (!lastIp) return;
+
+      // 3) call SLA endpoint with POST so we can send JSON body
+      let slaRes;
+      try {
+        slaRes = await fetch(`https://${lastIp}/api-new/performance_sla`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ method: "get-config", payload: {} })
+        });
+        if (!slaRes.ok) {
+          log("❌ SLA endpoint returned HTTP " + slaRes.status);
+          return;
+        }
+        log("✅ SLA endpoint called successfully");
+      } catch (e) {
+        log("❌ Error calling SLA endpoint: " + e);
+        return;
+      }
+
+      const slaData = await slaRes.json();
+      log("✅ Received SLA data");
+      const upIfnames = slaData.data?.up_ifname || [];
+      log("🔄 up_ifname array: [" + upIfnames.join(", ") + "]");
+
+      // 4) populate the <select id="interface">
+      const sel = document.getElementById("interface");
+      sel.innerHTML = "";
+      if (upIfnames.length === 0) {
+        sel.add(new Option("No interfaces up", ""));
+      } else {
+        upIfnames.forEach(name => sel.add(new Option(name, name)));
+      }
+      log("✅ Dropdown populated with up_ifname values");
+    });
+  </script>
+
+</body>
+</html>

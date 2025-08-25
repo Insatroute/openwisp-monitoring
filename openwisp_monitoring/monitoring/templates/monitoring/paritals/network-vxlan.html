@@ -1,0 +1,137 @@
+{% load i18n static %}
+<h2 style="margin-top:20px;">VXLAN</h2>
+
+  <table class="disk" id="mw-rules-table">
+    <thead>
+      <tr>
+        <th>Interface Name</th>
+        <th>Interface</th>
+        <th>Vid</th>
+        <th>Peer IP</th>
+        <th>Port</th>
+        <th>IP</th>
+        <th>Service</th>
+      </tr>
+    </thead>
+    <tbody id="mw-rules-body">
+      {% for vx in device_data.network.VxLan %}
+        <tr>
+          <td data-label="Policy">{{ vx.name }}</td>
+          <td data-label="Source">{{ vx.base_interface }}</td>
+          <td data-label="Destination">{{ vx.vid }}</td>
+          <td data-label="Protocol">{{ vx.peer }}</td>
+          <td data-label="Protocol">{{ vx.port }}</td>
+          <td data-label="Protocol">{{ vx.ipaddr }}</td>
+          <td data-label="Protocol">{{ vx.service }}</td>
+
+
+
+
+        </tr>
+      {% empty %}
+        <tr><td colspan="5" class="muted">No rules found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+
+<style>.subtle {
+	color: #6b7280;
+	margin: .25rem 0 1rem
+}
+
+.card {
+	background: #fff;
+	border-radius: 8px;
+	box-shadow: 0 1px 6px rgba(0, 0, 0, .06);
+	padding: 0
+}
+
+.disk {
+	width: 100%;
+	border-collapse: collapse
+}
+
+.disk th,
+.disk td {
+	padding: 12px;
+	border-bottom: 1px solid #eef0f2;
+	text-align: left
+}
+
+.policy-name {
+	display: flex;
+	align-items: center;
+	gap: 8px
+}
+
+.policy-name .lock {
+	opacity: .8
+}
+
+.gateways-cell {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	flex-wrap: wrap
+}
+
+.policy-type {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	margin-right: 8px;
+	color: #374151
+}
+
+.scale {
+	opacity: .9
+}
+
+.gateway-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	padding: 6px 12px;
+	border-radius: 999px;
+	background: #f3f4f6;
+	color: #111827;
+	font-weight: 600
+    margin-right: 10px;
+}
+
+.gateway-chip .dot {
+	font-weight: 700
+}
+
+.gateway-chip.on {
+	background: #d1fae5;
+	color: #047857
+}
+
+.gw-weight {
+	opacity: .85;
+	margin-left: 4px
+}
+
+.drag {
+	color: #9ca3af;
+	margin-right: 8px
+}
+
+.muted {
+	color: #6b7280
+}
+
+/* keep this table in two columns on desktop */
+.no-stack tr { display: table-row !important; }
+.no-stack th,
+.no-stack td { display: table-cell !important; vertical-align: middle; }
+.no-stack th { white-space: nowrap; }
+.gateways-cell { display: flex; gap: 10px; flex-wrap: wrap; }
+@media (max-width: 640px) {
+  .disk:not(.no-stack) tr { display: block; }
+  .disk:not(.no-stack) td, .disk:not(.no-stack) th { display: block; }
+}
+
+</style>

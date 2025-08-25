@@ -1,0 +1,94 @@
+{% load i18n static %}
+
+{# ==================== VRF (responsive) ==================== #}
+<h3 style="margin-top:18px;">{% trans "VRF" %}</h3>
+<div class="table-wrap">
+  <table class="disk stackable" id="vrf-table">
+    <thead>
+      <tr>
+        <th>{% trans "Name" %}</th>
+        <th>{% trans "Bind Interface" %}</th>
+        <th>{% trans "Service" %}</th>
+        <th>{% trans "Type" %}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% with vrf_list=device_data.network.VRF %}
+        {% if vrf_list and vrf_list|length %}
+          {% for row in vrf_list %}
+          <tr>
+            <td data-label="{% trans 'Name' %}">{{ row.name|default:"-" }}</td>
+            <td data-label="{% trans 'Bind Interface' %}">{{ row.bind_ifname|default:"-" }}</td>
+            <td data-label="{% trans 'Service' %}">{{ row.service|default:"-" }}</td>
+            <td data-label="{% trans 'Type' %}">{{ row.type|default:"-" }}</td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr><td colspan="4" class="muted">{% trans "No VRF entries." %}</td></tr>
+        {% endif %}
+      {% endwith %}
+    </tbody>
+  </table>
+</div>
+
+<style>
+/* wrapper allows horizontal scroll as a fallback */
+.table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin: 0 0 16px 0;
+}
+
+/* base table look */
+.disk {
+  width: 100%;
+  border-collapse: collapse;
+}
+.disk th, .disk td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #eef0f2;
+  text-align: left;
+}
+
+/* --- mobile stacking pattern --- */
+.stackable thead {
+  background: #fafafa;
+}
+@media (max-width: 680px) {
+  .stackable, .stackable thead, .stackable tbody, .stackable th, .stackable td, .stackable tr {
+    display: block;
+    width: 100%;
+  }
+  .stackable thead {
+    /* hide header on small screens */
+    position: absolute;
+    left: -9999px;
+    top: -9999px;
+    height: 0;
+    width: 0;
+    overflow: hidden;
+  }
+  .stackable tr {
+    background: #fff;
+    border: 1px solid #eef0f2;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    padding: 8px 10px;
+  }
+  .stackable td {
+    display: grid;
+    grid-template-columns: 160px 1fr; /* label | value */
+    gap: 10px;
+    border: none;
+    padding: 8px 4px;
+  }
+  .stackable td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: #374151;
+  }
+}
+
+/* helpers */
+.muted { color: #6b7280; }
+</style>

@@ -1,0 +1,108 @@
+{% load i18n static %}
+<h3>NAT Helpers</h3>
+<table class="disk" id="nat-helper-table">
+  <thead>
+    <tr>
+      <th>Module</th>
+      <th>Status</th>
+      <th>Loaded on kernel</th>
+    </tr>
+  </thead>
+  <tbody id="nat-helper-body">
+    {% for mod in device_data.firewall.nat.nat_helper.values %}
+    <tr>
+      <td>{{ mod.name }}</td>
+      <td>
+        {% if mod.enabled %}
+          <span class="status-icon enabled">✔</span> Enabled
+        {% else %}
+          <span class="status-icon disabled">✖</span> Disabled
+        {% endif %}
+      </td>
+      <td>
+        {% if mod.loaded %}
+          Loaded
+        {% else %}
+          Not loaded
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<!-- Pagination controls go here -->
+<div id="nat-helper-pagination" class="pagination-controls"></div>
+<style>
+.pagination-controls {
+  margin-top: 1em;
+  text-align: center;
+}
+.page-btn {
+  margin: 0 4px;
+  padding: 6px 12px;
+  border: 1px solid #ccc;
+  background-color: white;
+  cursor: pointer;
+  border-radius: 4px;
+}
+.page-btn.active {
+  background-color: #007bff;
+  color: white;
+}
+.status-icon {
+  margin-right: 5px;
+  font-weight: bold;
+}
+.status-icon.enabled {
+  color: green;
+}
+.status-icon.disabled {
+  color: #333;
+}
+</style>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const rowsPerPage = 10;
+  const tbody = document.getElementById("nat-helper-body");
+  const rows = tbody.getElementsByTagName("tr");
+  const totalPages = Math.ceil(rows.length / rowsPerPage);
+  const pagination = document.getElementById("nat-helper-pagination");
+
+  function showPage(page) {
+    const start = (page - 1) * rowsPerPage;
+    const end = start + rowsPerPage;
+    Array.from(rows).forEach((row, index) => {
+      row.style.display = index >= start && index < end ? "" : "none";
+    });
+  }
+
+  function setupPagination() {
+    pagination.innerHTML = "";
+
+    for (let i = 1; i <= totalPages; i++) {
+      const btn = document.createElement("button");
+      btn.innerText = i;
+      btn.className = "page-btn";
+      btn.addEventListener("click", function (e) {
+        e.preventDefault();  // Prevent default click behavior
+        showPage(i);
+        setActivePage(i);
+      });
+      pagination.appendChild(btn);
+    }
+  }
+
+  function setActivePage(page) {
+    document.querySelectorAll(".page-btn").forEach(btn => {
+      btn.classList.remove("active");
+    });
+    const activeBtn = pagination.children[page - 1];
+    if (activeBtn) activeBtn.classList.add("active");
+  }
+
+  setupPagination();
+  showPage(1);
+  setActivePage(1);
+});
+</script>
