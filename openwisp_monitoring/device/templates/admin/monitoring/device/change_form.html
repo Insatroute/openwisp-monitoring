@@ -1,30 +1,30 @@
 {% extends "admin/config/device/change_form.html" %}
 {% load i18n static %}
 {% block after_field_sets %}
-{% if not add and device_data %}
+{% comment %} {% if not add and device_data %} {% endcomment %}
 <div class="inline-group" id="ow-device-status">
     <fieldset class="module">
         <h2>{% trans 'Status' %}</h2>
         <div class="inline-related">
             <fieldset class="module aligned">
-              {% if device_data.general %}
-              {% if device_data.general.local_time %}
+              {% comment %} {% if device_data.general %}
+              {% if device_data.general.local_time %} {% endcomment %}
               <div class="form-row">
                   <label>{% trans 'Local time' %}:</label>
                   <div class="readonly">
                       {{ device_data.general.local_time }}
                   </div>
               </div>
-              {% endif %}
-              {% if device_data.general.uptime %}
+              {% comment %} {% endif %} {% endcomment %}
+              {% comment %} {% if device_data.general.uptime %} {% endcomment %}
               <div class="form-row">
                   <label>{% trans 'Uptime' %}:</label>
                   <div class="readonly">
                       {{ device_data.general.uptime }}
                   </div>
               </div>
-              {% endif %}
-              {% endif %}
+              {% comment %} {% endif %}
+              {% endif %} {% endcomment %}
               {% if device_data.resources %}
               {% if device_data.resources.load or device_data.resources.cpus %}
               <h2>{% trans 'CPU' %}</h2>
@@ -554,7 +554,7 @@
         </div>
     </fieldset>
 </div>
-{% endif %}
+{% comment %} {% endif %} {% endcomment %}
 {% if not add %}
 <div class="inline-group" id="ow-chart-container">
     <fieldset class="module">

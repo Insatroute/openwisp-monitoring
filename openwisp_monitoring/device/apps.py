@@ -36,6 +36,7 @@ from .utils import (
 
 
 class DeviceMonitoringConfig(AppConfig):
+    default_auto_field = "django.db.models.BigAutoField"
     name = "openwisp_monitoring.device"
     label = "device_monitoring"
     verbose_name = _("Device Monitoring")
