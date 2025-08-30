@@ -205,8 +205,8 @@ CELERY_TIMEZONE = TIME_ZONE
 CELERY_BEAT_SCHEDULE = {
     "run_checks": {
         "task": "openwisp_monitoring.check.tasks.run_checks",
-        # Executes only ping & config check every 5 min
-        "schedule": timedelta(minutes=5),
+        # Executes only ping & config check every 1 min
+        "schedule": timedelta(minutes=1),
         "args": (
             [  # Checks path
                 "openwisp_monitoring.check.classes.Ping",
