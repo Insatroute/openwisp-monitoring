@@ -4,36 +4,50 @@ from ..check.settings import AUTO_DATA_COLLECTED_CHECK
 from ..settings import get_settings_value
 
 
+# def get_critical_device_metrics():
+#     default = [
+#         {
+#             "key": "ping",
+#             "field_name": "reachable",
+#             "check": "openwisp_monitoring.check.classes.Ping",
+#         }
+#     ]
+#     if AUTO_DATA_COLLECTED_CHECK:
+#         default.append(
+#             {
+#                 "key": "data_collected",
+#                 "field_name": "data_collected",
+#                 "check": "openwisp_monitoring.check.classes.DataCollected",
+#             }
+#         )
+#     critical_metrics = get_settings_value(
+#         "CRITICAL_DEVICE_METRICS",
+#         default,
+#     )
+#     for item in critical_metrics:  # pragma: no cover
+#         try:
+#             assert "key" in item
+#             assert "field_name" in item
+#         except AssertionError as e:
+#             raise ImproperlyConfigured(
+#                 "OPENWISP_MONITORING_CRITICAL_DEVICE_METRICS must contain the following keys: key, field_name"
+#             ) from e
+#     return critical_metrics
+
 def get_critical_device_metrics():
-    default = [
-        {
-            "key": "ping",
-            "field_name": "reachable",
-            "check": "openwisp_monitoring.check.classes.Ping",
-        }
-    ]
-    if AUTO_DATA_COLLECTED_CHECK:
-        default.append(
-            {
-                "key": "data_collected",
-                "field_name": "data_collected",
-                "check": "openwisp_monitoring.check.classes.DataCollected",
-            }
-        )
     critical_metrics = get_settings_value(
-        "CRITICAL_DEVICE_METRICS",
-        default,
+        'CRITICAL_DEVICE_METRICS',
+        [{'key': 'ping', 'field_name': 'reachable'}],
     )
     for item in critical_metrics:  # pragma: no cover
         try:
-            assert "key" in item
-            assert "field_name" in item
+            assert 'key' in item
+            assert 'field_name' in item
         except AssertionError as e:
             raise ImproperlyConfigured(
-                "OPENWISP_MONITORING_CRITICAL_DEVICE_METRICS must contain the following keys: key, field_name"
+                'OPENWISP_MONITORING_CRITICAL_DEVICE_METRICS must contain the following keys: key, field_name'
             ) from e
     return critical_metrics
-
 
 def get_health_status_labels():
     default_labels = {
