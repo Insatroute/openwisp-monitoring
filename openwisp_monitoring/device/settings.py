@@ -37,10 +37,10 @@ def get_critical_device_metrics():
 
 def get_health_status_labels():
     default_labels = {
-        "unknown": "unknown",
-        "ok": "ok",
+        "unknown": "register",
+        "ok": "online",
         "problem": "problem",
-        "critical": "critical",
+        "critical": "offline",
         "deactivated": "deactivated",
     }
     labels = default_labels.copy()
