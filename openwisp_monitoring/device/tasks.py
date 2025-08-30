@@ -38,8 +38,6 @@ def trigger_device_critical_checks(pk, recovery=True):
         status = "ok" if recovery else "critical"
         device.monitoring.update_status(status)
         return
-    if recovery and device.monitoring.status == "critical":
-        device.monitoring.update_status("critical")
     for check_id in check_ids:
         perform_check.delay(check_id)
 
