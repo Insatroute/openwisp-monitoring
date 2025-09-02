@@ -98,9 +98,7 @@ def _fmt_in_current_tz(dt):
     except Exception:
         # if dt is naive, assume it's already in the correct tz
         dt_local = dt
-    # return dt_local.strftime("%Y-%m-%d %H:%M:%S")
-    # return dt_local.strftime("%d-%m-%Y (%H:%M:%S)")
-    return dt_local.strftime("%d-%b-%Y (%H:%M:%S)")
+    return dt_local.strftime("%Y-%m-%d %H:%M:%S")
 
 
 def _build_friendly_intervals(events):
