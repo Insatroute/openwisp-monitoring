@@ -12,14 +12,14 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models.signals import post_delete
 from django.dispatch import receiver
-from django.utils.timezone import now as dj_now, get_current_timezone
+from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 from jsonschema import draft7_format_checker, validate
 from jsonschema.exceptions import ValidationError as SchemaError
 from model_utils import Choices
 from model_utils.fields import StatusField
 from netaddr import EUI, NotRegisteredError
-from pytz import timezone as tz  # still used for a few epoch conversions
+from pytz import timezone as tz
 from swapper import load_model
 
 from openwisp_controller.config.validators import mac_address_validator
@@ -37,8 +37,8 @@ from ..signals import health_status_changed
 from ..utils import SHORT_RP, get_device_cache_key
 
 # --- Availability / uptime config ---
-AVAILABILITY_RP = 'autogen'
-UP_STATUSES = {'ok', 'problem'}
+AVAILABILITY_RP = 'autogen'  # TSDB retention policy that keeps >= 1 year
+UP_STATUSES = {'ok', 'problem'}  # treat these statuses as "up"
 
 # --- Record up/down events on every health status change ---
 @receiver(health_status_changed, dispatch_uid='record_device_availability_ts')
@@ -50,7 +50,7 @@ def record_device_availability_ts(sender, instance, status, **kwargs):
             name='device_status',
             values={'up': up},
             tags={'pk': instance.device_id},
-            timestamp=dj_now(),                # use Django timezone-aware now()
+            timestamp=now(),
             retention_policy=AVAILABILITY_RP,
         )
     except Exception:
@@ -61,13 +61,9 @@ def record_device_availability_ts(sender, instance, status, **kwargs):
 # ------------------------- Utilities -------------------------
 
 def _to_dt(t):
-    """
-    Accept epoch seconds (int/float) or ISO strings and return aware datetime.
-    We do NOT force-convert to any particular tz here; we just parse.
-    """
+    # accept epoch seconds (int/float) or ISO strings
     if isinstance(t, (int, float)):
-        # Interpret as epoch seconds; create aware dt in current Django tz
-        return datetime.fromtimestamp(t, tz=get_current_timezone())
+        return datetime.fromtimestamp(t, tz=tz('UTC'))
     return dp.parse(t)
 
 
@@ -87,24 +83,10 @@ def _fmt_duration_short(seconds: float) -> str:
     return " ".join(parts) if parts else "0s"
 
 
-def _fmt_in_current_tz(dt):
-    """
-    Format a datetime into 'YYYY-MM-DD HH:MM:SS' using Django's current timezone.
-    No hard-coded tz; respects settings.TIME_ZONE.
-    """
-    tzinfo = get_current_timezone()
-    try:
-        dt_local = dt.astimezone(tzinfo)
-    except Exception:
-        # if dt is naive, assume it's already in the correct tz
-        dt_local = dt
-    return dt_local.strftime("%Y-%m-%d %H:%M:%S")
-
-
-def _build_friendly_intervals(events):
+def _build_friendly_intervals(events, tzinfo):
     """
     Build stitched intervals with durations from ordered events.
-    NOTE: events[i]["time"] are already strings in the configured Django timezone.
+    events: [{"time": "...", "status": "up"/"down", "synthetic": bool, "type": "..."}]
     """
     intervals = []
     total_up = 0.0
@@ -121,6 +103,7 @@ def _build_friendly_intervals(events):
         end_s = events[i + 1]["time"]
         status = events[i]["status"]
 
+        # times are already in display tz formatted as "YYYY-MM-DD HH:MM:SS"
         start_dt_local = dp.parse(start_s)
         end_dt_local = dp.parse(end_s)
         delta = (end_dt_local - start_dt_local).total_seconds()
@@ -128,8 +111,8 @@ def _build_friendly_intervals(events):
 
         dur_human = _fmt_duration_short(delta)
         item = {
-            "start": start_s,  # display string
-            "end": end_s,      # display string
+            "start": start_s,
+            "end": end_s,
             "status": status,  # 'up' / 'down'
             "duration_seconds": int(round(delta)),
             "duration_human": dur_human,
@@ -162,19 +145,15 @@ def _build_friendly_intervals(events):
 
 
 def _uptime_pct_from_events(device_id, start_dt, end_dt):
-    """
-    Compute uptime% between start_dt and end_dt using raw events.
-    We keep the math consistent without forcing any specific tz conversion.
-    """
     if start_dt >= end_dt:
         return 0.0
-    start_iso = start_dt.isoformat()
-    end_iso = end_dt.isoformat()
+    start_iso = start_dt.astimezone(tz('UTC')).isoformat()
+    end_iso = end_dt.astimezone(tz('UTC')).isoformat()
 
     q_prev = f'''
         SELECT LAST("up") AS up
         FROM "{AVAILABILITY_RP}"."device_status"
-        WHERE "pk"='{device_id}' AND time <= '{start_iso}'
+        WHERE "pk"='{device_id}' AND exit <= '{start_iso}'
     '''
     prev = timeseries_db.get_list_query(q_prev) or []
     cur_up = int(prev[0]['up']) if prev and prev[0].get('up') is not None else 0
@@ -204,7 +183,7 @@ def _uptime_pct_from_events(device_id, start_dt, end_dt):
 
 
 def uptime_percentages_for_common_windows(device_id):
-    end = dj_now()
+    end = datetime.utcnow().astimezone(tz('UTC'))
     def ago(days=0, hours=0):
         return end - timedelta(days=days, hours=hours)
     return {
@@ -214,7 +193,15 @@ def uptime_percentages_for_common_windows(device_id):
 
 # ---------------------- Availability API ----------------------
 
+from django.utils import timezone as djtz
 from django.conf import settings
+
+INDIA_TZ = tz("Asia/Kolkata")
+
+def _iso_in_tz(dt, tzinfo=INDIA_TZ):
+    # human-readable local timestamp
+    return dt.astimezone(tzinfo).strftime("%Y-%m-%d %H:%M:%S")
+
 
 def get_device_availability(
     device_id, *,
@@ -225,28 +212,25 @@ def get_device_availability(
     include_uptime=True,
     max_events=500,
     override_end_status=None,   # 'up' | 'down' | None
-    display_tz=None,            # ignored; we always use Django's current tz
+    display_tz=None,             # tzinfo to present times in
+    
 ):
-    # --- Compute window using Django's timezone-aware now() ---
+    # --- Compute window in UTC for math/queries ---
     if end is None:
-        end_dt = dj_now()
+        end_dt = datetime.utcnow().astimezone(tz('UTC'))
     else:
-        end_dt = _to_dt(end)
+        end_dt = _to_dt(end).astimezone(tz('UTC'))
 
     if start is None:
         start_dt = end_dt - timedelta(days=days, hours=hours)
     else:
-        start_dt = _to_dt(start)
+        start_dt = _to_dt(start).astimezone(tz('UTC'))
 
-    tzname = getattr(get_current_timezone(), "zone", str(get_current_timezone()))
+    tzinfo = display_tz or djtz.get_current_timezone()
 
     if start_dt >= end_dt:
         return {
-            "window": {
-                "start": _fmt_in_current_tz(start_dt),
-                "end": _fmt_in_current_tz(end_dt),
-                "tz": tzname,
-            },
+            "window": {"start": _iso_in_tz(start_dt, tzinfo), "end": _iso_in_tz(end_dt, tzinfo),"tz": getattr(tzinfo, "zone", "Asia/Kolkata")},
             "events": [],
             "timeline": [],
             **({"uptime_percent": 0.0} if include_uptime else {}),
@@ -265,7 +249,7 @@ def get_device_availability(
     end_iso = end_dt.isoformat()
     device_id = str(device_id)
 
-    # --- State at window start ---
+    # --- State at window start (UTC) ---
     q_prev = f'''
         SELECT LAST("up") AS up
         FROM "{AVAILABILITY_RP}"."device_status"
@@ -285,7 +269,7 @@ def get_device_availability(
     rows_desc = timeseries_db.get_list_query(q_events) or []
     rows = list(reversed(rows_desc))  # process ASC
 
-    # --- Latest known state up to 'end' ---
+    # --- What's the latest known state from TSDB up to 'end'? ---
     q_latest = f'''
         SELECT LAST("up") AS up
         FROM "{AVAILABILITY_RP}"."device_status"
@@ -294,41 +278,41 @@ def get_device_availability(
     latest = timeseries_db.get_list_query(q_latest) or []
     end_up_tsdb = int(latest[0]['up']) if latest and latest[0].get('up') is not None else cur_up
 
-    # --- Start boundary (synthetic) using current tz formatting ---
+    # --- Start boundary (synthetic) ---
     events = [{
-        "time": _fmt_in_current_tz(start_dt),
+        "time": _iso_in_tz(start_dt, tzinfo),
         "status": "up" if cur_up == 1 else "down",
         "synthetic": True,
         "type": "Boundary",
     }]
 
-    # --- Real flips (display in current tz without hard-coded conversions) ---
+    # --- Real flips (only when value changes) ---
     for r in rows:
         nxt = int(r['up'])
         if nxt != cur_up:
-            flip_dt = _to_dt(r['time'])
             events.append({
-                "time": _fmt_in_current_tz(flip_dt),
+                "time": _to_dt(r['time']).astimezone(tzinfo).strftime("%Y-%m-%d %H:%M:%S"),
                 "status": "up" if nxt == 1 else "down",
                 "synthetic": False,
                 "type": "Flip",
             })
             cur_up = nxt
 
-    # --- End boundary (synthetic) ---
+    # --- Choose end boundary status: prefer override, else TSDB LAST(up) ---
     if override_end_status in ("up", "down"):
         end_status = override_end_status
     else:
         end_status = "up" if end_up_tsdb == 1 else "down"
 
+    # --- End boundary (synthetic) ---
     events.append({
-        "time": _fmt_in_current_tz(end_dt),
+        "time": _iso_in_tz(end_dt, tzinfo),
         "status": end_status,
         "synthetic": True,
         "type": "Boundary",
     })
 
-    # --- Timeline (rendered as strings in current tz) ---
+    # --- Build timeline (rendered in local tz) ---
     timeline = []
     for i in range(len(events) - 1):
         timeline.append({
@@ -337,25 +321,27 @@ def get_device_availability(
             "status": events[i]["status"],
         })
 
-    # --- Friendly intervals & totals ---
-    friendly_built = _build_friendly_intervals(events)
+    # --- Friendly intervals & totals
+    friendly_built = _build_friendly_intervals(events, tzinfo)
 
     result = {
-        "window": {"start": _fmt_in_current_tz(start_dt), "end": _fmt_in_current_tz(end_dt), "tz": tzname},
+        "window": {"start": _iso_in_tz(start_dt, tzinfo), "end": _iso_in_tz(end_dt, tzinfo)},
         "events": events,         # detailed events with type: Boundary/Flip
         "timeline": timeline,     # raw stitched intervals (legacy)
-        "friendly": {             # user-friendly data for UI
+        "friendly": {             # NEW: user-friendly data for UI
             "intervals": friendly_built["intervals"],
             "summary": {
                 "total_uptime": friendly_built["totals"]["uptime_human"],
                 "total_downtime": friendly_built["totals"]["downtime_human"],
                 "longest_outage": friendly_built["totals"]["longest_outage"],
+                # uptime_percent mirrored below (computed with UTC-accurate method)
             },
         },
     }
 
     if include_uptime:
         try:
+            # uptime% is computed in UTC window; display-only is local
             result["uptime_percent"] = _uptime_pct_from_events(device_id, start_dt, end_dt)
             result["friendly"]["summary"]["uptime_percent"] = result["uptime_percent"]
         except Exception:
@@ -366,13 +352,15 @@ def get_device_availability(
 
 
 def uptime_pct_for_window(device_id, *, days=0, hours=0):
-    end = dj_now()
+    end = datetime.utcnow().astimezone(tz('UTC'))
     start = end - timedelta(days=days, hours=hours)
     return _uptime_pct_from_events(device_id, start, end)
 
 
 def mac_lookup_cache_timeout():
-    """Returns a random number of hours between 48 and 96."""
+    """Returns a random number of hours between 48 and 96.
+    This avoids timing out the entire cache at the same time.
+    """
     return 60 * 60 * random.randint(48, 96)
 
 
@@ -444,9 +432,8 @@ class AbstractDeviceData(object):
 
         if 'general' in data and 'local_time' in data['general']:
             local_time = data['general']['local_time']
-            # Keep timezone as configured in Django for display
             data['general']['local_time'] = datetime.fromtimestamp(
-                local_time + time_elapsed, tz=get_current_timezone()
+                local_time + time_elapsed, tz=tz('UTC')
             )
 
         if 'general' in data and 'uptime' in data['general']:
@@ -474,7 +461,7 @@ class AbstractDeviceData(object):
 
         # reformat expiry in dhcp leases
         for lease in data.get('dhcp_leases', []):
-            lease['expiry'] = datetime.fromtimestamp(lease['expiry'], tz=get_current_timezone())
+            lease['expiry'] = datetime.fromtimestamp(lease['expiry'], tz=tz('UTC'))
 
         # --- Availability: percentages + detailed report (events/timeline/friendly)
         try:
@@ -491,7 +478,7 @@ class AbstractDeviceData(object):
                 str(self.pk),
                 hours=24,
                 override_end_status=override,
-                # display_tz ignored; we use Django current tz
+                display_tz=tz("Asia/Kolkata"),
             )
             # raw
             data['availability']['events'] = availability_report["events"]
@@ -619,7 +606,7 @@ class AbstractDeviceData(object):
         """Validates and saves data to Timeseries Database."""
         self.validate_data()
         self._transform_data()
-        time = time or dj_now()
+        time = time or now()
         options = dict(tags={'pk': self.pk}, timestamp=time, retention_policy=SHORT_RP)
         _timeseries_write(name=self.__key, values={'data': self.json()}, **options)
         cache_key = get_device_cache_key(device=self, context='current-data')
@@ -628,7 +615,7 @@ class AbstractDeviceData(object):
             [
                 {
                     'data': self.json(),
-                    'time': time.isoformat(timespec='seconds'),
+                    'time': time.astimezone(tz=tz('UTC')).isoformat(timespec='seconds'),
                 }
             ],
             timeout=CACHE_TIMEOUT,
@@ -683,7 +670,7 @@ class AbstractDeviceData(object):
             stop_time=None,
         ).exclude(
             pk__in=active_sessions
-        ).update(stop_time=dj_now())
+        ).update(stop_time=now())
 
 
 class AbstractDeviceMonitoring(TimeStampedEditableModel):
