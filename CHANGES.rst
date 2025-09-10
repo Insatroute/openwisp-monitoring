@@ -12,7 +12,7 @@ Version 1.1.3 [2025-08-01]
 Bugfixes
 ~~~~~~~~
 
-- Fixed `issue causing alerts to be triggered when devices uploaded
+- Fixed `issue causing alerts to be triPggered when devices uploaded
   historical data.
   <https://github.com/openwisp/openwisp-monitoring/issues/666>`_
 - Fixed `potential performance issues in data migrations by replacing use
