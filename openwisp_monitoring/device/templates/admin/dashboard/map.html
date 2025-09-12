@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>OpenWISP Device Map (Pure Leaflet)</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+
+  <!-- Leaflet core -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Leaflet Fullscreen control -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.fullscreen/2.4.0/leaflet.fullscreen.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.fullscreen/2.4.0/Leaflet.fullscreen.min.js"></script>
+
+  <!-- jQuery -->
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+  <style>
+    html, body { height: 100%; margin: 0; }
+    #device-map-container { position: relative; height: 100vh; width: 100%; }
+    .ow-loading-spinner {
+      position: absolute; z-index: 1000; right: 12px; top: 12px;
+      background: rgba(255,255,255,.9); border-radius: 8px; padding: 8px 10px;
+      font: 14px/1.2 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      box-shadow: 0 2px 6px rgba(0,0,0,.15); display: none;
+    }
+    .no-data {
+      position: absolute; z-index: 1000; left: 12px; bottom: 12px;
+      background: rgba(255,255,255,.95); border-radius: 8px; padding: 8px 10px;
+      font: 14px/1.2 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      display: none; cursor: pointer;
+    }
+    .map-detail { max-width: 360px; }
+    .map-detail table { width: 100%; border-collapse: collapse; margin-top: .5rem; }
+    .map-detail th, .map-detail td { text-align: left; padding: .35rem .25rem; border-bottom: 1px solid #eee; font-size: 13px; }
+    .map-detail h2 { margin: 0 0 .25rem 0; font-size: 16px; }
+    .paginator a { text-decoration: none; margin-right: .5rem; }
+    .health-status { padding: 2px 6px; border-radius: 999px; font-size: 12px; }
+    .health-ok { background: #e9f7ea; color: #267126; }
+    .health-problem { background: #fff2e0; color: #b86a00; }
+    .health-critical { background: #fde8e6; color: #a72d1d; }
+    .health-unknown { background: #eceff3; color: #353c44; }
+    .health-deactivated { background: #f2f2f2; color: #999; }
+  </style>
+</head>
+<body>
+
+  <div id="device-map-container">
+    <div class="ow-loading-spinner">Loading…</div>
+    <a class="no-data" href="#">No devices found. Hide map</a>
+  </div>
+
+  <!-- Leaflet/Map config (same structure your code expects) -->
+  <script type="application/json" id="leaflet-config">
+  {
+    "DEFAULT_CENTER": [19.0760, 72.8777],
+    "DEFAULT_ZOOM": 6,
+    "MIN_ZOOM": 2,
+    "MAX_ZOOM": 20,
+    "SCALE": "metric",
+    "TILES": [
+      [
+        "OpenStreetMap",
+        "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+        "&copy; <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a> contributors"
+      ]
+    ]
+  }
+  </script>
+
+  <script>
+    // shims
+    window.gettext = window.gettext || function (s) { return s; };
+
+    // your real endpoints
+    window._owGeoMapConfig = {
+      geoJsonUrl: "/api/v1/monitoring/geojson/",
+      locationDeviceUrl: "/api/v1/monitoring/location/000/device/?page_size=5"
+    };
+  </script>
+
+  <script>
+  (function ($) {
+    const loadingOverlay = $('#device-map-container .ow-loading-spinner');
+    const mapContainer = $('#device-map-container');
+    const localStorageKey = 'ow-map-shown';
+
+    const statuses = ['critical', 'problem', 'ok', 'unknown', 'deactivated'];
+    const colors = {
+      ok: '#267126',
+      problem: '#ffb442',
+      critical: '#a72d1d',
+      unknown: '#353c44',
+      deactivated: '#0000'
+    };
+
+    function getLocationDeviceUrl(pk) {
+      return window._owGeoMapConfig.locationDeviceUrl.replace('000', pk);
+    }
+
+    function getColor(props) {
+      const deviceCount = props.device_count;
+      const findResult = (fn) => {
+        for (let i = 0; i < statuses.length; i++) {
+          const status = statuses[i];
+          const cnt = props[status + '_count'];
+          if (!cnt) continue;
+          const out = fn(status, cnt);
+          if (out) return out;
+        }
+      };
+      const majority = findResult((status, cnt) => (cnt > deviceCount / 2) ? colors[status] : null);
+      if (majority) return majority;
+      return findResult((status) => colors[status]);
+    }
+
+    function buildPopup(layer, data) {
+      let html = '';
+      for (let i = 0; i < data.results.length; i++) {
+        const device = data.results[i];
+        html += `
+          <tr>
+            <td><a href="${device.admin_edit_url}">${device.name}</a></td>
+            <td>
+              <span class="health-status health-${device.monitoring.status}">
+                ${device.monitoring.status_label}
+              </span>
+            </td>
+          </tr>`;
+      }
+      let pagination = '', parts = [];
+      if (data.previous) parts.push(`<a class="prev" href="#prev" data-url="${data.previous}">&#8249; ${gettext('previous')}</a>`);
+      if (data.next)     parts.push(`<a class="next" href="#next" data-url="${data.next}">${gettext('next')} &#8250;</a>`);
+      if (parts.length)  pagination = `<p class="paginator">${parts.join(' ')}</p>`;
+
+      const content = `
+        <div class="map-detail">
+          <h2>${layer.feature.properties.name} (${data.count})</h2>
+          <table>
+            <thead><tr><th>${gettext('name')}</th><th>${gettext('status')}</th></tr></thead>
+            <tbody>${html}</tbody>
+          </table>
+          ${pagination}
+        </div>`;
+      layer.bindPopup(content).openPopup();
+
+      const el = $(layer.getPopup().getElement());
+      el.find('.next').on('click', function () { loadPopUpContent(layer, $(this).data('url')); });
+      el.find('.prev').on('click', function () { loadPopUpContent(layer, $(this).data('url')); });
+    }
+
+    function loadPopUpContent(layer, url) {
+      if (!url) url = layer.url || getLocationDeviceUrl(layer.feature.id);
+      layer.url = url;
+      loadingOverlay.show();
+      $.ajax({
+        dataType: "json",
+        url: url,
+        xhrFields: { withCredentials: true },
+        success: function (data) { buildPopup(layer, data); loadingOverlay.hide(); },
+        error: function () { loadingOverlay.hide(); alert(gettext('Error while retrieving data')); }
+      });
+    }
+
+    const leafletConfig = JSON.parse($('#leaflet-config').text());
+
+    // Add CartoDB Voyager at the top (like your original)
+    leafletConfig.TILES.unshift([
+      'CartoDB Voyager',
+      'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+      {
+        attribution:
+          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> ' +
+          'contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        subdomains: 'abcd',
+        maxZoom: 20
+      }
+    ]);
+
+    // init map
+    const map = L.map('device-map-container', {
+      center: leafletConfig.DEFAULT_CENTER,
+      zoom: leafletConfig.DEFAULT_ZOOM,
+      minZoom: leafletConfig.MIN_ZOOM || 1,
+      maxZoom: leafletConfig.MAX_ZOOM || 24,
+      fullscreenControl: true,
+      worldCopyJump: true
+    });
+
+    // base layers
+    const baseLayers = {};
+    leafletConfig.TILES.forEach(t => {
+      const label = t[0];
+      const url = t[1];
+      const opts = (typeof t[2] === 'object') ? t[2] : { attribution: t[2] };
+      baseLayers[label] = L.tileLayer(url, opts);
+    });
+    // add first as default
+    const firstKey = Object.keys(baseLayers)[0];
+    baseLayers[firstKey].addTo(map);
+    L.control.layers(baseLayers, null, { collapsed: true }).addTo(map);
+
+    // scale control
+    if (leafletConfig.SCALE) {
+      let scale = { imperial: false, metric: false };
+      if (leafletConfig.SCALE === 'metric') scale.metric = true;
+      else if (leafletConfig.SCALE === 'imperial') scale.imperial = true;
+      else if (leafletConfig.SCALE === 'both') { scale.metric = true; scale.imperial = true; }
+      L.control.scale(scale).addTo(map);
+    }
+
+    // bounds (similar to your workaround)
+    map.setMaxBounds(L.latLngBounds(L.latLng(-90, -540), L.latLng(90, 540)));
+
+    // hide map if user clicked “hide” previously
+    if (localStorage.getItem(localStorageKey) === 'false') {
+      mapContainer.slideUp(50);
+    }
+
+    // fetch GeoJSON and render
+    loadingOverlay.show();
+    $.ajax({
+      dataType: "json",
+      url: window._owGeoMapConfig.geoJsonUrl,
+      xhrFields: { withCredentials: true },
+      success: function (geojson) {
+        loadingOverlay.hide();
+
+        if (!geojson || !geojson.features || !geojson.features.length) {
+          mapContainer.find('.no-data').fadeIn(500).on('click', function (e) {
+            e.preventDefault(); mapContainer.slideUp(); localStorage.setItem(localStorageKey, 'false');
+          });
+          return;
+        } else {
+          localStorage.removeItem(localStorageKey);
+          mapContainer.slideDown();
+        }
+
+        const layer = L.geoJSON(geojson, {
+          pointToLayer: function (feature, latlng) {
+            const color = getColor(feature.properties);
+            return L.circleMarker(latlng, {
+              radius: 9,
+              fillColor: color,
+              color: 'rgba(0, 0, 0, 0.3)',
+              weight: 3,
+              opacity: 1,
+              fillOpacity: 0.7
+            });
+          },
+          onEachFeature: function (feature, lyr) {
+            lyr.on('mouseover', function () {
+              lyr.unbindTooltip();
+              if (!lyr.isPopupOpen()) lyr.bindTooltip(feature.properties.name).openTooltip();
+            });
+            lyr.on('click', function () {
+              lyr.unbindTooltip(); lyr.unbindPopup();
+              loadPopUpContent(lyr);
+            });
+          }
+        }).addTo(map);
+
+        // fit bounds nicely
+        if (layer.getLayers().length === 1) {
+          map.setView(layer.getBounds().getCenter(), 10);
+        } else {
+          map.fitBounds(layer.getBounds(), { padding: [20, 20] });
+        }
+      },
+      error: function () {
+        loadingOverlay.hide();
+        alert(gettext('Error while retrieving data'));
+      }
+    });
+  })(jQuery);
+  </script>
+</body>
+</html>

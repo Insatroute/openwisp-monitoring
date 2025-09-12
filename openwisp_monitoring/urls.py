@@ -1,4 +1,5 @@
 from django.urls import include, path
+from .views import map_view,devices_geojson
 
 urlpatterns = [
     path("", include("openwisp_monitoring.device.api.urls", namespace="monitoring")),
@@ -12,4 +13,7 @@ urlpatterns = [
             "openwisp_monitoring.monitoring.api.urls", namespace="monitoring_general"
         ),
     ),
+    path("map/", map_view, name="map_view"),
+    path("map/devices.geojson",devices_geojson, name="devices_geojson"),
+
 ]

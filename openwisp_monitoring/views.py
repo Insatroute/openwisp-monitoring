@@ -12,6 +12,7 @@ from pytz.exceptions import UnknownTimeZoneError
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from swapper import load_model
+from django.core.serializers import serialize
 
 from .monitoring.exceptions import InvalidChartConfigException
 
@@ -181,3 +182,52 @@ class MonitoringApiViewMixin:
     def _get_csv_header(self, chart, trace):
         header = trace[0]
         return f'{header} - {chart["title"]}'
+
+from django.shortcuts import render
+ 
+# def map_view(request):
+#     return render(request, "admin/dashboard/map.html")
+
+from django.shortcuts import render
+from django.http import JsonResponse
+
+# def map_view(request):
+#     return render(request, "map.html")
+
+# views.py
+from django.http import JsonResponse
+#from openwisp_controller.config.models import Device  # Adjust if your import path differs
+Device = load_model("config", "Device")
+
+def devices_geojson(request):
+    features = []
+    qs = Device.objects.exclude(lat=None).exclude(lon=None)[:500]
+
+    for d in qs:
+        try:
+            lon = float(d.lon)
+            lat = float(d.lat)
+        except (TypeError, ValueError):
+            continue  # skip bad coords
+
+        features.append({
+            "type": "Feature",
+            "geometry": {"type": "Point", "coordinates": [lon, lat]},  # GeoJSON is [lon, lat]
+            "properties": {
+                "name": d.name,
+                "status": d.get_health_status_display(),  # 'ok', 'critical', etc.
+                "id": str(d.id),
+            },
+        })
+
+    return JsonResponse({"type": "FeatureCollection", "features": features})
+
+def map_view(request):
+    devices = Device.objects.all()
+    geojson_data = serialize(
+        'geojson',
+        devices,
+        geometry_field='location',  # Make sure this matches your PointField name
+        fields=('name', 'ip_address')
+    )
+    return render(request, 'admin/dashboard/map.html', {'geojson_data': geojson_data})

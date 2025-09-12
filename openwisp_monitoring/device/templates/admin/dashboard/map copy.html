@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Locations → Devices (server or client filtered)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<style>
+  html, body { height:100%; margin:0; }
+  #map { position:relative; height:100%; }
+  #closeBtn{ position:absolute; top:10px; right:10px; z-index:1000; background:#fff; border:1px solid #cfd3d8; border-radius:8px; padding:8px 12px; font-weight:600; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,.08); }
+  .loading{ display:none; position:absolute; inset:0; background:rgba(255,255,255,.6); z-index:900 }
+  .loading::after{ content:""; position:absolute; top:50%; left:50%; width:36px; height:36px; margin:-18px; border-radius:50%; border:4px solid #999; border-top-color:transparent; animation:spin 1s linear infinite; }
+  @keyframes spin{ to{ transform:rotate(360deg) } }
+
+  .map-detail h2{ margin:0 0 10px; font:700 16px system-ui, -apple-system, Segoe UI, Roboto, Arial; }
+  .map-detail table{ width:100%; border-collapse:collapse; font:14px system-ui, -apple-system, Segoe UI, Roboto, Arial; background:#fff; border-radius:12px; overflow:hidden; }
+  .map-detail thead th{ text-align:left; font-weight:700; color:#6b7280; font-size:12px; padding:8px 12px; border-bottom:1px solid #eef0f2; background:#fafbfc; }
+  .map-detail tbody td{ padding:10px 12px; border-bottom:1px solid #f2f4f7; color:#111827; }
+  .map-detail tbody tr:last-child td{ border-bottom:none; }
+  .status-badge{ display:inline-block; padding:4px 8px; border-radius:999px; font-size:12px; font-weight:700; background:#ecfdf5; color:#065f46; }
+</style>
+</head>
+<body>
+<button id="closeBtn">✖ Close</button>
+<div id="map"><div class="loading" id="loading"></div></div>
+
+<script>
+/* ===================== CONFIG (adjust these to your API) ===================== */
+const GEOJSON_URL = "/api/v1/controller/location/geojson/?format=json";
+
+/* If your backend supports any of these, we’ll use it (fastest) */
+const DEVICE_URL_CANDIDATES = [
+  "/api/v1/controller/device/?location=__ID__&format=json",
+  "/api/v1/controller/device/?location_id=__ID__&format=json",
+  "/api/v1/controller/device/?location__id=__ID__&format=json",
+  "/api/v1/controller/location/__ID__/?format=json"
+];
+
+/* Fallback when the above don’t filter on the server */
+const DEVICES_LIST_URL  = "/api/v1/controller/device/?format=json&limit=1000";
+const DEVICE_DETAIL_URL = "/api/v1/controller/device/__ID__/?format=json";
+
+/* Optional headers (cookies usually carry session) */
+const HEADERS = { "accept":"application/json" };
+/* ============================================================================ */
+
+/* --------- Leaflet setup --------- */
+const map = L.map('map').setView([20,78], 5);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+  attribution: '© OpenStreetMap contributors · © CARTO', subdomains: 'abcd', maxZoom: 20
+}).addTo(map);
+
+const loading = document.getElementById('loading');
+const showLoading = () => loading.style.display = 'block';
+const hideLoading = () => loading.style.display = 'none';
+
+function markerFor(feature){
+  const [lon, lat] = feature.geometry.coordinates;
+  return L.circleMarker([lat,lon], {
+    radius: 10, fillColor: "#064e3b", color:"#064e3b", weight:2, opacity:1, fillOpacity:0.9
+  });
+}
+
+function normResults(json){
+  if (!json) return [];
+  if (Array.isArray(json)) return json;
+  if (Array.isArray(json.results)) return json.results;
+  if (typeof json.count === "number" && Array.isArray(json.features)) return json.features;
+  return [];
+}
+
+function popupHTML(locName, devices){
+  const rows = devices.length ? devices.map(d => {
+    const name = d.name || d.hostname || d.title || d.id || "Unknown";
+    const status = (d.monitoring && (d.monitoring.status_label || d.monitoring.status)) ||
+                   d.status || d.registration_status || "REGISTER";
+    const link = d.admin_edit_url || (d.id ? `/admin/controller/device/${d.id}/change/` : "#");
+    return `<tr><td><a href="${link}">${name}</a></td><td><span class="status-badge">${String(status).toUpperCase()}</span></td></tr>`;
+  }).join("") : `<tr><td colspan="2" style="padding:12px;color:#6b7280;">No devices</td></tr>`;
+  return `<div class="map-detail">
+    <h2>${locName} (${devices.length})</h2>
+    <table><thead><tr><th>NAME</th><th>STATUS</th></tr></thead><tbody>${rows}</tbody></table>
+  </div>`;
+}
+
+/* ===================== LOCATION MATCHING (robust) ===================== */
+/* Reads common shapes: "location":"<id>", "location":{id:"<id>"}, "location_id",
+   "location.uuid", "site.id", "site_id", "location_pk", etc. */
+function deviceMatchesLocation(dev, locId) {
+  const want = String(locId);
+
+  // Candidate paths to check, in priority order.
+  const CANDIDATE_LOCATION_FIELDS = [
+    "location",           // string id OR object
+    "location_id",
+    "location.uuid",
+    "location.id",
+    "location_pk",
+    "location_pk_id",
+    "site",               // string id OR object
+    "site_id",
+    "site.uuid",
+    "site.id",
+    "locationId",         // camelCase variants
+    "siteId"
+  ];
+
+  const dig = (obj, path) => {
+    const parts = path.split(".");
+    let cur = obj;
+    for (const p of parts) {
+      if (cur == null) return undefined;
+      cur = cur[p];
+    }
+    return cur;
+  };
+
+  for (const key of CANDIDATE_LOCATION_FIELDS) {
+    const v = dig(dev, key);
+    if (v == null) continue;
+    // If the value is an object with id/uuid, prefer those
+    if (typeof v === "object") {
+      if (v.id != null && String(v.id) === want) return true;
+      if (v.uuid != null && String(v.uuid) === want) return true;
+      if (v.pk != null && String(v.pk) === want) return true;
+    } else {
+      if (String(v) === want) return true;
+    }
+  }
+  return false;
+}
+
+/* ---------- STEP 1: Try server-filtered endpoints (STRICT, verified) ---------- */
+async function tryServerFiltered(locId){
+  const saved = localStorage.getItem("ow_working_device_url_pattern");
+  const candidates = saved ? [saved, ...DEVICE_URL_CANDIDATES.filter(c => c!==saved)] : DEVICE_URL_CANDIDATES;
+
+  for (const pattern of candidates){
+    const url = pattern.replace("__ID__", encodeURIComponent(locId));
+    console.log("[map] trying server-filter:", url);
+    let r;
+    try { r = await fetch(url, { headers: HEADERS, credentials: "include" }); }
+    catch { continue; }
+    if (!r.ok) continue;
+
+    let json;
+    try { json = await r.json(); } catch { continue; }
+    const items = normResults(json);
+
+    // Accept only if we can VERIFY the items belong to the location.
+    if (!items.length) {
+      localStorage.setItem("ow_working_device_url_pattern", pattern);
+      return []; // empty is valid/verified
+    }
+
+    const filtered = items.filter(d => deviceMatchesLocation(d, locId));
+    if (filtered.length === items.length) {
+      localStorage.setItem("ow_working_device_url_pattern", pattern);
+      return filtered; // verified: all match this loc
+    }
+
+    // If items don't expose a verifiable location or include mismatches, don't trust.
+  }
+  return null; // none worked/verified
+}
+
+/* ---------- STEP 2: Client-side filtering via device details ---------- */
+async function clientFilterByDetails(locId, expectedCount){
+  console.log("[map] falling back to client-side filtering via details…");
+  const r = await fetch(DEVICES_LIST_URL, { headers: HEADERS, credentials: "include" });
+  if (!r.ok) return [];
+
+  const listJson = await r.json();
+  const items    = normResults(listJson);
+
+  const out = [];
+  const chunkSize = 10; // be nice to the server
+  for (let i = 0; i < items.length; i += chunkSize){
+    const chunk = items.slice(i, i + chunkSize);
+    const promises = chunk.map(d => fetch(
+      DEVICE_DETAIL_URL.replace("__ID__", encodeURIComponent(d.id)),
+      { headers: HEADERS, credentials: "include" }
+    ).then(rr => rr.ok ? rr.json() : null).catch(() => null));
+
+    const results = await Promise.all(promises);
+    for (const det of results){
+      if (det && deviceMatchesLocation(det, locId)) out.push(det);
+      if (expectedCount && out.length >= expectedCount) return out; // early stop
+    }
+  }
+  return out;
+}
+
+/* ---------- Wire up the map ---------- */
+(async function init(){
+  showLoading();
+  try{
+    const r = await fetch(GEOJSON_URL, { headers: HEADERS, credentials: "include" });
+    if (!r.ok) throw new Error("Failed to load location geojson");
+    const geo = await r.json();
+    hideLoading();
+
+    const layer = L.geoJSON(geo, {
+      pointToLayer: (feature) => markerFor(feature),
+      onEachFeature: (feature, marker) => {
+        const name = feature.properties?.name || "Location";
+        const expectedCount = feature.properties?.device_count; // optional hint
+        marker.bindPopup(`<div class="map-detail"><h2>${name}</h2><div style="padding:12px;color:#6b7280;">Loading…</div></div>`);
+
+        marker.on("popupopen", async () => {
+          showLoading();
+          const locId = feature.id;
+
+          // 1) Prefer server-filtered (strict + verified)
+          let devices = await tryServerFiltered(locId);
+
+          // 2) Fallback: client-side filtering by per-device detail
+          if (devices === null) {
+            devices = await clientFilterByDetails(locId, expectedCount);
+          }
+
+          hideLoading();
+          marker.setPopupContent(popupHTML(name, devices || []));
+        });
+      }
+    }).addTo(map);
+
+    if (layer.getLayers().length === 1) map.setView(layer.getBounds().getCenter(), 10);
+    else map.fitBounds(layer.getBounds());
+
+    L.control.scale({metric:true, imperial:false}).addTo(map);
+    map.setMaxBounds(L.latLngBounds(L.latLng(-90,-540), L.latLng(90,540)));
+  } catch(e){
+    hideLoading();
+    alert("Failed to load locations");
+    console.error(e);
+  }
+})();
+
+/* Close → redirect */
+document.getElementById("closeBtn").addEventListener("click", () => {
+  window.location.href = "/admin/config/device/";
+});
+</script>
+</body>
+</html>
