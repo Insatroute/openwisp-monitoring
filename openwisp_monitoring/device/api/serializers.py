@@ -65,9 +65,6 @@ class MonitoringNearbyDeviceSerializer(
     distance = serializers.SerializerMethodField('get_distance')
     monitoring_data = serializers.SerializerMethodField('get_monitoring_data')
 
-
-
-
     class Meta(DeviceListSerializer.Meta):
         model = Device
         fields = [
@@ -79,7 +76,7 @@ class MonitoringNearbyDeviceSerializer(
             'management_ip',
             'model',
             'os',
-            'serial_number',
+            # 'serial_number',
             'system',
             'notes',
             'distance',
@@ -113,7 +110,7 @@ class MonitoringDeviceListSerializer(DeviceListSerializer):
             'management_ip',
             'model',
             'os',
-            'serial_number',
+            # 'serial_number',
             'system',
             'notes',
             'config',
