@@ -1,7 +1,7 @@
 import logging
 import uuid
-from datetime import datetime
-
+from datetime import datetime , timedelta
+from django.utils import timezone
 from cache_memoize import cache_memoize
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.gis.db.models.functions import Distance
@@ -43,6 +43,30 @@ from .filters import (
     MonitoringNearbyDeviceFilter,
     WifiSessionFilter,
 )
+from openwisp_monitoring.device.models import DPIRecord
+from openwisp_monitoring.device.models import TSIPReport
+from openwisp_monitoring.device.models import ClientSummary
+from openwisp_monitoring.device.models import RealTraffic
+from openwisp_monitoring.device.models import InerfaceEvents
+from openwisp_monitoring.device.models import InterfaceTraffic
+from openwisp_monitoring.device.models import InterfaceList
+from openwisp_monitoring.device.models import LatquaList
+from openwisp_monitoring.device.models import WanStatus
+from openwisp_monitoring.device.models import IpsecTunnels
+from openwisp_monitoring.device.models import ConfigPush
+from openwisp_monitoring.device.models import SpokeStatus
+from .serializers import ClientreportSerializer
+from .serializers import DPIRecordSerializer
+from .serializers import RealTrafficSerializer
+from .serializers import TSIPreportSerializer
+from .serializers import InerfaceEventsSerializer
+from .serializers import InterfaceListSerializer
+from .serializers import InterfaceTrafficSerializer
+from .serializers import LatquaListSerializer
+from .serializers import WanStatusSerializer
+from .serializers import IpsecTunnelsSerializer
+from .serializers import ConfigPushSerializer
+from .serializers import SpokeStatusSerializer
 from .serializers import (
     MonitoringDeviceDetailSerializer,
     MonitoringDeviceListSerializer,
@@ -51,21 +75,22 @@ from .serializers import (
     MonitoringNearbyDeviceSerializer,
     WifiSessionSerializer,
 )
+from django.utils.dateparse import parse_datetime
 
 logger = logging.getLogger(__name__)
-Chart = load_model("monitoring", "Chart")
-Metric = load_model("monitoring", "Metric")
-AlertSettings = load_model("monitoring", "AlertSettings")
-Device = load_model("config", "Device")
-DeviceMonitoring = load_model("device_monitoring", "DeviceMonitoring")
-DeviceData = load_model("device_monitoring", "DeviceData")
-Location = load_model("geo", "Location")
-WifiSession = load_model("device_monitoring", "WifiSession")
+Chart = load_model('monitoring', 'Chart')
+Metric = load_model('monitoring', 'Metric')
+AlertSettings = load_model('monitoring', 'AlertSettings')
+Device = load_model('config', 'Device')
+DeviceMonitoring = load_model('device_monitoring', 'DeviceMonitoring')
+DeviceData = load_model('device_monitoring', 'DeviceData')
+Location = load_model('geo', 'Location')
+WifiSession = load_model('device_monitoring', 'WifiSession')
 
 
 class ListViewPagination(pagination.PageNumberPagination):
     page_size = 10
-    page_size_query_param = "page_size"
+    page_size_query_param = 'page_size'
     max_page_size = 100
 
 
@@ -85,13 +110,13 @@ def get_charts_args_rewrite(view, request, pk):
 class DeviceKeyAuthenticationMixin(object):
     def get_permissions(self):
         if self.request.method in SAFE_METHODS and not self.request.query_params.get(
-            "key"
+            'key'
         ):
             self.permission_classes = ProtectedAPIMixin.permission_classes
         return super().get_permissions()
 
     def get_authenticators(self):
-        if self.request.method in SAFE_METHODS and not self.request.GET.get("key"):
+        if self.request.method in SAFE_METHODS and not self.request.GET.get('key'):
             self.authentication_classes = ProtectedAPIMixin.authentication_classes
         return super().get_authenticators()
 
@@ -114,9 +139,9 @@ class DeviceMetricView(
     queryset = (
         DeviceData.objects.filter(organization__is_active=True)
         .only(
-            "_is_deactivated",
-            "id",
-            "key",
+            '_is_deactivated',
+            'id',
+            'key',
         )
         .all()
     )
@@ -129,7 +154,7 @@ class DeviceMetricView(
         """Called from signal receiver which performs cache invalidation"""
         view = cls()
         view.get_object.invalidate(view, str(instance.pk))
-        logger.debug(f"invalidated view cache for device ID {instance.pk}")
+        logger.debug(f'invalidated view cache for device ID {instance.pk}')
 
     @classmethod
     def invalidate_get_charts_cache(cls, instance, *args, **kwargs):
@@ -142,14 +167,186 @@ class DeviceMetricView(
         cls._get_charts.invalidate(None, None, pk)
 
     def get(self, request, pk):
-        # ensure valid UUID
+      
+
+# DPI aggregation block
+        if request.path.endswith('/dpi_summary_v2/'):
+            try:
+                rec = DPIRecord.objects.filter(device_id=pk).latest('created')
+            except DPIRecord.DoesNotExist:
+                logger.info(f'No DPIRecord found for device {pk}')
+                rec = None
+         
+            if rec is None:
+                return Response({'latest_raw': None}, status=200)
+
+            return Response({'latest_raw': rec.raw}, status=200)
+
+        # —— end DPI aggregation block ——
+#InerfaceEvents block
+        if request.path.endswith('/interface_event/'):
+            try:
+                rec = InerfaceEvents.objects.filter(device_id=pk).latest('created')
+            except InerfaceEvents.DoesNotExist:
+                logger.info(f'No DPIRecord found for device {pk}')
+                rec = None
+         
+            if rec is None:
+                return Response({'latest_raw': None}, status=200)
+
+            return Response({'latest_raw': rec.raw}, status=200)
+
+        # —— end InerfaceEvents block ——
+#InterfaceTraffic block
+        if request.path.endswith('/interface_traffic/'):
+            try:
+                rec = InterfaceTraffic.objects.filter(device_id=pk).latest('created')
+            except InterfaceTraffic.DoesNotExist:
+                logger.info(f'No DPIRecord found for device {pk}')
+                rec = None
+
+            if rec is None:
+                return Response({'latest_raw': None}, status=200)
+
+            return Response({'latest_raw': rec.raw}, status=200)
+
+        # —— end InterfaceTraffic block ——
+#InterfaceTraffic block
+        if request.path.endswith('/interface_list/'):
+            try:
+                rec = InterfaceList.objects.filter(device_id=pk).latest('created')
+            except InterfaceList.DoesNotExist:
+                logger.info(f'No DPIRecord found for device {pk}')
+                rec = None
+         
+            if rec is None:
+                return Response({'latest_raw': None}, status=200)
+
+            return Response({'latest_raw': rec.raw}, status=200)
+
+        # —— end InterfaceTraffic block ——
+
+        if request.path.endswith('/lat_qua_report/'):
+            try:
+                rec = LatquaList.objects.filter(device_id=pk).latest('created')
+            except LatquaList.DoesNotExist:
+                rec = None
+
+            if rec is None:
+                return Response({'latest_raw': None}, status=200)
+            return Response({'latest_raw': rec.raw}, status=200)
+
+# dpi_client_summary aggregation block
+        if request.path.endswith('/dpi_client_summary/'):
+            try:
+                rec = ClientSummary.objects.filter(device_id=pk).latest('created')
+            except ClientSummary.DoesNotExist:
+                logger.info(f'No ClientSummary found for device {pk}')
+                rec = None
+            if rec is None:
+                return Response({'latest_raw': None}, status=200)
+
+            return Response({'latest_raw': rec.raw}, status=200)
+
+        # —— end dpi_client_summary aggregation block ——
+
+        # —— Real Traffic aggregation block ——
+        if request.path.endswith('/real_traffic/'):
+            try:
+                rec = RealTraffic.objects.filter(device_id=pk).latest('created')
+            except RealTraffic.DoesNotExist:
+                logger.info(f'No RealTraffic found for device {pk}')
+                rec = None
+         
+            if rec is None:
+                return Response({'latest_raw': None}, status=200)
+
+            return Response({'latest_raw': rec.raw}, status=200)
+        
+
+        # —— TSIP Report aggregation block ——
+        if request.path.endswith('/tsipreport/'):
+            try:
+                rec = TSIPReport.objects.filter(device_id=pk).latest('created')
+            except TSIPReport.DoesNotExist:
+                logger.info(f'No TSIP Report found for device {pk}')
+                rec = None
+  
+            if rec is None:
+                return Response({'latest_raw': None}, status=200)
+
+            return Response({'latest_raw': rec.raw}, status=200)
+        # —— end TSIP Report block ——
+
+        # —— WAN Status aggregation block ——
+        if request.path.endswith('/wan_status/'):
+            try:
+                rec = WanStatus.objects.filter(device_id=pk).latest('created')
+            except WanStatus.DoesNotExist:
+                logger.info(f'No TSIP Report found for device {pk}')
+                rec = None
+  
+            if rec is None:
+                return Response({'latest_raw': None}, status=200)
+
+            return Response({'latest_raw': rec.raw}, status=200)
+        # —— end WanStatus  block ——
+
+        # —— ipsectunnel_list block ——
+        if request.path.endswith('/ipsectunnel_list/'):
+            try:
+                rec = IpsecTunnels.objects.filter(device_id=pk).latest('created')
+            except IpsecTunnels.DoesNotExist:
+                logger.info(f'No IpsecTunnels found for device {pk}')
+                rec = None
+  
+            if rec is None:
+                return Response({'latest_raw': None}, status=200)
+
+            return Response({'latest_raw': rec.raw}, status=200)
+        # —— end IpsecTunnels block ——
+
+        # —— configpush block ——
+        if request.path.endswith('/configpush/'):
+            try:
+                rec = ConfigPush.objects.filter(device_id=pk).latest('created')
+            except ConfigPush.DoesNotExist:
+                logger.info(f'No ConfigPush found for device {pk}')
+                rec = None
+  
+            if rec is None:
+                return Response({'latest_raw': None}, status=200)
+
+            return Response({'latest_raw': rec.raw}, status=200)
+        # —— end ConfigPush block ——
+
+
+
+        # —— timeseries aggregation block ——
+        if request.path.endswith('/timeseries/'):
+            try:
+                rec = SpokeStatus.objects.filter(device_id=pk).latest('created')
+            except SpokeStatus.DoesNotExist:
+                logger.info(f'No SpokeStatus found for device {pk}')
+                rec = None
+         
+            if rec is None:
+                return Response({'latest_raw': None}, status=200)
+
+            return Response({'latest_raw': rec.raw}, status=200)
+        
+
+
+
+        # fall back to the normal device‐metrics GET
+       
         try:
             pk = str(uuid.UUID(pk))
         except ValueError:
-            return Response({"detail": "not found"}, status=404)
+            return Response({'detail': 'not found'}, status=404)
         self.instance = self.get_object(pk)
         response = super().get(request, pk)
-        if not request.query_params.get("csv"):
+        if not request.query_params.get('csv'):
             charts_data = dict(response.data)
             device_metrics_data = MonitoringDeviceDetailSerializer(self.instance).data
             return Response(
@@ -157,16 +354,17 @@ class DeviceMetricView(
             )
         return response
 
+
     @cache_memoize(CACHE_TIMEOUT, args_rewrite=get_charts_args_rewrite)
     def _get_charts(self, request, *args, **kwargs):
         ct = ContentType.objects.get_for_model(Device)
         return Chart.objects.filter(
             metric__object_id=args[0], metric__content_type_id=ct.id
-        ).select_related("metric")
+        ).select_related('metric')
 
     def _get_additional_data(self, request, *args, **kwargs):
-        if request.query_params.get("status", False):
-            return {"data": self.instance.data}
+        if request.query_params.get('status', False):
+            return {'data': self.instance.data}
         return {}
 
     @cache_memoize(CACHE_TIMEOUT, args_rewrite=get_device_args_rewrite)
@@ -175,6 +373,218 @@ class DeviceMetricView(
 
     def post(self, request, pk):
         self.instance = self.get_object(pk)
+        
+        # —— DPI ingestion block ——
+        if request.path.endswith('/dpi_summary_v2/'):
+            payload = request.data
+            ts = request.query_params.get('time')
+            timestamp = parse_datetime(ts) if ts else None
+            if timestamp is None:
+                timestamp = timezone.now()
+            serializer = DPIRecordSerializer(data={
+                'timestamp': timestamp,
+                'raw':       payload,
+            })
+            serializer.is_valid(raise_exception=True)
+         
+            serializer.save(device=self.instance)
+         
+            return Response({'status': 'ok'}, status=status.HTTP_200_OK)
+       # —— end DPI block ——
+        # —— InerfaceEventsSerializer block ——
+        if request.path.endswith('/interface_event/'):
+            payload = request.data
+            ts = request.query_params.get('time')
+            timestamp = parse_datetime(ts) if ts else None
+            if timestamp is None:
+                timestamp = timezone.now()
+            serializer = InerfaceEventsSerializer(data={
+                'timestamp': timestamp,
+                'raw':       payload,
+            })
+            serializer.is_valid(raise_exception=True)
+         
+            serializer.save(device=self.instance)
+         
+            return Response({'status': 'ok'}, status=status.HTTP_200_OK)
+       # —— end InerfaceEventsSerializer——
+        # —— InterfaceListSerializer block ——
+        if request.path.endswith('/interface_list/'):
+            payload = request.data
+            ts = request.query_params.get('time')
+            timestamp = parse_datetime(ts) if ts else None
+            if timestamp is None:
+                timestamp = timezone.now()
+            serializer = InterfaceListSerializer(data={
+                'timestamp': timestamp,
+                'raw':       payload,
+            })
+            serializer.is_valid(raise_exception=True)
+         
+            serializer.save(device=self.instance)
+         
+            return Response({'status': 'ok'}, status=status.HTTP_200_OK)
+       # —— end InterfaceListSerializer
+        # —— InterfaceTrafficSerializer block ——
+        if request.path.endswith('/interface_traffic/'):
+            payload = request.data
+            ts = request.query_params.get('time')
+            timestamp = parse_datetime(ts) if ts else None
+            if timestamp is None:
+                timestamp = timezone.now()
+            serializer = InterfaceTrafficSerializer(data={
+                'timestamp': timestamp,
+                'raw':       payload,
+            })
+            serializer.is_valid(raise_exception=True)
+         
+            serializer.save(device=self.instance)
+         
+            return Response({'status': 'ok'}, status=status.HTTP_200_OK)
+       # —— end InterfaceTrafficSerializer
+        # —— DPI ingestion block ——
+        if request.path.endswith('/dpi_client_summary/'):
+            payload = request.data
+            ts = request.query_params.get('time')
+            timestamp = parse_datetime(ts) if ts else None
+            if timestamp is None:
+                timestamp = timezone.now()
+            serializer = ClientreportSerializer(data={
+                'timestamp': timestamp,
+                'raw':       payload,
+            })
+            serializer.is_valid(raise_exception=True)
+         
+            serializer.save(device=self.instance)
+         
+            return Response({'status': 'ok'}, status=status.HTTP_200_OK)
+       # —— end DPI block ——
+        # —— real_traffic ingestion block ——
+        if request.path.endswith('/real_traffic/'):
+            payload = request.data
+            ts = request.query_params.get('time')
+            timestamp = parse_datetime(ts) if ts else None
+            if timestamp is None:
+                timestamp = timezone.now()
+            serializer = RealTrafficSerializer(data={
+                'timestamp': timestamp,
+                'raw':       payload,
+            })
+            serializer.is_valid(raise_exception=True)
+         
+            serializer.save(device=self.instance)
+         
+            return Response({'status': 'ok'}, status=status.HTTP_200_OK)
+       # —— end real_traffic block ——
+        # —— TSIP Report ——
+        if request.path.endswith('/tsipreport/'):
+            payload = request.data
+            ts = request.query_params.get('time')
+            timestamp = parse_datetime(ts) if ts else None
+            if timestamp is None:
+                timestamp = timezone.now()
+            serializer = TSIPreportSerializer(data={
+                'timestamp': timestamp,
+                'raw':       payload,
+            })
+            serializer.is_valid(raise_exception=True)
+         
+            serializer.save(device=self.instance)
+         
+            return Response({'status': 'ok'}, status=status.HTTP_200_OK)
+       # —— end TSIP Report block ——
+
+  # —— LatquaListSerializer block ——
+        if request.path.endswith('/lat_qua_report/'):
+            payload = request.data
+            ts = request.query_params.get('time')
+            timestamp = parse_datetime(ts) if ts else None
+            if timestamp is None:
+                timestamp = timezone.now()
+            serializer = LatquaListSerializer(data={
+                'timestamp': timestamp,
+                'raw':       payload,
+            })
+            serializer.is_valid(raise_exception=True)
+         
+            serializer.save(device=self.instance)
+         
+            return Response({'status': 'ok'}, status=status.HTTP_200_OK)
+       # —— end LatquaListSerializer
+  # —— WanStatus block ——
+        if request.path.endswith('/wan_status/'):
+            payload = request.data
+            ts = request.query_params.get('time')
+            timestamp = parse_datetime(ts) if ts else None
+            if timestamp is None:
+                timestamp = timezone.now()
+            serializer = WanStatusSerializer(data={
+                'timestamp': timestamp,
+                'raw':       payload,
+            })
+            serializer.is_valid(raise_exception=True)
+         
+            serializer.save(device=self.instance)
+         
+            return Response({'status': 'ok'}, status=status.HTTP_200_OK)
+       # —— end WanStatus
+  # —— ipsectunnel_list block ——
+        if request.path.endswith('/ipsectunnel_list/'):
+            payload = request.data
+            ts = request.query_params.get('time')
+            timestamp = parse_datetime(ts) if ts else None
+            if timestamp is None:
+                timestamp = timezone.now()
+            serializer = IpsecTunnelsSerializer(data={
+                'timestamp': timestamp,
+                'raw':       payload,
+            })
+            serializer.is_valid(raise_exception=True)
+         
+            serializer.save(device=self.instance)
+         
+            return Response({'status': 'ok'}, status=status.HTTP_200_OK)
+       # —— end WanStatus
+
+
+  # —— timeseries block ——
+        if request.path.endswith('/timeseries/'):
+            payload = request.data
+            ts = request.query_params.get('time')
+            timestamp = parse_datetime(ts) if ts else None
+            if timestamp is None:
+                timestamp = timezone.now()
+            serializer = SpokeStatusSerializer(data={
+                'timestamp': timestamp,
+                'raw':       payload,
+            })
+            serializer.is_valid(raise_exception=True)
+         
+            serializer.save(device=self.instance)
+         
+            return Response({'status': 'ok'}, status=status.HTTP_200_OK)
+       # —— end WanStatus
+      
+
+  # —— configpush block ——
+        if request.path.endswith('/configpush/'):
+            payload = request.data
+            ts = request.query_params.get('time')
+            timestamp = parse_datetime(ts) if ts else None
+            if timestamp is None:
+                timestamp = timezone.now()
+            serializer = ConfigPushSerializer(data={
+                'timestamp': timestamp,
+                'raw':       payload,
+            })
+            serializer.is_valid(raise_exception=True)
+         
+            serializer.save(device=self.instance)
+         
+            return Response({'status': 'ok'}, status=status.HTTP_200_OK)
+       # —— end configpush block ——
+
+
         if self.instance._is_deactivated:
             # If the device is deactivated, do not accept data.
             # We don't use "Device.is_deactivated()" to avoid
@@ -188,15 +598,15 @@ class DeviceMetricView(
             logger.info(e.message)
             return Response(e.message, status=status.HTTP_400_BAD_REQUEST)
         time_obj = request.query_params.get(
-            "time", now().utcnow().strftime("%d-%m-%Y_%H:%M:%S.%f")
+            'time', now().utcnow().strftime('%d-%m-%Y_%H:%M:%S.%f')
         )
-        current = request.query_params.get("current", False)
+        current = request.query_params.get('current', False)
         try:
-            time = datetime.strptime(time_obj, "%d-%m-%Y_%H:%M:%S.%f").replace(
+            time = datetime.strptime(time_obj, '%d-%m-%Y_%H:%M:%S.%f').replace(
                 tzinfo=UTC
             )
         except ValueError:
-            return Response({"detail": _("Incorrect time format")}, status=400)
+            return Response({'detail': _('Incorrect time format')}, status=400)
         # writing data is intensive, let's pass that to the background workers
         write_device_metrics.delay(
             str(self.instance.pk), self.instance.data, time=time_obj, current=current
@@ -209,7 +619,8 @@ class DeviceMetricView(
             current=current,
         )
         return Response(None)
-
+    
+    
 
 device_metric = DeviceMetricView.as_view()
 
@@ -219,25 +630,25 @@ class MonitoringGeoJsonLocationList(GeoJsonLocationList):
     queryset = (
         Location.objects.filter(devicelocation__isnull=False)
         .annotate(
-            device_count=Count("devicelocation"),
+            device_count=Count('devicelocation'),
             ok_count=Count(
-                "devicelocation",
-                filter=Q(devicelocation__content_object__monitoring__status="ok"),
+                'devicelocation',
+                filter=Q(devicelocation__content_object__monitoring__status='ok'),
             ),
             problem_count=Count(
-                "devicelocation",
-                filter=Q(devicelocation__content_object__monitoring__status="problem"),
+                'devicelocation',
+                filter=Q(devicelocation__content_object__monitoring__status='problem'),
             ),
             critical_count=Count(
-                "devicelocation",
-                filter=Q(devicelocation__content_object__monitoring__status="critical"),
+                'devicelocation',
+                filter=Q(devicelocation__content_object__monitoring__status='critical'),
             ),
             unknown_count=Count(
-                "devicelocation",
-                filter=Q(devicelocation__content_object__monitoring__status="unknown"),
+                'devicelocation',
+                filter=Q(devicelocation__content_object__monitoring__status='unknown'),
             ),
         )
-        .order_by("-created")
+        .order_by('-created')
     )
 
 
@@ -248,7 +659,7 @@ class MonitoringLocationDeviceList(LocationDeviceList):
     serializer_class = MonitoringLocationDeviceSerializer
 
     def get_queryset(self):
-        return super().get_queryset().select_related("monitoring").order_by("name")
+        return super().get_queryset().select_related('monitoring').order_by('name')
 
 
 monitoring_location_device_list = MonitoringLocationDeviceList.as_view()
@@ -264,25 +675,25 @@ class MonitoringNearbyDeviceList(
     permission_classes = []
 
     def get_queryset(self):
-        qs = Device.objects.select_related("monitoring")
-        location_lookup = Q(devicelocation__content_object_id=self.kwargs["pk"])
-        device_key = self.request.query_params.get("key")
+        qs = Device.objects.select_related('monitoring')
+        location_lookup = Q(devicelocation__content_object_id=self.kwargs['pk'])
+        device_key = self.request.query_params.get('key')
         if device_key:
             location_lookup &= Q(devicelocation__content_object__key=device_key)
         if not self.request.user.is_superuser and not device_key:
             qs = self.get_organization_queryset(qs)
         location = get_object_or_404(Location.objects, location_lookup)
         return (
-            qs.exclude(id=self.kwargs["pk"])
+            qs.exclude(id=self.kwargs['pk'])
             .filter(
                 devicelocation__isnull=False,
             )
             .annotate(
                 distance=Round(
-                    Distance("devicelocation__location__geometry", location.geometry)
+                    Distance('devicelocation__location__geometry', location.geometry)
                 )
             )
-            .order_by("distance")
+            .order_by('distance')
         )
 
 
@@ -300,12 +711,12 @@ class MonitoringDeviceList(DeviceListCreateView):
     """
 
     serializer_class = MonitoringDeviceListSerializer
-    http_method_names = ["get", "head", "options"]
+    http_method_names = ['get', 'head', 'options']
     filter_backends = [DjangoFilterBackend]
     filterset_class = MonitoringDeviceFilter
 
     def get_queryset(self):
-        return super().get_queryset().select_related("monitoring").order_by("name")
+        return super().get_queryset().select_related('monitoring').order_by('name')
 
 
 monitoring_device_list = MonitoringDeviceList.as_view()
@@ -313,9 +724,9 @@ monitoring_device_list = MonitoringDeviceList.as_view()
 
 class WifiSessionListView(ProtectedAPIMixin, FilterByOrganizationManaged, ListAPIView):
     queryset = WifiSession.objects.select_related(
-        "device", "wifi_client", "device__organization", "device__group"
+        'device', 'wifi_client', 'device__organization', 'device__group'
     )
-    organization_field = "device__organization"
+    organization_field = 'device__organization'
     filter_backends = [DjangoFilterBackend]
     pagination_class = ListViewPagination
     filterset_class = WifiSessionFilter
@@ -329,10 +740,11 @@ class WifiSessionDetailView(
     ProtectedAPIMixin, FilterByOrganizationManaged, RetrieveAPIView
 ):
     queryset = WifiSession.objects.select_related(
-        "device", "wifi_client", "device__organization"
+        'device', 'wifi_client', 'device__organization'
     )
-    organization_field = "device__organization"
+    organization_field = 'device__organization'
     serializer_class = WifiSessionSerializer
 
 
 wifi_session_detail = WifiSessionDetailView.as_view()
+
