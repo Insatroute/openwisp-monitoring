@@ -472,20 +472,12 @@
 {% leaflet_css %}
 
 <style>
-  @media screen and (min-width: 1380px) and (max-width: 1500px) {
-    .svg-container {
-      width: 360px !important;
-    }
-
-    .toggle-menu #plot-container {}
-
+  .svg-container .main-svg{
+    background: rgb(255 255 255 / 0%) !important;
   }
 
+
   @media screen and (min-width: 1280px) and (max-width: 1379px) {
-    .svg-container {
-      background-color: #ffffff !important;
-      width: 337px !important;
-    }
 
     .data-card {
       width: 85%;
@@ -508,7 +500,7 @@
   }
 
   #plot-container {
-    padding: 0.325rem 1.2rem !important;
+    padding: 0.325rem 0.2rem !important;
     overflow-x: unset !important;
   }
 
