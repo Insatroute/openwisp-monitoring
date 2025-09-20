@@ -39,19 +39,35 @@ td.field-health_status,
   text-transform: uppercase;
 }
 .health-deactivated {
-  color: #000;
+  color: #fff;
+  background: #333;
+  padding: 5px 10px;
+  border-radius: 30px;
 }
 .health-unknown {
-  color: grey;
+  color: #333;
+  background: #e0e0e0;
+  padding: 5px 10px;
+  border-radius: 30px;
+  
 }
 .health-ok {
-  color: green;
+  color: #fff;
+  background: #28a745;
+  padding: 5px 10px;
+  border-radius: 30px;
 }
 .health-problem {
-  color: orange;
+  color: #333;
+  background: orange;
+  padding: 5px 10px;
+  border-radius: 30px;
 }
 .health-critical {
-  color: red;
+  color: #fff;
+  background: #dc3545;
+  padding: 5px 10px;
+  border-radius: 30px;
 }
 #ow-device-status table.addresses td {
   width: 50%;
