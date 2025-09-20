@@ -469,6 +469,7 @@ async function fetchAndDisplayTopBranchesChart() {
     const resp = await fetch('https://3.111.114.217/top-devices-simple/?format=api&limit=5&org=ALL&time=7d');
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const json = await resp.json();
+    console.log('Top branches data:', json);
 
     const devices = json.top || [];
     if (devices.length === 0) {
@@ -529,7 +530,6 @@ async function fetchAndDisplayTopBranchesChart() {
       }
     });
   } catch (err) {
-    console.error('Error fetching top branches:', err);
     loadingEl.innerText = "Error loading data";
   }
 }
