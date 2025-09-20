@@ -81,6 +81,8 @@
   </div>
 </div>
 
+
+
 <div class="card-grid graph-grid">
   <div class="card-app top-apps">
     <h4>
@@ -92,16 +94,15 @@
     </div>
   </div>
 
-  <div class="card-app top-branches">
+  <div class="card-app top-apps">
     <h4>
       <span>Top Branches</span>
     </h4>
-    <div class="chart-container" id="top-branches-chart-container">
-      <div id="branches-chart-loading" class="loading-text">Loading…/ No Data</div>
-      <canvas id="topBranchesChart"></canvas>
+     <div class="chart-container" id="top-devices-chart-container">
+      <div id="chart-loading-devices" class="loading-text">Loading…/ No Data</div>
+      <canvas id="topDevicesChart"></canvas>
     </div>
   </div>
-
 </div>
 
 
@@ -346,12 +347,15 @@
       });
 
       // convert KB → MB (assuming your incoming values are KB)
-      const valuesMB = sorted.map(item => {
-        const kb = item[1];
-        return +(kb / 1024).toFixed(1);     // e.g. 77010 KB → 75.2 MB
-      });
-
-      const maxMB = Math.max(...valuesMB);
+   const values = sorted.map(item => {
+  const bytes = item[1];
+  const mb = bytes / (1024 * 1024);
+  if (mb >= 1000) {
+    return { value: +(mb / 1024).toFixed(2), unit: 'GB' };
+  } else {
+    return { value: +mb.toFixed(1), unit: 'MB' };
+  }
+});
       // 6. Render horizontal bar chart using Chart.js
       // Ensure your HTML includes:
       // <div id="top-apps-chart-container">
@@ -372,73 +376,74 @@
       }
 
       const ctx = document.getElementById('topAppsChart').getContext('2d');
-      new Chart(ctx, {
-        type: 'bar',
-        data: {
-          labels,
-          datasets: [
-
-            {
-              // colored value bars in MB
-              data: valuesMB,
-              backgroundColor: '#00acea',
-              borderRadius: 10,
-              barPercentage: 0.5,
-              categoryPercentage: 0.5,
-              barThickness: 8,
-              stack: 'stack0',
-              order: 2
-            }
-          ]
+    new Chart(ctx, {
+  type: 'bar',
+  data: {
+    labels,
+    datasets: [
+      {
+        data: values.map(v => v.value),
+        backgroundColor: '#00acea',
+        borderRadius: 10,
+        barPercentage: 0.5,
+        categoryPercentage: 0.5,
+        barThickness: 8,
+        stack: 'stack0',
+        order: 2
+      }
+    ]
+  },
+  options: {
+    indexAxis: 'y',
+    scales: {
+      x: {
+        beginAtZero: true,
+        title: {
+          display: true,
+          text: 'Total Traffic',
+          font: { size: 10, weight: '500' }
         },
-        options: {
-          indexAxis: 'y',
-          scales: {
-            x: {
-              stacked: true,
-              beginAtZero: true,
-              title: {
-                display: true,
-                text: 'Total (MB)',
-                font: { size: 10, weight: '500' }
-              },
-              // turn your tick labels into “XX MB”
-              ticks: {
-                callback: val => `${val} MB`
-              },
-              grid: { display: false }
-            },
-            y: {
-              stacked: true,
-              grid: { display: false },
-              ticks: {
-                font: { size: 12, weight: '500' }
-              }
-            }
-          },
-          plugins: {
-            legend: { display: false },
-            title: {
-              display: false,
-              text: 'Top 5 Applications (Aggregated)'
-            },
-            tooltip: {
-              callbacks: {
-                label: ctx => ` ${ctx.parsed.x} MB`
-              }
-            },
-            datalabels: {
-              anchor: 'end',
-              align: 'end',
-              offset: 6,
-              formatter: val => `${val} MB`,
-              font: { weight: '500', size: 10 }
-            }
-          },
-          responsive: true,
-          maintainAspectRatio: false
+        ticks: {
+          callback: (val, index) => {
+            const unit = values[index]?.unit || 'MB';
+            return `${val} ${unit}`;
+          }
+        },
+        grid: { display: false }
+      },
+      y: {
+        grid: { display: false },
+        ticks: {
+          font: { size: 12, weight: '500' }
         }
-      });
+      }
+    },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: ctx => {
+            const unit = values[ctx.dataIndex]?.unit || 'MB';
+            return ` ${ctx.parsed.x} ${unit}`;
+          }
+        }
+      },
+      datalabels: {
+        anchor: 'end',
+        align: 'end',
+        offset: 6,
+        formatter: (val, ctx) => {
+          const unit = values[ctx.dataIndex]?.unit || 'MB';
+          return `${val} ${unit}`;
+        },
+        font: { weight: '500', size: 10 }
+      }
+    },
+    responsive: true,
+    maintainAspectRatio: false
+  }
+});
+
     } catch (error) {
       console.error('Error fetching top_apps:', error);
       const chartContainer = document.getElementById('top-apps-chart-container');
@@ -457,85 +462,6 @@
 
 
   });
-
-async function fetchAndDisplayTopBranchesChart() {
-  const loadingEl = document.getElementById('branches-chart-loading');
-  const canvas = document.getElementById('topBranchesChart');
-
-  loadingEl.style.display = 'block';
-  canvas.style.display = 'none';
-
-  try {
-    const resp = await fetch('https://3.111.114.217/top-devices-simple/?format=api&limit=5&org=ALL&time=7d');
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    const json = await resp.json();
-    console.log('Top branches data:', json);
-
-    const devices = json.top || [];
-    if (devices.length === 0) {
-      loadingEl.innerText = "No data available";
-      return;
-    }
-
-    // Prepare chart data
-    const labels = devices.map(d => d.name);
-    const values = devices.map(d => +(d.total_gb).toFixed(2));
-
-    // Hide loading
-    loadingEl.style.display = 'none';
-    canvas.style.display = '';
-
-    // Destroy old chart if exists
-    const existing = Chart.getChart('topBranchesChart');
-    if (existing) existing.destroy();
-
-    const ctx = canvas.getContext('2d');
-    new Chart(ctx, {
-      type: 'bar',
-      data: {
-        labels,
-        datasets: [{
-          label: 'Usage (GB)',
-          data: values,
-          backgroundColor: '#4a90e2',
-          borderRadius: 10,
-          barPercentage: 0.5,
-          categoryPercentage: 0.5,
-          barThickness: 8
-        }]
-      },
-      options: {
-        indexAxis: 'y',
-        scales: {
-          x: {
-            beginAtZero: true,
-            title: { display: true, text: 'Total (GB)', font: { size: 10 } },
-            ticks: { callback: val => `${val} GB` },
-            grid: { display: false }
-          },
-          y: { grid: { display: false } }
-        },
-        plugins: {
-          legend: { display: false },
-          datalabels: {
-            anchor: 'end',
-            align: 'end',
-            offset: 6,
-            formatter: val => `${val} GB`,
-            font: { weight: '500', size: 10 }
-          }
-        },
-        responsive: true,
-        maintainAspectRatio: false
-      }
-    });
-  } catch (err) {
-    loadingEl.innerText = "Error loading data";
-  }
-}
-
-fetchAndDisplayTopBranchesChart();
-
   // Fetch device data every 30 seconds
   setInterval(() => {
     fetchDeviceData();
@@ -545,8 +471,121 @@ fetchAndDisplayTopBranchesChart();
   // Fetch top apps chart every 30 seconds
   setInterval(fetchAndDisplayTopAppsChart, 30000);
 
-// Refresh every 30 seconds
-setInterval(fetchAndDisplayTopBranchesChart, 300000);
+
+
+
+
+   const TOP_DEVICES_URL = 'https://3.111.114.217/top-devices-simple/';
+
+  // Helper: format bytes nicely (GB/TB etc.)
+  function humanBytesShort(b) {
+    const KB = 1024, MB = KB**2, GB = KB**3, TB = KB**4;
+    if (b >= TB) return (b/TB).toFixed(2) + ' TB';
+    if (b >= GB) return (b/GB).toFixed(2) + ' GB';
+    if (b >= MB) return (b/MB).toFixed(1) + ' MB';
+    if (b >= KB) return (b/KB).toFixed(0) + ' KB';
+    return (b||0) + ' B';
+  }
+
+  async function fetchAndDisplayTopDevicesChart({
+
+    
+    org = 'ALL', time = '7d', limit = 5, wan_ifs = ''   // leave wan_ifs blank to sum all interfaces
+  } = {}) {
+   
+    const loader = document.getElementById('chart-loading-devices');
+    const canvas = document.getElementById('topDevicesChart');
+    const container = document.getElementById('top-devices-chart-container');
+
+    loader.style.display = 'block';
+    canvas.style.display = 'none';
+
+    const qs = new URLSearchParams({ org, time, limit, include_org: '1' });
+    if (wan_ifs) qs.set('wan_ifs', wan_ifs);
+
+    try {
+      const resp = await fetch(`${TOP_DEVICES_URL}?${qs.toString()}`, { credentials: 'include' });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const json = await resp.json();
+      console.log('Top Devices data:', json);
+
+      const rows = (json.top || []).slice(0, limit);
+      if (!rows.length) {
+        loader.textContent = 'No Data';
+        return;
+      }
+
+      const labels = rows.map(r => r.name || r.device_id);
+      const valuesGB = rows.map(r => (typeof r.total_gb === 'number')
+        ? +r.total_gb
+        : +( (r.total_bytes || 0) / (1024**3) ).toFixed(3)
+      );
+
+      // Destroy previous chart if present
+      const existing = Chart.getChart('topDevicesChart');
+      if (existing) existing.destroy();
+
+      const ctx = canvas.getContext('2d');
+      new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{
+            data: valuesGB,
+            backgroundColor: '#00acea',
+            borderRadius: 10,
+            barThickness: 8,
+            barPercentage: 0.5,
+            categoryPercentage: 0.5
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: {
+              beginAtZero: true,
+              grid: { display: false },
+              title: { display: true, text: 'Total (GB)', font: { size: 10, weight: '500' } },
+              ticks: {
+                callback: (v) => `${v} GB`
+              }
+            },
+            y: {
+              grid: { display: false },
+              ticks: { font: { size: 12, weight: '500' } }
+            }
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => ` ${ctx.parsed.x.toFixed(2)} GB`
+              }
+            },
+            datalabels: {
+              anchor: 'end',
+              align: 'end',
+              offset: 6,
+              formatter: (v, ctx) => `${v.toFixed(2)} GB`,
+              font: { weight: '500', size: 10 }
+            }
+          }
+        }
+      });
+
+      loader.style.display = 'none';
+      canvas.style.display = '';
+    } catch (e) {
+      console.error('Top Devices error:', e);
+      loader.textContent = 'Error loading data';
+    }
+  }
+
+  // Initial draw + refresh every 30s (matches your other intervals)
+  fetchAndDisplayTopDevicesChart(); 
+  setInterval(fetchAndDisplayTopDevicesChart, 300000);
 
 </script>
 
@@ -596,7 +635,7 @@ setInterval(fetchAndDisplayTopBranchesChart, 300000);
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     max-width: 1800px;
     margin: 0 auto;
-    padding: 25px 25px 25px 25px;
+    padding: 10px 25px 25px 25px;
   }
 
 
@@ -731,7 +770,7 @@ setInterval(fetchAndDisplayTopBranchesChart, 300000);
   .chart-container canvas {
 
     width: 100% !important;
-    height: 150px !important;
+    height: 160px !important;
 
   }
 
