@@ -41,16 +41,16 @@
     <h4>Devices</h4>
     <div class="stats">
       <div class="stat-item">
-        <span class="badge badge-gray" id="total-devices">Loading…</span>
-        <span class="label">Total</span>
+        <span class="badge badge-gray" id="total-devices">0</span>
+        <span class="card-label">Total</span>
       </div>
       <div class="stat-item">
-        <span class="badge badge-green" id="monitoring-ok">Loading…</span>
-        <span class="label">Online</span>
+        <span class="badge badge-green" id="monitoring-ok">0</span>
+        <span class="card-label">Online</span>
       </div>
       <div class="stat-item">
-        <span class="badge badge-red" id="monitoring-critical">Loading…</span>
-        <span class="label">Offline</span>
+        <span class="badge badge-red" id="monitoring-critical">0</span>
+        <span class="card-label">Offline</span>
       </div>
     </div>
   </div>
@@ -60,16 +60,16 @@
     <h4>Tunnels</h4>
     <div class="stats">
       <div class="stat-item">
-        <span class="badge badge-gray" id="spoke-total">Loading…</span>
-        <span class="label">Total</span>
+        <span class="badge badge-gray" id="spoke-total">0</span>
+        <span class="card-label">Total</span>
       </div>
       <div class="stat-item">
-        <span class="badge badge-green" id="spoke-active">Loading…</span>
-        <span class="label">Active</span>
+        <span class="badge badge-green" id="spoke-active">0</span>
+        <span class="card-label">Active</span>
       </div>
       <div class="stat-item">
-        <span class="badge badge-yellow" id="spoke-pending">Loading…</span>
-        <span class="label">Pending</span>
+        <span class="badge badge-yellow" id="spoke-pending">0</span>
+        <span class="card-label">Pending</span>
       </div>
     </div>
   </div>
@@ -80,7 +80,7 @@
     <div class="stats">
       <div class="stat-item">
         <span class="badge badge-gray" id="total-links">10</span>
-        <span class="label">Links</span>
+        <span class="card-label">Links</span>
       </div>
     </div>
   </div>
@@ -744,46 +744,12 @@
     font-weight: 500;
   }
 
-  .device-btn {
-    background-color: #4a555f;
-  }
-
-  .tunnel-btn {
-    background-color: #4a555f;
-  }
-
-  .link-btn {
-    background-color: #4a555f;
-  }
-
-  .activelink-btn {
-    background-color: #4a555f;
-  }
-
   .chart-container canvas {
 
     width: 100% !important;
     height: 160px !important;
 
   }
-
-  .card.devices {
-    border-top: 4px solid #353b44;
-  }
-
-  .card.tunnels {
-    border-top: 4px solid #353b44;
-  }
-
-  .card.total-links {
-    border-top: 4px solid #353b44;
-  }
-
-  .card.link-active {
-    border-top: 4px solid #353b44;
-  }
-
-
 
   .toggle-menu .svg-container {
     width: 382px !important;
@@ -848,7 +814,7 @@
   .badge-red { background: #dc3545; color: #fff; }
   .badge-yellow { background: #ffc107; color: #333; }
 
-  .label {
+  .card-label {
     font-size: 12px;
     color: #666;
   }
