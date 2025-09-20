@@ -36,50 +36,68 @@
 
 <div class="card-grid">
 
-  <div class="card data-card networks">
-    <button class="network-button device-btn">DEVICES</button>
-    <h4>
-      <span>Total/Online/Offline</span>
-    </h4>
-    <div class="network-body">
-      <span class="globe-icon">&#127760;</span>
-      <span><span id="total-devices">Loading...</span> / <span id="monitoring-ok">Loading...</span> / <span
-          id="monitoring-critical">Loading...</span></span>
+  <!-- Devices Card -->
+  <div class="card">
+    <h4>Devices</h4>
+    <div class="stats">
+      <div class="stat-item">
+        <span class="badge badge-gray" id="total-devices">Loading…</span>
+        <span class="label">Total</span>
+      </div>
+      <div class="stat-item">
+        <span class="badge badge-green" id="monitoring-ok">Loading…</span>
+        <span class="label">Online</span>
+      </div>
+      <div class="stat-item">
+        <span class="badge badge-red" id="monitoring-critical">Loading…</span>
+        <span class="label">Offline</span>
+      </div>
     </div>
   </div>
-  <div class="card data-card networks">
-    <button class="network-button tunnel-btn">TUNNELS</button>
-    <h4>
-      <span>Total/Active/Pending</span>
 
-    </h4>
-    <div class="network-body">
-      <span class="globe-icon">&#127760;</span>
-      <span class="network-stats"><span id="spoke-total">Loading...</span> / <span id="spoke-active">Loading...</span> /
-        <span id="spoke-pending">Loading...</span></span>
+  <!-- Tunnels Card -->
+  <div class="card">
+    <h4>Tunnels</h4>
+    <div class="stats">
+      <div class="stat-item">
+        <span class="badge badge-gray" id="spoke-total">Loading…</span>
+        <span class="label">Total</span>
+      </div>
+      <div class="stat-item">
+        <span class="badge badge-green" id="spoke-active">Loading…</span>
+        <span class="label">Active</span>
+      </div>
+      <div class="stat-item">
+        <span class="badge badge-yellow" id="spoke-pending">Loading…</span>
+        <span class="label">Pending</span>
+      </div>
     </div>
   </div>
-  <div class="card data-card networks">
-    <button class="network-button link-btn">TOTAL LINKS</button>
-    <h4>
 
-    </h4>
-    <div class="network-body">
-      <span class="globe-icon">&#127760;</span>
-      <span class="network-stats">10</span>
+  <!-- Total Links Card -->
+  <div class="card">
+    <h4>Total Links</h4>
+    <div class="stats">
+      <div class="stat-item">
+        <span class="badge badge-gray" id="total-links">10</span>
+        <span class="label">Links</span>
+      </div>
     </div>
   </div>
-  <div class="card data-card networks">
-    <button class="network-button activelink-btn">ACTIVE LINKS</button>
-    <h4>
 
-    </h4>
-    <div class="network-body">
-      <span class="globe-icon">&#127760;</span>
-      <span class="network-stats">10</span>
+  <!-- Active Links Card -->
+  <div class="card">
+    <h4>Active Links</h4>
+    <div class="stats">
+      <div class="stat-item">
+        <span class="badge badge-green" id="active-links">10</span>
+        <span class="label">Active</span>
+      </div>
     </div>
   </div>
+
 </div>
+
 
 
 
@@ -601,11 +619,6 @@
       width: 85%;
     }
 
-    .card {
-      width: 85% !important;
-
-    }
-
   }
 
 
@@ -628,12 +641,13 @@
 
 
   .card-grid {
+    width: 96%;
     display: grid;
-    grid-gap: 1rem;
+    grid-gap: 2rem;
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     max-width: 1800px;
     margin: 0 auto;
-    padding: 10px 25px 25px 25px;
+    padding: 15px 20px 15px 20px;
   }
 
 
@@ -641,7 +655,7 @@
     background-color: #ffffff;
     border-radius: 8px;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-    padding: 1rem 1rem 1rem 2rem;
+    padding: 1rem 1rem 1rem 1rem;
     text-align: center;
     width: 90%;
   }
@@ -659,7 +673,7 @@
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
     padding: 1rem 1rem 1rem 1rem;
     text-align: center;
-    width: 90%;
+    width: 96%;
   }
 
   .data-card {
@@ -790,7 +804,9 @@
   }
 
   .map-view {
-    padding: 25px 40px 25px 40px;
+    padding: 25px 25px 25px 25px;
+    margin: 0 auto;
+    width: 96%
   }
 
   #device-map-container {
@@ -804,5 +820,36 @@
 
   #topAppsChart {
     height: 170px !important;
+  }
+  /* Stats redesigned */
+  .stats {
+    display: flex;
+    justify-content: space-around;
+    margin-top: 10px;
+  }
+
+  .stat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-size: 13px;
+  }
+
+  .badge {
+    padding: 5px 10px;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 13px;
+    margin-bottom: 4px;
+  }
+
+  .badge-gray { background: #e0e0e0; color: #333; }
+  .badge-green { background: #28a745; color: #fff; }
+  .badge-red { background: #dc3545; color: #fff; }
+  .badge-yellow { background: #ffc107; color: #333; }
+
+  .label {
+    font-size: 12px;
+    color: #666;
   }
 </style>
