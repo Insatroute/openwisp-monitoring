@@ -81,8 +81,6 @@
   </div>
 </div>
 
-
-
 <div class="card-grid graph-grid">
   <div class="card-app top-apps">
     <h4>
@@ -94,15 +92,16 @@
     </div>
   </div>
 
-  <div class="card-app top-apps">
+  <div class="card-app top-branches">
     <h4>
       <span>Top Branches</span>
     </h4>
-    <div class="chart-container">
-      <div id="chart-loading" class="loading-text">Loading…/ No Data</div>
-      <canvas id="topAppsChart"></canvas>
+    <div class="chart-container" id="top-branches-chart-container">
+      <div id="branches-chart-loading" class="loading-text">Loading…/ No Data</div>
+      <canvas id="topBranchesChart"></canvas>
     </div>
   </div>
+
 </div>
 
 
@@ -458,6 +457,85 @@
 
 
   });
+
+async function fetchAndDisplayTopBranchesChart() {
+  const loadingEl = document.getElementById('branches-chart-loading');
+  const canvas = document.getElementById('topBranchesChart');
+
+  loadingEl.style.display = 'block';
+  canvas.style.display = 'none';
+
+  try {
+    const resp = await fetch('https://3.111.114.217/top-devices-simple/?format=api&limit=5&org=ALL&time=7d');
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const json = await resp.json();
+
+    const devices = json.top || [];
+    if (devices.length === 0) {
+      loadingEl.innerText = "No data available";
+      return;
+    }
+
+    // Prepare chart data
+    const labels = devices.map(d => d.name);
+    const values = devices.map(d => +(d.total_gb).toFixed(2));
+
+    // Hide loading
+    loadingEl.style.display = 'none';
+    canvas.style.display = '';
+
+    // Destroy old chart if exists
+    const existing = Chart.getChart('topBranchesChart');
+    if (existing) existing.destroy();
+
+    const ctx = canvas.getContext('2d');
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Usage (GB)',
+          data: values,
+          backgroundColor: '#4a90e2',
+          borderRadius: 10,
+          barPercentage: 0.5,
+          categoryPercentage: 0.5,
+          barThickness: 8
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        scales: {
+          x: {
+            beginAtZero: true,
+            title: { display: true, text: 'Total (GB)', font: { size: 10 } },
+            ticks: { callback: val => `${val} GB` },
+            grid: { display: false }
+          },
+          y: { grid: { display: false } }
+        },
+        plugins: {
+          legend: { display: false },
+          datalabels: {
+            anchor: 'end',
+            align: 'end',
+            offset: 6,
+            formatter: val => `${val} GB`,
+            font: { weight: '500', size: 10 }
+          }
+        },
+        responsive: true,
+        maintainAspectRatio: false
+      }
+    });
+  } catch (err) {
+    console.error('Error fetching top branches:', err);
+    loadingEl.innerText = "Error loading data";
+  }
+}
+
+
+
   // Fetch device data every 30 seconds
   setInterval(() => {
     fetchDeviceData();
@@ -466,6 +544,9 @@
 
   // Fetch top apps chart every 30 seconds
   setInterval(fetchAndDisplayTopAppsChart, 30000);
+
+// Refresh every 30 seconds
+setInterval(fetchAndDisplayTopBranchesChart, 300000);
 
 </script>
 
