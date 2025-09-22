@@ -202,9 +202,9 @@
 
     } catch (error) {
       console.error('Error fetching device data:', error);
-      document.getElementById('total-devices').innerText = 'Error';
-      document.getElementById('monitoring-ok').innerText = 'Error';
-      document.getElementById('monitoring-critical').innerText = 'Error';
+      document.getElementById('total-devices').innerText = '-';
+      document.getElementById('monitoring-ok').innerText = '-';
+      document.getElementById('monitoring-critical').innerText = '-';
     }
   }
 
@@ -226,7 +226,7 @@
     }
 
     // Show loading state
-    Object.values(elems).forEach(el => el.innerText = 'Loading…');
+    Object.values(elems).forEach(el => el.innerText = '0');
 
     // 1️⃣ Fetch auth token
     let token;
@@ -253,7 +253,7 @@
       json = await resp.json();
     } catch (err) {
       console.error('Error fetching spoke data:', err);
-      Object.values(elems).forEach(el => el.innerText = 'Error');
+      Object.values(elems).forEach(el => el.innerText = '-');
       return;
     }
 
@@ -812,7 +812,7 @@
   .badge-gray { background: #e0e0e0; color: #333; }
   .badge-green { background: #28a745; color: #fff; }
   .badge-red { background: #dc3545; color: #fff; }
-  .badge-yellow { background: #ffc107; color: #333; }
+  .badge-yellow { background: #FFA500; color: #333; }
 
   .card-label {
     font-size: 12px;
