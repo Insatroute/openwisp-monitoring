@@ -42,53 +42,44 @@ td.field-health_status,
   text-align: center;
   color: #fff;
   background: #333;
-  padding: 4px 15px;
+  padding: 4px 10px;
   font-size: 11px;
   border-radius: 30px;
-  display: block;
-  width: 50%;
+
 }
 .health-unknown {
   text-align: center;
   color: #333;
   background: #e0e0e0;
-  padding: 4px 15px;
+  padding: 4px 10px;
   font-size: 11px;
   border-radius: 30px;
-  display: block;
-  width: 50%;
 
 }
 .health-ok {
   text-align: center;
   color: #fff;
   background: #28a745cf;
-  padding: 4px 15px;
+  padding: 4px 10px;
   font-size: 11px;
   border-radius: 30px;
-  display: block;
-  width: 50%;
 
 }
 .health-problem {
   text-align: center;
   color: #333;
   background: orange;
-  padding: 4px 15px;
+  padding: 4px 10px;
   font-size: 11px;
   border-radius: 30px;
-  display: block;
-  width: 50%;
 }
 .health-critical {
   text-align: center;
   color: #fff;
   background: #ec5261;
-  padding: 4px 15px;
+  padding: 4px 10px;
   font-size: 11px;
   border-radius: 30px;
-  display: block;
-  width: 50%;
 }
 #ow-device-status table.addresses td {
   width: 50%;
