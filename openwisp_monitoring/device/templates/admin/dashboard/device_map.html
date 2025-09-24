@@ -101,13 +101,13 @@
 
 
 
-<div class="card-grid graph-grid">
+<div class="card-grid-two graph-grid">
   <div class="card-app top-apps">
     <h4>
       <span>Top Applications</span>
     </h4>
     <div class="chart-container">
-      <div id="chart-loading" class="loading-text">Loading…/ No Data</div>
+      <div id="chart-loading" class="loading-text">Loading…</div>
       <canvas id="topAppsChart"></canvas>
     </div>
   </div>
@@ -117,7 +117,7 @@
       <span>Top Branches</span>
     </h4>
      <div class="chart-container" id="top-devices-chart-container">
-      <div id="chart-loading-devices" class="loading-text">Loading…/ No Data</div>
+      <div id="chart-loading-devices" class="loading-text">Loading…</div>
       <canvas id="topDevicesChart"></canvas>
     </div>
   </div>
@@ -595,7 +595,6 @@
       canvas.style.display = '';
     } catch (e) {
       console.error('Top Devices error:', e);
-      loader.textContent = 'Error loading data';
     }
   }
 
@@ -614,13 +613,10 @@
 
 
   @media screen and (min-width: 1280px) and (max-width: 1379px) {
-
     .data-card {
       width: 85%;
     }
-
   }
-
 
   #plot-container .system-type {
     display: none !important;
@@ -630,24 +626,27 @@
     display: none !important;
   }
 
-  #plot-container {
-    padding: 0.325rem 0.2rem !important;
-    overflow-x: unset !important;
-  }
-
   .content {
     background-color: #d3d3d30f !important;
   }
 
 
   .card-grid {
-    width: 96%;
     display: grid;
-    grid-gap: 2rem;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    max-width: 1800px;
+    grid-gap: 20px;
+    grid-template-columns: repeat(4, 1fr);
+    /* max-width: 1800px; */
     margin: 0 auto;
-    padding: 15px 20px 15px 20px;
+    padding: 10px 40px 10px 40px;
+  }
+
+  .card-grid-two {
+    display: grid;
+    grid-gap: 20px;
+    grid-template-columns: repeat(2, 1fr);
+    /* max-width: 1800px; */
+    margin: 0 auto;
+    padding: 10px 40px 10px 40px;
   }
 
 
@@ -657,7 +656,6 @@
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
     padding: 1rem 1rem 1rem 1rem;
     text-align: center;
-    width: 90%;
   }
 
   #map {
@@ -673,7 +671,6 @@
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
     padding: 1rem 1rem 1rem 1rem;
     text-align: center;
-    width: 96%;
   }
 
   .data-card {
@@ -751,15 +748,7 @@
 
   }
 
-  .toggle-menu .svg-container {
-    width: 382px !important;
-  }
 
-
-  .toggle-menu #plot-container {
-
-    margin-left: 0px;
-  }
 
   #content-main>div:not(.app-sdwan_tunnel) {
     display: none;
@@ -770,9 +759,9 @@
   }
 
   .map-view {
-    padding: 25px 25px 25px 25px;
+    padding: 20px 40px 10px 40px;
     margin: 0 auto;
-    width: 96%
+
   }
 
   #device-map-container {
