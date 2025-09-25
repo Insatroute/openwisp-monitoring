@@ -202,9 +202,9 @@
 
     } catch (error) {
       console.error('Error fetching device data:', error);
-      document.getElementById('total-devices').innerText = '-';
-      document.getElementById('monitoring-ok').innerText = '-';
-      document.getElementById('monitoring-critical').innerText = '-';
+      document.getElementById('total-devices').innerText = '0';
+      document.getElementById('monitoring-ok').innerText = '0';
+      document.getElementById('monitoring-critical').innerText = '0';
     }
   }
   async function fetchSpokeData() {
@@ -740,7 +740,7 @@
   .chart-container canvas {
 
     width: 100% !important;
-    height: 160px !important;
+    height: 200px !important;
 
   }
 
@@ -770,7 +770,7 @@
   }
 
   #topAppsChart {
-    height: 170px !important;
+    height: 200px !important;
   }
   /* Stats redesigned */
   .stats {
