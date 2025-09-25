@@ -134,7 +134,7 @@
   async function fetchAuthToken() {
     if (cachedToken) return cachedToken;
     // try {
-    //   const response = await fetch('https://3.111.114.217/api/v1/users/token/', {
+    //   const response = await fetch(`${window.API_BASE_URL}/api/v1/users/token/`, {
     //     method: 'POST',
     //     headers: {
     //       'Content-Type': 'application/x-www-form-urlencoded'
@@ -172,7 +172,7 @@
     }
 
     try {
-      const response = await fetch('https://3.111.114.217/api/v1/monitoring/device', {
+      const response = await fetch(`${window.API_BASE_URL}/api/v1/monitoring/device`, {
         headers: {
           'Accept': 'application/json',
           'Authorization': `Token ${token}`
@@ -243,7 +243,7 @@
     // 2️⃣ Fetch spoke data
     let json;
     try {
-      const resp = await fetch('https://3.111.114.217/api/v1/spoke/', {
+      const resp = await fetch(`${window.API_BASE_URL}/api/v1/spoke/`, {
         headers: {
           'Accept': 'application/json',
           'Authorization': `Token ${token}`
@@ -299,7 +299,7 @@
 
     try {
       // 2. Fetch the list of devices (UUIDs)
-      const response = await fetch('https://3.111.114.217/api/v1/controller/device/', {
+      const response = await fetch(`${window.API_BASE_URL}/api/v1/controller/device/`, {
         headers: {
           'accept': 'application/json',
           'Authorization': `Token ${token}`
@@ -318,7 +318,7 @@
 
       for (const uuid of uuids) {
         try {
-          const res = await fetch(`https://3.111.114.217/api/v1/monitoring/device/${uuid}/real_traffic/`, {
+          const res = await fetch(`${window.API_BASE_URL}/api/v1/monitoring/device/${uuid}/real_traffic/`, {
             headers: {
               'accept': 'application/json',
               'Authorization': `Token ${token}`
@@ -351,7 +351,7 @@
       // 4. Sort aggregated data and take top 5
       const sorted = Array.from(aggregated.entries())
         .sort((a, b) => b[1] - a[1])
-        .slice(0, 5);
+        .slice(0, 10);
 
       // 5. Prepare data arrays for Chart.js
       const labels = sorted.map(item => {
@@ -491,7 +491,7 @@
 
 
 
-   const TOP_DEVICES_URL = 'https://3.111.114.217/top-devices-simple/';
+   const TOP_DEVICES_URL = `${window.API_BASE_URL}/top-devices-simple/`;
 
   // Helper: format bytes nicely (GB/TB etc.)
   function humanBytesShort(b) {
@@ -506,7 +506,7 @@
   async function fetchAndDisplayTopDevicesChart({
 
     
-    org = 'ALL', time = '7d', limit = 5, wan_ifs = ''   // leave wan_ifs blank to sum all interfaces
+    org = 'ALL', time = '7d', limit = 10, wan_ifs = ''   // leave wan_ifs blank to sum all interfaces
   } = {}) {
    
     const loader = document.getElementById('chart-loading-devices');
