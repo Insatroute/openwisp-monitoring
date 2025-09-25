@@ -351,7 +351,7 @@
       // 4. Sort aggregated data and take top 5
       const sorted = Array.from(aggregated.entries())
         .sort((a, b) => b[1] - a[1])
-        .slice(0, 5);
+        .slice(0, 10);
 
       // 5. Prepare data arrays for Chart.js
       const labels = sorted.map(item => {
@@ -506,7 +506,7 @@
   async function fetchAndDisplayTopDevicesChart({
 
     
-    org = 'ALL', time = '7d', limit = 5, wan_ifs = ''   // leave wan_ifs blank to sum all interfaces
+    org = 'ALL', time = '7d', limit = 10, wan_ifs = ''   // leave wan_ifs blank to sum all interfaces
   } = {}) {
    
     const loader = document.getElementById('chart-loading-devices');
