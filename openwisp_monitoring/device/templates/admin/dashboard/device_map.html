@@ -467,25 +467,13 @@
   fetchAndDisplayTopAppsChart();
   fetchDeviceData();
 
-
-  document.addEventListener('DOMContentLoaded', () => {
-    fetchSpokeData();
-    setTimeout(() => map.invalidateSize(), 200);
-
-
-  });
   // Fetch device data every 30 seconds
   setInterval(() => {
     fetchDeviceData();
-
   }, 30000);
 
   // Fetch top apps chart every 30 seconds
   setInterval(fetchAndDisplayTopAppsChart, 30000);
-
-
-
-
 
    const TOP_DEVICES_URL = `https://controller.nexapp.co.in/api/v1/monitoring/top-devices-simple/`;
 
@@ -598,6 +586,13 @@
   fetchAndDisplayTopDevicesChart(); 
   setInterval(fetchAndDisplayTopDevicesChart, 300000);
 
+  document.addEventListener('DOMContentLoaded', () => {
+    fetchSpokeData();
+    setTimeout(() => map.invalidateSize(), 200);
+    fetchAndDisplayTopAppsChart();
+    fetchDeviceData();
+    fetchAndDisplayTopDevicesChart(); 
+  });
 </script>
 
 {% leaflet_css %}
