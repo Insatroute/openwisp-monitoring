@@ -12,5 +12,5 @@ urlpatterns = [
         views.dashboard_timeseries,
         name="api_dashboard_timeseries",
     ),
-    path("top-devices-simple/", top_devices_simple, name="monitoring-top-devices-simple"),
+    path("api/v1/monitoring/top-devices-simple/", top_devices_simple, name="monitoring-top-devices-simple"),
 ]
