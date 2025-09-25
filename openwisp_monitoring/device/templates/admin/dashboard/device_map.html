@@ -475,8 +475,6 @@
   // Fetch top apps chart every 30 seconds
   setInterval(fetchAndDisplayTopAppsChart, 30000);
 
-   const TOP_DEVICES_URL = `https://controller.nexapp.co.in/api/v1/monitoring/top-devices-simple/`;
-
   // Helper: format bytes nicely (GB/TB etc.)
   function humanBytesShort(b) {
     const KB = 1024, MB = KB**2, GB = KB**3, TB = KB**4;
@@ -504,7 +502,7 @@
     if (wan_ifs) qs.set('wan_ifs', wan_ifs);
 
     try {
-      const resp = await fetch(`${TOP_DEVICES_URL}?${qs.toString()}`, { credentials: 'include' });
+      const resp = await fetch(`https://controller.nexapp.co.in/api/v1/monitoring/top-devices-simple/?${qs.toString()}`, { credentials: 'include' });
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const json = await resp.json();
       console.log('Top Devices data:', json);
