@@ -31,7 +31,7 @@ urlpatterns = [
         name='api_device_metric_client_summary',
     ),
     re_path(
-        r'^api/v1/monitoring/device/(?P<pk>[^/]+)/real_traffic/$',
+        r'^api/v1/monitoring/device/(?P<pk>[^/]+)/real_time_monitor_data/$',
         views.device_metric,
         name='api_device_metric_real_traffic',
     ),

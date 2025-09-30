@@ -251,7 +251,7 @@ class DeviceMetricView(
         # —— end dpi_client_summary aggregation block ——
 
         # —— Real Traffic aggregation block ——
-        if request.path.endswith('/real_traffic/'):
+        if request.path.endswith('/real_time_monitor_data/'):
             try:
                 rec = RealTraffic.objects.filter(device_id=pk).latest('created')
             except RealTraffic.DoesNotExist:
@@ -460,7 +460,7 @@ class DeviceMetricView(
             return Response({'status': 'ok'}, status=status.HTTP_200_OK)
        # —— end DPI block ——
         # —— real_traffic ingestion block ——
-        if request.path.endswith('/real_traffic/'):
+        if request.path.endswith('/real_time_monitor_data/'):
             payload = request.data
             ts = request.query_params.get('time')
             timestamp = parse_datetime(ts) if ts else None
