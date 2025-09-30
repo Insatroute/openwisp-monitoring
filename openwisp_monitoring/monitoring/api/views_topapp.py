@@ -20,8 +20,9 @@ def fetch_device_top_apps(device_id, token):
         data = response.json()
  
         latest_raw = data.get("latest_raw", {})
-        real_time = latest_raw.get("data", {}).get("real_time_traffic", {})
-        talkers = real_time.get("talkers", {})
+        real_time = latest_raw.get("real_time_traffic", {})
+        data = real_time.get("data", {})
+        talkers = data.get("talkers", {})
         top_apps = talkers.get("top_apps", [])
  
         if not isinstance(top_apps, list):
