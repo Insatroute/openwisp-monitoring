@@ -253,9 +253,9 @@ class DeviceMetricView(
         # —— Real Traffic aggregation block ——
         if request.path.endswith('/real_time_monitor_data/'):
             try:
-                rec = RealTraffic.objects.filter(device_id=pk).latest('created')
-            except RealTraffic.DoesNotExist:
-                logger.info(f'No RealTraffic found for device {pk}')
+                rec = DPIRecord.objects.filter(device_id=pk).latest('created')
+            except DPIRecord.DoesNotExist:
+                logger.info(f'No DPIRecord found for device {pk}')
                 rec = None
          
             if rec is None:
@@ -466,7 +466,7 @@ class DeviceMetricView(
             timestamp = parse_datetime(ts) if ts else None
             if timestamp is None:
                 timestamp = timezone.now()
-            serializer = RealTrafficSerializer(data={
+            serializer = DPIRecordSerializer(data={
                 'timestamp': timestamp,
                 'raw':       payload,
             })
