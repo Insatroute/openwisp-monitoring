@@ -20,7 +20,7 @@ def fetch_device_top_apps(device_id, token):
         data = response.json()
  
         latest_raw = data.get("latest_raw", {})
-        real_time = latest_raw.get("real_time_traffic", {}).get("data", {})
+        real_time = latest_raw.get("data", {}).get("real_time_traffic", {})
         talkers = real_time.get("talkers", {})
         top_apps = talkers.get("top_apps", [])
  
