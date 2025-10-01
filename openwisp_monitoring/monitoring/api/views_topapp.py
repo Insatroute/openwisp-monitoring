@@ -2,6 +2,7 @@ from django.http import JsonResponse
 from swapper import load_model
 import requests
 from rest_framework.authtoken.models import Token
+from django.shortcuts import get_object_or_404
  
 Device = load_model("config", "Device")
  
@@ -73,22 +74,113 @@ def global_top_apps_view(request):
         top_10_apps_list.append({"name": name, "value": value})
  
     return JsonResponse({"top_10_apps": top_10_apps_list})
+ 
+ 
+# def fetch_device_traffic(device, token):
+#     """
+#     Fetch DPI summary (dpi_summery_v2) for a single device.
+#     Returns: hourly_traffic, clients, applications, remote_hosts, protocols
+#     """
+#     url = f"https://controller.nexapp.co.in/api/v1/monitoring/device/{device.pk}/real_time_monitor_data/"
+#     headers = {"Authorization": f"Bearer {token}"}
+#     try:
+#         response = requests.get(url, headers=headers, timeout=10, verify=False)
+#         response.raise_for_status()
+#         data = response.json()
+ 
+#         dpi_summary = (
+#             data.get("latest_raw", {})
+#             .get("traffic", {})
+#             .get("dpi_summery_v2", {})
+#         )
+ 
+#         hourly_traffic = dpi_summary.get("hourly_traffic", [])
+#         clients = dpi_summary.get("clients", [])
+#         applications = dpi_summary.get("applications", [])
+#         remote_hosts = dpi_summary.get("remote_hosts", [])
+#         protocols = dpi_summary.get("protocols", [])
+ 
+#         return hourly_traffic, clients, applications, remote_hosts, protocols
+ 
+#     except Exception as e:
+#         print(f"[ERROR] Failed for device {device.pk}: {e}")
+#         return [], [], [], [], []
+ 
+ 
+# def traffic_summary_view(request):
+#     """Aggregate DPI summary across all devices and return JSON."""
+#     if not request.user.is_authenticated:
+#         return JsonResponse({"error": "User not authenticated"}, status=401)
+ 
+#     token = get_api_token(request.user)
+ 
+#     # Initialize aggregators
+#     hourly_map = {}
+#     clients_map = {}
+#     applications_map = {}
+#     remote_hosts_map = {}
+#     protocols_map = {}
+ 
+#     for device in Device.objects.all():
+#         hourly, clients, apps, hosts, protos = fetch_device_traffic(device, token)
+ 
+#         # Aggregate hourly traffic
+#         for h in hourly:
+#             hid = str(h.get("id", "")).zfill(2)
+#             t = h.get("traffic", 0) or 0
+#             hourly_map[hid] = hourly_map.get(hid, 0) + t
+ 
+#         # Aggregate clients
+#         for c in clients:
+#             cid = c.get("id")
+#             label = c.get("label", cid)
+#             t = c.get("traffic", 0) or 0
+#             if cid:
+#                 if cid not in clients_map:
+#                     clients_map[cid] = {"id": cid, "label": label, "traffic": 0}
+#                 clients_map[cid]["traffic"] += t
+ 
+#         # Aggregate applications
+#         for a in apps:
+#             aid = a.get("id")
+#             label = a.get("label", aid)
+#             t = a.get("traffic", 0) or 0
+#             if aid:
+#                 if aid not in applications_map:
+#                     applications_map[aid] = {"id": aid, "label": label, "traffic": 0}
+#                 applications_map[aid]["traffic"] += t
+ 
+#         # Aggregate remote hosts
+#         for r in hosts:
+#             rid = r.get("id")
+#             label = r.get("label", rid)
+#             t = r.get("traffic", 0) or 0
+#             if rid:
+#                 if rid not in remote_hosts_map:
+#                     remote_hosts_map[rid] = {"id": rid, "label": label, "traffic": 0}
+#                 remote_hosts_map[rid]["traffic"] += t
+ 
+#         # Aggregate protocols
+#         for p in protos:
+#             pid = p.get("id")
+#             label = p.get("label", pid)
+#             t = p.get("traffic", 0) or 0
+#             if pid:
+#                 if pid not in protocols_map:
+#                     protocols_map[pid] = {"id": pid, "label": label, "traffic": 0}
+#                 protocols_map[pid]["traffic"] += t
+ 
+#     # Prepare response
+#     response_data = {
+#         "hourly_traffic": [{"id": k, "traffic": v} for k, v in sorted(hourly_map.items())],
+#         "clients": sorted(clients_map.values(), key=lambda x: x["traffic"], reverse=True),
+#         "applications": sorted(applications_map.values(), key=lambda x: x["traffic"], reverse=True),
+#         "remote_hosts": sorted(remote_hosts_map.values(), key=lambda x: x["traffic"], reverse=True),
+#         "protocols": sorted(protocols_map.values(), key=lambda x: x["traffic"], reverse=True),
+#     }
+ 
+#     return JsonResponse(response_data, safe=False)
 
-
-
-from django.http import JsonResponse
-from swapper import load_model
-from rest_framework.authtoken.models import Token
-import requests
- 
-Device = load_model("config", "Device")
- 
- 
-def get_api_token(user):
-    token,  _= Token.objects.get_or_create(user=user)
-    return token.key
- 
- 
 def fetch_device_traffic(device, token):
     """
     Fetch DPI summary (dpi_summery_v2) for a single device.
@@ -96,100 +188,56 @@ def fetch_device_traffic(device, token):
     """
     url = f"https://controller.nexapp.co.in/api/v1/monitoring/device/{device.pk}/real_time_monitor_data/"
     headers = {"Authorization": f"Bearer {token}"}
+
     try:
         response = requests.get(url, headers=headers, timeout=10, verify=False)
         response.raise_for_status()
         data = response.json()
- 
-        dpi_summary = (
-            data.get("latest_raw", {})
-            .get("traffic", {})
-            .get("dpi_summery_v2", {})
+
+        dpi_summary = data.get("latest_raw", {}).get("traffic", {}).get("dpi_summery_v2", {})
+
+        return (
+            dpi_summary.get("hourly_traffic", []),
+            dpi_summary.get("clients", []),
+            dpi_summary.get("applications", []),
+            dpi_summary.get("remote_hosts", []),
+            dpi_summary.get("protocols", []),
         )
- 
-        hourly_traffic = dpi_summary.get("hourly_traffic", [])
-        clients = dpi_summary.get("clients", [])
-        applications = dpi_summary.get("applications", [])
-        remote_hosts = dpi_summary.get("remote_hosts", [])
-        protocols = dpi_summary.get("protocols", [])
- 
-        return hourly_traffic, clients, applications, remote_hosts, protocols
- 
-    except Exception as e:
-        print(f"[ERROR] Failed for device {device.pk}: {e}")
+
+    except requests.RequestException as e:
+        print(f"[ERROR] Failed to fetch traffic for device {device.pk}: {e}")
         return [], [], [], [], []
- 
- 
-def traffic_summary_view(request):
-    """Aggregate DPI summary across all devices and return JSON."""
+
+
+def traffic_summary_view(request, device_id):
+    """
+    Return DPI traffic summary for a single device.
+    URL: /api/v1/monitoring/device/<device_id>/traffic-summary/
+    """
     if not request.user.is_authenticated:
         return JsonResponse({"error": "User not authenticated"}, status=401)
- 
+
     token = get_api_token(request.user)
- 
-    # Initialize aggregators
-    hourly_map = {}
-    clients_map = {}
-    applications_map = {}
-    remote_hosts_map = {}
-    protocols_map = {}
- 
-    for device in Device.objects.all():
-        hourly, clients, apps, hosts, protos = fetch_device_traffic(device, token)
- 
-        # Aggregate hourly traffic
-        for h in hourly:
-            hid = str(h.get("id", "")).zfill(2)
-            t = h.get("traffic", 0) or 0
-            hourly_map[hid] = hourly_map.get(hid, 0) + t
- 
-        # Aggregate clients
-        for c in clients:
-            cid = c.get("id")
-            label = c.get("label", cid)
-            t = c.get("traffic", 0) or 0
-            if cid:
-                if cid not in clients_map:
-                    clients_map[cid] = {"id": cid, "label": label, "traffic": 0}
-                clients_map[cid]["traffic"] += t
- 
-        # Aggregate applications
-        for a in apps:
-            aid = a.get("id")
-            label = a.get("label", aid)
-            t = a.get("traffic", 0) or 0
-            if aid:
-                if aid not in applications_map:
-                    applications_map[aid] = {"id": aid, "label": label, "traffic": 0}
-                applications_map[aid]["traffic"] += t
- 
-        # Aggregate remote hosts
-        for r in hosts:
-            rid = r.get("id")
-            label = r.get("label", rid)
-            t = r.get("traffic", 0) or 0
-            if rid:
-                if rid not in remote_hosts_map:
-                    remote_hosts_map[rid] = {"id": rid, "label": label, "traffic": 0}
-                remote_hosts_map[rid]["traffic"] += t
- 
-        # Aggregate protocols
-        for p in protos:
-            pid = p.get("id")
-            label = p.get("label", pid)
-            t = p.get("traffic", 0) or 0
-            if pid:
-                if pid not in protocols_map:
-                    protocols_map[pid] = {"id": pid, "label": label, "traffic": 0}
-                protocols_map[pid]["traffic"] += t
- 
-    # Prepare response
+    device = get_object_or_404(Device, pk=device_id)
+
+    hourly, clients, apps, hosts, protocols = fetch_device_traffic(device, token)
+
     response_data = {
-        "hourly_traffic": [{"id": k, "traffic": v} for k, v in sorted(hourly_map.items())],
-        "clients": sorted(clients_map.values(), key=lambda x: x["traffic"], reverse=True)[:10],
-        "applications": sorted(applications_map.values(), key=lambda x: x["traffic"], reverse=True)[:10],
-        "remote_hosts": sorted(remote_hosts_map.values(), key=lambda x: x["traffic"], reverse=True)[:10],
-        "protocols": sorted(protocols_map.values(), key=lambda x: x["traffic"], reverse=True)[:10],
+        "hourly_traffic": [
+            {"id": str(h.get("id", "")).zfill(2), "traffic": h.get("traffic", 0) or 0} for h in hourly
+        ],
+        "clients": [
+            {"id": c.get("id"), "label": c.get("label", c.get("id")), "traffic": c.get("traffic", 0) or 0} for c in clients
+        ],
+        "applications": [
+            {"id": a.get("id"), "label": a.get("label", a.get("id")), "traffic": a.get("traffic", 0) or 0} for a in apps
+        ],
+        "remote_hosts": [
+            {"id": r.get("id"), "label": r.get("label", r.get("id")), "traffic": r.get("traffic", 0) or 0} for r in hosts
+        ],
+        "protocols": [
+            {"id": p.get("id"), "label": p.get("label", p.get("id")), "traffic": p.get("traffic", 0) or 0} for p in protocols
+        ],
     }
- 
+
     return JsonResponse(response_data, safe=False)
