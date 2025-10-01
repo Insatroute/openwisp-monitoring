@@ -181,7 +181,7 @@ def global_top_apps_view(request):
  
 #     return JsonResponse(response_data, safe=False)
 
-def fetch_device_traffic(device, token):
+def fetch_device_traffic(device, token: str):
     """
     Fetch DPI summary (dpi_summery_v2) for a single device.
     Returns: hourly_traffic, clients, applications, remote_hosts, protocols
@@ -196,20 +196,20 @@ def fetch_device_traffic(device, token):
 
         dpi_summary = data.get("latest_raw", {}).get("traffic", {}).get("dpi_summery_v2", {})
 
+        # Ensure we always return lists
         return (
-            dpi_summary.get("hourly_traffic", []),
-            dpi_summary.get("clients", []),
-            dpi_summary.get("applications", []),
-            dpi_summary.get("remote_hosts", []),
-            dpi_summary.get("protocols", []),
+            dpi_summary.get("hourly_traffic", []) or [],
+            dpi_summary.get("clients", []) or [],
+            dpi_summary.get("applications", []) or [],
+            dpi_summary.get("remote_hosts", []) or [],
+            dpi_summary.get("protocols", []) or [],
         )
 
     except requests.RequestException as e:
-        print(f"[ERROR] Failed to fetch traffic for device {device.pk}: {e}")
         return [], [], [], [], []
 
 
-def traffic_summary_view(request, device_id):
+def traffic_summary_view(request, device_id: str) -> JsonResponse:
     """
     Return DPI traffic summary for a single device.
     URL: /api/v1/monitoring/device/<device_id>/traffic-summary/
@@ -222,21 +222,27 @@ def traffic_summary_view(request, device_id):
 
     hourly, clients, apps, hosts, protocols = fetch_device_traffic(device, token)
 
+    # Safely build response, skip any non-dict items
     response_data = {
         "hourly_traffic": [
-            {"id": str(h.get("id", "")).zfill(2), "traffic": h.get("traffic", 0) or 0} for h in hourly
+            {"id": str(h.get("id", "")).zfill(2), "traffic": h.get("traffic", 0) or 0}
+            for h in hourly if isinstance(h, dict)
         ],
         "clients": [
-            {"id": c.get("id"), "label": c.get("label", c.get("id")), "traffic": c.get("traffic", 0) or 0} for c in clients
+            {"id": c.get("id"), "label": c.get("label", c.get("id")), "traffic": c.get("traffic", 0) or 0}
+            for c in clients if isinstance(c, dict)
         ],
         "applications": [
-            {"id": a.get("id"), "label": a.get("label", a.get("id")), "traffic": a.get("traffic", 0) or 0} for a in apps
+            {"id": a.get("id"), "label": a.get("label", a.get("id")), "traffic": a.get("traffic", 0) or 0}
+            for a in apps if isinstance(a, dict)
         ],
         "remote_hosts": [
-            {"id": r.get("id"), "label": r.get("label", r.get("id")), "traffic": r.get("traffic", 0) or 0} for r in hosts
+            {"id": r.get("id"), "label": r.get("label", r.get("id")), "traffic": r.get("traffic", 0) or 0}
+            for r in hosts if isinstance(r, dict)
         ],
         "protocols": [
-            {"id": p.get("id"), "label": p.get("label", p.get("id")), "traffic": p.get("traffic", 0) or 0} for p in protocols
+            {"id": p.get("id"), "label": p.get("label", p.get("id")), "traffic": p.get("traffic", 0) or 0}
+            for p in protocols if isinstance(p, dict)
         ],
     }
 
