@@ -24,7 +24,7 @@ def global_top_apps(request):
     days = now() - timedelta(days=7) #last 7 days
     apps_dict = {}
 
-    records = DPIRecord.objects.filter(created_at__gte=days)
+    records = DPIRecord.objects.filter(created__gte=days)
 
     for record in records:
         top_apps = (
