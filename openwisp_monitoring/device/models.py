@@ -163,7 +163,7 @@ class WanStatus(models.Model):
         on_delete=models.CASCADE,
         related_name='wanstatus_reports',
     )
-    timestamp = models.DateTimeField(default=timezone.now, db_index=True)
+    timestamp = models.DateTimeField(null=True, blank=True)
     raw       = models.JSONField()
     created   = models.DateTimeField(auto_now_add=True)
 
