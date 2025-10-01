@@ -196,17 +196,17 @@ def fetch_device_traffic(device, token: str):
 
         dpi_summary = data.get("latest_raw", {}).get("traffic", {}).get("dpi_summery_v2", {})
 
-        # Ensure we always return lists
-        return (
-            dpi_summary.get("hourly_traffic", []) or [],
-            dpi_summary.get("clients", []) or [],
-            dpi_summary.get("applications", []) or [],
-            dpi_summary.get("remote_hosts", []) or [],
-            dpi_summary.get("protocols", []) or [],
-        )
+        hourly_traffic = dpi_summary.get("hourly_traffic", []) or []
+        clients = dpi_summary.get("clients", []) or []
+        applications = dpi_summary.get("applications", []) or []
+        remote_hosts = dpi_summary.get("remote_hosts", []) or []
+        protocols = dpi_summary.get("protocols", []) or []
+        total_traffic = dpi_summary.get("total_traffic", 0) or 0
+
+        return hourly_traffic, clients, applications, remote_hosts, protocols, total_traffic
 
     except requests.RequestException as e:
-        return [], [], [], [], []
+        return [], [], [], [], [], 0
 
 
 def traffic_summary_view(request, device_id: str) -> JsonResponse:
@@ -220,10 +220,11 @@ def traffic_summary_view(request, device_id: str) -> JsonResponse:
     token = get_api_token(request.user)
     device = get_object_or_404(Device, pk=device_id)
 
-    hourly, clients, apps, hosts, protocols = fetch_device_traffic(device, token)
+    total_traffic, hourly, clients, apps, hosts, protocols = fetch_device_traffic(device, token)
 
     # Safely build response, skip any non-dict items
     response_data = {
+        "total_traffic": total_traffic,
         "hourly_traffic": [
             {"id": str(h.get("id", "")).zfill(2), "traffic": h.get("traffic", 0) or 0}
             for h in hourly if isinstance(h, dict)
