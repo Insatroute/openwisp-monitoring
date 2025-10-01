@@ -6,7 +6,7 @@ from django.shortcuts import get_object_or_404
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from django.utils.timezone import now, timedelta
-from openwisp_monitoring.device.models import DPIRecord
+from openwisp_monitoring.device.models import RealTraffic
  
 Device = load_model("config", "Device")
  
@@ -24,11 +24,20 @@ def global_top_apps(request):
     days = now() - timedelta(days=7) #last 7 days
     apps_dict = {}
 
-    records = DPIRecord.objects.filter(created__gte=days)
+    records = RealTraffic.objects.filter(created__gte=days)
 
     for record in records:
+        raw = record.raw
+
+        # If raw is a list, take the first element
+        if isinstance(raw, list) and raw:
+            raw = raw[0]
+
+        if not isinstance(raw, dict):
+            continue
+
         top_apps = (
-            record.raw
+            raw
             .get("real_time_traffic", {})
             .get("data", {})
             .get("talkers", {})
