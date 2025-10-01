@@ -3,6 +3,10 @@ from swapper import load_model
 import requests
 from rest_framework.authtoken.models import Token
 from django.shortcuts import get_object_or_404
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from django.utils.timezone import now, timedelta
+from openwisp_monitoring.device.models import DPIRecord
  
 Device = load_model("config", "Device")
  
@@ -10,70 +14,105 @@ def get_api_token(user):
     """Get or create DRF token for the given user dynamically."""
     token, created = Token.objects.get_or_create(user=user)
     return token.key
- 
-def fetch_device_top_apps(device_id, token):
-    """Fetch top apps for a device using the API token."""
-    url = f"https://controller.nexapp.co.in/api/v1/monitoring/device/{device_id}/real_time_monitor_data/"
-    headers = {"Authorization": f"Bearer {token}"}
-    try:
-        response = requests.get(url, headers=headers, timeout=10, verify=False)
-        response.raise_for_status()
-        data = response.json()
- 
-        latest_raw = data.get("latest_raw", {})
-        real_time = latest_raw.get("real_time_traffic", {})
-        data = real_time.get("data", {})
-        talkers = data.get("talkers", {})
-        top_apps = talkers.get("top_apps", [])
- 
-        if not isinstance(top_apps, list):
-            return []
- 
-        result = []
-        for app in top_apps:
-            if isinstance(app, dict):
-                name = app.get("name")
-                value = app.get("value", 0)
-                if name:
-                    result.append({"name": name, "value": value})
-        return result
- 
-    except Exception as e:
-        print(f"Error fetching device {device_id}: {e}")
-        return []
- 
-def global_top_apps_view(request):
-    """Return global top 10 applications across all devices."""
-    if not request.user.is_authenticated:
-        return JsonResponse({"error": "User not authenticated"}, status=401)
- 
-    token = get_api_token(request.user)
- 
-    global_apps = {}
- 
-    for device in Device.objects.all():
-        apps = fetch_device_top_apps(device.pk, token)
-        for app in apps:
-            name = app["name"]
-            value = app["value"]
-            global_apps[name] = global_apps.get(name, 0) + value
- 
-    # Sort top 10
-    top_10_apps = sorted(global_apps.items(), key=lambda x: x[1], reverse=True)[:10]
-    # top_10_apps_list = [{"name": name, "value": value} for name, value in top_10_apps]
 
-    top_10_apps_list = []
-    for name, value in top_10_apps:
-        parts = name.split('.')
-        if len(parts) > 2:
-            # take everything after the second dot
-            name = '.'.join(parts[2:])
-        else:
-            # fallback if less than 3 parts
-            name = parts[-1]
-        top_10_apps_list.append({"name": name, "value": value})
+@api_view(["GET"])
+def global_top_apps(request):
+    """
+    API to fetch Top 10 apps from all DPIRecords
+    GET /api/dpi/global-top-apps/
+    """
+    days = now() - timedelta(days=7) #last 7 days
+    apps_dict = {}
+
+    records = DPIRecord.objects.filter(created_at__gte=days)
+
+    for record in records:
+        top_apps = (
+            record.raw
+            .get("real_time_traffic", {})
+            .get("data", {})
+            .get("talkers", {})
+            .get("top_apps", [])
+        )
+
+        for app in top_apps:
+            name = app.get("name")
+            value = app.get("value", 0)
+            if name:
+                apps_dict[name] = apps_dict.get(name, 0) + value
+
+    # sort & get top 10
+    sorted_apps = sorted(apps_dict.items(), key=lambda x: x[1], reverse=True)
+    top_10 = [{"name": name, "value": value} for name, value in sorted_apps[:10]]
+
+    return Response({
+        "time_range": "last_7_days",
+        "top_10_apps": top_10
+    })
+
+# def fetch_device_top_apps(device_id, token):
+#     """Fetch top apps for a device using the API token."""
+#     url = f"https://controller.nexapp.co.in/api/v1/monitoring/device/{device_id}/real_time_monitor_data/"
+#     headers = {"Authorization": f"Bearer {token}"}
+#     try:
+#         response = requests.get(url, headers=headers, timeout=10, verify=False)
+#         response.raise_for_status()
+#         data = response.json()
  
-    return JsonResponse({"top_10_apps": top_10_apps_list})
+#         latest_raw = data.get("latest_raw", {})
+#         real_time = latest_raw.get("real_time_traffic", {})
+#         data = real_time.get("data", {})
+#         talkers = data.get("talkers", {})
+#         top_apps = talkers.get("top_apps", [])
+ 
+#         if not isinstance(top_apps, list):
+#             return []
+ 
+#         result = []
+#         for app in top_apps:
+#             if isinstance(app, dict):
+#                 name = app.get("name")
+#                 value = app.get("value", 0)
+#                 if name:
+#                     result.append({"name": name, "value": value})
+#         return result
+ 
+#     except Exception as e:
+#         print(f"Error fetching device {device_id}: {e}")
+#         return []
+ 
+# def global_top_apps_view(request):
+#     """Return global top 10 applications across all devices."""
+#     if not request.user.is_authenticated:
+#         return JsonResponse({"error": "User not authenticated"}, status=401)
+ 
+#     token = get_api_token(request.user)
+ 
+#     global_apps = {}
+ 
+#     for device in Device.objects.all():
+#         apps = fetch_device_top_apps(device.pk, token)
+#         for app in apps:
+#             name = app["name"]
+#             value = app["value"]
+#             global_apps[name] = global_apps.get(name, 0) + value
+ 
+#     # Sort top 10
+#     top_10_apps = sorted(global_apps.items(), key=lambda x: x[1], reverse=True)[:10]
+#     # top_10_apps_list = [{"name": name, "value": value} for name, value in top_10_apps]
+
+#     top_10_apps_list = []
+#     for name, value in top_10_apps:
+#         parts = name.split('.')
+#         if len(parts) > 2:
+#             # take everything after the second dot
+#             name = '.'.join(parts[2:])
+#         else:
+#             # fallback if less than 3 parts
+#             name = parts[-1]
+#         top_10_apps_list.append({"name": name, "value": value})
+ 
+#     return JsonResponse({"top_10_apps": top_10_apps_list})
  
  
 # def fetch_device_traffic(device, token):
