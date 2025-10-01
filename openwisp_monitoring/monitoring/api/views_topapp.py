@@ -220,7 +220,7 @@ def traffic_summary_view(request, device_id: str) -> JsonResponse:
     token = get_api_token(request.user)
     device = get_object_or_404(Device, pk=device_id)
 
-    total_traffic, hourly, clients, apps, hosts, protocols = fetch_device_traffic(device, token)
+    hourly, clients, apps, hosts, protocols, total_traffic = fetch_device_traffic(device, token)
 
     # Safely build response, skip any non-dict items
     response_data = {
