@@ -50,13 +50,22 @@ def global_top_apps(request):
             if name:
                 apps_dict[name] = apps_dict.get(name, 0) + value
 
-    # sort & get top 10
-    sorted_apps = sorted(apps_dict.items(), key=lambda x: x[1], reverse=True)
-    top_10 = [{"name": name, "value": value} for name, value in sorted_apps[:10]]
+    top_10_apps = sorted(apps_dict.items(), key=lambda x: x[1], reverse=True)[:10]
+
+    top_10_apps_list = []
+    for name, value in top_10_apps:
+        parts = name.split('.')
+        if len(parts) > 2:
+            # take everything after the second dot
+            name = '.'.join(parts[2:])
+        else:
+            # fallback if less than 3 parts
+            name = parts[-1]
+        top_10_apps_list.append({"name": name, "value": value})
 
     return Response({
         "time_range": "last_7_days",
-        "top_10_apps": top_10
+        "top_10_apps": top_10_apps_list
     })
 
 # def fetch_device_top_apps(device_id, token):
