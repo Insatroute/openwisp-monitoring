@@ -13,7 +13,7 @@ def fetch_device_monitoring_data(device):
     Fetch device monitoring data.
     """
     try:
-        device_data = DeviceData.objects.get(device=device)
+        device_data = DeviceData.objects.get(config=device)
         if not device_data or not isinstance(device_data.data_user_friendly, dict):
             return {"traffic": {}, "security": {}}
 
