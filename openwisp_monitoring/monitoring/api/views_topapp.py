@@ -11,6 +11,7 @@ from openwisp_monitoring.device.models import RealTraffic
 from collections import Counter
  
 Device = load_model("config", "Device")
+DeviceData = load_model("device_monitoring", "DeviceData")
  
 def get_api_token(user):
     """Get or create DRF token for the given user dynamically."""
@@ -72,29 +73,41 @@ def get_api_token(user):
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
-def global_top_apps_view(request):
+def global_top_apps(request):
     """
-    Aggregate top apps from all devices and return top 10 applications.
+    API endpoint to return top 10 applications across all devices.
     """
-    from .views_realdata import fetch_device_monitoring_data  # adjust import
+    app_counter = Counter()
 
-    total_apps_counter = Counter()
-
-    devices = Device.objects.all()
-    for device in devices:
-        data = fetch_device_monitoring_data(device)
-        top_apps = data.get("real_time_traffic", {}).get("data", {}).get("talkers", {}).get("top_apps", [])
-        
+    # Aggregate app traffic across all devices
+    for device_data in DeviceData.objects.all():
+        data = device_data.data_user_friendly or {}
+        top_apps = (
+            data.get("realtimemonitor", {})
+            .get("real_time_traffic", {})
+            .get("data", {})
+            .get("talkers", {})
+            .get("top_apps", [])
+        )
         for app in top_apps:
-            total_apps_counter[app["name"]] += app["value"]
+            app_counter[app["name"]] += app["value"]
 
-    # Get top 10 applications
-    top_10_apps = total_apps_counter.most_common(10)
+    # Get top 10 apps
+    top_10_apps = app_counter.most_common(10)
 
-    # Prepare response
-    response_data = [{"name": name, "value": value} for name, value in top_10_apps]
-    
-    return Response(response_data)
+    # Split app names after second dot
+    top_10_apps_list = []
+    for name, value in top_10_apps:
+        parts = name.split('.')
+        if len(parts) > 2:
+            # take everything after the second dot
+            name = '.'.join(parts[2:])
+        else:
+            # fallback if less than 3 parts
+            name = parts[-1]
+        top_10_apps_list.append({"name": name, "value": value})
+
+    return Response(top_10_apps_list)
 
 
 def fetch_device_traffic(device, token: str):
