@@ -18,59 +18,6 @@ def get_api_token(user):
     token, created = Token.objects.get_or_create(user=user)
     return token.key
 
-# @api_view(["GET"])
-# def global_top_apps(request):
-#     """
-#     API to fetch Top 10 apps from all DPIRecords
-#     """
-#     days = now() - timedelta(days=7) #last 7 days
-#     apps_dict = {}
-
-#     records = RealTraffic.objects.filter(created__gte=days)
-
-#     for record in records:
-#         raw = record.raw
-
-#         # If raw is a list, take the first element
-#         if isinstance(raw, list) and raw:
-#             raw = raw[0]
-
-#         if not isinstance(raw, dict):
-#             continue
-
-#         top_apps = (
-#             raw
-#             .get("real_time_traffic", {})
-#             .get("data", {})
-#             .get("talkers", {})
-#             .get("top_apps", [])
-#         )
-
-#         for app in top_apps:
-#             name = app.get("name")
-#             value = app.get("value", 0)
-#             if name:
-#                 apps_dict[name] = apps_dict.get(name, 0) + value
-
-#     top_10_apps = sorted(apps_dict.items(), key=lambda x: x[1], reverse=True)[:10]
-
-#     top_10_apps_list = []
-#     for name, value in top_10_apps:
-#         parts = name.split('.')
-#         if len(parts) > 2:
-#             # take everything after the second dot
-#             name = '.'.join(parts[2:])
-#         else:
-#             # fallback if less than 3 parts
-#             name = parts[-1]
-#         top_10_apps_list.append({"name": name, "value": value})
-
-#     return Response({
-#         "time_range": "last_7_days",
-#         "top_10_apps": top_10_apps_list
-#     })
-
-
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def global_top_apps(request):
@@ -107,7 +54,7 @@ def global_top_apps(request):
             name = parts[-1]
         top_10_apps_list.append({"name": name, "value": value})
 
-    return Response(top_10_apps_list)
+    return Response({"top_10_apps": top_10_apps_list})
 
 
 def fetch_device_traffic(device, token: str):
@@ -178,25 +125,6 @@ def traffic_summary_view(request, device_id: str) -> JsonResponse:
 
     return JsonResponse(response_data, safe=False)
 
-# def fetch_device_monitoring(device, token: str):
-#     """
-#     Fetch monitoring data for a single device.
-#     Returns a dict with both sections.
-#     """
-#     url = f"https://controller.nexapp.co.in/api/v1/monitoring/device/{device.pk}/real_time_monitor_data/"
-#     headers = {"Authorization": f"Bearer {token}"}
-
-#     try:
-#         response = requests.get(url, headers=headers, timeout=10, verify=False)
-#         response.raise_for_status()
-#         data = response.json().get("latest_raw", {})
-
-#         return {
-#             "traffic": data.get("traffic", {}).get("dpi_summery_v2", {}),
-#             "security": data.get("Security", {}),
-#         }
-#     except requests.RequestException:
-#         return {"traffic": {}, "security": {}}
 
 def fetch_device_monitoring(device, token: str):
     """
