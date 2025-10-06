@@ -19,7 +19,7 @@ urlpatterns = [
     ),
     path(
         "api/v1/monitoring/global-top-apps/",
-        views_topapp.global_top_apps,
+        views_topapp.global_top_apps_view,
         name="api_global_top_apps"
     ),
     re_path(
