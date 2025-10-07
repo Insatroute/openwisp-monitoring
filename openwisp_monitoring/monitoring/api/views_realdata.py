@@ -32,8 +32,8 @@ def fetch_device_monitoring_data(device):
 def traffic_summary_data(request, device_id: str):
     device = get_object_or_404(Device, pk=device_id)
     data = fetch_device_monitoring_data(device)
-
     traffic = data.get("traffic", {})
+
     dpi_summery_v2 = traffic.get("dpi_summery_v2", {})
     dpi_client_data = traffic.get("dpi_client_data", [])
 
@@ -52,22 +52,11 @@ def security_summary_data(request, device_id: str):
     security = data.get("security", {})
 
     blocklist = security.get("blocklist", {})
-    brute_force = security.get("brute_force_attack", {})
+    brute_force_attack = security.get("brute_force_attack", {})
 
     response_data = {
-        "blocklist": {
-            "first_seen": blocklist.get("first_seen", 0),
-            "malware_count": blocklist.get("malware_count", 0),
-            "malware_by_hour": blocklist.get("malware_by_hour", []),
-            "malware_by_category": blocklist.get("malware_by_category", {}),
-            "malware_by_chain": blocklist.get("malware_by_chain", {}),
-        },
-        "brute_force_attack": {
-            "first_seen": brute_force.get("first_seen", 0),
-            "attack_count": brute_force.get("attack_count", 0),
-            "attack_by_ip": brute_force.get("attack_by_ip", {}),
-            "attack_by_hour": brute_force.get("attack_by_hour", []),
-        },
+        "blocklist": blocklist,
+        "brute_force_attack": brute_force_attack,
     }
 
     return Response(response_data)
@@ -80,10 +69,14 @@ def real_time_traffic_summary_data(request, device_id: str):
     data = fetch_device_monitoring_data(device)
     traffic_data = data.get("real_time_traffic", {}).get("data", {}).get("talkers", {})
 
+    top_protocols = traffic_data.get("top_protocols", [])
+    top_hosts = traffic_data.get("top_hosts", [])
+    top_apps = traffic_data.get("top_apps", [])
+
     response_data = {
-        "top_protocols": traffic_data.get("top_protocols", []),
-        "top_hosts": traffic_data.get("top_hosts", []),
-        "top_apps": traffic_data.get("top_apps", []),
+        "top_protocols": top_protocols,
+        "top_hosts": top_hosts,
+        "top_apps": top_apps,
     }
 
     return Response(response_data)
