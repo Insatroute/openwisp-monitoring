@@ -66,7 +66,7 @@ def get_health_status_labels():
     return labels
 
 
-SHORT_RETENTION_POLICY = get_settings_value("SHORT_RETENTION_POLICY", "24h0m0s")
+SHORT_RETENTION_POLICY = get_settings_value("SHORT_RETENTION_POLICY", "8760h0m0s")
 DEFAULT_RETENTION_POLICY = get_settings_value("DEFAULT_RETENTION_POLICY", "26280h0m0s")
 CRITICAL_DEVICE_METRICS = get_critical_device_metrics()
 HEALTH_STATUS_LABELS = get_health_status_labels()
