@@ -24,12 +24,18 @@ urlpatterns = [
     ),
     re_path(
         r'^api/v1/monitoring/device/(?P<device_id>[^/]+)/traffic-summary/$',
-        views_realdata.traffic_summary_view,
-        name='api_device_traffic_summary',
+        views_realdata.traffic_summary_data,
+        name='api_device_traffic_summary'
     ),
     re_path(
         r'^api/v1/monitoring/device/(?P<device_id>[^/]+)/security-summary/$',
-        views_realdata.security_summary_view,
-        name="api_device_security_summary"),
+        views_realdata.security_summary_data,
+        name="api_device_security_summary"
+        ),
+    re_path(
+        r'^api/v1/monitoring/device/(?P<device_id>[^/]+)/real-time-traffic-summary/$',
+        views_realdata.real_time_traffic_summary_data,
+        name="api_device_real_time_traffic_summary"
+    ),
 
 ]
