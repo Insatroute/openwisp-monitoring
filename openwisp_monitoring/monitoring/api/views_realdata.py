@@ -18,7 +18,7 @@ def fetch_device_monitoring_data(device):
             return {"traffic": {}, "security": {}, "real_time_traffic": {}}
 
         realtime = device_data.data_user_friendly.get("realtimemonitor", {})
-        traffic = realtime.get("traffic", {}).get("dpi_summery_v2", {})
+        traffic = realtime.get("traffic", {})
         security = realtime.get("security", {})
         real_time_traffic = realtime.get("real_time_traffic", {})
 
@@ -32,22 +32,14 @@ def fetch_device_monitoring_data(device):
 def traffic_summary_data(request, device_id: str):
     device = get_object_or_404(Device, pk=device_id)
     data = fetch_device_monitoring_data(device)
-    traffic = data.get("traffic", {})
 
-    total_traffic = traffic.get("total_traffic", 0)
-    hourly_traffic = traffic.get("hourly_traffic", [])
-    clients = traffic.get("clients", [])
-    applications = traffic.get("applications", [])
-    protocols = traffic.get("protocols", [])
-    remote_hosts = traffic.get("remote_hosts", [])
+    traffic = data.get("traffic", {})
+    dpi_summery_v2 = traffic.get("dpi_summery_v2", {})
+    dpi_client_data = traffic.get("dpi_client_data", [])
 
     response_data = {
-        "total_traffic": total_traffic,
-        "hourly_traffic": hourly_traffic,
-        "clients": clients,
-        "applications": applications,
-        "protocols": protocols,
-        "remote_hosts": remote_hosts,
+        "dpi_summery_v2": dpi_summery_v2,
+        "dpi_client_data": dpi_client_data,
     }
 
     return Response(response_data)
