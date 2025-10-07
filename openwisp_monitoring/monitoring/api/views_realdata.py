@@ -15,17 +15,18 @@ def fetch_device_monitoring_data(device):
     try:
         device_data = DeviceData.objects.get(config=device.config)
         if not device_data or not isinstance(device_data.data_user_friendly, dict):
-            return {"traffic": {}, "security": {}, "real_time_traffic": {}}
+            return {"traffic": {}, "security": {}, "real_time_traffic": {}, "wan_uplink": {}}
 
         realtime = device_data.data_user_friendly.get("realtimemonitor", {})
         traffic = realtime.get("traffic", {})
         security = realtime.get("security", {})
         real_time_traffic = realtime.get("real_time_traffic", {})
+        wan_uplink = realtime.get("wan_uplink", {})
 
-        return {"traffic": traffic, "security": security, "real_time_traffic": real_time_traffic}
+        return {"traffic": traffic, "security": security, "real_time_traffic": real_time_traffic, "wan_uplink": wan_uplink}
 
     except DeviceData.DoesNotExist:
-        return {"traffic": {}, "security": {}, "real_time_traffic": {}}
+        return {"traffic": {}, "security": {}, "real_time_traffic": {}, "wan_uplink": {}}
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
@@ -77,6 +78,19 @@ def real_time_traffic_summary_data(request, device_id: str):
         "top_protocols": top_protocols,
         "top_hosts": top_hosts,
         "top_apps": top_apps,
+    }
+
+    return Response(response_data)
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def wan_uplink_summary_data(request, device_id: str):
+    device = get_object_or_404(Device, pk=device_id)
+    data = fetch_device_monitoring_data(device)
+    wan_uplink_data = data.get("wan_uplink", {})
+
+    response_data = {
+        "wan_uplink": wan_uplink_data,
     }
 
     return Response(response_data)
