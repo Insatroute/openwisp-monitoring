@@ -52,6 +52,7 @@ def global_top_apps(request):
         else:
             # fallback if less than 3 parts
             name = parts[-1]
+        name = name.capitalize()
         top_10_apps_list.append({"name": name, "value": value})
 
     return Response({"top_10_apps": top_10_apps_list})
