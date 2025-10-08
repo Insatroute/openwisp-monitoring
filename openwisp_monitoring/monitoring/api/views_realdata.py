@@ -75,7 +75,7 @@ def real_time_traffic_summary_data(request, device_id: str):
     top_apps = traffic_data.get("top_apps", [])
 
     #Split app names after second dot
-    top_apps_list = []
+    top_apps = []
     for name, value in top_apps:
         parts = name.split('.')
         if len(parts) > 2:
@@ -85,12 +85,12 @@ def real_time_traffic_summary_data(request, device_id: str):
             # fallback if less than 3 parts
             name = parts[-1]
         name = name.capitalize()
-        top_apps_list.append({"name": name, "value": value})
+        top_apps.append({"name": name, "value": value})
 
     response_data = {
         "top_protocols": top_protocols,
         "top_hosts": top_hosts,
-        "top_apps": top_apps_list,
+        "top_apps": top_apps,
     }
 
     return Response(response_data)
