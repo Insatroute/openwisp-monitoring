@@ -70,9 +70,6 @@ def global_top_devices(request):
     devices = []
 
     for device_data in DeviceData.objects.all():
-        if not device_data.data_timestamp:
-            continue
-
 
         data = device_data.data_user_friendly or {}
         general = data.get("general", {})
