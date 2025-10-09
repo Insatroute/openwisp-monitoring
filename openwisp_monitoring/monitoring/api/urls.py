@@ -19,6 +19,11 @@ urlpatterns = [
     ),
     path(
         "api/v1/monitoring/global-top-apps/",
+        views_topapp.global_top_devices,
+        name="api_global_top_devices"
+    ),
+    path(
+        "api/v1/monitoring/global-top-apps/",
         views_topapp.global_top_apps,
         name="api_global_top_apps"
     ),

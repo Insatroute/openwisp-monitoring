@@ -56,3 +56,39 @@ def global_top_apps(request):
         top_10_apps_list.append({"name": name, "value": value})
 
     return Response({"top_10_apps": top_10_apps_list})
+
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def global_top_devices(request):
+    """
+    API endpoint to return top 10 devices across all DeviceData entries
+    based on total traffic (rx + tx).
+    """
+    devices = []
+
+    for device_data in DeviceData.objects.all():
+        data = device_data.data_user_friendly or {}
+        realtime = (
+            data.get("realtimemonitor", {})
+            .get("real_time_traffic", {})
+            .get("data", {})
+        )
+
+        total_rx = realtime.get("rx_bytes", 0)
+        total_tx = realtime.get("tx_bytes", 0)
+        total_traffic = total_rx + total_tx
+
+        device_name = getattr(device_data.device, "name", str(device_data.device_id))
+
+        devices.append({
+            "device": device_name,
+            "total_bytes": total_traffic,
+            "total_gb": round(total_traffic / (1024**3), 3),
+        })
+
+    # Sort by total traffic descending and pick top 10
+    devices = sorted(devices, key=lambda d: d["total_bytes"], reverse=True)[:10]
+
+    return Response({"top_10_devices": devices})
