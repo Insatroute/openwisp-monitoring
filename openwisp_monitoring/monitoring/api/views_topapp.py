@@ -127,37 +127,44 @@ from ...db import  timeseries_db
 @permission_classes([IsAuthenticated])
 def global_top_devices(request):
     """
-    API endpoint to return top 10 devices based on total rx/tx bytes
-    from the 'traffic' timeseries measurement.
+    Returns top 10 devices based on total rx/tx bytes from InfluxDB 'traffic' measurement (no date filter).
     """
-    # Query the 'traffic' measurement
-    query = "SELECT object_id, SUM(rx_bytes) AS rx, SUM(tx_bytes) AS tx FROM traffic GROUP BY object_id"
-    records = timeseries_db.get_list_query(query)
+    devices = Device.objects.all().values("id", "name")
+    results = []
 
-    device_traffic = []
-
-    for r in records:
-        object_id = r.get("object_id")
-        rx = r.get("rx", 0)
-        tx = r.get("tx", 0)
-        total = rx + tx
-
-        # Try to get the device name from the DB
+    for d in devices:
+        device_id = str(d["id"])
         try:
-            device = Device.objects.get(id=object_id)
-            name = device.name or str(object_id)
-        except Device.DoesNotExist:
-            name = str(object_id)
+            query = f"""
+                SELECT SUM(rx_bytes) AS rx, SUM(tx_bytes) AS tx
+                FROM traffic
+                WHERE object_id = '{device_id}'
+                GROUP BY object_id
+            """
+            data = timeseries_db.get_list_query(query)
+        except Exception:
+            data = []
 
-        device_traffic.append({
-            "device": name,
-            "total_bytes": total,
-            "total_gb": round(total / (1024 ** 3), 3),
+        total_bytes = 0
+        for row in data:
+            total_bytes += (row.get("rx", 0) or 0) + (row.get("tx", 0) or 0)
+
+        if total_bytes == 0:
+            continue
+
+        results.append({
+            "device": d["name"],
+            "device_id": device_id,
+            "total_bytes": total_bytes,
+            "total_gb": round(total_bytes / (1024 ** 3), 3),
         })
 
-    # Sort and return top 10
-    top_devices = sorted(device_traffic, key=lambda x: x["total_bytes"], reverse=True)[:10]
+    # Sort descending and limit to top 10
+    results.sort(key=lambda x: x["total_bytes"], reverse=True)
+    top_devices = results[:10]
 
     return Response({
-        "top_10_devices": top_devices
+        "window": "all-time",
+        "count_devices": len(results),
+        "top_10_devices": top_devices,
     })
