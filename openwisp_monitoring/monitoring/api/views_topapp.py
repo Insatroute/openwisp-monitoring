@@ -6,10 +6,10 @@ from django.shortcuts import get_object_or_404
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from django.utils.timezone import now, timedelta
+from django.utils.timezone import timedelta
 from collections import Counter
 from datetime import timedelta
-from django.utils import timezone
+
  
 Device = load_model("config", "Device")
 DeviceData = load_model("device_monitoring", "DeviceData")
@@ -70,8 +70,7 @@ def global_top_devices(request):
     API endpoint to return top 10 devices based on total rx/tx bytes
     across all interfaces, within the last 30 days.
     """
-    now = timezone.now()
-    start_time = now - timedelta(days=30)
+    start_time = timezone.now() - timedelta(days=30)
 
     # Filter DeviceData entries created in last 30 days
     recent_data = DeviceData.objects.filter(time__gte=start_time)
