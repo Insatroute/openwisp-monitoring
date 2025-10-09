@@ -66,28 +66,28 @@ def global_top_devices(request):
     API endpoint to return top 10 devices based on total rx/tx bytes
     across all interfaces in the last 30 days.
     """
-    start_time = timezone.now() - timedelta(days=30)
+    # start_time = timezone.now() - timedelta(days=30)
 
     devices = []
 
     for device_data in DeviceData.objects.all():
         # Skip if no data_timestamp
-        if not device_data.data_timestamp:
-            continue
+        # if not device_data.data_timestamp:
+        #     continue
 
-        # Convert data_timestamp to datetime for comparison
-        try:
-            ts = device_data.data_timestamp
-            if isinstance(ts, str):
-                ts = timezone.datetime.fromisoformat(ts)
-            if ts.tzinfo is None:
-                ts = ts.replace(tzinfo=timezone.get_current_timezone())
-        except Exception:
-            continue
+        # # Convert data_timestamp to datetime for comparison
+        # try:
+        #     ts = device_data.data_timestamp
+        #     if isinstance(ts, str):
+        #         ts = timezone.datetime.fromisoformat(ts)
+        #     if ts.tzinfo is None:
+        #         ts = ts.replace(tzinfo=timezone.get_current_timezone())
+        # except Exception:
+        #     continue
 
-        # Only include entries in the last 30 days
-        if ts < start_time:
-            continue
+        # # Only include entries in the last 30 days
+        # if ts < start_time:
+        #     continue
 
         data = device_data.data_user_friendly or {}
         general = data.get("general", {})
@@ -105,7 +105,6 @@ def global_top_devices(request):
 
         devices.append({
             "device": device_name,
-            "serial_number": general.get("serialnumber", ""),
             "total_bytes": total_traffic,
             "total_gb": round(total_traffic / (1024 ** 3), 3),
         })
