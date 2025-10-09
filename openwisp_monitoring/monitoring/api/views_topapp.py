@@ -7,8 +7,8 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.utils.timezone import now, timedelta
-from openwisp_monitoring.device.models import RealTraffic
 from collections import Counter
+from datetime import timedelta, timezone
  
 Device = load_model("config", "Device")
 DeviceData = load_model("device_monitoring", "DeviceData")
@@ -59,36 +59,51 @@ def global_top_apps(request):
 
 
 
+from datetime import timedelta, timezone
+
+
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def global_top_devices(request):
     """
-    API endpoint to return top 10 devices across all DeviceData entries
-    based on total traffic (rx + tx).
+    API endpoint to return top 10 devices based on total rx/tx bytes
+    across all interfaces, within the last 30 days.
     """
+    now = timezone.now()
+    start_time = now - timedelta(days=30)
+
+    # Filter DeviceData entries created in last 30 days
+    recent_data = DeviceData.objects.filter(time__gte=start_time)
+
     devices = []
 
-    for device_data in DeviceData.objects.all():
+    for device_data in recent_data:
         data = device_data.data_user_friendly or {}
-        realtime = (
-            data.get("realtimemonitor", {})
-            .get("real_time_traffic", {})
-            .get("data", {})
-        )
+        general = data.get("general", {})
+        interfaces = data.get("interfaces", [])
 
-        total_rx = realtime.get("rx_bytes", 0)
-        total_tx = realtime.get("tx_bytes", 0)
+        total_rx = total_tx = 0
+
+        for iface in interfaces:
+            stats = iface.get("statistics", {})
+            total_rx += stats.get("rx_bytes", 0)
+            total_tx += stats.get("tx_bytes", 0)
+
         total_traffic = total_rx + total_tx
 
-        device_name = getattr(device_data.device, "name", str(device_data.device_id))
+        device_name = general.get("hostname") or getattr(device_data.device, "name", str(device_data.device_id))
 
         devices.append({
             "device": device_name,
+            "serial_number": general.get("serialnumber", ""),
             "total_bytes": total_traffic,
             "total_gb": round(total_traffic / (1024**3), 3),
         })
 
-    # Sort by total traffic descending and pick top 10
-    devices = sorted(devices, key=lambda d: d["total_bytes"], reverse=True)[:10]
+    # Sort and return top 10
+    top_devices = sorted(devices, key=lambda d: d["total_bytes"], reverse=True)[:10]
 
-    return Response({"top_10_devices": devices})
+    return Response({
+        "time_window_days": 30,
+        "top_10_devices": top_devices
+    })
