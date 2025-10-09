@@ -101,7 +101,7 @@ def global_top_devices(request):
 
         total_traffic = total_rx + total_tx
 
-        device_name = general.get("hostname") or getattr(device_data.device, "name", str(device_data.device_id))
+        device_name = general.get("hostname")
 
         devices.append({
             "device": device_name,
