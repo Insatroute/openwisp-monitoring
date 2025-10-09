@@ -59,58 +59,104 @@ def global_top_apps(request):
     return Response({"top_10_apps": top_10_apps_list})
 
 
+# @api_view(["GET"])
+# @permission_classes([IsAuthenticated])
+# def global_top_devices(request):
+#     """
+#     API endpoint to return top 10 devices based on total rx/tx bytes
+#     across all interfaces in the last 30 days.
+#     """
+#     # start_time = timezone.now() - timedelta(days=30)
+
+#     devices = []
+
+#     for device_data in DeviceData.objects.all():
+#         # Skip if no data_timestamp
+#         # if not device_data.data_timestamp:
+#         #     continue
+
+#         # # Convert data_timestamp to datetime for comparison
+#         # try:
+#         #     ts = device_data.data_timestamp
+#         #     if isinstance(ts, str):
+#         #         ts = timezone.datetime.fromisoformat(ts)
+#         #     if ts.tzinfo is None:
+#         #         ts = ts.replace(tzinfo=timezone.get_current_timezone())
+#         # except Exception:
+#         #     continue
+
+#         # # Only include entries in the last 30 days
+#         # if ts < start_time:
+#         #     continue
+
+#         data = device_data.data_user_friendly or {}
+#         general = data.get("general", {})
+#         interfaces = data.get("interfaces", [])
+
+#         total_rx = total_tx = 0
+#         for iface in interfaces:
+#             stats = iface.get("statistics", {})
+#             total_rx += stats.get("rx_bytes", 0)
+#             total_tx += stats.get("tx_bytes", 0)
+
+#         total_traffic = total_rx + total_tx
+
+#         device_name = general.get("hostname")
+
+#         devices.append({
+#             "device": device_name,
+#             "total_bytes": total_traffic,
+#             "total_gb": round(total_traffic / (1024 ** 3), 3),
+#         })
+
+#     # Sort and return top 10
+#     top_devices = sorted(devices, key=lambda d: d["total_bytes"], reverse=True)[:10]
+
+#     return Response({
+#         "top_10_devices": top_devices
+#     })
+
+
+from collections import defaultdict
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from ...db import  timeseries_db
+
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def global_top_devices(request):
     """
     API endpoint to return top 10 devices based on total rx/tx bytes
-    across all interfaces in the last 30 days.
+    from the 'traffic' timeseries measurement.
     """
-    # start_time = timezone.now() - timedelta(days=30)
+    # Query the 'traffic' measurement
+    query = "SELECT object_id, SUM(rx_bytes) AS rx, SUM(tx_bytes) AS tx FROM traffic GROUP BY object_id"
+    records = timeseries_db.get_list_query(query)
 
-    devices = []
+    device_traffic = []
 
-    for device_data in DeviceData.objects.all():
-        # Skip if no data_timestamp
-        # if not device_data.data_timestamp:
-        #     continue
+    for r in records:
+        object_id = r.get("object_id")
+        rx = r.get("rx", 0)
+        tx = r.get("tx", 0)
+        total = rx + tx
 
-        # # Convert data_timestamp to datetime for comparison
-        # try:
-        #     ts = device_data.data_timestamp
-        #     if isinstance(ts, str):
-        #         ts = timezone.datetime.fromisoformat(ts)
-        #     if ts.tzinfo is None:
-        #         ts = ts.replace(tzinfo=timezone.get_current_timezone())
-        # except Exception:
-        #     continue
+        # Try to get the device name from the DB
+        try:
+            device = Device.objects.get(id=object_id)
+            name = device.name or str(object_id)
+        except Device.DoesNotExist:
+            name = str(object_id)
 
-        # # Only include entries in the last 30 days
-        # if ts < start_time:
-        #     continue
-
-        data = device_data.data_user_friendly or {}
-        general = data.get("general", {})
-        interfaces = data.get("interfaces", [])
-
-        total_rx = total_tx = 0
-        for iface in interfaces:
-            stats = iface.get("statistics", {})
-            total_rx += stats.get("rx_bytes", 0)
-            total_tx += stats.get("tx_bytes", 0)
-
-        total_traffic = total_rx + total_tx
-
-        device_name = general.get("hostname")
-
-        devices.append({
-            "device": device_name,
-            "total_bytes": total_traffic,
-            "total_gb": round(total_traffic / (1024 ** 3), 3),
+        device_traffic.append({
+            "device": name,
+            "total_bytes": total,
+            "total_gb": round(total / (1024 ** 3), 3),
         })
 
     # Sort and return top 10
-    top_devices = sorted(devices, key=lambda d: d["total_bytes"], reverse=True)[:10]
+    top_devices = sorted(device_traffic, key=lambda x: x["total_bytes"], reverse=True)[:10]
 
     return Response({
         "top_10_devices": top_devices
