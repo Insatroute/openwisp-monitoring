@@ -8,7 +8,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.utils.timezone import now, timedelta
 from collections import Counter
-from datetime import timedelta, timezone
+from datetime import timedelta
+from django.utils import timezone
  
 Device = load_model("config", "Device")
 DeviceData = load_model("device_monitoring", "DeviceData")
