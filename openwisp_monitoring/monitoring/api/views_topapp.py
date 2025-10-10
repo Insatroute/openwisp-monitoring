@@ -37,25 +37,19 @@ def global_top_apps(request):
             .get("applications", [])
         )
         for app in top_apps:
-            app_counter[app["label"]] += app["traffic"]
+            label = app.get("label")
+            traffic = app.get("traffic", 0)
+            if label:
+                app_counter[label] += traffic
 
     # Get top 10 apps
     top_10_apps = app_counter.most_common(10)
 
-    # Split app names after second dot
-    # top_10_apps_list = []
-    # for name, value in top_10_apps:
-    #     parts = name.split('.')
-    #     if len(parts) > 2:
-    #         # take everything after the second dot
-    #         name = '.'.join(parts[2:])
-    #     else:
-    #         # fallback if less than 3 parts
-    #         name = parts[-1]
-    #     name = name.capitalize()
-    #     top_10_apps_list.append({"name": name, "value": value})
+    top_10_apps_list = [
+        {"label": label.capitalize(), "traffic": traffic} for label, traffic in top_10_apps
+    ]
 
-    return Response({"top_10_apps": top_10_apps})
+    return Response({"top_10_apps": top_10_apps_list})
 
 
 @api_view(["GET"])

@@ -296,9 +296,9 @@ async function fetchAndDisplayTopAppsChart() {
     const topApps = Array.isArray(data?.top_10_apps) ? data.top_10_apps : [];
 
     // Prepare labels and values (bytes → MB or GB)
-    const labels = topApps.map(item => String(item.name ?? ''));
+    const labels = topApps.map(item => String(item.label ?? ''));
     const values = topApps.map(item => {
-      const bytes = Number(item.value) || 0;
+      const bytes = Number(item.traffic) || 0;
       const mb = bytes / (1024 * 1024);
       if (mb >= 1000) {
         return { value: +(mb / 1024).toFixed(2), unit: 'GB' };
