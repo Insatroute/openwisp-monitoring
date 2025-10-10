@@ -32,10 +32,9 @@ def global_top_apps(request):
         data = device_data.data_user_friendly or {}
         top_apps = (
             data.get("realtimemonitor", {})
-            .get("real_time_traffic", {})
-            .get("data", {})
-            .get("talkers", {})
-            .get("top_apps", [])
+            .get("traffic", {})
+            .get("dpi_summery_v2", {})
+            .get("applications", [])
         )
         for app in top_apps:
             app_counter[app["name"]] += app["value"]
