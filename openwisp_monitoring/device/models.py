@@ -13,7 +13,7 @@ from .base.models import (
     AbstractTunnelData
 )
 from django.db import  models
-from sdwan_tunnel.models.tunnel import Tunnel
+# from sdwan_tunnel.models.tunnel import Tunnel
 
 BaseDevice = load_model('config', 'Device', require_ready=False)
 
@@ -44,7 +44,7 @@ class WifiSession(AbstractWifiSession):
         abstract = False
         swappable = swappable_setting('device_monitoring', 'WifiSession')
 
-class TunnelData(AbstractTunnelData, Tunnel):
+class TunnelData(AbstractTunnelData, BaseDevice):
     class Meta:
         proxy = True
         swappable = swappable_setting('device_monitoring', 'TunnelData')
