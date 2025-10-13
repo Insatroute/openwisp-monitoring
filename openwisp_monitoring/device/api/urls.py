@@ -11,6 +11,11 @@ urlpatterns = [
         name='api_monitoring_device_list',
     ),
     re_path(
+        r'^api/v1/monitoring/tunnel-data/(?P<pk>[^/]+)/$',
+        views.tunnel_data,
+        name='api_tunnel_data',
+    ),
+    re_path(
         r'^api/v1/monitoring/device/(?P<pk>[^/]+)/$',
         views.device_metric,
         name='api_device_metric',

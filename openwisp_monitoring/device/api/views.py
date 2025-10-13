@@ -43,7 +43,7 @@ from .filters import (
     MonitoringNearbyDeviceFilter,
     WifiSessionFilter,
 )
-from openwisp_monitoring.device.models import DPIRecord
+from openwisp_monitoring.device.models import DPIRecord, TunnelData
 from openwisp_monitoring.device.models import TSIPReport
 from openwisp_monitoring.device.models import ClientSummary
 from openwisp_monitoring.device.models import RealTraffic
@@ -86,6 +86,7 @@ DeviceMonitoring = load_model('device_monitoring', 'DeviceMonitoring')
 DeviceData = load_model('device_monitoring', 'DeviceData')
 Location = load_model('geo', 'Location')
 WifiSession = load_model('device_monitoring', 'WifiSession')
+TunnelData = load_model('device_monitoring', 'WifiSession')
 
 
 class ListViewPagination(pagination.PageNumberPagination):
@@ -624,6 +625,42 @@ class DeviceMetricView(
 
 device_metric = DeviceMetricView.as_view()
 
+
+class TunnelDataView(DeviceKeyAuthenticationMixin, MonitoringApiViewMixin, GenericAPIView):
+    """
+    Device Monitoring View for Tunnel Data.
+
+    Retrieve tunnel data for a specific device.
+    Supports session auth, token auth, or device key auth via query param.
+    """
+
+    model = TunnelData
+    queryset = TunnelData.objects.all()
+    serializer_class = serializers.Serializer  # We'll directly return JSON
+    permission_classes = [DevicePermission]
+
+    @classmethod
+    def invalidate_get_tunnel_cache(cls, instance, **kwargs):
+        """Invalidate cache for a tunnel data object."""
+        try:
+            view = cls()
+            view.get_object.invalidate(view, str(instance.pk))
+            logger.debug(f"Invalidated cache for TunnelData ID {instance.pk}")
+        except Exception as e:
+            logger.warning(f"Failed to invalidate cache: {str(e)}")
+
+    def get(self, request, pk):
+        """
+        GET /api/v1/monitoring/tunnel-data/<pk>/
+        """
+        tunnel_obj = self.get_object()
+        data = tunnel_obj.data_user_friendly
+        if not data:
+            return Response({"detail": "No tunnel data found"}, status=404)
+        return Response(data)
+
+
+tunnel_data = TunnelDataView.as_view()
 
 class MonitoringGeoJsonLocationList(GeoJsonLocationList):
     serializer_class = MonitoringGeoJsonLocationSerializer

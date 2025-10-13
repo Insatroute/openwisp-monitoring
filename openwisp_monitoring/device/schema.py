@@ -423,3 +423,41 @@ schema = {
         },
     },
 }
+
+
+tunnel_monitoring_schema = {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "NetJSON Tunnel Monitoring",
+    "type": "object",
+    "required": ["type", "tunnel_health"],
+    "properties": {
+        "type": {"type": "string", "enum": ["TunnelMonitoring"]},
+        "tunnel_health": {
+            "type": "object",
+            "required": ["latency", "jitter", "loss", "timestamp", "source", "destination"],
+            "properties": {
+                "latency": {"type": "number"},
+                "jitter": {"type": "number"},
+                "loss": {"type": "number"},
+                "timestamp": {"type": "string", "format": "date-time"},
+                "source": {"type": "string"},
+                "destination": {"type": "string"},
+            },
+        },
+        "tunnels": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["id", "name", "connected", "local", "remote"],
+                "properties": {
+                    "id": {"type": "string"},
+                    "name": {"type": "string"},
+                    "enabled": {"type": "string"},
+                    "connected": {"type": "boolean"},
+                    "local": {"type": "array", "items": {"type": "string"}},
+                    "remote": {"type": "array", "items": {"type": "string"}},
+                },
+            },
+        },
+    },
+}

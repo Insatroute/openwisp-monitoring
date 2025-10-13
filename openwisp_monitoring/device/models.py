@@ -10,8 +10,10 @@ from .base.models import (
     AbstractDeviceMonitoring,
     AbstractWifiClient,
     AbstractWifiSession,
+    AbstractTunnelData
 )
 from django.db import  models
+# from sdwan_tunnel.models.tunnel import Tunnel
 
 BaseDevice = load_model('config', 'Device', require_ready=False)
 
@@ -42,6 +44,10 @@ class WifiSession(AbstractWifiSession):
         abstract = False
         swappable = swappable_setting('device_monitoring', 'WifiSession')
 
+class TunnelData(AbstractTunnelData):
+    class Meta:
+        proxy = True
+        swappable = swappable_setting('device_monitoring', 'TunnelData')
 
 class DPIRecord(models.Model):
     device = models.ForeignKey(

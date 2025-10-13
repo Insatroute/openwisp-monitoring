@@ -32,7 +32,7 @@ from ...monitoring.tasks import _timeseries_write
 from ...settings import CACHE_TIMEOUT
 from .. import settings as app_settings
 from .. import tasks
-from ..schema import schema
+from ..schema import schema, tunnel_monitoring_schema
 from ..signals import health_status_changed
 from ..utils import SHORT_RP, get_device_cache_key
 
@@ -908,3 +908,138 @@ class AbstractWifiSession(TimeStampedEditableModel):
             and AbstractDeviceMonitoring.is_metric_critical(metric)
         ):
             tasks.offline_device_close_session.delay(device_id=target.pk)
+
+class AbstractTunnelData(object):
+    schema = tunnel_monitoring_schema
+    __data = None
+    __key = "tunnel_data"
+    __data_timestamp = None
+    # type = "TunnelMonitoring"
+
+    # class Meta:
+    #     abstract = True
+
+    def __init__(self, *args, **kwargs):
+        from ..writer import TunnelDataWriter  # writer like DeviceDataWriter
+
+        self.data = kwargs.pop("data", None)
+        self.writer = TunnelDataWriter(self)
+        super().__init__(*args, **kwargs)
+
+    # ---------------------------------------------------------
+    # Retrieve TunnelData object (cached)
+    # ---------------------------------------------------------
+    @classmethod
+    @cache_memoize(CACHE_TIMEOUT)
+    def get_tunneldata(cls, pk):
+        obj = (
+            cls.objects.select_related("devicelocation")
+            .only(
+                "id",
+                "organization_id",
+                "devicelocation__location_id",
+                "devicelocation__floorplan_id",
+            )
+            .get(id=pk)
+        )
+        return obj
+
+    @classmethod
+    def invalidate_cache(cls, instance, *args, **kwargs):
+        if isinstance(instance, load_model("geo", "DeviceLocation")):
+            pk = instance.content_object_id
+        else:
+            if kwargs.get("created"):
+                return
+            pk = instance.pk
+        cls.get_tunneldata.invalidate(cls, str(pk))
+
+    # ---------------------------------------------------------
+    # Data helpers
+    # ---------------------------------------------------------
+    @property
+    def data(self):
+        """Retrieve last tunnel data snapshot from InfluxDB / cache."""
+        if self.__data:
+            return self.__data
+        q = f'SELECT * FROM "{SHORT_RP}"."{self.__key}" WHERE "pk" = \'{self.pk}\' ORDER BY time DESC LIMIT 1'
+        cache_key = get_device_cache_key(device=self, context="current-tunnel-data")
+        points = app_settings.CACHE.get(cache_key)
+        if not points:
+            points = timeseries_db.get_list_query(q, precision=None)
+        if not points:
+            return None
+        self.data_timestamp = points[0]["time"]
+        return json.loads(points[0]["data"])
+
+    @data.setter
+    def data(self, data):
+        self.__data = data
+
+    @property
+    def data_timestamp(self):
+        return self.__data_timestamp
+
+    @data_timestamp.setter
+    def data_timestamp(self, value):
+        self.__data_timestamp = value
+
+    # ---------------------------------------------------------
+    # Data transformation for user-friendly display
+    # ---------------------------------------------------------
+    @property
+    def data_user_friendly(self):
+        if not self.data:
+            return None
+        data = self.data
+        tunnel_health = data.get("tunnel_health", {})
+        measured_at = datetime.strptime(self.data_timestamp[0:19], "%Y-%m-%dT%H:%M:%S")
+        time_elapsed = int((datetime.utcnow() - measured_at).total_seconds())
+
+        # Convert timestamp to readable format
+        if "timestamp" in tunnel_health:
+            tunnel_health["timestamp"] = datetime.fromisoformat(
+                tunnel_health["timestamp"]
+            ).astimezone(tz("UTC"))
+
+        data["tunnel_health"] = tunnel_health
+        return data
+
+    # ---------------------------------------------------------
+    # Validation and Saving
+    # ---------------------------------------------------------
+    def validate_data(self):
+        """Validates TunnelMonitoring data schema."""
+        try:
+            validate(self.data, self.schema, format_checker=draft7_format_checker)
+        except SchemaError as e:
+            path = [str(el) for el in e.path]
+            trigger = "/".join(path)
+            message = f'Invalid data in "#/{trigger}", validator says:\n\n{e.message}'
+            raise ValidationError(message)
+
+    def save_data(self, time=None):
+        """Validate and write data to timeseries DB (InfluxDB)."""
+        self.validate_data()
+        time = time or dj_now()
+        options = dict(tags={"pk": self.pk}, timestamp=time, retention_policy=SHORT_RP)
+        _timeseries_write(name=self.__key, values={"data": self.json()}, **options)
+
+        cache_key = get_device_cache_key(device=self, context="current-tunnel-data")
+        app_settings.CACHE.set(
+            cache_key,
+            [
+                {
+                    "data": self.json(),
+                    "time": time.astimezone(tz("UTC")).isoformat(timespec="seconds"),
+                }
+            ],
+            timeout=CACHE_TIMEOUT,
+        )
+
+    # ---------------------------------------------------------
+    # Helpers
+    # ---------------------------------------------------------
+    def json(self, *args, **kwargs):
+        return json.dumps(self.data, *args, **kwargs)
+    
