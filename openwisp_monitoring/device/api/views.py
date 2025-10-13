@@ -627,37 +627,28 @@ device_metric = DeviceMetricView.as_view()
 
 
 class TunnelDataView(DeviceKeyAuthenticationMixin, MonitoringApiViewMixin, GenericAPIView):
-    """
-    Device Monitoring View for Tunnel Data.
-
-    Retrieve tunnel data for a specific device.
-    Supports session auth, token auth, or device key auth via query param.
-    """
-
     model = TunnelData
-    queryset = TunnelData.objects.all()
-    serializer_class = serializers.Serializer  # We'll directly return JSON
     permission_classes = [DevicePermission]
 
-    @classmethod
-    def invalidate_get_tunnel_cache(cls, instance, **kwargs):
-        """Invalidate cache for a tunnel data object."""
-        try:
-            view = cls()
-            view.get_object.invalidate(view, str(instance.pk))
-            logger.debug(f"Invalidated cache for TunnelData ID {instance.pk}")
-        except Exception as e:
-            logger.warning(f"Failed to invalidate cache: {str(e)}")
+    def get_object(self):
+        device_id = self.kwargs['pk']
+        return TunnelData.objects.get(device_id=device_id)
 
-    def get(self, request, pk):
-        """
-        GET /api/v1/monitoring/tunnel-data/<pk>/
-        """
-        tunnel_obj = self.get_object()
-        data = tunnel_obj.data_user_friendly
-        if not data:
-            return Response({"detail": "No tunnel data found"}, status=404)
-        return Response(data)
+    def post(self, request, pk):
+        try:
+            tunnel_obj = self.get_object()
+        except TunnelData.DoesNotExist:
+            return Response({'error': 'TunnelData not found'}, status=404)
+
+        tunnel_obj.data = request.data
+        try:
+            tunnel_obj.validate_data()
+        except Exception as e:
+            return Response({'error': str(e)}, status=400)
+
+        tunnel_obj.save_data()
+        return Response({'status': 'ok'}, status=201)
+
 
 
 tunnel_data = TunnelDataView.as_view()

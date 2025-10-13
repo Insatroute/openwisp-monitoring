@@ -10,6 +10,8 @@ from swapper import load_model
 from .. import settings as monitoring_settings
 from ..monitoring.configuration import ACCESS_TECHNOLOGIES
 
+from django.utils.timezone import now 
+
 Chart = load_model("monitoring", "Chart")
 Metric = load_model("monitoring", "Metric")
 AlertSettings = load_model("monitoring", "AlertSettings")
@@ -400,5 +402,162 @@ class DeviceDataWriter(object):
 
     def _create_access_tech_chart(self, metric):
         chart = Chart(metric=metric, configuration="access_tech")
+        chart.full_clean()
+        chart.save()
+
+
+class TunnelDataWriter(object):
+    """
+    Handles writing tunnel monitoring data to InfluxDB and cache.
+    Similar structure and logic to DeviceDataWriter.
+    """
+
+    def __init__(self, tunnel_data):
+        self.tunnel_data = tunnel_data
+        self.write_tunnel_metrics = []
+
+    def _init_previous_data(self):
+        """Initialize previous snapshot of tunnel data if available."""
+        data = self.tunnel_data.data or {}
+        if data:
+            data = deepcopy(data)
+        self._previous_data = data
+
+    def write(self, data=None, time=None, current=False):
+        """
+        Main entry point for writing tunnel data.
+
+        - Saves raw tunnel data snapshot
+        - Writes metrics to InfluxDB
+        - Creates charts if necessary
+        """
+        if data:
+            self.tunnel_data.data = data
+
+        # Validate and save raw JSON snapshot to InfluxDB
+        self.tunnel_data.save_data(time=time)
+
+        data = self.tunnel_data.data or {}
+        self._init_previous_data()
+
+        time = time or now()
+        ct = ContentType.objects.get_for_model(Device)
+        tunnel_extra_tags = self._get_extra_tags(self.tunnel_data)
+
+        tunnel_health = data.get("tunnel_health", {})
+        tunnels = data.get("tunnels", [])
+
+        # ✅ Write Tunnel Health metrics
+        if tunnel_health:
+            self._write_tunnel_health(
+                tunnel_health, self.tunnel_data.pk, ct, current, time, tunnel_extra_tags
+            )
+
+        # ✅ Write Tunnel Connection metrics
+        for tunnel in tunnels:
+            self._write_tunnel_status(
+                tunnel, self.tunnel_data.pk, ct, current, time, tunnel_extra_tags
+            )
+
+        # ✅ Commit metrics batch
+        if self.write_tunnel_metrics:
+            try:
+                Metric.batch_write(self.write_tunnel_metrics)
+                logger.debug(f"TunnelData metrics written for device {self.tunnel_data.pk}")
+            except ValueError as error:
+                logger.error(
+                    f'Failed to write tunnel metrics for "{self.tunnel_data.pk}". Error: {error}'
+                )
+
+    # ---------------------------------------------------------------------
+    # METRIC WRITERS
+    # ---------------------------------------------------------------------
+    def _write_tunnel_health(self, health, pk, ct, current, time, extra_tags):
+        """Write latency, jitter, and packet loss metrics."""
+        metric, created = Metric._get_or_create(
+            object_id=pk,
+            content_type_id=ct.id,
+            configuration="tunnel_health",
+            name="Tunnel Health",
+            key="tunnel_health",
+            main_tags={"src": health.get("source", ""), "dst": health.get("destination", "")},
+            extra_tags=extra_tags,
+        )
+
+        extra_values = {
+            "latency": float(health.get("latency", 0.0)),
+            "jitter": float(health.get("jitter", 0.0)),
+            "loss": float(health.get("loss", 0.0)),
+        }
+
+        # Store aggregate metric (latency)
+        self._append_metric_data(metric, float(health.get("latency", 0.0)), current, time, extra_values)
+
+        if created:
+            self._create_tunnel_health_chart(metric)
+
+    def _write_tunnel_status(self, tunnel, pk, ct, current, time, extra_tags):
+        """Write per-tunnel connection/availability metric."""
+        name = f"{tunnel['name']} status"
+        metric, created = Metric._get_or_create(
+            object_id=pk,
+            content_type_id=ct.id,
+            configuration="tunnel_status",
+            name=name,
+            key="tunnel_status",
+            main_tags={"tunnel_id": tunnel["id"]},
+            extra_tags=extra_tags,
+        )
+        connected = 1 if tunnel.get("connected", False) else 0
+        self._append_metric_data(metric, connected, current, time)
+        if created:
+            self._create_tunnel_status_chart(metric)
+
+    # ---------------------------------------------------------------------
+    # UTILS
+    # ---------------------------------------------------------------------
+    def _append_metric_data(self, metric, value, current=False, time=None, extra_values=None):
+        """Collect metric data for batch write."""
+        self.write_tunnel_metrics.append(
+            (
+                metric,
+                {
+                    "value": value,
+                    "current": current,
+                    "time": time,
+                    "extra_values": extra_values,
+                },
+            )
+        )
+
+    def _get_extra_tags(self, tunnel):
+        """Return organization/location tags like in DeviceDataWriter."""
+        tags = {"organization_id": str(tunnel.organization_id)}
+        try:
+            dev_loc = tunnel.devicelocation
+        except ObjectDoesNotExist:
+            pass
+        else:
+            tags["location_id"] = str(dev_loc.location_id)
+            if dev_loc.floorplan_id:
+                tags["floorplan_id"] = str(dev_loc.floorplan_id)
+        return Metric._sort_dict(tags)
+
+    # ---------------------------------------------------------------------
+    # CHARTS
+    # ---------------------------------------------------------------------
+    def _create_tunnel_health_chart(self, metric):
+        """Creates tunnel latency/jitter/loss chart."""
+        if "tunnel_health" not in monitoring_settings.AUTO_CHARTS:
+            return
+        chart = Chart(metric=metric, configuration="tunnel_health")
+        chart.full_clean()
+        chart.save()
+
+    def _create_tunnel_status_chart(self, metric):
+        """Creates tunnel connectivity chart."""
+        if "tunnel_status" not in monitoring_settings.AUTO_CHARTS:
+            return
+        chart = Chart(metric=metric, configuration="tunnel_status")
         chart.full_clean()
         chart.save()
