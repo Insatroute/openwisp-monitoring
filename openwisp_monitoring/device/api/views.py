@@ -627,45 +627,132 @@ device_metric = DeviceMetricView.as_view()
 
 TunnelData = load_model('device_monitoring', 'TunnelData')
 
+# class TunnelDataView(DeviceKeyAuthenticationMixin, MonitoringApiViewMixin, GenericAPIView):
+#     """
+#     POST /api/v1/monitoring/tunnel-data/<pk>/
+#     Used by routers to send tunnel monitoring JSON data.
+#     """
+#     queryset = TunnelData.objects.all()
+#     permission_classes = [DevicePermission]
+#     model = TunnelData
+
+#     def get_object(self):
+#         pk = self.kwargs['pk']
+#         return TunnelData.objects.get(pk=pk)
+
+#     def post(self, request, pk):
+#         """
+#         Routers send JSON payload:
+#         {
+#             "type": "TunnelMonitoring",
+#             "tunnel_health": {...},
+#             "tunnels": [...]
+#         }
+#         """
+#         try:
+#             tunnel_obj = self.get_object()
+#         except TunnelData.DoesNotExist:
+#             return Response({'error': 'TunnelData not found'}, status=404)
+
+#         tunnel_obj.data = request.data
+
+#         try:
+#             tunnel_obj.validate_data()
+#         except Exception as e:
+#             return Response({'error': str(e)}, status=400)
+
+#         tunnel_obj.save_data()
+#         return Response({'status': 'ok'}, status=201)
+
+
 class TunnelDataView(DeviceKeyAuthenticationMixin, MonitoringApiViewMixin, GenericAPIView):
     """
-    POST /api/v1/monitoring/tunnel-data/<pk>/
-    Used by routers to send tunnel monitoring JSON data.
+    Tunnel Monitoring View.
+    Works like DeviceMetricView but for tunnel monitoring data.
+    Supports GET (retrieve) and POST (receive new tunnel data from router).
     """
-    queryset = TunnelData.objects.all()
-    permission_classes = [DevicePermission]
-    model = TunnelData
 
-    def get_object(self):
-        pk = self.kwargs['pk']
-        return TunnelData.objects.get(pk=pk)
+    model = TunnelData
+    queryset = TunnelData.objects.all()
+    serializer_class = None
+    permission_classes = [DevicePermission]
+
+    @classmethod
+    def invalidate_get_tunnel_cache(cls, instance, **kwargs):
+        """Invalidate cached tunnel data"""
+        view = cls()
+        try:
+            view.get_object.invalidate(view, str(instance.pk))
+            logger.debug(f"Invalidated cache for TunnelData ID {instance.pk}")
+        except Exception as e:
+            logger.warning(f"Failed to invalidate tunnel cache: {e}")
+
+    def get(self, request, pk):
+        """
+        GET /api/v1/monitoring/tunnel-data/<uuid>/
+        Retrieve last known tunnel data from InfluxDB
+        """
+        # Ensure valid UUID
+        try:
+            pk = str(uuid.UUID(pk))
+        except ValueError:
+            return Response({"detail": "not found"}, status=404)
+
+        self.instance = self.get_object(pk)
+        data = self.instance.data_user_friendly
+        if not data:
+            return Response({"detail": "No tunnel data found"}, status=404)
+        return Response(data, status=status.HTTP_200_OK)
+
+    @cache_memoize(CACHE_TIMEOUT, args_rewrite=get_charts_args_rewrite)
+    def get_object(self, pk):
+        return TunnelData.objects.get(id=pk)
 
     def post(self, request, pk):
         """
-        Routers send JSON payload:
-        {
-            "type": "TunnelMonitoring",
-            "tunnel_health": {...},
-            "tunnels": [...]
-        }
+        Router sends data to controller:
+        POST /api/v1/monitoring/tunnel-data/<uuid>/
         """
         try:
-            tunnel_obj = self.get_object()
+            self.instance = self.get_object(pk)
         except TunnelData.DoesNotExist:
-            return Response({'error': 'TunnelData not found'}, status=404)
+            raise Http404
 
-        tunnel_obj.data = request.data
+        # If device is deactivated (optional check)
+        if getattr(self.instance, "_is_deactivated", False):
+            raise Http404
 
+        self.instance.data = request.data
+
+        # Validate incoming data
         try:
-            tunnel_obj.validate_data()
+            self.instance.validate_data()
         except Exception as e:
-            return Response({'error': str(e)}, status=400)
+            logger.info(f"Tunnel data validation failed: {e}")
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-        tunnel_obj.save_data()
-        return Response({'status': 'ok'}, status=201)
+        # Parse optional timestamp from router
+        time_obj = request.query_params.get(
+            "time", now().utcnow().strftime("%d-%m-%Y_%H:%M:%S.%f")
+        )
+        try:
+            time = datetime.strptime(time_obj, "%d-%m-%Y_%H:%M:%S.%f").replace(
+                tzinfo=UTC
+            )
+        except ValueError:
+            return Response({"detail": "Incorrect time format"}, status=400)
+
+        # Write data directly to InfluxDB
+        try:
+            self.instance.save_data(time=time)
+        except Exception as e:
+            logger.error(f"Failed to write tunnel data to InfluxDB: {e}")
+            return Response({"error": "InfluxDB write failed"}, status=500)
+
+        logger.info(f"Tunnel data successfully written for {pk}")
+        return Response({"status": "ok"}, status=status.HTTP_201_CREATED)
 
 tunnel_data = TunnelDataView.as_view()
-
 class MonitoringGeoJsonLocationList(GeoJsonLocationList):
     serializer_class = MonitoringGeoJsonLocationSerializer
     queryset = (
