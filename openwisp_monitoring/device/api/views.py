@@ -665,94 +665,54 @@ TunnelData = load_model('device_monitoring', 'TunnelData')
 #         return Response({'status': 'ok'}, status=201)
 
 
+TunnelData = load_model('device_monitoring', 'TunnelData')
+
+
 class TunnelDataView(DeviceKeyAuthenticationMixin, MonitoringApiViewMixin, GenericAPIView):
     """
-    Tunnel Monitoring View.
-    Works like DeviceMetricView but for tunnel monitoring data.
-    Supports GET (retrieve) and POST (receive new tunnel data from router).
+    API endpoint for tunnel monitoring data
+    - POST: router pushes tunnel monitoring data (stored in InfluxDB)
+    - GET: return last tunnel monitoring data for the device
     """
 
     model = TunnelData
-    queryset = TunnelData.objects.all()
-    serializer_class = None
+    queryset = TunnelData.objects.all()  # ✅ required for GenericAPIView
     permission_classes = [DevicePermission]
+    lookup_field = 'pk'
+    serializer_class = serializers.Serializer
 
-    @classmethod
-    def invalidate_get_tunnel_cache(cls, instance, **kwargs):
-        """Invalidate cached tunnel data"""
-        view = cls()
-        try:
-            view.get_object.invalidate(view, str(instance.pk))
-            logger.debug(f"Invalidated cache for TunnelData ID {instance.pk}")
-        except Exception as e:
-            logger.warning(f"Failed to invalidate tunnel cache: {e}")
+    def get_object(self):
+        device_id = self.kwargs[self.lookup_field]
+        return TunnelData.objects.get(id=device_id)
 
     def get(self, request, pk):
         """
-        GET /api/v1/monitoring/tunnel-data/<uuid>/
-        Retrieve last known tunnel data from InfluxDB
+        Returns last tunnel data stored for the given device.
         """
-        # Ensure valid UUID
-        try:
-            pk = str(uuid.UUID(pk))
-        except ValueError:
-            return Response({"detail": "not found"}, status=404)
-
-        self.instance = self.get_object(pk)
-        data = self.instance.data_user_friendly
+        obj = self.get_object()
+        data = obj.data_user_friendly or {}
         if not data:
             return Response({"detail": "No tunnel data found"}, status=404)
-        return Response(data, status=status.HTTP_200_OK)
-
-    @cache_memoize(CACHE_TIMEOUT, args_rewrite=get_charts_args_rewrite)
-    def get_object(self, pk):
-        return TunnelData.objects.get(id=pk)
+        return Response(data)
 
     def post(self, request, pk):
         """
-        Router sends data to controller:
-        POST /api/v1/monitoring/tunnel-data/<uuid>/
+        Stores new tunnel data pushed by router.
         """
+        obj = self.get_object()
+        obj.data = request.data
+
         try:
-            self.instance = self.get_object(pk)
-        except TunnelData.DoesNotExist:
-            raise Http404
-
-        # If device is deactivated (optional check)
-        if getattr(self.instance, "_is_deactivated", False):
-            raise Http404
-
-        self.instance.data = request.data
-
-        # Validate incoming data
-        try:
-            self.instance.validate_data()
+            obj.validate_data()
         except Exception as e:
-            logger.info(f"Tunnel data validation failed: {e}")
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': str(e)}, status=400)
 
-        # Parse optional timestamp from router
-        time_obj = request.query_params.get(
-            "time", now().utcnow().strftime("%d-%m-%Y_%H:%M:%S.%f")
-        )
-        try:
-            time = datetime.strptime(time_obj, "%d-%m-%Y_%H:%M:%S.%f").replace(
-                tzinfo=UTC
-            )
-        except ValueError:
-            return Response({"detail": "Incorrect time format"}, status=400)
+        obj.save_data()
+        return Response({'status': 'ok'}, status=201)
 
-        # Write data directly to InfluxDB
-        try:
-            self.instance.save_data(time=time)
-        except Exception as e:
-            logger.error(f"Failed to write tunnel data to InfluxDB: {e}")
-            return Response({"error": "InfluxDB write failed"}, status=500)
-
-        logger.info(f"Tunnel data successfully written for {pk}")
-        return Response({"status": "ok"}, status=status.HTTP_201_CREATED)
 
 tunnel_data = TunnelDataView.as_view()
+
 class MonitoringGeoJsonLocationList(GeoJsonLocationList):
     serializer_class = MonitoringGeoJsonLocationSerializer
     queryset = (

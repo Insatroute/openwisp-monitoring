@@ -964,7 +964,7 @@ class AbstractTunnelData(object):
             return self.__data
         q = f'SELECT * FROM "{SHORT_RP}"."{self.__key}" WHERE "pk" = \'{self.pk}\' ORDER BY time DESC LIMIT 1'
         cache_key = get_device_cache_key(device=self, context="current-tunnel-data")
-        points = app_settings.CACHE.get(cache_key)
+        points = cache.get(cache_key)
         if not points:
             points = timeseries_db.get_list_query(q, precision=None)
         if not points:
