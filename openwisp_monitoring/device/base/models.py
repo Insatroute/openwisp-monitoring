@@ -1026,7 +1026,7 @@ class AbstractTunnelData(object):
         _timeseries_write(name=self.__key, values={"data": self.json()}, **options)
 
         cache_key = get_device_cache_key(device=self, context="current-tunnel-data")
-        app_settings.CACHE.set(
+        cache.set(
             cache_key,
             [
                 {

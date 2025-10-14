@@ -432,18 +432,18 @@ tunnel_monitoring_schema = {
     "required": ["type"],
     "properties": {
         "type": {"type": "string", "enum": ["TunnelMonitoring"]},
-        # "tunnel_health": {
-        #     "type": "object",
-        #     "required": ["latency", "jitter", "loss", "timestamp", "source", "destination"],
-        #     "properties": {
-        #         "latency": {"type": "number"},
-        #         "jitter": {"type": "number"},
-        #         "loss": {"type": "number"},
-        #         "timestamp": {"type": "string", "format": "date-time"},
-        #         "source": {"type": "string"},
-        #         "destination": {"type": "string"},
-        #     },
-        # },
+        "tunnel_health": {
+            "type": "object",
+            "required": ["latency", "jitter", "loss", "timestamp", "source", "destination"],
+            "properties": {
+                "latency": {"type": "number"},
+                "jitter": {"type": "number"},
+                "loss": {"type": "number"},
+                "timestamp": {"type": "string", "format": "date-time"},
+                "source": {"type": "string"},
+                "destination": {"type": "string"},
+            },
+        },
         "tunnels": {
             "type": "array",
             "items": {
