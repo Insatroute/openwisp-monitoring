@@ -625,45 +625,6 @@ class DeviceMetricView(
 
 device_metric = DeviceMetricView.as_view()
 
-TunnelData = load_model('device_monitoring', 'TunnelData')
-
-# class TunnelDataView(DeviceKeyAuthenticationMixin, MonitoringApiViewMixin, GenericAPIView):
-#     """
-#     POST /api/v1/monitoring/tunnel-data/<pk>/
-#     Used by routers to send tunnel monitoring JSON data.
-#     """
-#     queryset = TunnelData.objects.all()
-#     permission_classes = [DevicePermission]
-#     model = TunnelData
-
-#     def get_object(self):
-#         pk = self.kwargs['pk']
-#         return TunnelData.objects.get(pk=pk)
-
-#     def post(self, request, pk):
-#         """
-#         Routers send JSON payload:
-#         {
-#             "type": "TunnelMonitoring",
-#             "tunnel_health": {...},
-#             "tunnels": [...]
-#         }
-#         """
-#         try:
-#             tunnel_obj = self.get_object()
-#         except TunnelData.DoesNotExist:
-#             return Response({'error': 'TunnelData not found'}, status=404)
-
-#         tunnel_obj.data = request.data
-
-#         try:
-#             tunnel_obj.validate_data()
-#         except Exception as e:
-#             return Response({'error': str(e)}, status=400)
-
-#         tunnel_obj.save_data()
-#         return Response({'status': 'ok'}, status=201)
-
 
 TunnelData = load_model('device_monitoring', 'TunnelData')
 
@@ -705,10 +666,10 @@ class TunnelDataView(DeviceKeyAuthenticationMixin, MonitoringApiViewMixin, Gener
         try:
             obj.validate_data()
         except Exception as e:
-            return Response({'error': str(e)}, status=400)
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
         obj.save_data()
-        return Response({'status': 'ok'}, status=201)
+        return Response({'status': 'ok'}, status=status.HTTP_200_OK)
 
 
 tunnel_data = TunnelDataView.as_view()
