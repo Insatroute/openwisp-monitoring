@@ -725,4 +725,35 @@ fetchAndDisplayTopAppsChart();
     font-size: 12px;
     color: #666;
   }
+
+@media screen and (max-width: 1024px) {
+  .card-grid {
+    grid-template-columns: repeat(2, 1fr); 
+  }
+
+  .card-grid-two {
+    grid-template-columns: 1fr; 
+  }
+}
+
+@media screen and (max-width: 600px) {
+  .card-grid {
+    grid-template-columns: repeat(2, 1fr); 
+    gap: 12px; 
+  }
+
+  .card-grid-two {
+    grid-template-columns: 1fr;
+  }
+
+  .chart-container canvas {
+    height: 220px !important;
+  }
+
+  .badge {
+    font-size: 11px;
+    padding: 4px 8px;
+  }
+}
+
 </style>
