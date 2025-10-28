@@ -44,7 +44,7 @@ td.field-health_status,
   background: #333;
   padding: 4px 10px;
   font-size: 11px;
-  border-radius: 30px;
+  border-radius: 6px;
 
 }
 .health-unknown {
@@ -53,7 +53,7 @@ td.field-health_status,
   background: #e0e0e0;
   padding: 4px 10px;
   font-size: 11px;
-  border-radius: 30px;
+  border-radius: 6px;
 
 }
 .health-ok {
@@ -62,7 +62,7 @@ td.field-health_status,
   background: #28a745cf;
   padding: 4px 10px;
   font-size: 11px;
-  border-radius: 30px;
+  border-radius: 6px;
 
 }
 .health-problem {
@@ -71,7 +71,7 @@ td.field-health_status,
   background: orange;
   padding: 4px 10px;
   font-size: 11px;
-  border-radius: 30px;
+  border-radius: 6px;
 }
 .health-critical {
   text-align: center;
@@ -79,7 +79,7 @@ td.field-health_status,
   background: #ec5261;
   padding: 4px 10px;
   font-size: 11px;
-  border-radius: 30px;
+  border-radius: 6px;
 }
 #ow-device-status table.addresses td {
   width: 50%;
