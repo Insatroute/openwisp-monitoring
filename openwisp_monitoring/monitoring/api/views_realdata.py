@@ -92,13 +92,15 @@ def real_time_traffic_summary_data(request, device_id: str):
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
-def wan_uplink_summary_data(request, device_id: str):
+def interface_summary_data(request, device_id: str):
     device = get_object_or_404(Device, pk=device_id)
     data = fetch_device_monitoring_data(device)
     wan_uplink_data = data.get("wan_uplink", {})
+    cellular_data = data.get("cellular", {})
 
     response_data = {
         "wan_uplink": wan_uplink_data,
+        "cellular": cellular_data,
     }
 
     return Response(response_data)
