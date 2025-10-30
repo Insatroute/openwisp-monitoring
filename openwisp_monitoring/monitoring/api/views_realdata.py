@@ -15,18 +15,19 @@ def fetch_device_monitoring_data(device):
     try:
         device_data = DeviceData.objects.get(config=device.config)
         if not device_data or not isinstance(device_data.data_user_friendly, dict):
-            return {"traffic": {}, "security": {}, "real_time_traffic": {}, "wan_uplink": {}}
+            return {"traffic": {}, "security": {}, "real_time_traffic": {}, "wan_uplink": {}, "cellular": {}}
 
         realtime = device_data.data_user_friendly.get("realtimemonitor", {})
+        cellular = device_data.data_user_friendly.get("cellular", {})
         traffic = realtime.get("traffic", {})
         security = realtime.get("security", {})
         real_time_traffic = realtime.get("real_time_traffic", {})
         wan_uplink = realtime.get("wan_uplink", {})
 
-        return {"traffic": traffic, "security": security, "real_time_traffic": real_time_traffic, "wan_uplink": wan_uplink}
+        return {"traffic": traffic, "security": security, "real_time_traffic": real_time_traffic, "wan_uplink": wan_uplink, "cellular": cellular}
 
     except DeviceData.DoesNotExist:
-        return {"traffic": {}, "security": {}, "real_time_traffic": {}, "wan_uplink": {}}
+        return {"traffic": {}, "security": {}, "real_time_traffic": {}, "wan_uplink": {}, "cellular": {}}
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])

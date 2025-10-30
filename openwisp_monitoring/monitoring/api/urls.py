@@ -43,7 +43,7 @@ urlpatterns = [
         name="api_device_real_time_traffic_summary"
     ),
     re_path(
-        r'^api/v1/monitoring/device/(?P<device_id>[^/]+)/interface_summary_data/$',
+        r'^api/v1/monitoring/device/(?P<device_id>[^/]+)/interface_summary/$',
         views_realdata.interface_summary_data,
         name="api_device_interface_summary"
     ),
