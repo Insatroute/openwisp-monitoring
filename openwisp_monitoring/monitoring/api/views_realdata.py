@@ -8,6 +8,21 @@ Device = load_model("config", "Device")
 DeviceData = load_model("device_monitoring", "DeviceData")
 
 
+def fetch_cellular_data(device):
+    """Fetch cellular data from the associated device configuration."""
+    try:
+        device_data = DeviceData.objects.get(config=device.config)
+        if not device_data or not isinstance(device_data.data_user_friendly, dict):
+            return {"cellular": {}}
+
+        cellular = device_data.data_user_friendly.get("cellular", {})
+
+        return {"cellular": cellular}
+
+    except DeviceData.DoesNotExist:
+        return {"cellular": {}}
+
+
 def fetch_device_monitoring_data(device):
     """
     Fetch device monitoring data.
@@ -93,14 +108,24 @@ def real_time_traffic_summary_data(request, device_id: str):
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
-def interface_summary_data(request, device_id: str):
+def wan_uplink_summary_data(request, device_id: str):
     device = get_object_or_404(Device, pk=device_id)
     data = fetch_device_monitoring_data(device)
     wan_uplink_data = data.get("wan_uplink", {})
-    cellular_data = data.get("cellular", {})
 
     response_data = {
         "wan_uplink": wan_uplink_data,
+    }
+    return Response(response_data)
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def cellular_summary_data(request, device_id: str):
+    device = get_object_or_404(Device, pk=device_id)
+    data = fetch_device_monitoring_data(device)
+    cellular_data = data.get("cellular", {})
+
+    response_data = {
         "cellular": cellular_data,
     }
 

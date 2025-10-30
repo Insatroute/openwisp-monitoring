@@ -43,9 +43,14 @@ urlpatterns = [
         name="api_device_real_time_traffic_summary"
     ),
     re_path(
-        r'^api/v1/monitoring/device/(?P<device_id>[^/]+)/interface_summary/$',
-        views_realdata.interface_summary_data,
-        name="api_device_interface_summary"
+        r'^api/v1/monitoring/device/(?P<device_id>[^/]+)/wan-uplink-summary/$',
+        views_realdata.wan_uplink_summary_data,
+        name="api_device_wan_uplink_summary"
+    ),
+    re_path(
+        r'^api/v1/monitoring/device/(?P<device_id>[^/]+)/cellular-summary/$',
+        views_realdata.cellular_summary_data,
+        name="api_device_cellular_summary"
     ),
 
 ]
