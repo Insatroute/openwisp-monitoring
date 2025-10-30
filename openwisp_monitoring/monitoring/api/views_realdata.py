@@ -122,7 +122,7 @@ def wan_uplink_summary_data(request, device_id: str):
 @permission_classes([IsAuthenticated])
 def cellular_summary_data(request, device_id: str):
     device = get_object_or_404(Device, pk=device_id)
-    data = fetch_device_monitoring_data(device)
+    data = fetch_cellular_data(device)
     cellular_data = data.get("cellular", {})
 
     response_data = {
