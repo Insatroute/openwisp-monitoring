@@ -21,6 +21,20 @@ def fetch_cellular_data(device):
 
     except DeviceData.DoesNotExist:
         return {"cellular": {}}
+    
+def fetch_device_info(device):
+    """Fetch device information from the associated device configuration."""
+    try:
+        device_data = DeviceData.objects.get(config=device.config)
+        if not device_data or not isinstance(device_data.data_user_friendly, dict):
+            return {"device_info": {}}
+
+        device_info = device_data.data_user_friendly.get("device_info", {})
+
+        return {"device_info": device_info}
+
+    except DeviceData.DoesNotExist:
+        return {"device_info": {}}
 
 
 def fetch_device_monitoring_data(device):
@@ -127,6 +141,19 @@ def cellular_summary_data(request, device_id: str):
 
     response_data = {
         "cellular": cellular_data,
+    }
+
+    return Response(response_data)
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def device_info_summary_data(request, device_id: str):
+    device = get_object_or_404(Device, pk=device_id)
+    data = fetch_device_info(device)
+    device_info = data.get("device_info", {})
+
+    response_data = {
+        "device_info": device_info,
     }
 
     return Response(response_data)

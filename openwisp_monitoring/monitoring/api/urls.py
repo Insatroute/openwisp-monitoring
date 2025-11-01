@@ -52,5 +52,10 @@ urlpatterns = [
         views_realdata.cellular_summary_data,
         name="api_device_cellular_summary"
     ),
+    re_path(
+        r'^api/v1/monitoring/device/(?P<device_id>[^/]+)/device-info-summary/$',
+        views_realdata.device_info_summary_data,
+        name="api_device_info_summary"
+    ),
 
 ]
