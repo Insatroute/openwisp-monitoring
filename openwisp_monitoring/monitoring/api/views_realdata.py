@@ -7,6 +7,19 @@ from swapper import load_model
 Device = load_model("config", "Device") 
 DeviceData = load_model("device_monitoring", "DeviceData")
 
+def fetch_device_data(device):
+    """Fetch device data from the associated device configuration."""
+    try:
+        device_data = DeviceData.objects.get(config=device.config)
+        if not device_data or not isinstance(device_data.data_user_friendly, dict):
+            return {}
+
+        data = device_data.data_user_friendly
+        return data
+
+    except DeviceData.DoesNotExist:
+        return {}
+
 
 def fetch_cellular_data(device):
     """Fetch cellular data from the associated device configuration."""
@@ -156,4 +169,17 @@ def device_info_summary_data(request, device_id: str):
         "device_info": device_info,
     }
 
+    return Response(response_data)
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def interfaces_summary_data(request, device_id: str):
+    device = get_object_or_404(Device, pk=device_id)
+    data = fetch_device_data(device)
+    interfaces = data.get("interfaces", [])
+
+    response_data = {
+        "interfaces": interfaces,
+        "count": len(interfaces)
+    }
     return Response(response_data)

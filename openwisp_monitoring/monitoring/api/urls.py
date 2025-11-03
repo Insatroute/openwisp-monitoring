@@ -57,5 +57,10 @@ urlpatterns = [
         views_realdata.device_info_summary_data,
         name="api_device_info_summary"
     ),
+    re_path(
+        r'^api/v1/monitoring/device/(?P<device_id>[^/]+)/interfaces-summary/$',
+        views_realdata.interfaces_summary_data,
+        name="api_device_interfaces_summary"
+    ),
 
 ]
