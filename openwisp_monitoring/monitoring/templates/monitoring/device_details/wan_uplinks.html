@@ -1,1 +1,294 @@
-<h1>WAN Uplinks Information</h1>
+{# ================= Interfaces (ETH0–ETH5 | SIM1 | SIM2 | Wi-Fi) + Uplink table ====== #}
+
+<style>
+  /* ===== Generic panels ===== */
+  .wp-panel { background:#fff; border:1px solid #eaecef; border-radius:12px; box-shadow:0 6px 20px rgba(0,0,0,.06); margin:16px 0; }
+  .wp-panel-hd { padding:12px 16px; font-weight:700; color:#1f2937; border-bottom:1px solid #eef0f3; }
+  .wp-panel-bd { padding:16px; }
+
+  /* ===== Interfaces strip ===== */
+  .wp-ports-wrap { display:flex; justify-content:center; }
+  .wp-ports-box {
+    display:flex; padding:20px 10px;
+    border:1px dashed #e3e7ee; border-radius:14px; background:#f9fafb;
+    align-items:center; flex-wrap:wrap; margin:20px;
+  }
+
+  .wp-port-tile { width:86px; display:flex; flex-direction:column; align-items:center; gap:8px; }
+  .wp-port-label { font-weight:800; color:#213547; font-size:12px; text-align:center; }
+
+  .wp-icon {
+    width:48px; height:36px; border-radius:8px;
+    background:linear-gradient(#eaf0f7, #e2e7ef);
+    box-shadow:inset 0 -2px 0 rgba(0,0,0,.05);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .wp-icon svg { width:28px; height:28px; opacity:.75; }
+
+  .wp-connected .wp-icon { background:#22c55e; border-color:#16a34a; box-shadow:none; }
+  .wp-connected .wp-icon svg { opacity:1; filter:brightness(100%) contrast(110%); }
+  .wp-disconnected .wp-icon { background:#e5e7eb; border-color:#cbd5e1; }
+
+  .wp-legend { display:flex; align-items:center; gap:18px; margin-top:12px; }
+  .wp-legend .wp-dot { width:10px; height:10px; border-radius:50%; display:inline-block; margin-right:6px; }
+  .wp-dot-green{ background:#22c55e; }
+  .wp-dot-gray{ background:#cbd5e1; }
+
+  /* ===== Uplink table ===== */
+  .wp-uplink-panel { background:#fff; border:1px solid #eaecef; border-radius:12px; box-shadow:0 6px 20px rgba(0,0,0,.06); margin:16px 0; }
+  .wp-uplink-hd { display:flex; align-items:center; justify-content:space-between; padding:12px 16px; border-bottom:1px solid #eef0f3; }
+  .wp-uplink-title { font-weight:700; color:#1f2937; }
+  .wp-uplink-updated { font-size:12px; color:#6b7280; }
+
+  .wp-uplink-table { width:100%; border-collapse:separate; border-spacing:0; }
+  .wp-uplink-table th, .wp-uplink-table td { text-align:left; padding:12px 14px; border-bottom:1px solid #eef0f3; vertical-align:middle; }
+  .wp-uplink-table th { font-size:12px; text-transform:uppercase; letter-spacing:.02em; color:#6b7280; background:#f8fafc; }
+  .wp-uplink-table tr:last-child td { border-bottom:none; }
+
+  .wp-status-dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:10px; vertical-align:middle; }
+  .wp-dot-green { background:#22c55e; }
+  .wp-dot-gray  { background:#cbd5e1; }
+
+  .wp-linkish { color:#0b63c5; font-weight:700; text-decoration:none; }
+  .wp-linkish:hover { text-decoration:underline; }
+
+  .wp-nowrap { white-space:nowrap; }
+  .wp-muted { color:#94a3b8; }
+
+  .wp-kp-arrows { display:flex; gap:10px; align-items:center; }
+  .wp-kp-up, .wp-kp-down { display:inline-flex; align-items:center; gap:6px; font-weight:700; }
+  .wp-kp-up i, .wp-kp-down i { display:inline-block; width:0; height:0; border-left:5px solid transparent; border-right:5px solid transparent; }
+  .wp-kp-up  i { border-bottom:8px solid #22c55e; }
+  .wp-kp-down i { border-top:8px solid #94a3b8; }
+</style>
+
+{# ===== SVG symbols (prefixed ids) ===== #}
+<svg aria-hidden="true" width="0" height="0" style="position:absolute; left:-9999px; top:-9999px;">
+  <defs>
+    <symbol id="wp-icon-rj45" viewBox="0 0 24 24">
+      <rect x="3" y="5" width="18" height="14" rx="3" fill="#dbe2eb"></rect>
+      <rect x="5.5" y="10.5" width="13" height="6" rx="1.5" fill="#bfc8d4"></rect>
+      <rect x="6" y="6" width="2" height="3" rx="0.5" fill="#aeb8c5"></rect>
+      <rect x="9" y="6" width="2" height="3" rx="0.5" fill="#aeb8c5"></rect>
+      <rect x="12" y="6" width="2" height="3" rx="0.5" fill="#aeb8c5"></rect>
+      <rect x="15" y="6" width="2" height="3" rx="0.5" fill="#aeb8c5"></rect>
+      <rect x="8" y="14" width="8" height="2" rx="0.5" fill="#e3e8ee"></rect>
+    </symbol>
+
+    <symbol id="wp-icon-sim" viewBox="0 0 24 24">
+      <path d="M8 3h6l4 4v10a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" fill="#cfd8e3"/>
+      <rect x="9" y="9" width="6" height="6" rx="1" fill="#9aa7b7"/>
+      <rect x="10" y="10" width="1.5" height="1.5" fill="#e5e7eb"/>
+      <rect x="12.25" y="10" width="1.5" height="1.5" fill="#e5e7eb"/>
+      <rect x="10" y="12.25" width="1.5" height="1.5" fill="#e5e7eb"/>
+      <rect x="12.25" y="12.25" width="1.5" height="1.5" fill="#e5e7eb"/>
+    </symbol>
+
+    <symbol id="wp-icon-wifi" viewBox="0 0 24 24">
+      <path d="M2 9a14 14 0 0 1 20 0" stroke="#9aa7b7" stroke-width="2" stroke-linecap="round"/>
+      <path d="M5 12a10 10 0 0 1 14 0" stroke="#9aa7b7" stroke-width="2" stroke-linecap="round"/>
+      <path d="M8.5 15a6 6 0 0 1 7 0" stroke="#9aa7b7" stroke-width="2" stroke-linecap="round"/>
+      <circle cx="12" cy="18" r="1.6" fill="#9aa7b7"/>
+    </symbol>
+  </defs>
+</svg>
+
+{# ================= Interfaces ================= #}
+<div class="wp-panel">
+  <div class="wp-panel-hd">Interfaces</div>
+  <div class="wp-panel-bd">
+    <div class="wp-ports-wrap">
+      <div class="wp-ports-box">
+        <!-- ETH0..ETH5 -->
+        <div id="wp-tile-eth0" class="wp-port-tile wp-disconnected">
+          <div class="wp-icon"><svg><use href="#wp-icon-rj45"/></svg></div>
+          <div class="wp-port-label">ETH0</div>
+        </div>
+        <div id="wp-tile-eth1" class="wp-port-tile wp-disconnected">
+          <div class="wp-icon"><svg><use href="#wp-icon-rj45"/></svg></div>
+          <div class="wp-port-label">ETH1</div>
+        </div>
+        <div id="wp-tile-eth2" class="wp-port-tile wp-disconnected">
+          <div class="wp-icon"><svg><use href="#wp-icon-rj45"/></svg></div>
+          <div class="wp-port-label">ETH2</div>
+        </div>
+        <div id="wp-tile-eth3" class="wp-port-tile wp-disconnected">
+          <div class="wp-icon"><svg><use href="#wp-icon-rj45"/></svg></div>
+          <div class="wp-port-label">ETH3</div>
+        </div>
+        <div id="wp-tile-eth4" class="wp-port-tile wp-disconnected">
+          <div class="wp-icon"><svg><use href="#wp-icon-rj45"/></svg></div>
+          <div class="wp-port-label">ETH4</div>
+        </div>
+        <div id="wp-tile-eth5" class="wp-port-tile wp-disconnected">
+          <div class="wp-icon"><svg><use href="#wp-icon-rj45"/></svg></div>
+          <div class="wp-port-label">ETH5</div>
+        </div>
+      </div>
+
+      <div class="wp-ports-box">
+        <!-- SIMs -->
+        <div id="wp-tile-sim1" class="wp-port-tile wp-disconnected">
+          <div class="wp-icon"><svg><use href="#wp-icon-sim"/></svg></div>
+          <div class="wp-port-label">SIM1</div>
+        </div>
+        <div id="wp-tile-sim2" class="wp-port-tile wp-disconnected">
+          <div class="wp-icon"><svg><use href="#wp-icon-sim"/></svg></div>
+          <div class="wp-port-label">SIM2</div>
+        </div>
+      </div>
+
+      <div class="wp-ports-box">
+        <!-- Wi-Fi -->
+        <div id="wp-tile-wifi" class="wp-port-tile wp-disconnected">
+          <div class="wp-icon"><svg><use href="#wp-icon-wifi"/></svg></div>
+          <div class="wp-port-label">Wi-Fi(STA)</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="wp-legend">
+      <span><i class="wp-dot wp-dot-green"></i>Connected</span>
+      <span><i class="wp-dot wp-dot-gray"></i>Disconnected</span>
+    </div>
+  </div>
+</div>
+
+{# ================= Uplink Table (initial table with all columns) ================= #}
+<div class="wp-uplink-panel">
+  <div class="wp-uplink-hd">
+    <div class="wp-uplink-title">Uplink</div>
+    <div class="wp-uplink-updated">
+      Last Updated:
+      {{ device_data.general.local_time|default:"—" }}
+    </div>
+  </div>
+
+  <table class="wp-uplink-table">
+    <thead>
+      <tr>
+        <th>Status</th>
+        <th>Uplink</th>
+        <th>Working Mode</th>
+        <th>Uptime</th>
+        <th>Public IP</th>
+        <th>Interface IP/Mask</th>
+        <th>Ping Destination</th>
+        <th>Throughput</th>
+        <th>Latency</th>
+        <th>Jitter</th>
+        <th>Loss</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for iface in device_data.interfaces %}
+        {% if iface.type == 'ethernet' or iface.type == 'mobile' %}
+          {% if iface.name|cut:'.' == iface.name and iface.name|cut:'-' == iface.name %}
+            {% if not iface.name == 'modem' %}
+              {% with rx=iface.statistics.rx tx=iface.statistics.tx %}
+                {% with rx_b=rx.bytes|default:0 tx_b=tx.bytes|default:0 %}
+                  <tr>
+                    <td class="wp-nowrap">
+                      <span class="wp-status-dot {% if iface.up %}wp-dot-green{% else %}wp-dot-gray{% endif %}"></span>
+                      {% if iface.up %}Online{% else %}Offline{% endif %}
+                    </td>
+
+                    <td class="wp-nowrap">
+                      {% if iface.name == 'modem1' %}
+                        <a class="wp-linkish" href="javascript:void(0)">Cellular(SIM1)</a>
+                      {% elif iface.name == 'modem2' %}
+                        <a class="wp-linkish" href="javascript:void(0)">Cellular(SIM2)</a>
+                      {% else %}
+                        <a class="wp-linkish" href="javascript:void(0)">{{ iface.name|upper }}</a>
+                      {% endif %}
+                    </td>
+
+                    <td class="wp-nowrap">Backup</td>
+                    <td class="wp-nowrap">—</td>
+
+                    <td class="wp-nowrap">
+                      {% with pub="—" %}
+                        {% if iface.addresses %}
+                          {% for a in iface.addresses %}
+                            {% if a.family == 'ipv4' and pub == "—" %}
+                              {% with pub=a.address %}{% endwith %}
+                            {% endif %}
+                          {% endfor %}
+                          {% if pub == "—" %}
+                            {% for a in iface.addresses %}
+                              {% if a.family == 'ipv6' and pub == "—" %}
+                                {% with pub=a.address %}{% endwith %}
+                              {% endif %}
+                            {% endfor %}
+                          {% endif %}
+                        {% endif %}
+                        {{ pub }}
+                      {% endwith %}
+                    </td>
+
+                    <td>
+                      {% if iface.addresses %}
+                        {% for addr in iface.addresses %}
+                          <div>{{ addr.address }}{% if addr.mask %}/{{ addr.mask }}{% endif %} <span class="wp-muted">({{ addr.family|upper }})</span></div>
+                        {% endfor %}
+                      {% else %}<span class="wp-muted">—</span>{% endif %}
+                    </td>
+
+                    <td class="wp-nowrap">—</td>
+
+                    <td class="wp-nowrap">
+                      <span class="wp-kp-arrows">
+                        <span class="wp-kp-up"><i></i>{{ tx_b|filesizeformat }}</span>
+                        <span class="wp-kp-down"><i></i>{{ rx_b|filesizeformat }}</span>
+                      </span>
+                    </td>
+
+                    <td class="wp-nowrap">—</td>
+                    <td class="wp-nowrap">—</td>
+                    <td class="wp-nowrap">—</td>
+                  </tr>
+                {% endwith %}
+              {% endwith %}
+            {% endif %}
+          {% endif %}
+        {% endif %}
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<script>
+  var IFACES = [
+    {% for iface in device_data.interfaces %}
+      {"name":"{{ iface.name }}","type":"{{ iface.type }}","up": {% if iface.up %}true{% else %}false{% endif %}},
+    {% endfor %}
+  ];
+
+  function wpSetState(id, isUp){
+    var el = document.getElementById(id);
+    if(!el) return;
+    el.classList.remove('wp-connected','wp-disconnected');
+    el.classList.add(isUp ? 'wp-connected' : 'wp-disconnected');
+  }
+
+  // ETH0..ETH5 (skip sub-ifs)
+  ['eth0','eth1','eth2','eth3','eth4','eth5'].forEach(function(name){
+    var m = IFACES.find(function(i){
+      if(i.type !== 'ethernet') return false;
+      if(i.name.indexOf('.') !== -1) return false;
+      if(i.name.indexOf('-') !== -1) return false;
+      return i.name === name;
+    });
+    wpSetState('wp-tile-' + name, !!(m && m.up));
+  });
+
+  // SIM mapping (skip plain "modem")
+  var sim1 = IFACES.find(function(i){ return i.name === 'modem1' && i.type === 'mobile'; });
+  var sim2 = IFACES.find(function(i){ return i.name === 'modem2' && i.type === 'mobile'; });
+  wpSetState('wp-tile-sim1', !!(sim1 && sim1.up));
+  wpSetState('wp-tile-sim2', !!(sim2 && sim2.up));
+
+  // Wi-Fi placeholder (keep gray unless you wire an iface)
+  // var wifi = IFACES.find(function(i){ return i.name === 'wlan0'; });
+  // wpSetState('wp-tile-wifi', !!(wifi && wifi.up));
+</script>
