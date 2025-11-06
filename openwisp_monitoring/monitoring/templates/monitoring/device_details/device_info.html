@@ -1,0 +1,102 @@
+{# ---- DEVICE SUMMARY PANEL ---- #}
+<style>
+  /* Panel */
+  .panel {
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: 0 6px 20px rgba(0,0,0,.06);
+    overflow: hidden;
+    margin: 16px 0;
+    border: 1px solid #eee;
+  }
+  .panel-header {
+    background: #f0f0f0;
+    border-bottom: 1px solid #eee;
+    padding: 12px 16px;
+    font-weight: 700;
+    letter-spacing: .02em;
+    color: #1b1f24;
+  }
+
+  /* Grid */
+  .kv-grid {
+    display: grid;
+    gap: 14px;
+    padding: 16px;
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+  }
+  @media (min-width: 640px) { .kv-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (min-width: 920px) { .kv-grid { grid-template-columns: repeat(3, 1fr); } }
+  @media (min-width: 1200px){ .kv-grid { grid-template-columns: repeat(4, 1fr); } }
+
+  /* Card */
+  .kv-card {
+    background: ##f0f0f094;
+    border: 1px solid #e8ebef;
+    border-radius: 10px;
+    padding: 14px 16px;
+  }
+  .kv-label {
+    font-size: 12px;
+    color: #6b7280; /* muted */
+    margin-bottom: 6px;
+  }
+  .kv-value {
+    font-weight: 800;
+    color: #0b3d91; /* deep blue like the screenshot */
+    word-break: break-word;
+  }
+
+  /* Optional: make some fields look “link-like” (bold/darker) */
+  .kv-value.emph { text-decoration: none; }
+</style>
+{% load i18n static %}
+<div class="panel">
+  <div class="panel-header">{% trans "Device Information" %}</div>
+  <div class="kv-grid">
+    <div class="kv-card">
+      <div class="kv-label">{% trans "CPU Model" %}</div>
+      <div class="kv-value emph">{{ device_data.device.device_info.CPU_Model|default:"—" }}</div>
+    </div>
+
+    <div class="kv-card">
+      <div class="kv-label">{% trans "Cpu Use" %}</div>
+      <div class="kv-value">{{ device_data.device.device_info.cpu_use|default:"—" }}</div>
+    </div>
+
+    <div class="kv-card">
+      <div class="kv-label">{% trans "Softver" %}</div>
+      <div class="kv-value emph">{{ device_data.device.device_info.softver|default:"—" }}</div>
+    </div>
+
+    <div class="kv-card">
+      <div class="kv-label">{% trans "Memory Size" %}</div>
+      <div class="kv-value">{{ device_data.device.device_info.Memory_Size|default:"—" }}</div>
+    </div>
+
+    <div class="kv-card">
+      <div class="kv-label">{% trans "Cursim" %}</div>
+      <div class="kv-value">{{ device_data.device.device_info.cursim|default:"—" }}</div>
+    </div>
+
+    <div class="kv-card">
+      <div class="kv-label">{% trans "Nettype" %}</div>
+      <div class="kv-value">{{ device_data.device.device_info.nettype|default:"—" }}</div>
+    </div>
+
+    <div class="kv-card">
+      <div class="kv-label">{% trans "Mem Use" %}</div>
+      <div class="kv-value">{{ device_data.device.device_info.mem_use|default:"—" }}</div>
+    </div>
+
+    <div class="kv-card">
+      <div class="kv-label">{% trans "Hardver" %}</div>
+      <div class="kv-value">{{ device_data.device.device_info.hardver|default:"—" }}</div>
+    </div>
+
+    <div class="kv-card">
+      <div class="kv-label">{% trans "Devsn" %}</div>
+      <div class="kv-value emph">{{ device_data.device.device_info.devsn|default:"—" }}</div>
+    </div>
+  </div>
+</div>

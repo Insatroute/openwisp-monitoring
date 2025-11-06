@@ -1,6 +1,42 @@
 {% extends "admin/config/device/change_form.html" %}
 {% load i18n static %}
 {% block after_field_sets %}
+
+ {% if not add or device_data %}
+  <div class="inline-group" id="ow-chart-deivce">
+  <fieldset class="module">
+     <h2>{% trans 'Cellular' %}</h2>
+       <div id="details-tabs" class="details-tabs-container">
+      <!-- PANELS -->
+      <div id="details-tab-system" class="details-tab-panel active">
+        <div class="details-sub-tabs">
+          <button type="button" data-target="details-cellular-info">Cellular Info</button>
+          <button type="button" data-target="details-device-usage">Device Usage</button>
+          <button type="button" data-target="details-cellular-signal">Cellular Signal</button>
+          <button type="button" data-target="details-wan-uplinks">Wan Uplinks</button>
+
+        </div>
+
+        <div class="details-sub-contents">
+          <div id="details-cellular-info" class="details-sub-content active">
+            {% include 'monitoring/device_details/cellular_info.html' %}
+          </div>
+          <div id="details-device-usage" class="details-sub-content">
+            {% include 'monitoring/device_details/device_usage.html' %}
+          </div>
+          <div id="details-cellular-signal" class="details-sub-content">
+            {% include 'monitoring/device_details/cellular_signal.html' %}
+          </div>
+          <div id="details-wan-uplinks" class="details-sub-content">
+            {% include 'monitoring/device_details/wan_uplinks.html' %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </fieldset>
+</div>
+{% endif %}
+
 {% if not add and device_data %}
 
 <div class="inline-group" id="ow-device-status">
@@ -375,6 +411,27 @@
       padding: 0rem 0rem !important;
     
 }
+
+
+
+/* Scoped styles so nothing else is affected */
+  #details-tabs .details-sub-tabs {
+    display:flex; flex-wrap:wrap; border-bottom:1px solid #ddd; background:#fff;
+  }
+  #details-tabs .details-sub-tabs button {
+    flex:1 1 auto; height:2.4rem; padding:0 0.75rem; border:none; background:none;
+    color:#666; cursor:pointer; font-size:0.8rem; white-space:nowrap;
+  }
+  #details-tabs .details-sub-tabs button.active {
+    color:#11274b; border-bottom:2px solid #253a5d;
+  }
+  #details-tabs .details-sub-content { display:none; padding:1rem 0 0; }
+  #details-tabs .details-sub-content.active { display:block; }
+
+  @media (max-width:768px){
+    #details-tabs .details-sub-tabs{flex-direction:column;}
+    #details-tabs .details-sub-tabs button{text-align:left;}
+  }
 </style>
 <script>
     function setActive(container, selector, activeElem) {
@@ -384,6 +441,7 @@
 
   // Main tabs
   document.getElementById('mainTabs').addEventListener('click', e => {
+ 
     if (e.target.tagName !== 'BUTTON') return;
     e.preventDefault();
     setActive(document.querySelector('.status-main-tabs'), 'button', e.target);
@@ -428,5 +486,30 @@
   function scrollToElement(id) {
     document.getElementById(id).scrollIntoView();
   }
+
+
+
+  (function(){
+    const root = document.getElementById('details-tabs');
+    if(!root) return;
+
+    const setActive = (container, selector, el) => {
+      container.querySelectorAll(selector).forEach(x => x.classList.remove('active'));
+      el.classList.add('active');
+    };
+
+    const sub = root.querySelector('.details-sub-tabs');
+    sub.addEventListener('click', (e) => {
+      const btn = e.target.closest('button');
+      if(!btn) return;
+      e.preventDefault();
+
+      setActive(sub, 'button', btn);
+
+      root.querySelectorAll('.details-sub-content').forEach(c => c.classList.remove('active'));
+      const tgt = root.querySelector('#' + btn.dataset.target);
+      if(tgt) tgt.classList.add('active');
+    });
+  })();
 </script>
 {% endif %} {% endblock %}
