@@ -1,1 +1,314 @@
-<h1>Device Usage Information</h1>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Device Usage Information</title>
+  <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+  <style>
+    .dashboard-contain { max-width: 1200px; margin: 20px auto; }
+    #apiError { display:none;color:#b91c1c;background:#fee2e2;border:1px solid #fecaca;padding:12px 16px;border-radius:8px;margin-bottom:20px;font-size:14px; }
+
+    .usage-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:20px; margin-bottom:30px; }
+    .usage-section { background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.1); }
+    .section-title { font-size:16px;font-weight:700;color:#111827;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #e5e7eb; }
+    #lastUpdated { font-size:11px;color:#6b7280;margin-left:6px; }
+
+    .total-summary { margin-bottom:16px; }
+    .total-value { font-size:28px;font-weight:700;color:#059669;margin-bottom:6px; }
+    .total-stats { font-size:13px;color:#6b7280;line-height:1.6; }
+
+    .interface-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; }
+    .interface-card { background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:12px; }
+    .interface-title { font-size:13px;font-weight:600;color:#374151;margin-bottom:6px; }
+    .interface-value { font-size:20px;font-weight:700;color:#111827;margin-bottom:4px; }
+    .interface-stats { font-size:12px;color:#6b7280;line-height:1.5; }
+
+    .chart-container { background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.1); }
+    .chart-title { font-size:16px;font-weight:700;color:#111827;margin-bottom:16px; }
+    #trafficCharts { width:100%; height:400px; }
+
+    @media (max-width:900px){ .usage-grid{grid-template-columns:1fr;gap:16px} .interface-grid{grid-template-columns:1fr}}
+    @media (min-width:901px) and (max-width:1200px){ .usage-grid{grid-template-columns:repeat(2,1fr)} }
+  </style>
+</head>
+<body>
+  <div class="dashboard-contain">
+    <h1>Device Usage Information</h1>
+    <div id="apiError"></div>
+
+    <div class="usage-grid">
+      <!-- Cellular -->
+      <div class="usage-section">
+        <div class="section-title">
+          Cellular <span id="lastUpdated"></span>
+        </div>
+        <div class="total-summary" id="cellular-total-summary">
+          <div class="total-value">—</div>
+          <div class="total-stats">SIM1 / SIM2 signal overview</div>
+        </div>
+        <div class="interface-grid">
+          <div class="interface-card" id="sim1-card">
+            <div class="interface-title">SIM1:</div>
+            <div class="interface-value">—</div>
+            <div class="interface-stats">CSQ: — | RSRP: —<br>RSRQ: — | SNR: —</div>
+          </div>
+          <div class="interface-card" id="sim2-card">
+            <div class="interface-title">SIM2:</div>
+            <div class="interface-value">—</div>
+            <div class="interface-stats">CSQ: — | RSRP: —<br>RSRQ: — | SNR: —</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Wired -->
+      <div class="usage-section">
+        <div class="section-title">Wired</div>
+        <div class="total-summary" id="wired-total-summary">
+          <div class="total-value">—</div>
+          <div class="total-stats">Sent: —<br>Received: —</div>
+        </div>
+        <div class="interface-grid">
+          <div class="interface-card" id="eth0-card">
+            <div class="interface-title">WAN1 (eth0):</div>
+            <div class="interface-value">—</div>
+            <div class="interface-stats">Sent: —<br>Received: —</div>
+          </div>
+          <div class="interface-card" id="eth1-card">
+            <div class="interface-title">WAN2 (eth1):</div>
+            <div class="interface-value">—</div>
+            <div class="interface-stats">Sent: —<br>Received: —</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Wireless (placeholder) -->
+      <div class="usage-section">
+        <div class="section-title">Wireless</div>
+        <div class="total-summary" id="wireless-total-summary">
+          <div class="total-value">—</div>
+          <div class="total-stats">Sent: —<br>Received: —</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chart -->
+    <div class="chart-container">
+      <div class="chart-title">General Traffic</div>
+      <div id="trafficCharts"></div>
+    </div>
+  </div>
+
+  <!-- Make device_data available to JS without any network call -->
+  {{ device_data|json_script:"devicejson" }}
+
+  <script>
+    (function(){
+      'use strict';
+
+      // Colors (as requested)
+      const COLOR_DOWNLOAD = '#1f77b4'; // blue
+      const COLOR_UPLOAD   = '#ff7f0e'; // orange
+      const COLOR_TOTAL    = '#9ca3af'; // grey
+
+      const bytesToMB = b => (typeof b === 'number' ? b : Number(b||0)) / (1024*1024);
+      const fmtMB = n => `${(Number(n)||0).toFixed(2)} MB`;
+
+      // Read the JSON dumped by Django
+      const root = JSON.parse(document.getElementById('devicejson').textContent || '{}');
+      const interfaces = Array.isArray(root.interfaces) ? root.interfaces : [];
+
+      console.log('Device Interfaces Data:===', interfaces);
+
+      // Helpers to pick things from interfaces
+      function findInterfaceByName(name){
+        for (var i=0;i<interfaces.length;i++){
+          if (interfaces[i] && interfaces[i].name === name) return interfaces[i];
+        }
+        return null;
+      }
+      function findMobiles(){
+        const out = [];
+        for (var i=0;i<interfaces.length;i++){
+          const it = interfaces[i];
+          if (it && it.type === 'mobile' && it.mobile) out.push(it.mobile);
+        }
+        return out;
+      }
+      function extractSignal(mobile){
+        // src = LTE or 5G
+        const sig = mobile && mobile.signal || {};
+        const lte = sig.lte || null;
+        const nr  = sig['5g'] || null;
+        const src = lte || nr || {};
+        const tech = lte ? 'LTE' : (nr ? '5G' : '');
+        return {
+          operator: mobile.operator_name || '',
+          tech,
+          csq: Number(src.csq),
+          rsrp: Number(src.rsrp),
+          rsrq: Number(src.rsrq),
+          snr: Number(src.snr)
+        };
+      }
+      function extractMBStats(intf){
+        if (!intf || !intf.statistics) return {rxMB:0, txMB:0, totalMB:0};
+        const rxB = (intf.statistics.rx && intf.statistics.rx.bytes) || 0;
+        const txB = (intf.statistics.tx && intf.statistics.tx.bytes) || 0;
+        const rxMB = bytesToMB(rxB);
+        const txMB = bytesToMB(txB);
+        return {rxMB, txMB, totalMB: rxMB + txMB};
+      }
+      function signalQualityLabel(csq){
+        if (!(csq>=0) || csq===99) return 'Unknown';
+        if (csq <= 1) return 'Very Poor';
+        if (csq <= 3) return 'Poor';
+        if (csq <= 7) return 'Fair';
+        if (csq <= 11) return 'Good';
+        return 'Excellent';
+      }
+
+      /* -------------------- Populate SIM cards (from interfaces->mobile) -------------------- */
+      const mobiles = findMobiles(); // typically contains modem1 + modem2
+      const m1 = mobiles[0] ? extractSignal(mobiles[0]) : {};
+      const m2 = mobiles[1] ? extractSignal(mobiles[1]) : {};
+
+      // top summary (just show operators/tech if present)
+      const totalSummary = document.getElementById('cellular-total-summary');
+      if (totalSummary){
+        const parts = [];
+        if (m1.operator) parts.push(`${m1.operator}${m1.tech?' ('+m1.tech+')':''}`);
+        if (m2.operator) parts.push(`${m2.operator}${m2.tech?' ('+m2.tech+')':''}`);
+        totalSummary.querySelector('.total-value').textContent = parts.join('  |  ') || '—';
+        totalSummary.querySelector('.total-stats').textContent = 'SIM1 / SIM2 signal overview';
+      }
+
+      const sim1Card = document.getElementById('sim1-card');
+      if (sim1Card){
+        sim1Card.querySelector('.interface-title').textContent = `SIM1: ${m1.operator || '—'} ${m1.tech?`(${m1.tech})`:''}`;
+        sim1Card.querySelector('.interface-value').textContent =
+          (m1.csq>=0) ? `CSQ ${m1.csq} — ${signalQualityLabel(m1.csq)}` : '—';
+        sim1Card.querySelector('.interface-stats').innerHTML =
+          `CSQ: ${(m1.csq>=0)?m1.csq:'—'} | RSRP: ${isFinite(m1.rsrp)?m1.rsrp+' dBm':'—'}<br>`+
+          `RSRQ: ${isFinite(m1.rsrq)?m1.rsrq+' dB':'—'} | SNR: ${isFinite(m1.snr)?m1.snr+' dB':'—'}`;
+      }
+
+      const sim2Card = document.getElementById('sim2-card');
+      if (sim2Card){
+        sim2Card.querySelector('.interface-title').textContent = `SIM2: ${m2.operator || '—'} ${m2.tech?`(${m2.tech})`:''}`;
+        sim2Card.querySelector('.interface-value').textContent =
+          (m2.csq>=0) ? `CSQ ${m2.csq} — ${signalQualityLabel(m2.csq)}` : '—';
+        sim2Card.querySelector('.interface-stats').innerHTML =
+          `CSQ: ${(m2.csq>=0)?m2.csq:'—'} | RSRP: ${isFinite(m2.rsrp)?m2.rsrp+' dBm':'—'}<br>`+
+          `RSRQ: ${isFinite(m2.rsrq)?m2.rsrq+' dB':'—'} | SNR: ${isFinite(m2.snr)?m2.snr+' dB':'—'}`;
+      }
+
+      const lastUpdated = document.getElementById('lastUpdated');
+      if (lastUpdated) lastUpdated.textContent = `(Updated: ${new Date().toLocaleTimeString()})`;
+
+      /* -------------------- Wired: show ONLY eth0 + eth1 -------------------- */
+      const eth0 = findInterfaceByName('eth0');
+      const eth1 = findInterfaceByName('eth1');
+
+      const eth0Stats = extractMBStats(eth0);
+      const eth1Stats = extractMBStats(eth1);
+
+      const eth0Card = document.getElementById('eth0-card');
+      if (eth0Card){
+        eth0Card.querySelector('.interface-value').textContent = fmtMB(eth0Stats.totalMB);
+        eth0Card.querySelector('.interface-stats').innerHTML =
+          `Sent: ${fmtMB(eth0Stats.txMB)}<br>Received: ${fmtMB(eth0Stats.rxMB)}`;
+      }
+      const eth1Card = document.getElementById('eth1-card');
+      if (eth1Card){
+        eth1Card.querySelector('.interface-value').textContent = fmtMB(eth1Stats.totalMB);
+        eth1Card.querySelector('.interface-stats').innerHTML =
+          `Sent: ${fmtMB(eth1Stats.txMB)}<br>Received: ${fmtMB(eth1Stats.rxMB)}`;
+      }
+
+      const wiredTotal = document.getElementById('wired-total-summary');
+      if (wiredTotal){
+        const sent = eth0Stats.txMB + eth1Stats.txMB;
+        const recv = eth0Stats.rxMB + eth1Stats.rxMB;
+        wiredTotal.querySelector('.total-value').textContent = fmtMB(sent + recv);
+        wiredTotal.querySelector('.total-stats').innerHTML =
+          `Sent: ${fmtMB(sent)}<br>Received: ${fmtMB(recv)}`;
+      }
+
+      /* -------------------- General Traffic chart (eth0 & eth1) -------------------- */
+      const names = [];
+      const downloadMB = [];
+      const uploadMB = [];
+      const totalMB = [];
+
+      function push(label, stats){
+        names.push(label);
+        downloadMB.push(stats.rxMB);
+        uploadMB.push(stats.txMB);
+        totalMB.push(stats.totalMB);
+      }
+      if (eth0) push('eth0', eth0Stats);
+      if (eth1) push('eth1', eth1Stats);
+
+      const noData = names.length === 0;
+
+      const traceDownload = {
+        type:'bar',
+        name:'Download',
+        x:names,
+        y:downloadMB,
+        marker:{ color: COLOR_DOWNLOAD },
+        hovertemplate:'Download: %{y:.2f} MB<br>%{x}<extra></extra>',
+        offsetgroup:'dl'
+      };
+      const traceUpload = {
+        type:'bar',
+        name:'Upload',
+        x:names,
+        y:uploadMB,
+        marker:{ color: COLOR_UPLOAD },
+        hovertemplate:'Upload: %{y:.2f} MB<br>%{x}<extra></extra>',
+        offsetgroup:'ul'
+      };
+      const traceTotal = {
+        type:'scatter',
+        mode:'lines+markers',
+        name:'Total',
+        x:names,
+        y:totalMB,
+        line:{ color: COLOR_TOTAL, width: 2 },
+        marker:{ size:5, color: COLOR_TOTAL },
+        hovertemplate:'Total: %{y:.2f} MB<br>%{x}<extra></extra>'
+      };
+
+      const layout = {
+        barmode:'group',
+        bargap:0.15,
+        margin:{l:60,r:20,t:10,b:60},
+        xaxis:{ type:'category', gridcolor:'#e5e7eb', zeroline:false },
+        yaxis:{ title:'MB', gridcolor:'#e5e7eb', zeroline:false },
+        legend:{ orientation:'h', yanchor:'top', y:-0.2, x:0.5, xanchor:'center' },
+        paper_bgcolor:'rgba(0,0,0,0)',
+        plot_bgcolor:'rgba(0,0,0,0)',
+        annotations: noData ? [{
+          text:'No eth0/eth1 statistics available',
+          xref:'paper', yref:'paper', x:0.5, y:0.5, showarrow:false, font:{size:14, color:'#6b7280'}
+        }] : []
+      };
+
+      Plotly.newPlot(
+        'trafficCharts',
+        noData ? [] : [traceTotal, traceDownload, traceUpload],
+        layout,
+        { displaylogo:false, responsive:true, modeBarButtonsToRemove:['select2d','lasso2d','autoScale2d'] }
+      );
+
+      const el = document.getElementById('trafficCharts');
+      const resize = () => Plotly.Plots.resize(el);
+      window.addEventListener('resize', resize, { passive:true });
+      if ('ResizeObserver' in window) new ResizeObserver(resize).observe(el.parentElement);
+      requestAnimationFrame(resize);
+    })();
+  </script>
+</body>
+</html>
