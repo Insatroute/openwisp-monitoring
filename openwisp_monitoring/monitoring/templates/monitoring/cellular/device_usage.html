@@ -176,7 +176,7 @@
         <div class="interface-grid">
           {# ---------- SIM1 (modem) ---------- #}
           <div class="interface-card" id="sim1-card">
-            <div class="interface-title">SIM1 (modem)</div>
+            <div class="interface-title">SIM1</div>
 
             {# try to find an interface named "modem" that has statistics #}
             {% with rendered=0 %}
@@ -197,15 +197,13 @@
             {% if rendered == 0 %}
             <div class="interface-value">Total: NA</div>
             <div class="interface-stats">Received: NA<br>Sent: NA</div>
-            {# NOTE: In your sample payload the "modem" object has no statistics,
-            so you will see NA here until backend includes rx/tx for modem. #}
             {% endif %}
             {% endwith %}
           </div>
 
           {# ---------- SIM2 (modem2) ---------- #}
           <div class="interface-card" id="sim2-card">
-            <div class="interface-title">SIM2 (modem2)</div>
+            <div class="interface-title">SIM2 </div>
 
             {% with rendered=0 %}
             {% for iface in device_data.interfaces %}
