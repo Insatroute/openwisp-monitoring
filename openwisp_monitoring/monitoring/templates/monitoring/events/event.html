@@ -1,83 +1,28 @@
 {# ===== Events (device_data.availability.intervals) ===== #}
 <style>
-  .event-card {
-    background: #fff;
-    border: 1px solid #e5e7eb;
-    border-radius: 12px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
-    overflow: hidden;
+  .event-card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,.06); overflow:hidden; }
+  .event-card-hd { display:flex; align-items:center; padding:12px 14px; border-bottom:1px solid #e5e7eb; }
+  .event-title { font-weight:800; color:#111827; }
+  .event-updated { margin-left:auto; color:#6b7280; font-size:12px; }
+  .event-wrap { overflow-x:auto; }
+  .event-table { width:100%; border-collapse:separate; border-spacing:0; }
+  .event-th, .event-td { padding:10px 12px; border-bottom:1px solid #e5e7eb; font-size:13px; white-space:nowrap; }
+  .event-th { text-transform:uppercase; color:#6b7280; font-weight:700; background:#fff; position:sticky; top:0; }
+  .event-td { color:#111827; }
+  .event-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
+  .event-dot { width:10px; height:10px; border-radius:50%; display:inline-block; vertical-align:middle; margin-right:8px; }
+  .event-dot-up { background:#10b981; }      /* green */
+  .event-dot-down { background:#ef4444; }    /* red */
+  .event-dot-unknown { background:#9ca3af; } /* gray */
+  
+  .event-empty {margin:16px;
+    padding:24px;
+    border:1px dashed #d1d5db;
+    border-radius:8px;
+    text-align:center;
+    color:#6b7280;
   }
-  .event-card-hd {
-    display: flex;
-    align-items: center;
-    padding: 12px 14px;
-    border-bottom: 1px solid #e5e7eb;
-  }
-  .event-title {
-    font-weight: 800;
-    color: #111827;
-  }
-  .event-updated {
-    margin-left: auto;
-    color: #6b7280;
-    font-size: 12px;
-  }
-  .event-wrap {
-    overflow-x: auto;
-  }
-  .event-table {
-    width: 100%;
-    border-collapse: separate;
-    border-spacing: 0;
-  }
-  .event-th,
-  .event-td {
-    padding: 10px 12px;
-    border-bottom: 1px solid #e5e7eb;
-    font-size: 13px;
-    white-space: nowrap;
-  }
-  .event-th {
-    text-transform: uppercase;
-    color: #6b7280;
-    font-weight: 700;
-    background: #fff;
-    position: sticky;
-    top: 0;
-  }
-  .event-td {
-    color: #111827;
-  }
-  .event-mono {
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
-      "Liberation Mono", monospace;
-  }
-  .event-dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    display: inline-block;
-    vertical-align: middle;
-    margin-right: 8px;
-  }
-  .event-dot-up {
-    background: #10b981;
-  } /* green */
-  .event-dot-down {
-    background: #ef4444;
-  } /* red */
-  .event-dot-unknown {
-    background: #9ca3af;
-  } /* gray */
-
-  .event-empty {
-    margin: 16px;
-    padding: 24px;
-    border: 1px dashed #d1d5db;
-    border-radius: 8px;
-    text-align: center;
-    color: #6b7280;
-  }
+  
 </style>
 
 <div class="event-card" id="event-card">
@@ -90,44 +35,47 @@
   </div>
 
   <div class="event-wrap" id="event-wrap">
-    {% if device_data.availability.intervals and
-    device_data.availability.intervals|length %}
-    <table class="event-table" id="event-table">
-      <thead>
-        <tr>
-          <th class="event-th">Start</th>
-          <th class="event-th">End</th>
-          <th class="event-th">Status</th>
-          <th class="event-th">Duration</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for e in device_data.availability.intervals %}
-        <tr>
-          <td class="event-td event-mono">{{ e.start|default:"—" }}</td>
-          <td class="event-td event-mono">{{ e.end|default:"—" }}</td>
-          <td class="event-td">
-            {% with sts=e.status|default:"unknown" %}
-            <span
-              class="event-dot {% if sts|lower == 'up' %}event-dot-up {% elif sts|lower == 'down' %}event-dot-down {% else %}event-dot-unknown{% endif %}"
-            ></span>
-            {{ e.status_label|default:sts|title }} {% endwith %}
-          </td>
-          <td class="event-td">
-            {% if e.duration_human %} {{ e.duration_human }} {% elif
-            e.duration_seconds %} {{ e.duration_seconds }} s {% else %} — {%
-            endif %}
-          </td>
-        </tr>
-        {% empty %}
-        <tr>
-          <td class="event-td event-empty" colspan="4">No events available</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+    {% if device_data.availability.intervals and device_data.availability.intervals|length %}
+      <table class="event-table" id="event-table">
+        <thead>
+          <tr>
+            <th class="event-th">Start</th>
+            <th class="event-th">End</th>
+            <th class="event-th">Status</th>
+            <th class="event-th">Duration</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for e in device_data.availability.intervals %}
+            <tr>
+              <td class="event-td event-mono">{{ e.start|default:"—" }}</td>
+              <td class="event-td event-mono">{{ e.end|default:"—" }}</td>
+              <td class="event-td">
+                {% with sts=e.status|default:"unknown" %}
+                  <span class="event-dot
+                    {% if sts|lower == 'up' %}event-dot-up
+                    {% elif sts|lower == 'down' %}event-dot-down
+                    {% else %}event-dot-unknown{% endif %}"></span>
+                  {{ e.status_label|default:sts|title }}
+                {% endwith %}
+              </td>
+              <td class="event-td">
+                {% if e.duration_human %}
+                  {{ e.duration_human }}
+                {% elif e.duration_seconds %}
+                  {{ e.duration_seconds }} s
+                {% else %}
+                  —
+                {% endif %}
+              </td>
+            </tr>
+          {% empty %}
+            <tr><td class="event-td event-empty" colspan="4">No events available</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
     {% else %}
-    <div class="event-empty" id="event-empty">No events available</div>
+      <div class="event-empty" id="event-empty">No events available</div>
     {% endif %}
   </div>
 </div>
