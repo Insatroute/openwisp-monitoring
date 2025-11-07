@@ -49,7 +49,7 @@
   </div>
   <div class="hr"></div>
 
-  {# ------------ SIM 1 (modem1) ------------ #}
+  {# ------------ SIM 1 (modem) ------------ #}
   <div id="sim1">
     {# Identification #}
     <div class="section">
@@ -58,19 +58,19 @@
         <div class="kv-grid">
           <div class="kv-card">
             <div class="kv-label">NID</div>
-            <div class="kv-value">{{ device_data.cellular.modem1.nid|default:"—" }}</div>
+            <div class="kv-value">{{ device_data.cellular.modem.nid|default:"—" }}</div>
           </div>
           <div class="kv-card">
             <div class="kv-label">IMEI</div>
-            <div class="kv-value">{{ device_data.cellular.modem1.imei|default:"—" }}</div>
+            <div class="kv-value">{{ device_data.cellular.modem.imei|default:"—" }}</div>
           </div>
           <div class="kv-card">
             <div class="kv-label">IMSI</div>
-            <div class="kv-value">{{ device_data.cellular.modem1.imsi|default:"—" }}</div>
+            <div class="kv-value">{{ device_data.cellular.modem.imsi|default:"—" }}</div>
           </div>
           <div class="kv-card">
             <div class="kv-label">ICCID</div>
-            <div class="kv-value">{{ device_data.cellular.modem1.iccid|default:"—" }}</div>
+            <div class="kv-value">{{ device_data.cellular.modem.iccid|default:"—" }}</div>
           </div>
           <div class="kv-card">
             <div class="kv-label">Mobile Number</div>
@@ -78,7 +78,7 @@
           </div>
           <div class="kv-card">
             <div class="kv-label">Module Version</div>
-            <div class="kv-value">{{ device_data.cellular.modem1.module_version|default:"—" }}</div>
+            <div class="kv-value">{{ device_data.cellular.modem.module_version|default:"—" }}</div>
           </div>
         </div>
       </div>
@@ -91,27 +91,27 @@
         <div class="kv-grid">
           <div class="kv-card">
             <div class="kv-label">Operator</div>
-            <div class="kv-value">{{ device_data.cellular.modem1.operator|default:"—" }}</div>
+            <div class="kv-value">{{ device_data.cellular.modem.operator|default:"—" }}</div>
           </div>
           <div class="kv-card">
             <div class="kv-label">Network Type</div>
-            <div class="kv-value">{{ device_data.cellular.modem1.nettype|default:"—" }}</div>
+            <div class="kv-value">{{ device_data.cellular.modem.nettype|default:"—" }}</div>
           </div>
           <div class="kv-card">
             <div class="kv-label">Network Band</div>
-            <div class="kv-value">{{ device_data.cellular.modem1.netband|default:"—" }}</div>
+            <div class="kv-value">{{ device_data.cellular.modem.netband|default:"—" }}</div>
           </div>
           <div class="kv-card">
             <div class="kv-label">Cell ID (CI)</div>
-            <div class="kv-value">{{ device_data.cellular.modem1.ci|default:"—" }}</div>
+            <div class="kv-value">{{ device_data.cellular.modem.ci|default:"—" }}</div>
           </div>
           <div class="kv-card">
             <div class="kv-label">LAC</div>
-            <div class="kv-value">{{ device_data.cellular.modem1.lac|default:"—" }}</div>
+            <div class="kv-value">{{ device_data.cellular.modem.lac|default:"—" }}</div>
           </div>
           <div class="kv-card">
             <div class="kv-label">IP</div>
-            <div class="kv-value">{{ device_data.cellular.modem1.ip|default:"—" }}</div>
+            <div class="kv-value">{{ device_data.cellular.modem.ip|default:"—" }}</div>
           </div>
         </div>
       </div>
@@ -122,11 +122,11 @@
       <div class="section-hd">Signal Metrics</div>
       <div class="section-bd">
         <div class="kv-grid">
-            <div class="kv-card"><div class="kv-label">RSRP</div><div class="kv-value">{{ device_data.cellular.modem1.rsrp|default:"—" }}</div></div>
-            <div class="kv-card"><div class="kv-label">RSRQ</div><div class="kv-value">{{ device_data.cellular.modem1.rsrq|default:"—" }}</div></div>
-            <div class="kv-card"><div class="kv-label">SNR</div><div class="kv-value">{{ device_data.cellular.modem1.snr|default:"—" }}</div></div>
-            <div class="kv-card"><div class="kv-label">SINR</div><div class="kv-value">{{ device_data.cellular.modem1.sinr|default:"—" }}</div></div>
-            <div class="kv-card"><div class="kv-label">CSQ</div><div class="kv-value">{{ device_data.cellular.modem1.csq|default:"—" }}</div></div>
+            <div class="kv-card"><div class="kv-label">RSRP</div><div class="kv-value">{{ device_data.cellular.modem.rsrp|default:"—" }}</div></div>
+            <div class="kv-card"><div class="kv-label">RSRQ</div><div class="kv-value">{{ device_data.cellular.modem.rsrq|default:"—" }}</div></div>
+            <div class="kv-card"><div class="kv-label">SNR</div><div class="kv-value">{{ device_data.cellular.modem.snr|default:"—" }}</div></div>
+            <div class="kv-card"><div class="kv-label">SINR</div><div class="kv-value">{{ device_data.cellular.modem.sinr|default:"—" }}</div></div>
+            <div class="kv-card"><div class="kv-label">CSQ</div><div class="kv-value">{{ device_data.cellular.modem.csq|default:"—" }}</div></div>
         </div>
       </div>
     </div>
@@ -135,12 +135,12 @@
       <div class="section-hd">Data Usage</div>
       <div class="section-bd">
         <div class="kv-grid">
-          <div class="kv-card"><div class="kv-label">Upload (TX)</div><div class="kv-value">{{ device_data.cellular.modem1.flowtx|default:"—" }}</div></div>
-          <div class="kv-card"><div class="kv-label">Download (RX)</div><div class="kv-value">{{ device_data.cellular.modem1.flowrx|default:"—" }}</div></div>
+          <div class="kv-card"><div class="kv-label">Upload (TX)</div><div class="kv-value">{{ device_data.cellular.modem.flowtx|default:"—" }}</div></div>
+          <div class="kv-card"><div class="kv-label">Download (RX)</div><div class="kv-value">{{ device_data.cellular.modem.flowrx|default:"—" }}</div></div>
           {% comment %} <div class="kv-card">
             <div class="kv-label">Total</div>
             <div class="kv-value">
-            {% with rx=device_data.cellular.modem1.flowrx tx=device_data.cellular.modem1.flowtx %}
+            {% with rx=device_data.cellular.modem.flowrx tx=device_data.cellular.modem.flowtx %}
                 {% if rx and tx %}
                 {{ rx }} + {{ tx }}
                 {% elif rx %}
@@ -162,8 +162,8 @@
       <div class="section-hd">Device Runtime</div>
       <div class="section-bd">
         <div class="kv-grid">
-          <div class="kv-card"><div class="kv-label">Uptime</div><div class="kv-value">{{ device_data.cellular.modem1.uptimes|default:"—" }}</div></div>
-          <div class="kv-card"><div class="kv-label">Last Offline Time</div><div class="kv-value">{{ device_data.cellular.modem1.offtime|default:"—" }}</div></div>
+          <div class="kv-card"><div class="kv-label">Uptime</div><div class="kv-value">{{ device_data.cellular.modem.uptimes|default:"—" }}</div></div>
+          <div class="kv-card"><div class="kv-label">Last Offline Time</div><div class="kv-value">{{ device_data.cellular.modem.offtime|default:"—" }}</div></div>
         </div>
       </div>
     </div>
