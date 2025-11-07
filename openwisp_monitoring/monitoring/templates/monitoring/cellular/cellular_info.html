@@ -1,4 +1,5 @@
 {# ========= CELLULAR (SIM 1 / SIM 2) PANEL ========= #}
+
 <style>
   .panel { background:#fff; border-radius:14px; border: 1px solid #eee; box-shadow: 0 6px 20px rgba(0, 0, 0, .06); margin:16px 0; overflow:hidden;}
   .panel-tabs { display:flex; gap:24px; padding:8px 0 0 0; align-items:flex-end; }
@@ -18,8 +19,16 @@
   .hidden { display:none; }
   .panel-head { display:flex; align-items:center; padding:10px 16px 0; }
   .hr { height:1px; background:#e5e7eb; margin:8px 0 0; }
+  .empty-state {
+    margin:16px;
+    padding:24px;
+    border:1px dashed #d1d5db;
+    border-radius:8px;
+    text-align:center;
+    color:#6b7280;
+  }
 </style>
-
+{% if device_data.cellular %}
 <div class="panel">
   <div class="panel-head">
     <div class="panel-tabs">
@@ -240,6 +249,9 @@
     </div>
   </div>
 </div>
+{% else %}
+  <div class="empty-state">No Cellular data available</div>
+{% endif %}
 
 <script>
   (function(){
@@ -252,3 +264,5 @@
     }));
   })();
 </script>
+
+
