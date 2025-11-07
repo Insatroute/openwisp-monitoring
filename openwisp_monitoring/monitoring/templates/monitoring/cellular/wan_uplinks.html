@@ -164,7 +164,7 @@
         <th>Status</th>
         <th>Uplink</th>
         <th>Uptime</th>
-        <th>Public IP</th>
+        {% comment %} <th>Public IP</th> {% endcomment %}
         <th>Interface IP/Mask</th>
         <th>Ping Destination</th>
         <th>Throughput</th>
@@ -201,7 +201,7 @@
 
           <td class="wp-nowrap">—</td>
 
-          <td class="wp-nowrap">
+          {% comment %} <td class="wp-nowrap">
             {% with pub="—" %}
               {% if iface.addresses %}
                 {% for a in iface.addresses %}
@@ -219,7 +219,7 @@
               {% endif %}
               {{ pub }}
             {% endwith %}
-          </td>
+          </td> {% endcomment %}
 
           <td>
             {% if iface.addresses %}
