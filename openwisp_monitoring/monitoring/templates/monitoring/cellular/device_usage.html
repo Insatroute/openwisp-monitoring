@@ -172,83 +172,55 @@
           </div>
         </div> -->
 
-        
+
         <div class="interface-grid">
-          <!-- SIM1 -->
+          <!-- SIM1 = interface named "modem" -->
           <div class="interface-card" id="sim1-card">
-            <div class="interface-title">SIM1:</div>
-            {# SIM1 (name == "modem") #}
-{% for iface in device_data.interfaces %}
-  {% if iface.name == "modem" %}
-    <div class="interface-card" id="sim1-card">
-      <div class="interface-title">SIM1 (modem)</div>
-      <div class="interface-value">
-        Total: 
-        {% with rx=iface.statistics.rx.bytes tx=iface.statistics.tx.bytes %}
-          {% with total=rx|add:tx %}
-            {{ total|default:"NA" }}
-          {% endwith %}
-        {% endwith %}
-      </div>
-      <div class="interface-stats">
-        Received: {{ iface.statistics.rx.bytes|default:"NA" }}<br>
-        Sent: {{ iface.statistics.tx.bytes|default:"NA" }}
-      </div>
-    </div>
-  {% endif %}
-{% endfor %}
-
-{# SIM2 (name == "modem2") #}
-{% for iface in device_data.interfaces %}
-  {% if iface.name == "modem2" %}
-    <div class="interface-card" id="sim2-card">
-      <div class="interface-title">SIM2 (modem2)</div>
-      <div class="interface-value">
-        {% with rx=iface.statistics.rx.bytes tx=iface.statistics.tx.bytes %}
-          {% with total=rx|add:tx %}
-            Total: {{ total|default:"NA" }}
-          {% endwith %}
-        {% endwith %}
-      </div>
-      <div class="interface-stats">
-        Received: {{ iface.statistics.rx.bytes|default:"NA" }}<br>
-        Sent: {{ iface.statistics.tx.bytes|default:"NA" }}
-      </div>
-    </div>
-  {% endif %}
-{% endfor %}
-
-          </div>
-
-          <!-- SIM2 -->
-          <div class="interface-card" id="sim2-card">
-            <div class="interface-title">SIM2:</div>
+            <div class="interface-title">SIM1 </div>
             {% for iface in device_data.interfaces %}
-            {% if iface.name == "modem2" %}
-            {% with rx=iface.statistics.rx.bytes tx=iface.statistics.tx.bytes %}
-            {% with total=rx|add:tx %}
+            {% if iface.name == "modem" %}
+            {% with rx=iface.statistics.rx.bytes tx=iface.statistics.tx.bytes total=rx|add:tx %}
             <div class="interface-value">
-              {{ total|divisibleby:1048576|floatformat:2 }} MB
+              Total: {{ total|filesizeformat }}
             </div>
             <div class="interface-stats">
-              Received: {{ rx|divisibleby:1048576|floatformat:2 }} MB<br>
-              Sent: {{ tx|divisibleby:1048576|floatformat:2 }} MB
+              Received: {{ rx|filesizeformat }}<br>
+              Sent: {{ tx|filesizeformat }}
             </div>
             {% endwith %}
+            {% endif %}
+            {% endfor %}
+          </div>
+
+          <!-- SIM2 = interface named "modem1" (exact same layout as SIM1) -->
+          <div class="interface-card" id="sim2-card">
+            <div class="interface-title">SIM2 </div>
+            {% for iface in device_data.interfaces %}
+            {% if iface.name == "modem1" %}
+            {% with rx=iface.statistics.rx.bytes tx=iface.statistics.tx.bytes total=rx|add:tx %}
+            <div class="interface-value">
+              Total: {{ total|filesizeformat }}
+            </div>
+            <div class="interface-stats">
+              Received: {{ rx|filesizeformat }}<br>
+              Sent: {{ tx|filesizeformat }}
+            </div>
             {% endwith %}
             {% endif %}
             {% endfor %}
           </div>
         </div>
+
+
       </div>
 
       <!-- Wired -->
       <div class="usage-section">
         <div class="section-title">Wired</div>
-        <div class="section-title">Hello{{ device_data.interfaces.wired|default:"—" }}</div>
+        <!-- <div class="section-title">Hello{{ device_data.interfaces.wired|default:"—" }}</div>
         <div class="section-title">Operator</div>
-            <div class="section-title">{{ device_data.cellular.modem1.operator|default:"—" }}</div>
-            <div class="section-title"> Statsic rx tx {{ device_data.interfaces.statistics.rx.bytes|default:"NA" }}</div>
+        <div class="section-title">{{ device_data.cellular.modem1.operator|default:"—" }}</div>
+        <div class="section-title"> Statsic rx tx {{ device_data.interfaces.statistics.rx.bytes|default:"NA" }}</div> -->
 
         <div class="total-summary" id="wired-total-summary">
           <div class="total-value">—</div>
@@ -267,14 +239,14 @@
           </div>
         </div>
       </div>
-      
+
 
       <!-- Wireless placeholder -->
       <div class="usage-section">
         <div class="section-title">Wireless</div>
         <div class="total-summary" id="wireless-total-summary">
-          <div class="total-value">—</div>
-          <div class="total-stats">Sent: —<br>Received: —</div>
+          <div class="total-value">40.00 MB</div>
+          <div class="total-stats">Sent: 35.00 MB<br>Received: 5.00 MB</div>
         </div>
       </div>
     </div>
