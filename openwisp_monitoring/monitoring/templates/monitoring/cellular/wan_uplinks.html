@@ -108,7 +108,7 @@
     <div class="wp-ports-wrap">
       <div class="wp-ports-box">
         <!-- ETH0..ETH5 -->
-        {% for n in "0,1,2,3,4,5"|split:"," %}
+        {% for n in "012345"|make_list %}
           <div id="wp-tile-eth{{n}}" class="wp-port-tile wp-disconnected">
             <div class="wp-icon"><svg><use href="#wp-icon-rj45"/></svg></div>
             <div class="wp-port-label">ETH{{n}}</div>
@@ -174,82 +174,84 @@
       </tr>
     </thead>
     <tbody>
-      {% for iface in device_data.interfaces %}
-        {% if iface.type == 'ethernet' or iface.type == 'mobile' %}
-          {% if iface.name|cut:'.' == iface.name and iface.name|cut:'-' == iface.name %}
-            {% if not iface.name == 'modem' %}
-              {% with rx=iface.statistics rx_b=iface.statistics.rx.bytes|default:0 tx=iface.statistics tx_b=iface.statistics.tx.bytes|default:0 %}
-                <tr>
-                  <td class="wp-nowrap">
-                    <span class="wp-status-dot {% if iface.up %}wp-dot-green{% else %}wp-dot-gray{% endif %}"></span>
-                    {% if iface.up %}Online{% else %}Offline{% endif %}
-                  </td>
+  {% for iface in device_data.interfaces %}
+    {# Show only WAN interfaces OR mobile interfaces #}
+    {% if iface.is_wan or iface.type == 'mobile' %}
+      {% if iface.name|cut:'.' == iface.name and iface.name|cut:'-' == iface.name %}
+        <tr>
+          <td class="wp-nowrap">
+            <span class="wp-status-dot {% if iface.up %}wp-dot-green{% else %}wp-dot-gray{% endif %}"></span>
+            {% if iface.up %}Online{% else %}Offline{% endif %}
+          </td>
 
-                  <td class="wp-nowrap">
-                    {% if iface.type == 'mobile' %}
-                      {% if iface.name == 'modem' %}
-                        <a class="wp-linkish">Cellular(SIM1)</a>
-                      {% elif iface.name == 'modem2' %}
-                        <a class="wp-linkish">Cellular(SIM2)</a>
-                      {% else %}
-                        <a class="wp-linkish">{{ iface.name|upper }}</a>
-                      {% endif %}
-                    {% else %}
-                      {# ethernet: show NAME and role from JS (lan/wan) #}
-                      <a class="wp-linkish">{{ iface.name|upper }}</a>
-                      <span class="wp-muted" id="wp-row-role-{{ iface.name }}"> (—)</span>
-                    {% endif %}
-                  </td>
-
-                  <td class="wp-nowrap">—</td>
-
-                  <td class="wp-nowrap">
-                    {% with pub="—" %}
-                      {% if iface.addresses %}
-                        {% for a in iface.addresses %}
-                          {% if a.family == 'ipv4' and pub == "—" %}
-                            {% with pub=a.address %}{% endwith %}
-                          {% endif %}
-                        {% endfor %}
-                        {% if pub == "—" %}
-                          {% for a in iface.addresses %}
-                            {% if a.family == 'ipv6' and pub == "—" %}
-                              {% with pub=a.address %}{% endwith %}
-                            {% endif %}
-                          {% endfor %}
-                        {% endif %}
-                      {% endif %}
-                      {{ pub }}
-                    {% endwith %}
-                  </td>
-
-                  <td>
-                    {% if iface.addresses %}
-                      {% for addr in iface.addresses %}
-                        <div>{{ addr.address }}{% if addr.mask %}/{{ addr.mask }}{% endif %} <span class="wp-muted">({{ addr.family|upper }})</span></div>
-                      {% endfor %}
-                    {% else %}<span class="wp-muted">—</span>{% endif %}
-                  </td>
-
-                  <td class="wp-nowrap">—</td>
-
-                  <td class="wp-nowrap">
-                    <span class="wp-kp-arrows">
-                      <span class="wp-kp-up"><i></i>{{ tx_b|filesizeformat }}</span>
-                      <span class="wp-kp-down"><i></i>{{ rx_b|filesizeformat }}</span>
-                    </span>
-                  </td>
-
-                  <td class="wp-nowrap">—</td>
-                  <td class="wp-nowrap">—</td>
-                  <td class="wp-nowrap">—</td>
-                </tr>
-              {% endwith %}
+          <td class="wp-nowrap">
+            {% if iface.type == 'mobile' %}
+              {% if iface.name == 'modem' %}
+                <a class="wp-linkish">Cellular (SIM1)</a>
+              {% elif iface.name == 'modem2' %}
+                <a class="wp-linkish">Cellular (SIM2)</a>
+              {% else %}
+                <a class="wp-linkish">{{ iface.name|upper }}</a>
+              {% endif %}
+            {% else %}
+              <a class="wp-linkish">{{ iface.name|upper }}</a>
+              <span class="wp-muted" id="wp-row-role-{{ iface.name }}"> (WAN)</span>
             {% endif %}
-          {% endif %}
-        {% endif %}
-      {% endfor %}
-    </tbody>
+          </td>
+
+          <td class="wp-nowrap">—</td>
+
+          <td class="wp-nowrap">
+            {% with pub="—" %}
+              {% if iface.addresses %}
+                {% for a in iface.addresses %}
+                  {% if a.family == 'ipv4' and pub == "—" %}
+                    {% with pub=a.address %}{% endwith %}
+                  {% endif %}
+                {% endfor %}
+                {% if pub == "—" %}
+                  {% for a in iface.addresses %}
+                    {% if a.family == 'ipv6' and pub == "—" %}
+                      {% with pub=a.address %}{% endwith %}
+                    {% endif %}
+                  {% endfor %}
+                {% endif %}
+              {% endif %}
+              {{ pub }}
+            {% endwith %}
+          </td>
+
+          <td>
+            {% if iface.addresses %}
+              {% for addr in iface.addresses %}
+                <div>
+                  {{ addr.address }}{% if addr.mask %}/{{ addr.mask }}{% endif %}
+                  <span class="wp-muted">({{ addr.family|upper }})</span>
+                </div>
+              {% endfor %}
+            {% else %}
+              <span class="wp-muted">—</span>
+            {% endif %}
+          </td>
+
+          <td class="wp-nowrap">—</td>
+
+          <td class="wp-nowrap">
+            <span class="wp-kp-arrows">
+              <span class="wp-kp-up"><i></i>{{ iface.statistics.tx.bytes|default:0|filesizeformat }}</span>
+              <span class="wp-kp-down"><i></i>{{ iface.statistics.rx.bytes|default:0|filesizeformat }}</span>
+            </span>
+          </td>
+
+          <td class="wp-nowrap">—</td>
+          <td class="wp-nowrap">—</td>
+          <td class="wp-nowrap">—</td>
+        </tr>
+      {% endif %}
+    {% endif %}
+  {% endfor %}
+</tbody>
+
   </table>
 </div>
 
