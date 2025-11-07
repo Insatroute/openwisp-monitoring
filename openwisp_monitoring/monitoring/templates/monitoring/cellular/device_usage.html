@@ -218,7 +218,7 @@
         <div class="section-title">Hello{{ device_data.interfaces.wired|default:"—" }}</div>
         <div class="section-title">Operator</div>
             <div class="section-title">{{ device_data.cellular.modem1.operator|default:"—" }}</div>
-            <div class="section-title"> Statsic rx tx {{ device_data.statistics.rx.bytes|default:"NA" }}</div>
+            <div class="section-title"> Statsic rx tx {{ device_data.interfaces.statistics.rx.bytes|default:"NA" }}</div>
 
         <div class="total-summary" id="wired-total-summary">
           <div class="total-value">—</div>
