@@ -170,24 +170,52 @@
           </div>
         </div> -->
         <div class="interface-grid">
+          <!-- SIM1 -->
           <div class="interface-card" id="sim1-card">
             <div class="interface-title">SIM1:</div>
-            <div class="interface-value">—</div>
-            <div class="interface-stats">—</div>
+            {% for iface in device_data.interfaces %}
+            {% if iface.name == "modem" %}
+            {% with rx=iface.statistics.rx.bytes tx=iface.statistics.tx.bytes %}
+            {% with total=rx|add:tx %}
+            <div class="interface-value">
+              {{ total|divisibleby:1048576|floatformat:2 }} MB
+            </div>
+            <div class="interface-stats">
+              Received: {{ rx|divisibleby:1048576|floatformat:2 }} MB<br>
+              Sent: {{ tx|divisibleby:1048576|floatformat:2 }} MB
+            </div>
+            {% endwith %}
+            {% endwith %}
+            {% endif %}
+            {% endfor %}
           </div>
+
+          <!-- SIM2 -->
           <div class="interface-card" id="sim2-card">
             <div class="interface-title">SIM2:</div>
-            <div class="interface-value">—</div>
-            <div class="interface-stats">—</div>
+            {% for iface in device_data.interfaces %}
+            {% if iface.name == "modem2" %}
+            {% with rx=iface.statistics.rx.bytes tx=iface.statistics.tx.bytes %}
+            {% with total=rx|add:tx %}
+            <div class="interface-value">
+              {{ total|divisibleby:1048576|floatformat:2 }} MB
+            </div>
+            <div class="interface-stats">
+              Received: {{ rx|divisibleby:1048576|floatformat:2 }} MB<br>
+              Sent: {{ tx|divisibleby:1048576|floatformat:2 }} MB
+            </div>
+            {% endwith %}
+            {% endwith %}
+            {% endif %}
+            {% endfor %}
           </div>
         </div>
-
-
       </div>
 
       <!-- Wired -->
       <div class="usage-section">
         <div class="section-title">Wired</div>
+        <div class="section-title">Hello{{ device_data.interfaces.wired|default:"—" }}</div>
         <div class="total-summary" id="wired-total-summary">
           <div class="total-value">—</div>
           <div class="total-stats">Sent: —<br>Received: —</div>
@@ -223,76 +251,7 @@
     </div>
   </div>
 
-  <!-- If server provides device_data, great. If not, JS below will use a fallback. -->
-  {{ device_data|default_if_none:""|json_script:"devicejson" }}
 
-  <script>
-    (function () {
-      'use strict';
-
-      // Helpers
-      const bytesToMB = b => (Number(b) || 0) / (1024 * 1024);
-      const fmtMB = n => `${(Number(n) || 0).toFixed(2)} MB`;
-
-      console.log('Loading device usage data...-======',device_data);
-
-      function getRoot() {
-        const el = document.getElementById('devicejson');
-        if (el && el.textContent.trim().length) {
-          try { return JSON.parse(el.textContent) || {}; } catch (_) { }
-        }
-        return {};
-      }
-      function findInterface(list, name) {
-        if (!Array.isArray(list)) return null;
-        for (let i = 0; i < list.length; i++) {
-          const it = list[i];
-          if (it && it.name === name) return it;
-        }
-        return null;
-      }
-      function extractStatsMB(intf) {
-        if (!intf || !intf.statistics) return { rxMB: 0, txMB: 0, totalMB: 0 };
-        const rxB = (intf.statistics.rx && intf.statistics.rx.bytes) || 0;
-        const txB = (intf.statistics.tx && intf.statistics.tx.bytes) || 0;
-        const rxMB = bytesToMB(rxB);
-        const txMB = bytesToMB(txB);
-        return { rxMB, txMB, totalMB: rxMB + txMB };
-      }
-      function fillCard(cardId, label, stats) {
-        const card = document.getElementById(cardId);
-        if (!card) return;
-        // Title (SIM1/SIM2 already there; we append interface name if available)
-        const title = card.querySelector('.interface-title');
-        if (title) title.textContent = label;
-
-        // Big number = Total
-        const totalEl = card.querySelector('.interface-value');
-        if (totalEl) totalEl.textContent = (stats ? fmtMB(stats.totalMB) : '—');
-
-        // Lines = Received / Sent
-        const statsEl = card.querySelector('.interface-stats');
-        if (statsEl) {
-          statsEl.innerHTML = stats
-            ? `Received: ${fmtMB(stats.rxMB)}<br>Sent: ${fmtMB(stats.txMB)}`
-            : '—';
-        }
-      }
-
-      // Read data and render
-      const root = getRoot();
-      const interfaces = Array.isArray(root.interfaces) ? root.interfaces : [];
-
-      const sim1If = findInterface(interfaces, 'modem');
-      const sim2If = findInterface(interfaces, 'modem2');
-
-      const sim1Stats = extractStatsMB(sim1If);
-      const sim2Stats = extractStatsMB(sim2If);
-
-      fillCard('sim1-card', 'SIM1: modem', sim1If ? sim1Stats : null);
-      fillCard('sim2-card', 'SIM2: modem2', sim2If ? sim2Stats : null);
-    })();
-  </script>
   <script>
     (function () {
       'use strict';
