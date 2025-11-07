@@ -234,6 +234,8 @@
       const bytesToMB = b => (Number(b) || 0) / (1024 * 1024);
       const fmtMB = n => `${(Number(n) || 0).toFixed(2)} MB`;
 
+      console.log('Loading device usage data...-======',device_data);
+
       function getRoot() {
         const el = document.getElementById('devicejson');
         if (el && el.textContent.trim().length) {
