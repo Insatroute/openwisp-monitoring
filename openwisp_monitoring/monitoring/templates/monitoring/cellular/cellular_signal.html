@@ -1,1 +1,269 @@
-<h1>Cellular Signal Information</h1>
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+<meta charset="UTF-8" />
+<title>Cellular Signal Charts</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+<style>
+.cellular_signal_page {
+  max-width: 1100px;
+  margin: 24px auto;
+  padding: 0 12px;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans";
+}
+.cellular_signal_header {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+.cellular_signal_title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+}
+.cellular_signal_subtitle {
+  margin: 0;
+  font-size: 14px;
+  color: #666;
+}
+.cellular_signal_grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 18px;
+}
+.cellular_signal_card {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .06), 0 1px 2px rgba(0, 0, 0, .08);
+  padding: 14px;
+}
+.cellular_signal_card h3 {
+  margin: 0 0 10px 0;
+  font-size: 16px;
+}
+.cellular_signal_chartwrap {
+  display: flex;
+  justify-content: center;
+}
+.cellular_signal_plot {
+  width: 100%;
+  max-width: 1000px;
+  height: 280px;
+  margin: 0 auto;
+}
+.cellular_signal_plot.js-plotly-plot,
+.cellular_signal_plot .plot-container,
+.cellular_signal_plot .svg-container {
+  width: 100% !important;
+}
+</style>
+</head>
+
+<body>
+<div class="cellular_signal_page">
+  <div class="cellular_signal_header">
+    <h1 class="cellular_signal_title">Cellular Metrics</h1>
+    <p class="cellular_signal_subtitle" id="cellular_signal_meta">
+      Sim1: {{ device_data.cellular.modem.operator|default:"—" }} • {{ device_data.cellular.modem.nettype|default:"—" }} |
+      Sim2: {{ device_data.cellular.modem2.operator|default:"—" }} • {{ device_data.cellular.modem2.nettype|default:"—" }}
+    </p>
+  </div>
+
+  <div class="cellular_signal_grid">
+    <div class="cellular_signal_card">
+      <h3>Signal Strength (Level)</h3>
+      <div class="cellular_signal_chartwrap">
+        <div id="cellular_signal_div_csq" class="cellular_signal_plot"></div>
+      </div>
+    </div>
+
+    <div class="cellular_signal_card">
+      <h3>RSRP (dBm)</h3>
+      <div class="cellular_signal_chartwrap">
+        <div id="cellular_signal_div_rsrp" class="cellular_signal_plot"></div>
+      </div>
+    </div>
+
+    <div class="cellular_signal_card">
+      <h3>RSRQ (dB)</h3>
+      <div class="cellular_signal_chartwrap">
+        <div id="cellular_signal_div_rsrq" class="cellular_signal_plot"></div>
+      </div>
+    </div>
+
+    <div class="cellular_signal_card">
+      <h3>RSSI (dBm)</h3>
+      <div class="cellular_signal_chartwrap">
+        <div id="cellular_signal_div_rssi" class="cellular_signal_plot"></div>
+      </div>
+    </div>
+
+    <div class="cellular_signal_card">
+      <h3>SNR (dB)</h3>
+      <div class="cellular_signal_chartwrap">
+        <div id="cellular_signal_div_snr" class="cellular_signal_plot"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+'use strict';
+
+function getSignalQuality(csq) {
+  csq = parseInt(csq, 10);
+  if (csq === 99) return { label: 'Unknown', color: '#9ca3af' };
+  if (csq === 0 || csq === 1) return { label: 'Very Poor', color: '#ef4444' };
+  if (csq >= 2 && csq <= 3) return { label: 'Poor', color: '#f97316' };
+  if (csq >= 4 && csq <= 7) return { label: 'Fair', color: '#eab308' };
+  if (csq >= 8 && csq <= 11) return { label: 'Good', color: '#3b82f6' };
+  if (csq >= 12 && csq <= 31) return { label: 'Excellent', color: '#22c55e' };
+  return { label: 'Unknown', color: '#9ca3af' };
+}
+function sevenDaySeries(val) {
+  const x = [], y = [];
+  const now = new Date();
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(now);
+    d.setDate(now.getDate() - i);
+    d.setHours(12, 0, 0, 0);
+    x.push(d);
+    y.push(Number(val));
+  }
+  return { x, y };
+}
+function plotAndAttachResize(targetId, traces, layout) {
+  const el = document.getElementById(targetId);
+  Plotly.newPlot(el, traces, layout, { displayModeBar: false, responsive: true });
+  const resize = () => Plotly.Plots.resize(el);
+  addEventListener('resize', resize, { passive: true });
+  if ('ResizeObserver' in window) new ResizeObserver(resize).observe(el.parentElement);
+  requestAnimationFrame(resize);
+}
+function buildModemLegendLabel(prefix, modem) {
+  const pieces = [];
+  if (modem.operator) pieces.push(modem.operator);
+  if (modem.nettype) pieces.push(`(${modem.nettype})`);
+  return pieces.length ? `${prefix} — ${pieces.join(' ')}` : prefix;
+}
+
+// Template injected data (replace as per your server-side rendering engine)
+const modem1 = {
+  operator: '{{ device_data.cellular.modem.operator|default:"—" }}',
+  nettype: '{{ device_data.cellular.modem.nettype|default:"—" }}',
+  csq: '{{ device_data.cellular.modem.csq|default:"0" }}',
+  rsrp: '{{ device_data.cellular.modem.rsrp|default:"-120" }}',
+  rsrq: '{{ device_data.cellular.modem.rsrq|default:"-15" }}',
+  rssi: '{{ device_data.cellular.modem.rssi|default:"-120" }}',
+  snr: '{{ device_data.cellular.modem.snr|default:"0" }}'
+};
+const modem2 = {
+  operator: '{{ device_data.cellular.modem2.operator|default:"—" }}',
+  nettype: '{{ device_data.cellular.modem2.nettype|default:"—" }}',
+  csq: '{{ device_data.cellular.modem2.csq|default:"0" }}',
+  rsrp: '{{ device_data.cellular.modem2.rsrp|default:"-120" }}',
+  rsrq: '{{ device_data.cellular.modem2.rsrq|default:"-15" }}',
+  rssi: '{{ device_data.cellular.modem2.rssi|default:"-120" }}',
+  snr: '{{ device_data.cellular.modem2.snr|default:"0" }}'
+};
+
+const csq1 = sevenDaySeries(modem1.csq);
+const csq2 = sevenDaySeries(modem2.csq);
+const rsrp1 = sevenDaySeries(modem1.rsrp);
+const rsrp2 = sevenDaySeries(modem2.rsrp);
+const rsrq1 = sevenDaySeries(modem1.rsrq);
+const rsrq2 = sevenDaySeries(modem2.rsrq);
+const rssi1 = sevenDaySeries(modem1.rssi);
+const rssi2 = sevenDaySeries(modem2.rssi);
+const snr1 = sevenDaySeries(modem1.snr);
+const snr2 = sevenDaySeries(modem2.snr);
+
+const name1 = buildModemLegendLabel('Sim1', modem1);
+const name2 = buildModemLegendLabel('Sim2', modem2);
+
+const quality1 = getSignalQuality(modem1.csq);
+const quality2 = getSignalQuality(modem2.csq);
+
+const csqLayout = {
+  margin: { l: 50, r: 20, t: 60, b: 60 },
+  yaxis: { title: 'Signal Level (CSQ)', range: [0, 40], dtick: 5, zeroline: false, gridcolor: '#e5e7eb' },
+  xaxis: { tickformat: '%b %d', gridcolor: '#e5e7eb' },
+  legend: { orientation: 'h', yanchor: 'bottom', y: 1.08, x: 0, xanchor: 'left' },
+  plot_bgcolor: '#ffffff',
+  paper_bgcolor: '#ffffff',
+  shapes: [
+    { type: 'line', xref: 'paper', yref: 'y', x0: 0, y0: 35, x1: 1, y1: 35, line: { color: '#22c55e', width: 1.5, dash: 'dot' } },
+    { type: 'line', xref: 'paper', yref: 'y', x0: 0, y0: 25, x1: 1, y1: 25, line: { color: '#3b82f6', width: 1.5, dash: 'dot' } },
+    { type: 'line', xref: 'paper', yref: 'y', x0: 0, y0: 15, x1: 1, y1: 15, line: { color: '#eab308', width: 1.5, dash: 'dot' } },
+    { type: 'line', xref: 'paper', yref: 'y', x0: 0, y0: 5, x1: 1, y1: 5, line: { color: '#f97316', width: 1.5, dash: 'dot' } }
+  ],
+  annotations: [
+    { x: 0.98, y: 40, xref: 'paper', yref: 'y', text: 'Excellent', showarrow: false, xanchor: 'right', font: { size: 10, color: '#16a34a', family: 'Arial, sans-serif' }, bgcolor: 'rgba(255,255,255,0.7)', borderpad: 3 },
+    { x: 0.98, y: 30, xref: 'paper', yref: 'y', text: 'Good', showarrow: false, xanchor: 'right', font: { size: 10, color: '#2563eb', family: 'Arial, sans-serif' }, bgcolor: 'rgba(255,255,255,0.7)', borderpad: 3 },
+    { x: 0.98, y: 20, xref: 'paper', yref: 'y', text: 'Fair', showarrow: false, xanchor: 'right', font: { size: 10, color: '#ca8a04', family: 'Arial, sans-serif' }, bgcolor: 'rgba(255,255,255,0.7)', borderpad: 3 },
+    { x: 0.98, y: 10, xref: 'paper', yref: 'y', text: 'Poor', showarrow: false, xanchor: 'right', font: { size: 10, color: '#ea580c', family: 'Arial, sans-serif' }, bgcolor: 'rgba(255,255,255,0.7)', borderpad: 3 },
+    { x: 0.98, y: 1, xref: 'paper', yref: 'y', text: 'Very Poor', showarrow: false, xanchor: 'right', font: { size: 10, color: '#dc2626', family: 'Arial, sans-serif' }, bgcolor: 'rgba(255,255,255,0.7)', borderpad: 3 }
+  ]
+};
+const commonLegend = { orientation: 'h', yanchor: 'bottom', y: 1.08, x: 0, xanchor: 'left' };
+const rsrpLayout = {
+  margin: { l: 60, r: 20, t: 60, b: 60 },
+  yaxis: { title: 'dBm', range: [-140, -44], dtick: 20, zeroline: false, gridcolor: '#e5e7eb' },
+  xaxis: { tickformat: '%b %d', gridcolor: '#e5e7eb' },
+  legend: commonLegend, plot_bgcolor: '#ffffff', paper_bgcolor: '#ffffff'
+};
+const rsrqLayout = {
+  margin: { l: 60, r: 20, t: 60, b: 60 },
+  yaxis: { title: 'dB', range: [-20, -3], dtick: 2, zeroline: false, gridcolor: '#e5e7eb' },
+  xaxis: { tickformat: '%b %d', gridcolor: '#e5e7eb' },
+  legend: commonLegend, plot_bgcolor: '#ffffff', paper_bgcolor: '#ffffff'
+};
+const rssiLayout = {
+  margin: { l: 60, r: 20, t: 60, b: 60 },
+  yaxis: { title: 'dBm', range: [-120, -40], dtick: 10, zeroline: false, gridcolor: '#e5e7eb' },
+  xaxis: { tickformat: '%b %d', gridcolor: '#e5e7eb' },
+  legend: commonLegend, plot_bgcolor: '#ffffff', paper_bgcolor: '#ffffff'
+};
+const snrLayout = {
+  margin: { l: 60, r: 20, t: 60, b: 60 },
+  yaxis: { title: 'dB', range: [-5, 35], dtick: 5, zeroline: false, gridcolor: '#e5e7eb' },
+  xaxis: { tickformat: '%b %d', gridcolor: '#e5e7eb' },
+  legend: commonLegend, plot_bgcolor: '#ffffff', paper_bgcolor: '#ffffff'
+};
+
+// Plot each chart
+plotAndAttachResize('cellular_signal_div_csq', [
+  { x: csq1.x, y: csq1.y, type: 'scatter', mode: 'lines+markers', name: `${name1} (${quality1.label})`, line: { color: '#ff7f0e', width: 2.5 }, marker: { size: 7, color: '#ff7f0e' } },
+  { x: csq2.x, y: csq2.y, type: 'scatter', mode: 'lines+markers', name: `${name2} (${quality2.label})`, line: { color: '#1f77b4', width: 2.5 }, marker: { size: 7, color: '#1f77b4' } }
+], csqLayout);
+
+plotAndAttachResize('cellular_signal_div_rsrp', [
+  { x: rsrp1.x, y: rsrp1.y, type: 'scatter', mode: 'lines+markers', name: name1, line: { width: 2, color: '#ff7f0e' }, marker: { size: 6, color: '#ff7f0e' } },
+  { x: rsrp2.x, y: rsrp2.y, type: 'scatter', mode: 'lines+markers', name: name2, line: { width: 2, color: '#1f77b4' }, marker: { size: 6, color: '#1f77b4' } }
+], rsrpLayout);
+
+plotAndAttachResize('cellular_signal_div_rsrq', [
+  { x: rsrq1.x, y: rsrq1.y, type: 'scatter', mode: 'lines+markers', name: name1, line: { width: 2, color: '#ff7f0e' }, marker: { size: 6, color: '#ff7f0e' } },
+  { x: rsrq2.x, y: rsrq2.y, type: 'scatter', mode: 'lines+markers', name: name2, line: { width: 2, color: '#1f77b4' }, marker: { size: 6, color: '#1f77b4' } }
+], rsrqLayout);
+
+plotAndAttachResize('cellular_signal_div_rssi', [
+  { x: rssi1.x, y: rssi1.y, type: 'scatter', mode: 'lines+markers', name: name1, line: { width: 2, color: '#ff7f0e' }, marker: { size: 6, color: '#ff7f0e' } },
+  { x: rssi2.x, y: rssi2.y, type: 'scatter', mode: 'lines+markers', name: name2, line: { width: 2, color: '#1f77b4' }, marker: { size: 6, color: '#1f77b4' } }
+], rssiLayout);
+
+plotAndAttachResize('cellular_signal_div_snr', [
+  { x: snr1.x, y: snr1.y, type: 'scatter', mode: 'lines+markers', name: name1, line: { width: 2, color: '#ff7f0e' }, marker: { size: 6, color: '#ff7f0e' } },
+  { x: snr2.x, y: snr2.y, type: 'scatter', mode: 'lines+markers', name: name2, line: { width: 2, color: '#1f77b4' }, marker: { size: 6, color: '#1f77b4' } }
+], snrLayout);
+
+})();
+</script>
+</body>
+
+</html>
