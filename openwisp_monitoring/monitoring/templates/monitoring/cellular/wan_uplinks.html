@@ -1,5 +1,4 @@
 {# ================= Interfaces (ETH0–ETH5 | SIM1 | SIM2 | Wi-Fi) + Uplink table (with LAN/WAN detection) ====== #}
-{% load tz %}
 <style>
   /* ===== Generic panels ===== */
   .wp-panel { background:#fff; border:1px solid #eaecef; border-radius:12px; box-shadow:0 6px 20px rgba(0,0,0,.06); margin:16px 0; }
@@ -100,9 +99,7 @@
     <div class="wp-panel-title">Interfaces</div>
     <span class="wp-panel-updated">
       Last Updated:
-      {% timezone "Asia/Kolkata" %}
         {% if device_data.general.local_time %}{{ device_data.general.local_time|date:"Y-m-d H:i:s" }}{% else %}—{% endif %}
-      {% endtimezone %}
     </span>
   </div>
 
@@ -156,9 +153,7 @@
     <div class="wp-uplink-title">Uplink</div>
     <div class="wp-uplink-updated">
       Last Updated:
-      {% timezone "Asia/Kolkata" %}
         {% if device_data.general.local_time %}{{ device_data.general.local_time|date:"Y-m-d H:i:s" }}{% else %}—{% endif %}
-      {% endtimezone %}
     </div>
   </div>
 
