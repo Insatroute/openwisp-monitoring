@@ -37,6 +37,37 @@
 </div>
 {% endif %}
 
+{% if not add or device_data %}
+  <div class="inline-group" id="ow-traffic">
+  <fieldset class="module">
+     <h2>{% trans 'Traffic' %}</h2>
+       <div id="traffic-tabs" class="traffic-tabs-container">
+      <!-- PANELS -->
+      <div id="traffic-tab-system" class="traffic-tab-panel ">
+        <div class="traffic-sub-tabs">
+          <button type="button" data-target="traffic-traffic" class="active">Traffic</button>
+          <button type="button" data-target="traffic-real-time-traffic">Real Time Traffic</button>
+          <button type="button" data-target="traffic-security">Security</button>
+
+        </div>
+
+        <div class="traffic-sub-contents">
+          <div id="traffic-traffic" class="traffic-sub-content active">
+            {% include 'monitoring/traffic/traffic.html' %}
+          </div>
+          <div id="traffic-real-time-traffic" class="traffic-sub-content">
+            {% include 'monitoring/traffic/real_time_traffic.html' %}
+          </div>
+          <div id="traffic-security" class="traffic-sub-content">
+            {% include 'monitoring/traffic/security.html' %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </fieldset>
+</div>
+{% endif %}
+
 {% if not add %}
 <div class="inline-group" id="ow-events">
   <fieldset class="module">
@@ -45,8 +76,8 @@
   </fieldset>
 </div>
 {% endif %}
-{% if not add and device_data %}
 
+{% if not add and device_data %}
 <div class="inline-group" id="ow-device-status">
   <fieldset class="module">
     <h2>{% trans 'Status' %}</h2>
@@ -440,6 +471,24 @@
     #details-tabs .details-sub-tabs{flex-direction:column;}
     #details-tabs .details-sub-tabs button{text-align:left;}
   }
+
+  /* Style for traffic tab */
+  #traffic-tabs .traffic-sub-tabs {
+    display:flex; flex-wrap:wrap; border-bottom:1px solid #ddd; background:#fff;
+  }
+  #traffic-tabs .traffic-sub-tabs button {
+    flex:1 1 auto; height:2.4rem; padding:0 0.75rem; border:none; background:none;
+    color:#666; cursor:pointer; font-size:0.8rem; white-space:nowrap;
+  }
+  #traffic-tabs .traffic-sub-tabs button.active {
+    color:#11274b; border-bottom:2px solid #253a5d;
+  }
+  #traffic-tabs .traffic-sub-content { display:none; padding:1rem 0 0; }
+  #traffic-tabs .traffic-sub-content.active { display:block; }
+  @media (max-width:768px){
+    #traffic-tabs .traffic-sub-tabs{flex-direction:column;}
+    #traffic-tabs .traffic-sub-tabs button{text-align:left;}
+  }
 </style>
 <script>
     function setActive(container, selector, activeElem) {
@@ -515,6 +564,29 @@
       setActive(sub, 'button', btn);
 
       root.querySelectorAll('.details-sub-content').forEach(c => c.classList.remove('active'));
+      const tgt = root.querySelector('#' + btn.dataset.target);
+      if(tgt) tgt.classList.add('active');
+    });
+  })();
+
+  (function(){
+    const root = document.getElementById('traffic-tabs');
+    if(!root) return;
+
+    const setActive = (container, selector, el) => {
+      container.querySelectorAll(selector).forEach(x => x.classList.remove('active'));
+      el.classList.add('active');
+    };
+
+    const sub = root.querySelector('.traffic-sub-tabs');
+    sub.addEventListener('click', (e) => {
+      const btn = e.target.closest('button');
+      if(!btn) return;
+      e.preventDefault();
+
+      setActive(sub, 'button', btn);
+
+      root.querySelectorAll('.traffic-sub-content').forEach(c => c.classList.remove('active'));
       const tgt = root.querySelector('#' + btn.dataset.target);
       if(tgt) tgt.classList.add('active');
     });
