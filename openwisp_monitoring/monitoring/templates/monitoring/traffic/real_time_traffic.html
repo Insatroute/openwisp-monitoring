@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Realtime Traffic Overview</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3"></script>
+<style>
+body { font-family: sans-serif; margin: 2rem; }
+.rt-traffic-breakdowns { max-width: 1100px; margin: 20px auto 40px; }
+.rt-traffic-breakdowns .rt-charts-grid { display: grid; gap: 18px; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+.rt-card.combo { display: grid; gap: 12px; background: #fff; border-radius: 14px; box-shadow: 0 6px 20px rgba(22,34,51,.08); padding: 16px; }
+.rt-card.combo h3 { font-weight: 700; font-size: 18px; margin-bottom: 0; color: #334155; }
+.rt-chart-shell.small { height: auto; aspect-ratio: 16 / 10; min-height: 220px; display: flex; justify-content: center; align-items: center; }
+.rt-tbl-wrap { overflow: auto; border-radius: 12px; }
+.rt-nice-table { width: 100%; border-collapse: collapse; }
+.rt-nice-table thead th { text-align: left; font-weight: 700; padding: 10px 12px; background: #f3f4f6; color: #334155; }
+.rt-nice-table tbody td { padding: 10px 12px; border-top: 1px solid #eef2f7; }
+.rt-nice-table tbody tr:hover { background: #fafafa; }
+.rt-nice-table .num { text-align: right; white-space: nowrap; }
+.rt-table-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom:8px; }
+.rt-tbl-search { width: auto; max-width: none; flex: 1 1 260px; padding: 8px 10px; border: 1px solid #e5e7eb; border-radius: 10px; }
+.rt-pager { margin-left:auto; display:flex; align-items:center; gap:6px; }
+.rt-pager button, .rt-pager select { border:1px solid #e5e7eb; background:#fff; padding:6px 10px; border-radius:10px; cursor:pointer; }
+.rt-pager .muted { opacity:.5; cursor:default; }
+.rt-pager .info { font-size:12px; color:#6b7280; padding:0 4px; }
+</style>
+</head>
+<body>
+
+<section class="rt-traffic-breakdowns">
+  <div class="rt-charts-grid">
+
+    <!-- Applications -->
+    <article class="rt-panel">
+      <div class="rt-card combo">
+        <h3>Applications</h3>
+        <div class="rt-chart-shell small"><canvas id="rt_appsChart"></canvas></div>
+        <div class="rt-table-controls">
+          <input type="text" class="rt-tbl-search" data-target="rt_appsTable" placeholder="Filter…">
+        </div>
+        <div class="rt-tbl-wrap">
+          <table id="rt_appsTable" class="rt-nice-table">
+            <thead><tr><th>Label</th><th class="num">Traffic</th></tr></thead>
+            <tbody></tbody>
+          </table>
+          <div class="rt-pager" data-target="rt_appsTable"></div>
+        </div>
+      </div>
+    </article>
+
+    <!-- Remote Hosts -->
+    <article class="rt-panel">
+      <div class="rt-card combo">
+        <h3>Remote Hosts</h3>
+        <div class="rt-chart-shell small"><canvas id="rt_hostsChart"></canvas></div>
+        <div class="rt-table-controls">
+          <input type="text" class="rt-tbl-search" data-target="rt_hostsTable" placeholder="Filter…">
+        </div>
+        <div class="rt-tbl-wrap">
+          <table id="rt_hostsTable" class="rt-nice-table">
+            <thead><tr><th>Host</th><th class="num">Traffic</th></tr></thead>
+            <tbody></tbody>
+          </table>
+          <div class="rt-pager" data-target="rt_hostsTable"></div>
+        </div>
+      </div>
+    </article>
+
+    <!-- Protocols -->
+    <article class="rt-panel">
+      <div class="rt-card combo">
+        <h3>Protocols</h3>
+        <div class="rt-chart-shell small"><canvas id="rt_protocolsChart"></canvas></div>
+        <div class="rt-table-controls">
+          <input type="text" class="rt-tbl-search" data-target="rt_protocolsTable" placeholder="Filter…">
+        </div>
+        <div class="rt-tbl-wrap">
+          <table id="rt_protocolsTable" class="rt-nice-table">
+            <thead><tr><th>Protocol</th><th class="num">Traffic</th></tr></thead>
+            <tbody></tbody>
+          </table>
+          <div class="rt-pager" data-target="rt_protocolsTable"></div>
+        </div>
+      </div>
+    </article>
+
+  </div>
+</section>
+
+<script>
+document.addEventListener('DOMContentLoaded', ()=>{
+
+  // -------------------------
+  // 0) Helper functions
+  // -------------------------
+  const rt_bytesToGB = b => b / (1024**3);
+  const rt_fmtGB = b => {
+    const gb = rt_bytesToGB(b);
+    if (gb >= 1) return gb.toFixed(3) + ' GB';
+    return (b / (1024**2)).toFixed(1) + ' MB';
+  };
+
+  // -------------------------
+  // 1) Resolve device + API
+  // -------------------------
+  const path = window.location.pathname;
+  const match = path.match(/[0-9a-fA-F-]{36}/);
+  const DEVICE_UUID = match ? match[0] : null;
+
+  const API_URL = DEVICE_UUID
+    ? `https://controller.nexapp.co.in/api/v1/monitoring/device/${DEVICE_UUID}/real-time-traffic-summary/`
+    : `https://controller.nexapp.co.in/api/v1/monitoring/device/unknown/real-time-traffic-summary/`;
+
+  // -------------------------
+  // 2) Table pager class
+  // -------------------------
+  class RT_TablePager {
+    constructor(tableId, pageSize=8) {
+      this.table = document.getElementById(tableId);
+      this.tbody = this.table.querySelector('tbody');
+      this.rows = [];
+      this.filtered = [];
+      this.pageSize = pageSize;
+      this.page = 1;
+      this.pagerEl = document.querySelector(`.rt-pager[data-target="${tableId}"]`);
+      this.searchEl = document.querySelector(`.rt-tbl-search[data-target="${tableId}"]`);
+      this._wire();
+    }
+    _wire() {
+      if (this.pagerEl) {
+        this.psel = document.createElement('select');
+        [8,10,15,20].forEach(n=>{
+          const o=document.createElement('option'); o.value=n; o.textContent=`${n}/page`; this.psel.appendChild(o);
+        });
+        this.psel.value = this.pageSize;
+
+        const prev = document.createElement('button'); prev.type='button'; prev.textContent='Prev';
+        const next = document.createElement('button'); next.type='button'; next.textContent='Next';
+        this.label = document.createElement('span'); this.label.className='info';
+
+        const safe = (fn)=> (e)=>{ e.preventDefault(); e.stopPropagation(); fn(); };
+        this.pagerEl.append(this.psel, prev, next, this.label);
+        prev.addEventListener('click', safe(()=> this.goto(this.page-1)));
+        next.addEventListener('click', safe(()=> this.goto(this.page+1)));
+        this.psel.addEventListener('change', safe(()=> { this.pageSize = +this.psel.value; this.page=1; this.render(); }));
+      }
+      if (this.searchEl) {
+        this.searchEl.addEventListener('keydown', (e) => { if (e.key==='Enter') e.preventDefault(); });
+        this.searchEl.addEventListener('input', ()=> { this.applyFilter(this.searchEl.value); });
+      }
+    }
+    setRows(rows){ this.rows = rows.slice(); this.applyFilter(''); }
+    applyFilter(q){ const query=(q||'').toLowerCase(); this.filtered = this.rows.filter(r=> String(r.c1).toLowerCase().includes(query)); this.page=1; this.render(); }
+    goto(p){ const max=Math.max(1, Math.ceil(this.filtered.length/this.pageSize)); this.page=Math.min(Math.max(1,p), max); this.render(); }
+    render(){
+      const start=(this.page-1)*this.pageSize;
+      const view=this.filtered.slice(start,start+this.pageSize);
+      this.tbody.innerHTML = view.map(r=>`<tr><td>${r.c1}</td><td class="num">${r.c2}</td></tr>`).join('');
+      const max = Math.max(1, Math.ceil(this.filtered.length/this.pageSize));
+      if(this.label) this.label.textContent = `Page ${this.page} of ${max} — ${this.filtered.length} rows`;
+      if(this.pagerEl){
+        const [prev,next] = this.pagerEl.querySelectorAll('button');
+        if(prev && next){
+          prev.classList.toggle('muted', this.page===1);
+          next.classList.toggle('muted', this.page===max);
+        }
+      }
+    }
+  }
+
+  // -------------------------
+  // 3) Pie + table builder
+  // -------------------------
+  function rt_buildPieWithTable(canvasId, tableId, items, {labelKey='label', valueKey='traffic', topN=6, doughnut=true}={}){
+    const sorted = (items||[]).slice().sort((a,b)=>(b[valueKey]||0)-(a[valueKey]||0));
+    const rows = sorted.map(x=>({c1:x[labelKey]||x.id, c2:rt_fmtGB(Number(x[valueKey]||0))}));
+    const pager = new RT_TablePager(tableId, 8); pager.setRows(rows);
+
+    const top = sorted.slice(0, topN);
+    const others = sorted.slice(topN);
+    const data = top.map(x=>Number(x[valueKey]||0));
+    const labels = top.map(x=>x[labelKey]||x.id);
+    const othersSum = others.reduce((s,x)=>s+Number(x[valueKey]||0),0);
+    if(othersSum>0){ data.push(othersSum); labels.push('Others'); }
+
+    const ctx = document.getElementById(canvasId);
+    new Chart(ctx,{
+      type:doughnut ? 'doughnut':'pie',
+      data:{labels,datasets:[{data,borderWidth:0}]},
+      options:{
+        responsive:true, maintainAspectRatio:false, cutout:doughnut?'55%':0,
+        plugins:{
+          legend:{position:'bottom', labels:{usePointStyle:true, boxWidth:10}},
+          tooltip:{callbacks:{label:c=>`${c.label}: ${rt_fmtGB(c.raw)}`}}
+        }
+      }
+    });
+  }
+
+  // -------------------------
+  // 4) Fetch live data
+  // -------------------------
+  async function rt_loadLiveData() {
+  try {
+    const res = await fetch(API_URL);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const raw = await res.json();
+
+    // Map payload correctly
+    const apps = Array.isArray(raw.top_apps) 
+      ? raw.top_apps.map(a => ({ label: a.name, traffic: a.value })) 
+      : [];
+
+    const hosts = Array.isArray(raw.top_hosts)
+      ? raw.top_hosts.map(h => ({
+          id: h.host || h.ip,
+          traffic: (h.totals?.upload || 0) + (h.totals?.download || 0)
+        }))
+      : [];
+
+    const protocols = Array.isArray(raw.top_protocols)
+      ? raw.top_protocols.map(p => ({ label: p.name, traffic: p.value }))
+      : [];
+
+    // Build charts + tables
+    rt_buildPieWithTable('rt_appsChart','rt_appsTable', apps, {labelKey:'label', valueKey:'traffic'});
+    rt_buildPieWithTable('rt_hostsChart','rt_hostsTable', hosts, {labelKey:'id', valueKey:'traffic'});
+    rt_buildPieWithTable('rt_protocolsChart','rt_protocolsTable', protocols, {labelKey:'label', valueKey:'traffic'});
+
+  } catch(e) {
+    console.error('Live data fetch failed:', e);
+  }
+}
+
+rt_loadLiveData();
+  });
+</script>
+
+
+</body>
+</html>
