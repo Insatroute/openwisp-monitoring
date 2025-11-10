@@ -244,7 +244,8 @@
           const data = await res.json();
 
           const interfaces = data?.interfaces || [];
-          const modem1Interface = interfaces.find(iface => iface.name === 'modem1' && iface.type === 'mobile');
+          console.log('Fetched interfaces data:======', interfaces);
+          const modem1Interface = interfaces.find(iface => iface.name === 'modem' && iface.type === 'mobile');
           const modem2Interface = interfaces.find(iface => iface.name === 'modem2' && iface.type === 'mobile');
 
           const m1Mobile = modem1Interface?.mobile || {};
