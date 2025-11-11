@@ -7,6 +7,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
+  .security-wrap { margin: 16px auto; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color: #2b2f38; }
   .security-row { display: grid; gap: 18px; }
   .security-row.kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .security-row.single { grid-template-columns: minmax(0, 1fr); }
@@ -46,7 +47,7 @@
   canvas { max-width: 100%; height: auto; }
 </style>
 
-<div>
+<div class="security-wrap">
   <!-- ROW 1: KPI Donuts -->
   <div class="security-row kpis">
     <div class="security-tile">

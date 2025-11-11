@@ -1,216 +1,305 @@
-{% load i18n static %}
-<link rel="preconnect" href="https://cdn.jsdelivr.net" />
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+{% if device_data.realtimemonitor.real_time_traffic.data.talkers %}
+{{ device_data.realtimemonitor.real_time_traffic.data.talkers|json_script:"rtt-data" }}
+{% else %}
+<script type="application/json" id="rtt-data">{}</script>
+{% endif %}
 
 <style>
-  .nx-grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:12px;align-items:stretch}
-  .nx-col-6{grid-column:span 6}.nx-col-12{grid-column:span 12}
-  @media (max-width:1100px){.nx-col-6,.nx-col-12{grid-column:span 12}}
+  /* ===== Real-Time Talkers (rtt-) ===== */
+  .rtt-wrap{margin:16px auto;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#2b2f38}
+  .rtt-wrap *{box-sizing:border-box}
 
-  .nx-card{background:#fff;border:1px solid #e8eaee;border-radius:16px;box-shadow:0 6px 24px rgba(16,24,40,.06);overflow:hidden;display:flex;flex-direction:column;height:100%}
-  .nx-card-hd{padding:14px 18px;border-bottom:1px solid #e8eaee}
-  .nx-title{margin:0;font:700 16px/1.3 ui-sans-serif,system-ui;color:#0f172a}
-  .nx-card-bd{padding:16px 18px;display:flex;flex-direction:column;gap:12px;flex:1}
+  .rtt-row{display:grid;gap:18px}
+  .rtt-row.two{grid-template-columns:1fr 1fr}
+  .rtt-row.one{grid-template-columns:1fr}
 
-  .nx-chart-row{display:flex;justify-content:center}
-  .nx-chart-row canvas{display:block;width:100% !important;max-width:420px;height:260px !important}
+  @media (max-width:1100px){
+    .rtt-row.two{grid-template-columns:1fr}
+  }
 
-  .nx-legend{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;color:#475569;font:500 12px ui-sans-serif,system-ui}
-  .nx-legend-dot{width:10px;height:10px;border-radius:999px;border:1px solid rgba(0,0,0,.08);display:inline-block;margin-right:6px}
+  .rtt-card{
+    position:relative;overflow:hidden;
+    background:#fff;border-radius:14px;border:1px solid #e5e7eb;
+    box-shadow:0 6px 20px rgba(22,34,51,.08)
+  }
+  .rtt-header{background:#f0f0f0;padding:10px 12px;font-weight:700;color:#1f2937;border-bottom:1px solid #eee;font-size:14px}
+  .rtt-card-pad{padding:16px}
 
-  /* filter exactly like the image */
-  .nx-filter{border:1px solid #e7e9ee;border-radius:10px;padding:8px 10px;font-size:13px;background:#fff}
+  .rtt-donut-shell{height:220px;display:flex;align-items:center;justify-content:center}
+  .rtt-donut{width:180px !important;height:180px !important;display:block !important}
+  .rtt-wrap canvas{position:static !important;display:block !important;max-width:100%;height:auto}
 
-  .nx-table-wrap{border:1px solid #edf0f5;border-radius:12px;overflow:hidden}
-  .nx-table{width:100%;border-collapse:separate;border-spacing:0}
-  .nx-thead th{background:#fbfcfe;color:#6b7280;text-transform:uppercase;letter-spacing:.04em;font:700 11px ui-sans-serif,system-ui;padding:10px 12px;border-bottom:1px solid #edf0f5}
-  .nx-tbody tr:nth-child(even){background:#fafbff}.nx-tbody tr:hover{background:#f0f0f094}
-  .nx-cell{padding:12px;font:500 13px ui-sans-serif,system-ui;color:#0f172a}
-  .nx-cell-right{text-align:right;color:#525b70}
+  /* Vertical stack inside card: donut -> legend -> filter -> table -> pager */
+  .rtt-vert{display:flex;flex-direction:column;gap:8px;min-height:420px}
+  .rtt-legend{display:flex;flex-wrap:wrap;gap:8px;padding:0 2px}
+  .rtt-legend-item{display:inline-flex;align-items:center;gap:8px;font-size:12px;color:#334155;background:#f8fafc;border:1px solid #e5e7eb;padding:6px 8px;border-radius:10px}
+  .rtt-swatch{width:10px;height:10px;border-radius:50%;display:inline-block}
 
-  .nx-foot{display:flex;align-items:center;justify-content:space-between;padding:8px 2px 0;color:#6b7280;font:500 12px ui-sans-serif,system-ui}
-  .nx-pager{display:flex;gap:8px;align-items:center}
-  .nx-btn{border:1px solid #e7e9ee;background:#fff;padding:6px 10px;border-radius:8px;cursor:pointer}
-  .nx-btn[disabled]{opacity:.5;cursor:default}
-  .nx-select{border:1px solid #e7e9ee;border-radius:10px;padding:6px 8px;font-size:12px;background:#fff}
+  .rtt-filter{padding:0}
+  .rtt-filter input{width:100%;padding:9px 10px;border:1px solid #e5e7eb;border-radius:10px;font-size:12px;background:#fff;outline:none}
+
+  .rtt-table-wrap{padding:0;flex:1 1 auto;min-height:120px;overflow:auto}
+  .rtt-table{width:100%;border-collapse:separate;border-spacing:0 8px;font-size:13px}
+  .rtt-table thead th{text-align:left;font-weight:700;color:#475569;font-size:12px;padding:0 8px 6px}
+  .rtt-table tbody td{padding:10px 8px;border-top:1px solid #e5e7eb;border-bottom:1px solid #e5e7eb}
+  .rtt-table tbody tr td:first-child{border-left:1px solid #e5e7eb;border-top-left-radius:10px;border-bottom-left-radius:10px}
+  .rtt-table tbody tr td:last-child{border-right:1px solid #e5e7eb;border-top-right-radius:10px;border-bottom-right-radius:10px;text-align:right;color:#111827;font-weight:600}
+
+  .rtt-note{color:#6b7280;font-size:12px}
+
+  /* Pagination pinned bottom */
+  .rtt-pager{
+    margin-top:auto;position:sticky;bottom:0;z-index:1;
+    display:flex;justify-content:space-between;align-items:center;
+    padding:10px 14px 12px;font-size:12px;color:#475569;border-top:1px solid #e5e7eb;
+    border-bottom-left-radius:14px;border-bottom-right-radius:14px
+  }
+  .rtt-pager-info{color:#64748b}
+  .rtt-pager-ctrls{display:flex;align-items:center;gap:6px}
+  .rtt-pager select{border:1px solid #e5e7eb;border-radius:6px;padding:3px 6px;font-size:12px;color:#334155;background:#fff;outline:none}
+  .rtt-pager button{border:1px solid #e5e7eb;border-radius:6px;background:#f3f4f6;color:#64748b;font-size:12px;padding:3px 8px;cursor:pointer;transition:.2s}
+  .rtt-pager button:hover:not(:disabled){background:#e5e7eb}
+  .rtt-pager button:disabled{opacity:.5;cursor:default}
 </style>
 
-{{ device_data|json_script:"nx-device-data" }}
+<div class="rtt-wrap">
 
-<div id="nx-traffic-ui" class="nx-wrap">
-  <div class="nx-grid">
-    <!-- Applications -->
-    <section class="nx-card nx-col-6">
-      <div class="nx-card-hd"><h3 class="nx-title">{% trans "Applications" %}</h3></div>
-      <div class="nx-card-bd">
-        <div class="nx-chart-row"><canvas id="nx-chart-apps"></canvas></div>
-        <div class="nx-legend" id="nx-legend-apps"></div>
-        <input id="nx-filter-apps" class="nx-filter" placeholder="{% trans 'Filter…' %}">
-        <div class="nx-table-wrap">
-          <table class="nx-table">
-            <thead class="nx-thead"><tr><th>{% trans "Label" %}</th><th class="nx-cell-right">{% trans "Traffic" %}</th></tr></thead>
-            <tbody id="nx-tbody-apps" class="nx-tbody"></tbody>
+  <!-- Row 1: Applications + Protocols -->
+  <div class="rtt-row two">
+    <!-- Top Applications -->
+    <div class="rtt-card">
+      <div class="rtt-header">Top Applications</div>
+      <div class="rtt-card-pad rtt-vert">
+        <div class="rtt-donut-shell">
+          <canvas id="rtt-donut-apps" class="rtt-donut"></canvas>
+        </div>
+        <div class="rtt-legend" id="rtt-legend-apps"></div>
+        <div class="rtt-filter"><input id="rtt-filter-apps" placeholder="Filter…"></div>
+        <div class="rtt-table-wrap">
+          <table class="rtt-table" id="rtt-table-apps">
+            <thead><tr><th>Application</th><th>Value</th></tr></thead><tbody></tbody>
           </table>
         </div>
-        <div class="nx-foot">
-          <span id="nx-info-apps"></span>
-          <div class="nx-pager">
-            <select id="nx-pagesize-apps" class="nx-select"><option>8</option><option>10</option><option>20</option></select>
-            <button id="nx-prev-apps" class="nx-btn">{% trans "Prev" %}</button>
-            <button id="nx-next-apps" class="nx-btn">{% trans "Next" %}</button>
-          </div>
-        </div>
+        <div class="rtt-note" id="rtt-note-apps"></div>
+        <div class="rtt-pager" id="rtt-pager-apps"></div>
       </div>
-    </section>
+    </div>
 
-    <!-- Remote Hosts -->
-    <section class="nx-card nx-col-6">
-      <div class="nx-card-hd"><h3 class="nx-title">{% trans "Remote Hosts" %}</h3></div>
-      <div class="nx-card-bd">
-        <div class="nx-chart-row"><canvas id="nx-chart-hosts"></canvas></div>
-        <div class="nx-legend" id="nx-legend-hosts"></div>
-        <input id="nx-filter-hosts" class="nx-filter" placeholder="{% trans 'Filter…' %}">
-        <div class="nx-table-wrap">
-          <table class="nx-table">
-            <thead class="nx-thead"><tr><th>{% trans "Host" %}</th><th class="nx-cell-right">{% trans "Traffic" %}</th></tr></thead>
-            <tbody id="nx-tbody-hosts" class="nx-tbody"></tbody>
+    <!-- Top Protocols -->
+    <div class="rtt-card">
+      <div class="rtt-header">Top Protocols</div>
+      <div class="rtt-card-pad rtt-vert">
+        <div class="rtt-donut-shell">
+          <canvas id="rtt-donut-protos" class="rtt-donut"></canvas>
+        </div>
+        <div class="rtt-legend" id="rtt-legend-protos"></div>
+        <div class="rtt-filter"><input id="rtt-filter-protos" placeholder="Filter…"></div>
+        <div class="rtt-table-wrap">
+          <table class="rtt-table" id="rtt-table-protos">
+            <thead><tr><th>Protocol</th><th>Value</th></tr></thead><tbody></tbody>
           </table>
         </div>
-        <div class="nx-foot">
-          <span id="nx-info-hosts"></span>
-          <div class="nx-pager">
-            <select id="nx-pagesize-hosts" class="nx-select"><option>8</option><option>10</option><option>20</option></select>
-            <button id="nx-prev-hosts" class="nx-btn">{% trans "Prev" %}</button>
-            <button id="nx-next-hosts" class="nx-btn">{% trans "Next" %}</button>
-          </div>
-        </div>
+        <div class="rtt-note" id="rtt-note-protos"></div>
+        <div class="rtt-pager" id="rtt-pager-protos"></div>
       </div>
-    </section>
+    </div>
+  </div>
 
-    <!-- Protocols -->
-    <section class="nx-card nx-col-12">
-      <div class="nx-card-hd"><h3 class="nx-title">{% trans "Protocols" %}</h3></div>
-      <div class="nx-card-bd">
-        <div class="nx-chart-row"><canvas id="nx-chart-prot"></canvas></div>
-        <div class="nx-legend" id="nx-legend-prot"></div>
-        <input id="nx-filter-prot" class="nx-filter" placeholder="{% trans 'Filter…' %}">
-        <div class="nx-table-wrap">
-          <table class="nx-table">
-            <thead class="nx-thead"><tr><th>{% trans "Protocol" %}</th><th class="nx-cell-right">{% trans "Traffic" %}</th></tr></thead>
-            <tbody id="nx-tbody-prot" class="nx-tbody"></tbody>
+  <!-- Row 2: Top Hosts -->
+  <div class="rtt-row two" style="margin-top:18px;">
+    <div class="rtt-card">
+      <div class="rtt-header">Top Hosts</div>
+      <div class="rtt-card-pad rtt-vert">
+        <div class="rtt-donut-shell">
+          <canvas id="rtt-donut-hosts" class="rtt-donut"></canvas>
+        </div>
+        <div class="rtt-legend" id="rtt-legend-hosts"></div>
+        <div class="rtt-filter"><input id="rtt-filter-hosts" placeholder="Filter…"></div>
+        <div class="rtt-table-wrap">
+          <table class="rtt-table" id="rtt-table-hosts">
+            <thead><tr><th>Host / IP</th><th>Bandwidth</th></tr></thead><tbody></tbody>
           </table>
         </div>
-        <div class="nx-foot">
-          <span id="nx-info-prot"></span>
-          <div class="nx-pager">
-            <select id="nx-pagesize-prot" class="nx-select"><option>8</option><option>10</option><option>20</option></select>
-            <button id="nx-prev-prot" class="nx-btn">{% trans "Prev" %}</button>
-            <button id="nx-next-prot" class="nx-btn">{% trans "Next" %}</button>
-          </div>
-        </div>
+        <div class="rtt-note" id="rtt-note-hosts"></div>
+        <div class="rtt-pager" id="rtt-pager-hosts"></div>
       </div>
-    </section>
+    </div>
   </div>
 </div>
 
 <script>
 (() => {
-  const device_data = JSON.parse(document.getElementById('nx-device-data').textContent || '{}');
-  const talkers = (((device_data||{}).realtimemonitor||{}).real_time_traffic||{}).data?.talkers || {};
-  const APPS  = talkers.top_apps || [];
-  const HOSTS = talkers.top_hosts || [];
-  const PROTS = talkers.top_protocols || [];
+  /* ---------- Read data ---------- */
+  const talkers = JSON.parse(document.getElementById('rtt-data').textContent || '{}');
+  const topApps    = Array.isArray(talkers.top_apps)      ? talkers.top_apps      : [];
+  const topProtos  = Array.isArray(talkers.top_protocols) ? talkers.top_protocols : [];
+  const topHosts   = Array.isArray(talkers.top_hosts)     ? talkers.top_hosts     : [];
 
-  const palette=["#3b82f6","#ef4444","#f59e0b","#10b981","#8b5cf6","#06b6d4","#84cc16","#eab308","#ec4899","#14b8a6","#f97316","#4f46e5"];
-  const colors=n=>Array.from({length:n},(_,i)=>palette[i%palette.length]);
-  const fmtBytes=n=>{n=Number(n)||0;if(n>=1<<30)return(n/(1<<30)).toFixed(1)+' GB';if(n>=1<<20)return(n/(1<<20)).toFixed(1)+' MB';if(n>=1<<10)return(n/(1<<10)).toFixed(1)+' KB';return n.toFixed(0)+' B'};
-  const toBytes=v=>Number(v)||0;
-  const cleanAppLabel=(name)=>{const p=String(name||'').split('.');return p.length>=3?p.slice(2).join('.'):String(name||'')};
+  /* ---------- Utils ---------- */
+  const rttColors = ["#3b82f6","#10b981","#f59e0b","#ef4444","#8b5cf6","#22c55e","#0ea5e9","#a78bfa","#f97316","#14b8a6","#eab308","#f43f5e"];
+  const fmtNum = (v)=> (Number(v)||0).toLocaleString(undefined,{maximumFractionDigits:2});
+  const sum = (arr, pick) => arr.reduce((s,x)=> s + Number(pick(x) || 0), 0);
 
-  function draw(canvas, labels, values){
-    const cs=colors(values.length||1);
-    new Chart(canvas.getContext('2d'),{
+  /* ---------- Donut builder ---------- */
+  function buildDonut({canvas, items, labelFn, valueFn, legendEl, noteEl, topN=6}) {
+    const sorted = [...items].sort((a,b)=> valueFn(b)-valueFn(a));
+    const head = sorted.slice(0, topN);
+    const tail = sorted.slice(topN);
+    const othersVal = sum(tail, valueFn);
+    if (othersVal > 0) head.push({__name:"Other", __value: othersVal});
+
+    const labels = head.map(it => it.__name ?? labelFn(it));
+    const values = head.map(it => it.__value ?? valueFn(it));
+    const total = values.reduce((a,b)=>a+b,0) || 1;
+
+    new Chart(canvas, {
       type:'doughnut',
-      data:{labels,datasets:[{data:values,backgroundColor:cs,borderWidth:1}]},
-      options:{responsive:true,maintainAspectRatio:false,cutout:'58%',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.label}: ${fmtBytes(c.raw)}`}}}}
+      data:{ labels, datasets:[{ data: values, backgroundColor: labels.map((_,i)=>rttColors[i%rttColors.length]), borderWidth:0 }]},
+      options:{ responsive:false, maintainAspectRatio:false, cutout:"65%", plugins:{ legend:{display:false},
+        tooltip:{ callbacks:{ label:(ctx)=>`${ctx.label}: ${fmtNum(ctx.parsed)} (${(ctx.parsed/total*100).toFixed(1)}%)` } } } }
     });
-    return cs;
+
+    legendEl.innerHTML = "";
+    labels.forEach((name,i)=>{
+      const d = document.createElement('div');
+      d.className = 'rtt-legend-item';
+      d.innerHTML = `<span class="rtt-swatch" style="background:${rttColors[i%rttColors.length]}"></span>${name}`;
+      legendEl.appendChild(d);
+    });
+
+    if (noteEl) noteEl.textContent = `Total: ${fmtNum(total)} • ${labels.length - (othersVal>0?1:0)} top items${othersVal>0?' (+ Other)':''}`;
   }
 
-  function tableCtrl({data,filterEl,tbody,pageSel,prev,next,info,row}){
-    let filtered=[...data], page=0;
-    const size=()=>parseInt(pageSel.value,10)||8;
-    const pages=()=>Math.max(1,Math.ceil(filtered.length/size()));
-    function render(){
-      const slice=filtered.slice(page*size(),page*size()+size());
-      tbody.innerHTML=slice.map(row).join('');
-      prev.disabled=page<=0; next.disabled=page>=pages()-1;
-      info.textContent=`Page ${Math.min(page+1,pages())} of ${pages()} — ${filtered.length} rows`;
+  /* ---------- Pagination + table (filter-aware) ---------- */
+  function makePager({rootId, rows, nameFn, valueFn, tableBodySel, filterInputSel, perPage=8}) {
+    const pagerEl = document.getElementById(rootId);
+    const tbody = document.querySelector(tableBodySel);
+    const filterInput = document.querySelector(filterInputSel);
+
+    let state = { all: rows, filtered: rows, page: 1, perPage };
+
+    const pageCount = () => Math.max(1, Math.ceil(state.filtered.length / state.perPage));
+    const clampPage = () => { state.page = Math.min(Math.max(1, state.page), pageCount()); };
+
+    function renderTable(){
+      clampPage();
+      const start = (state.page-1) * state.perPage;
+      const slice = state.filtered.slice(start, start + state.perPage);
+      tbody.innerHTML = "";
+      slice.forEach(r=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${nameFn(r)}</td><td>${fmtNum(valueFn(r))}</td>`;
+        tbody.appendChild(tr);
+      });
     }
-    function apply(){
-      const q=(filterEl.value||'').toLowerCase();
-      filtered=data.filter(x=>JSON.stringify(x).toLowerCase().includes(q));
-      page=0; render();
+
+    function renderPager(){
+      const totalRows = state.filtered.length;
+      const pc = pageCount();
+
+      pagerEl.innerHTML = `
+        <span class="rtt-pager-info">Page ${state.page} of ${pc} — ${totalRows} ${totalRows===1?'row':'rows'}</span>
+        <div class="rtt-pager-ctrls">
+          <select id="${rootId}-rpp">
+            <option ${state.perPage===6?'selected':''}>6</option>
+            <option ${state.perPage===12?'selected':''}>12</option>
+            <option ${state.perPage===24?'selected':''}>24</option>
+          </select>
+          <button id="${rootId}-prev" ${state.page<=1?'disabled':''}>Prev</button>
+          <button id="${rootId}-next" ${state.page>=pc?'disabled':''}>Next</button>
+        </div>
+      `;
+
+      pagerEl.querySelector(`#${rootId}-rpp`).onchange = (e)=>{
+        state.perPage = parseInt(e.target.value,10) || 8;
+        state.page = 1; renderTable(); renderPager();
+      };
+      pagerEl.querySelector(`#${rootId}-prev`).onclick = ()=>{
+        if (state.page>1){ state.page--; renderTable(); renderPager(); }
+      };
+      pagerEl.querySelector(`#${rootId}-next`).onclick = ()=>{
+        if (state.page<pc){ state.page++; renderTable(); renderPager(); }
+      };
     }
-    filterEl.addEventListener('input',apply);
-    pageSel.addEventListener('change',()=>{page=0;render()});
-    prev.addEventListener('click',()=>{if(page>0){page--;render()}});
-    next.addEventListener('click',()=>{if(page<pages()-1){page++;render()}});
-    render(); return {refresh:nd=>{data=nd;apply()}};
+
+    function applyFilter(){
+      const q = (filterInput?.value || "").trim().toLowerCase();
+      state.filtered = q
+        ? state.all.filter(r => nameFn(r).toLowerCase().includes(q))
+        : state.all;
+      state.page = 1; renderTable(); renderPager();
+    }
+
+    applyFilter();
+    if (filterInput) filterInput.addEventListener('input', applyFilter);
+
+    return { refresh: applyFilter };
   }
 
-  // Applications
-  {
-    const labels=(APPS.length?APPS:[{name:'—',value:0}]).map(a=>cleanAppLabel(a.name));
-    const values=(APPS.length?APPS:[{value:0}]).map(a=>toBytes(a.value));
-    const cs=draw(document.getElementById('nx-chart-apps'),labels,values);
-    document.getElementById('nx-legend-apps').innerHTML=labels.map((t,i)=>`<span><i class="nx-legend-dot" style="background:${cs[i]}"></i>${t}</span>`).join('');
-    tableCtrl({
-      data:APPS,
-      filterEl:document.getElementById('nx-filter-apps'),
-      tbody:document.getElementById('nx-tbody-apps'),
-      pageSel:document.getElementById('nx-pagesize-apps'),
-      prev:document.getElementById('nx-prev-apps'),
-      next:document.getElementById('nx-next-apps'),
-      info:document.getElementById('nx-info-apps'),
-      row:a=>`<tr><td class="nx-cell">${cleanAppLabel(a.name)}</td><td class="nx-cell nx-cell-right">${fmtBytes(toBytes(a.value))}</td></tr>`
-    });
-  }
+  /* ---------- Build donuts ---------- */
+  buildDonut({
+    canvas: document.getElementById('rtt-donut-apps'),
+    items: topApps,
+    labelFn: (x)=> x.name ?? '—',
+    valueFn: (x)=> Number(x.value || 0),
+    legendEl: document.getElementById('rtt-legend-apps'),
+    noteEl: document.getElementById('rtt-note-apps'),
+    topN: 6
+  });
 
-  // Hosts
-  {
-    const labels=(HOSTS.length?HOSTS:[{ip:'—',totals:{}}]).map(h=>h.ip||h.host||h.mac||'—');
-    const values=(HOSTS.length?HOSTS:[{totals:{}}]).map(h=>(h.totals?.download||0)+(h.totals?.upload||0));
-    const cs=draw(document.getElementById('nx-chart-hosts'),labels,values);
-    document.getElementById('nx-legend-hosts').innerHTML=labels.map((t,i)=>`<span><i class="nx-legend-dot" style="background:${cs[i]}"></i>${t}</span>`).join('');
-    tableCtrl({
-      data:HOSTS,
-      filterEl:document.getElementById('nx-filter-hosts'),
-      tbody:document.getElementById('nx-tbody-hosts'),
-      pageSel:document.getElementById('nx-pagesize-hosts'),
-      prev:document.getElementById('nx-prev-hosts'),
-      next:document.getElementById('nx-next-hosts'),
-      info:document.getElementById('nx-info-hosts'),
-      row:h=>{const n=h.ip||h.host||h.mac||'—';const b=(h.totals?.download||0)+(h.totals?.upload||0);return `<tr><td class="nx-cell">${n}</td><td class="nx-cell nx-cell-right">${fmtBytes(b)}</td></tr>`;}
-    });
-  }
+  buildDonut({
+    canvas: document.getElementById('rtt-donut-protos'),
+    items: topProtos,
+    labelFn: (x)=> x.name ?? '—',
+    valueFn: (x)=> Number(x.value || 0),
+    legendEl: document.getElementById('rtt-legend-protos'),
+    noteEl: document.getElementById('rtt-note-protos'),
+    topN: 6
+  });
 
-  // Protocols
-  {
-    const labels=(PROTS.length?PROTS:[{name:'—',value:0}]).map(p=>p.name);
-    const values=(PROTS.length?PROTS:[{value:0}]).map(p=>toBytes(p.value));
-    const cs=draw(document.getElementById('nx-chart-prot'),labels,values);
-    document.getElementById('nx-legend-prot').innerHTML=labels.map((t,i)=>`<span><i class="nx-legend-dot" style="background:${cs[i]}"></i>${t}</span>`).join('');
-    tableCtrl({
-      data:PROTS,
-      filterEl:document.getElementById('nx-filter-prot'),
-      tbody:document.getElementById('nx-tbody-prot'),
-      pageSel:document.getElementById('nx-pagesize-prot'),
-      prev:document.getElementById('nx-prev-prot'),
-      next:document.getElementById('nx-next-prot'),
-      info:document.getElementById('nx-info-prot'),
-      row:p=>`<tr><td class="nx-cell">${p.name}</td><td class="nx-cell nx-cell-right">${fmtBytes(toBytes(p.value))}</td></tr>`
-    });
-  }
+  // For hosts, use totals.bandwidth as the value, label = host (fallback ip)
+  buildDonut({
+    canvas: document.getElementById('rtt-donut-hosts'),
+    items: topHosts,
+    labelFn: (h)=> (h.host || h.ip || '—'),
+    valueFn: (h)=> Number(h?.totals?.bandwidth || 0),
+    legendEl: document.getElementById('rtt-legend-hosts'),
+    noteEl: document.getElementById('rtt-note-hosts'),
+    topN: 6
+  });
+
+  /* ---------- Tables + pagination ---------- */
+  makePager({
+    rootId: 'rtt-pager-apps',
+    rows: [...topApps].sort((a,b)=> (b.value||0)-(a.value||0)),
+    nameFn: r=> r.name ?? '—',
+    valueFn: r=> r.value ?? 0,
+    tableBodySel: '#rtt-table-apps tbody',
+    filterInputSel: '#rtt-filter-apps',
+    perPage: 6
+  });
+
+  makePager({
+    rootId: 'rtt-pager-protos',
+    rows: [...topProtos].sort((a,b)=> (b.value||0)-(a.value||0)),
+    nameFn: r=> r.name ?? '—',
+    valueFn: r=> r.value ?? 0,
+    tableBodySel: '#rtt-table-protos tbody',
+    filterInputSel: '#rtt-filter-protos',
+    perPage: 6
+  });
+
+  makePager({
+    rootId: 'rtt-pager-hosts',
+    rows: [...topHosts].sort((a,b)=> ( (b?.totals?.bandwidth||0) - (a?.totals?.bandwidth||0) )),
+    nameFn: r=> (r.host || r.ip || '—'),
+    valueFn: r=> (r?.totals?.bandwidth || 0),
+    tableBodySel: '#rtt-table-hosts tbody',
+    filterInputSel: '#rtt-filter-hosts',
+    perPage: 6
+  });
+
 })();
 </script>
