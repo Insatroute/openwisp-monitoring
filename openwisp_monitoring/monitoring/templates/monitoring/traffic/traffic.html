@@ -1,439 +1,426 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Traffic</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+{% if device_data.realtimemonitor.traffic %}
+{{ device_data.realtimemonitor.traffic|json_script:"traffic-data" }}
+{% else %}
+<script type="application/json" id="traffic-data">{}</script>
+{% endif %}
+
 <style>
-  :root { --ink:#0f172a; --muted:#64748b; --line:#e5e7eb; --bg:#f8fafc; --card:#fff; }
+  /* ===== Traffic Dashboard (namespaced) ===== */
 
-  h2 { margin:16px 0 8px; font-weight:800; letter-spacing:.2px; }
-  h3 { 
-         font-weight: 700 !important;
-    font-size: 18px !important;
-    margin-bottom: 0 !important;
-    color: #334155 !important;
+  .traffic-wrap{margin:26px auto;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#2b2f38}
+  .traffic-wrap *{box-sizing:border-box}
+
+  /* Row grids */
+  .traffic-row{display:grid;gap:18px}
+  .traffic-row.top{grid-template-columns:260px 1fr;align-items:stretch}
+  .traffic-row.two{grid-template-columns:1fr 1fr}
+
+  @media (max-width:1100px){
+    .traffic-row.top{grid-template-columns:1fr}
+    .traffic-row.two{grid-template-columns:1fr}
   }
-  h4 { margin:0 0 8px; font-weight:700; color:#334155; }
-  .wrap { max-width:1200px; margin:10px auto 28px; padding:0 12px; }
 
-  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:15px !important; }
-  .tile {     
-    border: 1px solid #e5e7eb !important;
-    border-radius: 14px !important;
-    box-shadow: 0 6px 20px rgba(22, 34, 51, .08) !important;
-    padding: 16px !important;
+  /* Cards */
+  .traffic-card{
+    position:relative;overflow:hidden;
+    background:#fff;border-radius:14px;border:1px solid #e5e7eb;
+    box-shadow:0 6px 20px rgba(22,34,51,.08)
   }
-  .traffic-grid { display:grid; gap:14px; }
-  .traffic-grid-2 { grid-template-columns: repeat(2, minmax(0,1fr));margin-top:16px; }
-  #detailTab .traffic-grid-2 { grid-template-columns: 320px minmax(0,1fr); } 
-
-  .grid-main { display:grid; gap:14px; grid-template-columns: 320px minmax(0,1fr); }
-  @media (max-width: 980px) { .grid-2 { grid-template-columns: 1fr; } .grid-main { grid-template-columns: 1fr; } }
-
-  .kpi { display:flex; align-items:center; justify-content:center; height:120px; font-size:24px; font-weight:800; }
-  .muted { color:var(--muted); }
-  .chart-shell { 
-    position:relative;
-    height:260px; 
-    display: flex;
-    justify-content: center;
-    align-items: center;
+  .traffic-card-pad{padding:16px}
+  .traffic-header{
+    background:#f0f0f0;padding:10px 12px;font-weight:700;color:#1f2937;
+    border-bottom:1px solid #eee;font-size:14px
   }
-  .chart-shell.tall { height:420px; } /* main hourly chart */
-  .hourly-card { padding-bottom:18px; }
 
-  .tbl-wrap { overflow:auto; border:1px solid var(--line); border-radius:12px; }
-  table { width:100%; border-collapse:separate; border-spacing:0; }
-  thead th { text-align:left; background:#f1f5f9; padding:10px 12px; position:sticky; top:0; z-index:1; font-weight:700; }
-  tbody td { padding:10px 12px; border-top:1px solid var(--line); }
-  tbody tr:hover { background:#f8fafc; }
-  .num { text-align:right; font-variant-numeric: tabular-nums; }
-  .clickable tbody tr { cursor:pointer; }
+  /* Donuts */
+  .traffic-donut-shell{height:220px;display:flex;align-items:center;justify-content:center}
+  .traffic-donut{width:180px !important;height:180px !important;display:block !important}
 
-  .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
-  .grow { flex:1; }
-  .input { width:100%; border:1px solid var(--line); border-radius:10px; padding:8px 10px; background:#fff; }
-  .btn { display:inline-flex; align-items:center; gap:6px; border:1px solid var(--line); background:#fff; padding:8px 12px; border-radius:10px; cursor:pointer; }
-  .btn:hover { background:#f8fafc; }
-  .hidden { display:none !important; }
-  .pager { display:flex; align-items:center; gap:8px; padding:8px 0; }
-  .select { border:1px solid var(--line); background:#fff; border-radius:10px; padding:6px 8px; }
+  /* Ensure canvases obey our sizing (neutralize global CSS) */
+  .traffic-wrap canvas{position:static !important;display:block !important;max-width:100%;height:auto}
 
-  .seg { display:inline-flex; border:1px solid var(--line); border-radius:10px; overflow:hidden; }
-  .seg button { padding:6px 10px; background:#fff; border:0; cursor:pointer; }
-  .seg button.active { background:#eef2ff; font-weight:600; }
+  /* KPI total text (inside Total card) */
+  .traffic-kpi-big{font-size:18px;font-weight:700;text-align:center;padding:22px 8px;color:#111827}
 
-  #detailTab { max-width:1100px; margin:18px auto 0; }
-  #todayDonut, #detailDonut { width:140px !important; height:140px !important; }
-  #backBtn { width: 10%; background-color: #4a555f; }
+  /* Vertical body layout: donut -> legend -> filter -> table -> pagination */
+  .traffic-vert{display:flex;flex-direction:column;gap:8px}
 
-  #apiError{display:none; color:#b91c1c; margin:8px 0;}
+  /* Legend */
+  .traffic-legend{display:flex;flex-wrap:wrap;gap:8px;padding:0 2px}
+  .traffic-legend-item{display:inline-flex;align-items:center;gap:8px;font-size:12px;color:#334155;background:#f8fafc;border:1px solid #e5e7eb;padding:6px 8px;border-radius:10px}
+  .traffic-swatch{width:10px;height:10px;border-radius:50%;display:inline-block}
+
+  /* Filter + table */
+  .traffic-filter-bar{padding:0}
+  .traffic-filter-bar input{width:100%;padding:9px 10px;border:1px solid #e5e7eb;border-radius:10px;font-size:12px;background:#fff;outline:none}
+
+  .traffic-table-wrap{padding:0;max-height:340px;overflow:auto}
+  .traffic-table{width:100%;border-collapse:separate;border-spacing:0 8px;font-size:13px}
+  .traffic-table thead th{text-align:left;font-weight:700;color:#475569;font-size:12px;padding:0 8px 6px}
+  .traffic-table tbody td{padding:10px 8px;border-top:1px solid #e5e7eb;border-bottom:1px solid #e5e7eb}
+  .traffic-table tbody tr td:first-child{border-left:1px solid #e5e7eb;border-top-left-radius:10px;border-bottom-left-radius:10px}
+  .traffic-table tbody tr td:last-child{border-right:1px solid #e5e7eb;border-top-right-radius:10px;border-bottom-right-radius:10px;text-align:right;color:#111827;font-weight:600}
+
+  .traffic-note{color:#6b7280;font-size:12px}
+
+  /* Pagination footer */
+  .traffic-pagination{
+  margin-top:auto;      /* pushes footer to the bottom */
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:10px 14px 12px;
+  font-size:12px;
+  color:#475569;
+  border-top:1px solid #e5e7eb;
+  background:#f9fafb;
+  border-bottom-left-radius:14px;
+  border-bottom-right-radius:14px;
+
+  /* optional: keep visible while the page scrolls within the card area */
+  position: sticky;     
+  bottom: 0;
+  z-index: 1;
+}
+  .traffic-pagination .traffic-page-info{color:#64748b}
+  .traffic-pagination .traffic-page-controls{display:flex;align-items:center;gap:6px}
+  .traffic-pagination select{
+    border:1px solid #e5e7eb;border-radius:6px;padding:3px 6px;font-size:12px;color:#334155;background:#fff;outline:none
+  }
+  .traffic-pagination button{
+    border:1px solid #e5e7eb;border-radius:6px;background:#f3f4f6;color:#64748b;
+    font-size:12px;padding:3px 8px;cursor:pointer;transition:.2s
+  }
+  .traffic-pagination button:hover:not(:disabled){background:#e5e7eb}
+  .traffic-pagination button:disabled{opacity:.5;cursor:default}
 </style>
-</head>
-<body>
-<div class="wrap">
-  <div id="apiError"></div>
 
-  <!-- HEADER -->
-  <section class="recent-traffic-section grid-main">
-    <div class="traffic-grid" style="grid-template-columns: 1fr;">
-      <div class="tile">
-        <h4>Total (today)</h4>
-        <div style="display:flex; align-items:center; justify-content:center;">
-          <canvas id="todayDonut" width="180" height="180"></canvas>
+<div class="traffic-wrap">
+
+  <!-- ROW 1: Total + Hourly -->
+  <div class="traffic-row top">
+    <div class="traffic-card">
+      <div class="traffic-header">Total (today)</div>
+      <div class="traffic-donut-shell">
+        <canvas id="traffic-donut-total" class="traffic-donut"></canvas>
+      </div>
+      <div class="traffic-kpi-big" id="traffic-total-text">—</div>
+    </div>
+
+    <div class="traffic-card">
+      <div class="traffic-header">Hourly Traffic</div>
+      <div class="traffic-card-pad" style="height:360px;">
+        <canvas id="traffic-bar-hourly"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROW 2: Applications + Remote Hosts -->
+  <div class="traffic-row two" style="margin-top:18px;">
+
+    <!-- Applications -->
+    <div class="traffic-card">
+      <div class="traffic-header">Applications</div>
+      <div class="traffic-card-pad traffic-vert">
+        <div class="traffic-donut-shell">
+          <canvas id="traffic-donut-apps" width="220" height="220"></canvas>
         </div>
-      </div>
-      <div class="tile">
-        <h4>Total (today)</h4>
-        <div class="kpi"><span id="kpiTodayText">0 GB</span></div>
-      </div>
-    </div>
-    <div class="card hourly-card">
-      <h4>Hourly traffic</h4>
-      <div class="chart-shell tall"><canvas id="hourlyChart"></canvas></div>
-    </div>
-  </section>
+        <div class="traffic-legend" id="traffic-legend-apps"></div>
+        <div class="traffic-filter-bar"><input id="traffic-filter-apps" placeholder="Filter…"></div>
 
-  <!-- CARDS: 2 per row -->
-  <section class="traffic-grid traffic-grid-2 recent-traffic-section">
-    <div class="card">
-      <h3>Applications</h3>
-      <div class="chart-shell"><canvas id="appsChart"></canvas></div>
-      <div class="row" style="margin-top:8px;">
-        <input id="appsFilter" class="input grow" placeholder="Filter…" />
-      </div>
-      <div class="tbl-wrap" style="margin-top:8px;">
-        <table id="appsTable" class="nice-table clickable">
-          <thead><tr><th>Label</th><th class="num">Traffic</th></tr></thead>
-          <tbody></tbody>
-        </table>
-      </div>
-      <div class="pager" id="appsPager"></div>
-    </div>
-
-    <div class="card">
-      <h3>Remote Hosts</h3>
-      <div class="chart-shell"><canvas id="hostsChart"></canvas></div>
-      <div class="row" style="margin-top:8px;">
-        <input id="hostsFilter" class="input grow" placeholder="Filter…" />
-      </div>
-      <div class="tbl-wrap" style="margin-top:8px;">
-        <table id="hostsTable" class="nice-table clickable">
-          <thead><tr><th>Host</th><th class="num">Traffic</th></tr></thead>
-          <tbody></tbody>
-        </table>
-      </div>
-      <div class="pager" id="hostsPager"></div>
-    </div>
-
-    <div class="card">
-      <h3>Protocols</h3>
-      <div class="chart-shell"><canvas id="protocolsChart"></canvas></div>
-      <div class="row" style="margin-top:8px;">
-        <input id="protocolsFilter" class="input grow" placeholder="Filter…" />
-      </div>
-      <div class="tbl-wrap" style="margin-top:8px;">
-        <table id="protocolsTable" class="nice-table clickable">
-          <thead><tr><th>Protocol</th><th class="num">Traffic</th></tr></thead>
-          <tbody></tbody>
-        </table>
-      </div>
-      <div class="pager" id="protocolsPager"></div>
-    </div>
-
-    <div class="card">
-      <h3>Clients</h3>
-      <div class="chart-shell"><canvas id="clientsChart"></canvas></div>
-      <div class="row" style="margin-top:8px;">
-        <input id="clientsFilter" class="input grow" placeholder="Filter…" />
-      </div>
-      <div class="tbl-wrap" style="margin-top:8px;">
-        <table id="clientsTable" class="nice-table clickable">
-          <thead><tr><th>Client</th><th class="num">Traffic</th></tr></thead>
-          <tbody></tbody>
-        </table>
-      </div>
-      <div class="pager" id="clientsPager"></div>
-    </div>
-  </section>
-
-  <!-- DETAIL TAB -->
-  <section id="detailTab" class="hidden">
-    <button id="backBtn" class="btn" type="button">← Back</button>
-    <h3 id="detailTitle" style="margin:8px 0 12px;"></h3>
-
-    <div class="traffic-grid traffic-grid-2">
-      <div class="tile">
-        <h4>Total (today)</h4>
-        <div style="display:flex; align-items:center; justify-content:center;">
-          <canvas id="detailDonut" width="180" height="180"></canvas>
+        <div class="traffic-table-wrap">
+          <table class="traffic-table" id="traffic-table-apps">
+            <thead><tr><th>Label</th><th>Traffic</th></tr></thead><tbody></tbody>
+          </table>
         </div>
-        <div id="detailTotalText" class="muted" style="text-align:center; margin-top:10px;"></div>
-      </div>
-      <div class="card">
-        <h4>Hourly traffic</h4>
-        <div class="chart-shell"><canvas id="detailHourly"></canvas></div>
+
+        <!-- Pagination -->
+        <div class="traffic-pagination" id="traffic-pager-apps"></div>
       </div>
     </div>
 
-    <div id="detailSwitcher" class="row hidden" style="margin-top:12px;">
-      <span class="muted">View:</span>
-      <div class="seg" id="seg">
-        <button data-view="apps" class="active" type="button">Applications</button>
-        <button data-view="hosts" type="button">Hosts</button>
-        <button data-view="protocols" type="button">Protocols</button>
+    <!-- Remote Hosts -->
+    <div class="traffic-card">
+      <div class="traffic-header">Remote Hosts</div>
+      <div class="traffic-card-pad traffic-vert">
+        <div class="traffic-donut-shell">
+          <canvas id="traffic-donut-hosts" width="220" height="220"></canvas>
+        </div>
+        <div class="traffic-legend" id="traffic-legend-hosts"></div>
+        <div class="traffic-filter-bar"><input id="traffic-filter-hosts" placeholder="Filter…"></div>
+
+        <div class="traffic-table-wrap">
+          <table class="traffic-table" id="traffic-table-hosts">
+            <thead><tr><th>Host</th><th>Traffic</th></tr></thead><tbody></tbody>
+          </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="traffic-pagination" id="traffic-pager-hosts"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROW 3: Protocols + Clients -->
+  <div class="traffic-row two" style="margin-top:18px;">
+
+    <!-- Protocols -->
+    <div class="traffic-card">
+      <div class="traffic-header">Protocols</div>
+      <div class="traffic-card-pad traffic-vert">
+        <div class="traffic-donut-shell">
+          <canvas id="traffic-donut-protos" width="220" height="220"></canvas>
+        </div>
+        <div class="traffic-legend" id="traffic-legend-protos"></div>
+        <div class="traffic-filter-bar"><input id="traffic-filter-protos" placeholder="Filter…"></div>
+
+        <div class="traffic-table-wrap">
+          <table class="traffic-table" id="traffic-table-protos">
+            <thead><tr><th>Protocol</th><th>Traffic</th></tr></thead><tbody></tbody>
+          </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="traffic-pagination" id="traffic-pager-protos"></div>
       </div>
     </div>
 
-    <div style="margin-top:12px;">
-      <h4 id="detailTableTitle"></h4>
-      <div class="tbl-wrap">
-        <table id="detailTable" class="nice-table">
-          <thead><tr><th id="detailCol1">Item</th><th class="num">Traffic</th></tr></thead>
-          <tbody></tbody>
-        </table>
+    <!-- Clients (combined IPv4+IPv6) -->
+    <div class="traffic-card">
+      <div class="traffic-header">Clients</div>
+      <div class="traffic-card-pad traffic-vert">
+        <div class="traffic-donut-shell">
+          <canvas id="traffic-donut-clients" width="220" height="220"></canvas>
+        </div>
+        <div class="traffic-legend" id="traffic-legend-clients"></div>
+        <div class="traffic-filter-bar"><input id="traffic-filter-clients" placeholder="Filter…"></div>
+
+        <div class="traffic-table-wrap">
+          <table class="traffic-table" id="traffic-table-clients">
+            <thead><tr><th>Client</th><th>Traffic</th></tr></thead><tbody></tbody>
+          </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="traffic-pagination" id="traffic-pager-clients"></div>
       </div>
-      <div class="pager" id="detailPager"></div>
     </div>
-  </section>
+  </div>
+
 </div>
 
 <script>
-/* -------------------- UTILITIES -------------------- */
-const bytesToGB = b => (Number(b||0) / (1024*1024*1024));
-function fmtGB(bytes){
-  const gb = bytesToGB(bytes);
-  if (gb >= 0.1) return gb.toFixed(2) + " GB";
-  const mb = Number(bytes||0) / (1024*1024);
-  if (mb >= 1) return mb.toFixed(1) + " MB";
-  const kb = Number(bytes||0) / 1024;
-  if (kb >= 1) return kb.toFixed(0) + " KB";
-  return (Number(bytes||0)) + " B";
-}
-const centerText = { id:'centerText', beforeDraw(chart, a, opts){ if(!opts||!opts.text) return; const {ctx,chartArea:{width,height}}=chart; ctx.save(); ctx.font='600 14px system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial'; ctx.fillStyle='#334155'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(opts.text,width/2,height/2); ctx.restore(); } };
+(() => {
+  /* ---------- Data ingest ---------- */
+  const raw = JSON.parse(document.getElementById('traffic-data').textContent || '{}');
+  const dpi = raw.dpi_summery_v2 || {};
+  const hourlyPairs = Array.isArray(dpi.hourly_traffic) ? dpi.hourly_traffic : [];
+  const apps   = Array.isArray(dpi.applications) ? dpi.applications : [];
+  const hosts  = Array.isArray(dpi.remote_hosts) ? dpi.remote_hosts : [];
+  const protos = Array.isArray(dpi.protocols) ? dpi.protocols : [];
+  const clients= Array.isArray(dpi.clients) ? dpi.clients : [];
+  const totalBytes = Number(dpi.total_traffic || 0);
 
-/* -------------------- NORMALIZATION -------------------- */
-function summaryOf(root){
-  const s = root?.dpi_summery_v2 || root || {};
-  return {
-    hourly_traffic: s.hourly_traffic || [],
-    total_traffic:  Number(s.total_traffic || 0),
-    applications:   s.applications   || [],
-    remote_hosts:   s.remote_hosts   || [],
-    protocols:      s.protocols      || [],
-    clients:        s.clients        || []
-  };
-}
+  /* ---------- Utils ---------- */
+  const colors = ["#3b82f6","#10b981","#f59e0b","#ef4444","#8b5cf6","#22c55e","#0ea5e9","#a78bfa","#f97316","#14b8a6","#eab308","#f43f5e"];
+  const fmtBytes = (b)=>{const n=Number(b)||0,KB=1024,MB=KB*1024,GB=MB*1024;if(n>=GB)return(n/GB).toFixed(2)+" GB";if(n>=MB)return(n/MB).toFixed(2)+" MB";if(n>=KB)return(n/KB).toFixed(2)+" KB";return n+" B"};
+  const toGB = (b)=>(Number(b)||0)/(1024**3);
+  const sumTraffic=(arr)=>arr.reduce((s,x)=>s+Number(x.traffic||0),0);
 
-/* -------------------- PAGINATION -------------------- */
-function paginateAndRender({rows, tableBodyEl, pagerEl, pageSizeOptions=[6,10,25], defaultPageSize=6, rowRenderer}){
-  let filteredRows = rows.slice(); let page = 1; let pageSize = defaultPageSize;
-  function totalPages(){ return Math.max(1, Math.ceil(filteredRows.length / pageSize)); }
-  function renderPager(){
-    pagerEl.innerHTML = '';
-    const sel = document.createElement('select'); sel.className = 'select';
-    pageSizeOptions.forEach(n=>{ const o=document.createElement('option'); o.value=n; o.textContent=`${n}/page`; if(n===pageSize) o.selected=true; sel.appendChild(o); });
-    sel.onchange = (ev)=>{ ev.preventDefault(); ev.stopPropagation(); pageSize=Number(sel.value); page=1; render(); };
-    const prev = document.createElement('button'); prev.className='btn'; prev.textContent='Prev'; prev.type='button';
-    const next = document.createElement('button'); next.className='btn'; next.textContent='Next'; next.type='button';
-    const info = document.createElement('span'); info.className='muted';
-    const sync = ()=> info.textContent = `Page ${page} of ${totalPages()} — ${filteredRows.length} rows`;
-    prev.onclick = (e)=>{ e.preventDefault(); e.stopPropagation(); if(page>1){ page--; renderBody(); sync(); } };
-    next.onclick = (e)=>{ e.preventDefault(); e.stopPropagation(); if(page<totalPages()){ page++; renderBody(); sync(); } };
-    pagerEl.appendChild(sel); pagerEl.appendChild(prev); pagerEl.appendChild(next); pagerEl.appendChild(info); sync();
-  }
-  function renderBody(){ const start=(page-1)*pageSize; const slice=filteredRows.slice(start,start+pageSize); tableBodyEl.innerHTML = slice.map(rowRenderer).join('') || '<tr><td colspan="99">No data</td></tr>'; }
-  function render(){ renderBody(); renderPager(); }
-  return { setFilter(fn){ filteredRows=rows.filter(fn); page=1; render(); }, refresh(){ render(); } };
-}
+  const hours=Array.from({length:24},(_,i)=>(i<10?"0":"")+i+":00");
+  const byHour=Array.from({length:24},()=>0);
+  for(const p of hourlyPairs){const h=parseInt(p.id,10);if(!isNaN(h)&&h>=0&&h<24)byHour[h]=Number(p.traffic||0);}
 
-/* -------------------- CHARTS -------------------- */
-let hourlyChart=null, todayDonutChart=null, detailHourlyChart=null, detailDonutChart=null, smallCharts={};
-function drawHourlyChart(hoursArr){
-  const hours = Array.from({length:24}, (_,i)=> String(i).padStart(2,'0'));
-  const dataGB = hours.map(h => { const hit = hoursArr.find(x => x.id === h); return (hit ? Number(hit.traffic) : 0) / (1024*1024*1024); });
-  if (hourlyChart) hourlyChart.destroy();
-  const maxY = Math.max(0.01, ...dataGB) * 1.25;
-  hourlyChart = new Chart(document.getElementById('hourlyChart'), {
-    type:'bar',
-    data:{ labels: hours.map(h=>`${h}:00`), datasets:[{ label:'Hourly (GB)', data:dataGB, borderRadius:8, borderSkipped:false, categoryPercentage:0.9, barPercentage:0.9, maxBarThickness:28 }] },
-    options:{ responsive:true, maintainAspectRatio:false, layout:{ padding:{ top:6, right:8, bottom:0, left:8 } },
-      plugins:{ legend:{ display:true, position:'bottom' }, tooltip:{ callbacks:{ label:(c)=> `${c.dataset.label}: ${Number(c.raw).toFixed(3)} GB` } } },
-      scales:{ x:{ grid:{display:true, drawTicks:false}, ticks:{ autoSkip:false, maxRotation:45, minRotation:45 } }, y:{ beginAtZero:true, suggestedMax:maxY, title:{display:true, text:'GB'}, grid:{drawBorder:false} } } }
-  });
-}
-function drawTodayDonut(bytes){
-  if (todayDonutChart) todayDonutChart.destroy();
-  todayDonutChart = new Chart(document.getElementById('todayDonut'), { type:'doughnut', plugins:[centerText],
-    data:{ datasets:[{ data:[bytes, 1], borderWidth:0 }] }, options:{ cutout:'70%', plugins:{ legend:{display:false}, centerText:{ text: fmtGB(bytes) } } } });
-}
-function drawSmallDonut(id, items, labelKey, valueKey){
-  const labels = items.map(x => x[labelKey] || x.id);
-  const data   = items.map(x => Number(x[valueKey] || 0));
-
-  const MAX_LEGEND = 4;
-  const COLORS = ['#3b82f6','#ef4444','#f59e0b','#22c55e','#8b5cf6','#06b6d4','#a3a3a3','#16a34a','#fb7185','#84cc16'];
-
-  if (smallCharts[id]) smallCharts[id].destroy?.();
-
-  smallCharts[id] = new Chart(document.getElementById(id), {
-    type: 'doughnut',
-    data: {
-      labels,
-      datasets: [{
-        data,
-        backgroundColor: labels.map((_, i) => COLORS[i % COLORS.length]),
-        borderWidth: 0
-      }]
-    },
-    options: {
-      cutout: '55%',
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          display: true,
-          position: 'bottom',
-          labels: {
-            usePointStyle: true,
-            pointStyle: 'circle',
-            boxWidth: 10,
-            padding: 12,
-            generateLabels(chart) {
-              const {labels} = chart.data;
-              const ds = chart.data.datasets[0] || {};
-              const colors = ds.backgroundColor || [];
-              const n = Math.min(MAX_LEGEND, labels.length);
-              const out = [];
-              for (let i = 0; i < n; i++) {
-                out.push({
-                  text: String(labels[i]),
-                  fillStyle: colors[i] || '#ccc',
-                  strokeStyle: colors[i] || '#ccc',
-                  lineWidth: 0,
-                  hidden: false,
-                  index: i
-                });
-              }
-              return out;
-            }
-          }
-        },
-        tooltip: {
-          callbacks: {
-            label: (c) => `${c.label}: ${fmtGB(c.raw)}`
-          }
-        }
-      }
+  /* ---------- Center text plugin for total donut ---------- */
+  const centerTextPlugin={
+    id:'trafficCenterText',
+    afterDraw(chart,args,opts){
+      const {ctx,chartArea}=chart;if(!chartArea)return;
+      const {left,top,width,height}=chartArea;
+      ctx.save();ctx.font='bold 22px system-ui,-apple-system,Segoe UI,Roboto,Arial';ctx.fillStyle='#111827';
+      ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText(opts.text,left+width/2,top+height/2);ctx.restore();
     }
+  };
+
+  /* ---------- Total donut ---------- */
+  const totalGB=toGB(totalBytes);
+  document.getElementById('traffic-total-text')."Today's Traffic";
+  new Chart(document.getElementById('traffic-donut-total'),{
+    type:'doughnut',
+    data:{datasets:[{data:[totalGB,Math.max(0.01,1-(totalGB%1))],backgroundColor:["#60a5fa","#f3f4f6"],borderWidth:0}]},
+    options:{responsive:false,maintainAspectRatio:false,cutout:"72%",plugins:{legend:{display:false},tooltip:{enabled:false},trafficCenterText:{text:totalGB.toFixed(2)+" GB"}}},
+    plugins:[centerTextPlugin]
   });
-}
 
-function drawDetailDonut(bytes){
-  if (detailDonutChart) detailDonutChart.destroy();
-  detailDonutChart = new Chart(document.getElementById('detailDonut'), { type:'doughnut', plugins:[centerText],
-    data:{ datasets:[{ data:[bytes, 1], borderWidth:0 }] }, options:{ cutout:'70%', plugins:{ legend:{display:false}, centerText:{ text: fmtGB(bytes) } } } });
-}
-function drawDetailHourly(map){
-  const hours = Array.from({length:24}, (_,i)=> String(i).padStart(2,'0'));
-  const gb = hours.map(h => (map.get(h)||0)/(1024*1024*1024));
-  if (detailHourlyChart) detailHourlyChart.destroy();
-  detailHourlyChart = new Chart(document.getElementById('detailHourly'), { type:'bar',
-    data:{ labels: hours.map(h => `${h}:00`), datasets:[{ label:'GB', data: gb, borderRadius:6 }] },
-    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false}, tooltip:{callbacks:{label:(c)=> `${Number(c.raw).toFixed(3)} GB`}}}, scales:{ x:{ grid:{display:false}}, y:{ beginAtZero:true, title:{display:true, text:'GB'}} } } });
-}
+  /* ---------- Hourly bar ---------- */
+  new Chart(document.getElementById('traffic-bar-hourly'),{
+    type:'bar',
+    data:{labels:hours,datasets:[{label:"Hourly (GB)",data:byHour.map(toGB),backgroundColor:"#60a5fa",borderRadius:6,maxBarThickness:22}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{grid:{display:false},ticks:{autoSkip:true,maxTicksLimit:12}},y:{beginAtZero:true,grid:{color:"#eef2f7"}}}}
+  });
 
-/* -------------------- STATE -------------------- */
-let RAW=null, SUM=null, pagers={};
+  /* ---------- Donut + legend builder ---------- */
+  function buildDonut(elCanvas,list,labelKey,legendEl,noteEl,topN=6){
+    const sorted=[...list].sort((a,b)=>(b.traffic||0)-(a.traffic||0));
+    const top=sorted.slice(0,topN);
+    const others=sorted.slice(topN);
+    const othersSum=others.reduce((s,x)=>s+Number(x.traffic||0),0);
+    if(othersSum>0) top.push({[labelKey]:"Other",id:"other",traffic:othersSum,label:"Other"});
+    const labels=top.map(x=>x.label||x[labelKey]||x.id);
+    const data=top.map(x=>Number(x.traffic||0));
+    const total=data.reduce((s,v)=>s+v,0)||1;
 
-/* -------------------- TABLES & DETAIL -------------------- */
-function setupTable({tableId, pagerId, filterId, rows, labelKey, valueKey, clickHandler, defaultPageSize=6}){
-  const tbody = document.querySelector(`#${tableId} tbody`);
-  const pager = document.getElementById(pagerId);
-  const filter = document.getElementById(filterId);
-  const renderer = (x)=> `<tr data-id="${x.id}"><td>${x[labelKey] ?? x.id}</td><td class="num">${fmtGB(x[valueKey])}</td></tr>`;
-  const p = paginateAndRender({ rows, tableBodyEl:tbody, pagerEl:pager, defaultPageSize, rowRenderer:renderer });
-  pagers[tableId] = p; p.refresh();
-  if (filter){ filter.addEventListener('input', ()=>{ const q=filter.value.toLowerCase(); p.setFilter(x => String(x[labelKey] ?? x.id).toLowerCase().includes(q)); }); }
-  tbody.addEventListener('click', (e)=>{ const tr=e.target.closest('tr'); if(!tr) return; e.preventDefault(); e.stopPropagation(); const id=tr.getAttribute('data-id'); const label=tr.children[0].textContent.trim(); clickHandler(id,label); });
-}
-function showSection(selector, visible){ document.querySelectorAll(selector).forEach(s => s.classList.toggle('hidden', !visible)); }
-function byHour_App(appId){ const m=new Map(); (RAW?.dpi_client_data||[]).forEach(r=>{ const h=String(r.hour??'').padStart(2,'0'); const v=Number(r?.data?.application?.[appId]||0); m.set(h,(m.get(h)||0)+v); }); return m; }
-function byHour_Host(host){ const m=new Map(); (RAW?.dpi_client_data||[]).forEach(r=>{ const h=String(r.hour??'').padStart(2,'0'); const v=Number(r?.data?.host?.[host]||0); m.set(h,(m.get(h)||0)+v); }); return m; }
-function byHour_Proto(proto){ const m=new Map(); (RAW?.dpi_client_data||[]).forEach(r=>{ const h=String(r.hour??'').padStart(2,'0'); const v=Number(r?.data?.protocol?.[proto]||0); m.set(h,(m.get(h)||0)+v); }); return m; }
-function byHour_Client(client){ const m=new Map(); (RAW?.dpi_client_data||[]).forEach(r=>{ if(r.client!==client) return; const h=String(r.hour??'').padStart(2,'0'); const v=Number(r?.data?.total||0); m.set(h,(m.get(h)||0)+v); }); return m; }
+    new Chart(elCanvas,{
+      type:'doughnut',
+      data:{labels,datasets:[{data,backgroundColor:labels.map((_,i)=>colors[i%colors.length]),borderWidth:0}]},
+      options:{responsive:false,maintainAspectRatio:false,cutout:"65%",
+        plugins:{legend:{display:false},
+          tooltip:{callbacks:{label:(ctx)=>{const v=ctx.parsed||0;const pct=(v/total*100).toFixed(1);return `${ctx.label}: ${fmtBytes(v)} (${pct}%)`;}}}}}
+    });
 
-let detailPager=null;
-function openDetail({type,id,label}){
-  document.getElementById('detailTitle').textContent = ({ application:`Application: ${label}`, host:`Host: ${label}`, protocol:`Protocol: ${label}`, client:`Client: ${label}` })[type];
-  let totalBytes=0;
-  if(type==='application') totalBytes = Number((SUM.applications||[]).find(a=>a.id===id)?.traffic||0);
-  if(type==='host')       totalBytes = Number((SUM.remote_hosts||[]).find(h=>h.id===id)?.traffic||0);
-  if(type==='protocol')   totalBytes = Number((SUM.protocols||[]).find(p=>p.id===id)?.traffic||0);
-  if(type==='client')     totalBytes = Number((SUM.clients||[]).find(c=>c.id===id)?.traffic||0);
-  drawDetailDonut(totalBytes); document.getElementById('detailTotalText').textContent = fmtGB(totalBytes);
-  let hm=new Map(); if(type==='application') hm=byHour_App(id); if(type==='host') hm=byHour_Host(id); if(type==='protocol') hm=byHour_Proto(id); if(type==='client') hm=byHour_Client(id); drawDetailHourly(hm);
+    legendEl.innerHTML="";
+    labels.forEach((name,i)=>{
+      const d=document.createElement('div');
+      d.className='traffic-legend-item';
+      d.innerHTML=`<span class="traffic-swatch" style="background:${colors[i%colors.length]}"></span>${name}`;
+      legendEl.appendChild(d);
+    });
 
-  const tableTitle=document.getElementById('detailTableTitle'); const col1=document.getElementById('detailCol1'); const tbody=document.querySelector('#detailTable tbody'); const pager=document.getElementById('detailPager');
-  function rowsFor(view){ const out=new Map(); (RAW?.dpi_client_data||[]).forEach(r=>{ const add=(k,b)=> out.set(k,(out.get(k)||0)+(Number(b)||0)); if(type==='application'){ if(view!=='clients') return; const v=Number(r?.data?.application?.[id]||0); if(v>0) add(r.client,v); } else if(type==='host'){ if(view!=='clients') return; const v=Number(r?.data?.host?.[id]||0); if(v>0) add(r.client,v); } else if(type==='protocol'){ if(view!=='clients') return; const v=Number(r?.data?.protocol?.[id]||0); if(v>0) add(r.client,v); } else if(type==='client'){ if(r.client!==id) return; if(view==='apps'){ for(const [k,v] of Object.entries(r?.data?.application||{})) add(k,v); } if(view==='hosts'){ for(const [k,v] of Object.entries(r?.data?.host||{})) add(k,v); } if(view==='protocols'){ for(const [k,v] of Object.entries(r?.data?.protocol||{})) add(k,v); } } }); return Array.from(out.entries()).map(([k,v])=>({key:k,label:k,bytes:v})); }
-  let view=(type==='client')?'apps':'clients';
-  function applyTitles(){ if(type==='client'){ document.getElementById('detailSwitcher').classList.remove('hidden'); document.querySelectorAll('#seg button').forEach(b=> b.classList.toggle('active', b.dataset.view===view)); const ttl={apps:'Applications',hosts:'Hosts',protocols:'Protocols'}[view]; tableTitle.textContent=`Top ${ttl} for ${label}`; col1.textContent=ttl.slice(0,-1); } else { document.getElementById('detailSwitcher').classList.add('hidden'); tableTitle.textContent=`Top Clients for ${label}`; col1.textContent='Client'; } }
-  applyTitles();
-  function renderDetail(){ const rows=rowsFor(view).sort((a,b)=> b.bytes-a.bytes); const rowRenderer=r=> `<tr><td>${r.label}</td><td class="num">${fmtGB(r.bytes)}</td></tr>`; detailPager = paginateAndRender({ rows, tableBodyEl:tbody, pagerEl:pager, defaultPageSize:8, rowRenderer }); detailPager.refresh(); }
-  renderDetail();
-  document.querySelectorAll('#seg button').forEach(b=>{ b.onclick=(e)=>{ e.preventDefault(); e.stopPropagation(); view=b.dataset.view; applyTitles(); renderDetail(); }; });
-  showSection('.recent-traffic-section', false); document.getElementById('detailTab').classList.remove('hidden');
-}
-document.getElementById('backBtn').onclick = (e)=>{ e.preventDefault(); e.stopPropagation(); document.getElementById('detailTab').classList.add('hidden'); showSection('.recent-traffic-section', true); };
-
-/* -------------------- INIT -------------------- */
-async function init(){
-  // Build API URL from UUID in the URL path
-  const path = new URL(window.location.href).pathname;
-  const match = path.match(/[0-9a-fA-F-]{36}/);
-  const DEVICE_UUID = match ? match[0] : null;
-
-  const apiError = document.getElementById('apiError');
-  if (!DEVICE_UUID) {
-    console.error('Device UUID not found in URL:', path);
-    apiError.style.display = 'block';
-    apiError.textContent = 'Device ID not found in URL.';
-    return;
+    if(noteEl) noteEl.textContent=`Total: ${fmtBytes(total)} • ${labels.length-(othersSum>0?1:0)} top items${othersSum>0?" (+ Other)":""}`;
   }
 
-  const API_URL = `https://controller.nexapp.co.in/api/v1/monitoring/device/${DEVICE_UUID}/traffic-summary/`;
+  /* ---------- Pagination helpers ---------- */
+  function makePager({rootId, rows, nameKey, tableBodySel, filterInputSel, perPage=8}) {
+    const pagerEl = document.getElementById(rootId);
+    const tbody = document.querySelector(tableBodySel);
+    const filterInput = document.querySelector(filterInputSel);
 
-  try{
-    const resp = await fetch(API_URL, {cache:'no-store'});
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    RAW = await resp.json();
-  }catch(e){
-    console.error('API load failed:', e);
-    apiError.style.display = 'block';
-    apiError.textContent = 'Failed to load traffic summary.';
-    return;
+    let state = {
+      all: rows,
+      filtered: rows,
+      page: 1,
+      perPage
+    };
+
+    function pageCount(){ return Math.max(1, Math.ceil(state.filtered.length / state.perPage)); }
+    function clampPage(){ state.page = Math.min(Math.max(1, state.page), pageCount()); }
+
+    function renderTable(){
+      clampPage();
+      const start = (state.page-1)*state.perPage;
+      const end = start + state.perPage;
+      const slice = state.filtered.slice(start, end);
+
+      tbody.innerHTML = "";
+      slice.forEach(r=>{
+        const tr=document.createElement('tr');
+        const name=r.label || r[nameKey] || r.id;
+        tr.innerHTML = `<td>${name}</td><td>${fmtBytes(r.traffic||0)}</td>`;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function renderPager(){
+      const totalRows = state.filtered.length;
+      const pc = pageCount();
+
+      pagerEl.innerHTML = `
+        <span class="traffic-page-info">Page ${state.page} of ${pc} — ${totalRows} ${totalRows===1?'row':'rows'}</span>
+        <div class="traffic-page-controls">
+          <select id="${rootId}-rpp">
+            <option ${state.perPage===6?'selected':''}>6</option>
+            <option ${state.perPage===12?'selected':''}>12</option>
+            <option ${state.perPage===18?'selected':''}>18</option>
+          </select>
+          <button id="${rootId}-prev" ${state.page<=1?'disabled':''}>Prev</button>
+          <button id="${rootId}-next" ${state.page>=pc?'disabled':''}>Next</button>
+        </div>
+      `;
+
+      // hook controls
+      pagerEl.querySelector(`#${rootId}-rpp`).onchange = (e)=>{
+        state.perPage = parseInt(e.target.value,10) || 8;
+        state.page = 1;
+        renderTable(); renderPager();
+      };
+      pagerEl.querySelector(`#${rootId}-prev`).onclick = ()=>{
+        if(state.page>1){ state.page--; renderTable(); renderPager(); }
+      };
+      pagerEl.querySelector(`#${rootId}-next`).onclick = ()=>{
+        if(state.page<pageCount()){ state.page++; renderTable(); renderPager(); }
+      };
+    }
+
+    function applyFilter(){
+      const q = (filterInput?.value || "").trim().toLowerCase();
+      state.filtered = q
+        ? state.all.filter(r => String(r.label || r[nameKey] || r.id || "").toLowerCase().includes(q))
+        : state.all;
+      state.page = 1;
+      renderTable(); renderPager();
+    }
+
+    // initial render
+    applyFilter();
+    if (filterInput) filterInput.addEventListener('input', applyFilter);
+
+    // expose a tiny API if ever needed
+    return { refresh: applyFilter };
   }
 
-  // EXPECTED SHAPE: { dpi_summery_v2: {...}, dpi_client_data: [...] }
-  SUM = summaryOf(RAW?.dpi_summery_v2);
+  /* ---------- Wire donuts ---------- */
+  buildDonut(document.getElementById('traffic-donut-apps'),apps,"id",
+             document.getElementById('traffic-legend-apps'),document.getElementById('traffic-note-apps'),6);
 
-  drawTodayDonut(SUM.total_traffic);
-  document.getElementById('kpiTodayText').textContent = fmtGB(SUM.total_traffic);
-  drawHourlyChart(SUM.hourly_traffic);
+  buildDonut(document.getElementById('traffic-donut-hosts'),hosts,"id",
+             document.getElementById('traffic-legend-hosts'),document.getElementById('traffic-note-hosts'),6);
 
-  drawSmallDonut('appsChart',      SUM.applications, 'label', 'traffic');
-  drawSmallDonut('hostsChart',     SUM.remote_hosts, 'id',    'traffic');
-  drawSmallDonut('protocolsChart', SUM.protocols,    'label', 'traffic');
-  drawSmallDonut('clientsChart',   SUM.clients,      'label', 'traffic');
+  buildDonut(document.getElementById('traffic-donut-protos'),protos,"id",
+             document.getElementById('traffic-legend-protos'),document.getElementById('traffic-note-protos'),6);
 
-  setupTable({ tableId:'appsTable',      pagerId:'appsPager',      filterId:'appsFilter',      rows:SUM.applications, labelKey:'label', valueKey:'traffic', clickHandler:(id,label)=> openDetail({type:'application', id, label}) });
-  setupTable({ tableId:'hostsTable',     pagerId:'hostsPager',     filterId:'hostsFilter',     rows:SUM.remote_hosts, labelKey:'id',    valueKey:'traffic', clickHandler:(id,label)=> openDetail({type:'host',       id, label}) });
-  setupTable({ tableId:'protocolsTable', pagerId:'protocolsPager', filterId:'protocolsFilter', rows:SUM.protocols,    labelKey:'label', valueKey:'traffic', clickHandler:(id,label)=> openDetail({type:'protocol',   id, label}) });
-  setupTable({ tableId:'clientsTable',   pagerId:'clientsPager',   filterId:'clientsFilter',   rows:SUM.clients,      labelKey:'label', valueKey:'traffic', clickHandler:(id,label)=> openDetail({type:'client',     id, label}) });
-}
-window.addEventListener('DOMContentLoaded', init);
+  buildDonut(document.getElementById('traffic-donut-clients'),clients,"id",
+             document.getElementById('traffic-legend-clients'),document.getElementById('traffic-note-clients'),6);
+
+  /* ---------- Wire tables + pagination (dynamic) ---------- */
+  makePager({
+    rootId: 'traffic-pager-apps',
+    rows: [...apps].sort((a,b)=>(b.traffic||0)-(a.traffic||0)),
+    nameKey: 'id',
+    tableBodySel: '#traffic-table-apps tbody',
+    filterInputSel: '#traffic-filter-apps',
+    perPage: 6
+  });
+
+  makePager({
+    rootId: 'traffic-pager-hosts',
+    rows: [...hosts].sort((a,b)=>(b.traffic||0)-(a.traffic||0)),
+    nameKey: 'id',
+    tableBodySel: '#traffic-table-hosts tbody',
+    filterInputSel: '#traffic-filter-hosts',
+    perPage: 6
+  });
+
+  makePager({
+    rootId: 'traffic-pager-protos',
+    rows: [...protos].sort((a,b)=>(b.traffic||0)-(a.traffic||0)),
+    nameKey: 'id',
+    tableBodySel: '#traffic-table-protos tbody',
+    filterInputSel: '#traffic-filter-protos',
+    perPage: 6
+  });
+
+  makePager({
+    rootId: 'traffic-pager-clients',
+    rows: [...clients].sort((a,b)=>(b.traffic||0)-(a.traffic||0)),
+    nameKey: 'id',
+    tableBodySel: '#traffic-table-clients tbody',
+    filterInputSel: '#traffic-filter-clients',
+    perPage: 6
+  });
+
+})();
 </script>
-</body>
-</html>
