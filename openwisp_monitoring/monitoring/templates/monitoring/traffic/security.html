@@ -1,305 +1,233 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>Security Overview</title>
-  <style>
 
+{% if device_data.retimemonitor.security %}
+{{ device_data.retimemonitor.security|json_script:"sec-data" }}
+{% else %}
+<script type="application/json" id="sec-data">{}</script>
+{% endif %}
 
-    /* ================================
-       Security Section Namespace
-    ================================ */
-    .security-section {
-      max-width: 1100px;
-      margin: 28px auto;
-      color:#2b2f38;
-      font-family: system-ui, Segoe UI, Roboto, Arial, sans-serif;
-    }
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  .security-row { display: grid; gap: 18px; }
+  .security-row.kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .security-row.single { grid-template-columns: minmax(0, 1fr); }
 
-    .security-section .security-heading {
-      font-weight: 700;
-      text-align: center;
-      margin: 0 0 14px;
-      font-size: 20px;
-      color: #334155;
-    }
+  .security-card, .security-tile {
+    background: #fff; border-radius: 14px;
+    box-shadow: 0 6px 20px rgba(22,34,51,.08);
+    border: 1px solid #e5e7eb;
+  }
+  .security-tile { position: relative; padding: 18px 16px 22px; text-align: center; }
+  .security-donut { width: 130px !important; height: 130px !important; display: block; margin: 2px auto 0; }
+  .tile-sub { margin: 10px 0px; font-size: 12px; color:#6b7280; }
+  .security-corner-note {
+    position: absolute; right: 10px; bottom: 6px; font-size: 10px; color: #6b7280;
+    background: #f8fafc; padding: 4px 8px; border-radius: 8px; border: 1px solid #e5e7eb;
+  }
+  .security-card { padding: 0; overflow: hidden; }
 
-    .security-card {
-      background: #fff;
-      border-radius: 14px;
-      box-shadow: 0 6px 20px rgba(22,34,51,.08);
-      padding: 16px;
-    }
+  /* Header matches your cellular header style */
+  .chart-header {
+    background: #f0f0f0; padding: 10px 12px; font-weight: 700; color: #1f2937;
+    border-bottom: 1px solid #eee; border-top-left-radius: 10px; border-top-right-radius: 10px; font-size: 14px;
+  }
+  .security-chart-shell { height: 360px; padding: 16px; }
+  .security-note { margin: 0 16px 16px; color: #6b7280; }
 
-    .security-chart-shell {
-      height: 360px;
-    }
+  @media (max-width: 1100px) { .security-row.kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  @media (max-width: 820px)  {
+    .security-row.kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .security-chart-shell { height:auto; aspect-ratio:16/10; min-height:260px; }
+  }
+  @media (max-width: 520px)  {
+    .security-row.kpis { grid-template-columns: 1fr; }
+    .security-chart-shell { aspect-ratio:4/3; min-height:220px; }
+  }
 
-    .security-grid {
-      display: grid;
-      gap: 18px;
-      margin-top: 18px;
-    }
+  canvas { max-width: 100%; height: auto; }
+</style>
 
-    .security-grid-2 {
-      display: grid;
-      gap: 18px;
-      grid-template-columns: 320px minmax(0,1fr);
-      align-items: stretch;
-    }
-
-    .security-tile {
-      position: relative; /* for corner note */
-      text-align: center;
-      background: #fff;
-      border-radius: 14px;
-      padding: 18px 18px 28px;
-      box-shadow: 0 6px 20px rgba(22,34,51,.08);
-      border: 1px solid #e5e7eb;
-    }
-
-    .security-tile h3 { margin-bottom: 1rem; }
-
-    .security-donut {
-      width: 140px !important;
-      height: 140px !important;
-      display: block;
-      margin: 0 auto;
-    }
-
-    .security-note { margin-top: 10px; color: #6b7280; }
-
-    /* bottom-right corner note (for Malware first_seen) */
-    .security-corner-note {
-      position: absolute;
-      right: 10px;
-      bottom: 2px;
-      font-size: 11px;
-      color: #6b7280;
-      background: #f8fafc;
-      padding: 4px 8px;
-      border-radius: 8px;
-      border: 1px solid #e5e7eb;
-      white-space: nowrap;
-      max-width: calc(100% - 20px);
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    @media (max-width:920px){
-      .security-grid-2 { grid-template-columns: 1fr !important; }
-      .security-chart-shell { height:auto; aspect-ratio:16/10; min-height:240px; }
-    }
-    @media (max-width:520px){
-      .security-chart-shell { aspect-ratio:4/3; min-height:200px; }
-    }
-
-    canvas { max-width: 100%; height: auto; }
-  </style>
-</head>
-<body>
-<div id="apiError" style="display:none; color:#b91c1c; margin-bottom:1em;"></div>
-
-<div class="security-section">
- 
-
-  <div class="security-grid-2">
-    <div style="display:flex; flex-direction:column; gap:18px;">
-      <!-- Malware Count + corner first_seen -->
-      <div class="security-tile">
-        <h3>Malware Count</h3>
-        <canvas id="malwareTotal" class="security-donut"></canvas>
-        <div id="malwareFirstSeen" class="security-corner-note" title="Malware first seen"></div>
-      </div>
-
-      <!-- Replaced: First Seen (Brute-force) -> Attack Count -->
-      <div class="security-tile">
-        <h3>Attack Count</h3>
-        <canvas id="attackCount" class="security-donut"></canvas>
-        <div id="attackFirstSeen" class="security-corner-note" title="Attack first seen"></div>
-
-      </div>
+<div>
+  <!-- ROW 1: KPI Donuts -->
+  <div class="security-row kpis">
+    <div class="security-tile">
+      <canvas id="donutMalware" class="security-donut"></canvas>
+      <div class="tile-sub">Total detections</div>
+      <div id="noteMalware" class="security-corner-note"></div>
     </div>
 
+    <div class="security-tile">
+      <canvas id="donutAttacks" class="security-donut"></canvas>
+      <div class="tile-sub">Brute-force attempts</div>
+      <div id="noteAttacks" class="security-corner-note"></div>
+    </div>
+
+    <div class="security-tile">
+      <canvas id="donutIPs" class="security-donut"></canvas>
+      <div class="tile-sub">Blocked</div>
+      <div id="noteIPs" class="security-corner-note"></div>
+    </div>
+
+    {% comment %} <div class="security-tile">
+      <canvas id="donutAlerts" class="security-donut"></canvas>
+      <div class="tile-sub">Need attention</div>
+      <div id="noteAlerts" class="security-corner-note"></div>
+    </div> {% endcomment %}
+  </div>
+
+  <!-- ROW 2 -->
+  <div class="security-row single" style="margin-top:18px;">
     <div class="security-card">
-      <h3 style="margin:0 0 8px; color:#334155;">Malware (by Hour)</h3>
-      <div class="security-chart-shell"><canvas id="malwareByHour"></canvas></div>
+      <div class="chart-header">Malware (by Hour)</div>
+      <div class="security-chart-shell"><canvas id="chartMalwareByHour"></canvas></div>
       <p class="security-note">Bars show malware detections per hour.</p>
     </div>
   </div>
 
-  <div class="security-grid">
+  <!-- ROW 3 -->
+  <div class="security-row single" style="margin-top:18px;">
     <div class="security-card">
-      <h3 style="margin:0 0 8px; color:#334155;">Brute-force Attacks (by Hour)</h3>
-      <div class="security-chart-shell"><canvas id="attackByHour"></canvas></div>
+      <div class="chart-header">Brute-force Attacks (by Hour)</div>
+      <div class="security-chart-shell"><canvas id="chartAttackByHour"></canvas></div>
       <p class="security-note">Bars show brute-force attempts per hour.</p>
     </div>
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3"></script>
 <script>
-document.addEventListener('DOMContentLoaded', () => {
+  // --- Helpers for your schema ---
+  const raw = JSON.parse(document.getElementById('sec-data').textContent || '{}');
 
-/* =========================
-   0) Plugins
-========================= */
-const centerText = {
-  id: 'centerText',
-  afterDraw(chart, args, opts){
-    const pt = chart.getDatasetMeta(0)?.data?.[0]; if (!pt) return;
-    const { ctx } = chart; ctx.save();
-    ctx.font = '600 18px system-ui,Segoe UI,Roboto';
-    ctx.fillStyle = '#2b2f38'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(opts.text || '', pt.x, pt.y); ctx.restore();
-  }
-};
-const noDataPlugin = {
-  id: 'noData',
-  afterDraw(chart, args, opts) {
-    const datasets = chart.data?.datasets || [];
-    const hasData = datasets.some(ds => (ds.data || []).some(v => (v ?? 0) !== null && Number(v) > 0));
-    if (hasData) return;
-    const { ctx, chartArea } = chart; if (!chartArea) return;
-    const { left, right, top, bottom } = chartArea;
-    ctx.save(); ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillStyle='#9aa3b2';
-    ctx.font='600 14px system-ui,Segoe UI,Roboto,Arial';
-    ctx.fillText((opts && opts.text) || 'No data available', (left+right)/2, (top+bottom)/2); ctx.restore();
-  }
-};
+  const pairsTo24 = (pairs) => {
+    const out = Array.from({length:24}, ()=>0);
+    if (Array.isArray(pairs)) {
+      for (const item of pairs) {
+        const [h, v] = Array.isArray(item) ? item : [];
+        const hr = Number(h);
+        const val = Number(v);
+        if (Number.isInteger(hr) && hr >= 0 && hr < 24 && Number.isFinite(val)) {
+          out[hr] = val;
+        }
+      }
+    }
+    return out;
+  };
 
-/* =========================
-   1) Get UUID from URL
-========================= */
-const path = new URL(window.location.href).pathname;
-const match = path.match(/[0-9a-fA-F-]{36}/);
-const DEVICE_UUID = match ? match[0] : null;
-if (!DEVICE_UUID) {
-  console.error('Device UUID not found in URL:', path);
-  const el = document.getElementById('apiError');
-  if (el) { el.style.display='block'; el.textContent='Device ID not found in URL.'; }
-}
-const API_URL = DEVICE_UUID
-  ? `https://controller.nexapp.co.in/api/v1/monitoring/device/${DEVICE_UUID}/security-summary/`
-  : `https://controller.nexapp.co.in/api/v1/monitoring/device/unknown/security-summary/`;
+  const fmtEpochLocal = (ts) => {
+    const n = Number(ts);
+    if (!Number.isFinite(n) || n <= 0) return '—';
+    return new Date(n * 1000).toLocaleString('en-IN', {
+      timeZone: 'Asia/Kolkata',
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', hour12: false
+    });
+  };
 
-/* =========================
-   2) Helpers
-========================= */
-function fmtUnix(ts){
-  const n = Number(ts);
-  if (!n) return '';
-  const d = new Date(n * 1000);
-  // Local date & time
-  return  d.toLocaleString();
-}
+  const bl = raw.blocklist || {};
+  const bfa = raw.brute_force_attack || {};
 
-function makeCountDonut(elId, value, labelForCenter, { zeroShowsZero = false } = {}){
-  const el = document.getElementById(elId); if (!el) return;
-  const vNum = Number(value) || 0;
-  const isZero = vNum === 0;
+  // Map your structure -> dashboard fields
+  const securityData = {
+    // Donut 1: malware (blocklist)
+    malware_count: Number(bl.malware_count ?? 0),
+    malware_first_seen: fmtEpochLocal(bl.first_seen),
+    malware_by_hour: pairsTo24(bl.malware_by_hour),
 
-  // When zeroShowsZero=true, we still draw a light ring but center text is "0"
-  const data = [isZero ? 0 : vNum, 1];
-  const colors = isZero
-    ? ['#e6eaf2', '#eef1f6']   // light ring when zero
-    : ['#3590eb', '#e6eaf2'];
+    // Donut 2: brute-force
+    attack_count: Number(bfa.attack_count ?? 0),
+    attack_first_seen: fmtEpochLocal(bfa.first_seen),
+    attack_by_hour: pairsTo24(bfa.attack_by_hour),
 
-  const center = isZero
-    ? (zeroShowsZero ? '0' : 'No data available')
-    : String(labelForCenter ?? vNum);
+    // Donut 3: "Blocked / flagged" — using unique attacking IPs
+    suspicious_ips: Object.keys(bfa.attack_by_ip || {}).length,
+    suspicious_first_seen: fmtEpochLocal(bfa.first_seen),
 
-  return new Chart(el, {
-    type: 'doughnut',
-    plugins: [centerText],
-    data: { datasets: [{ data, backgroundColor: colors, borderWidth: 0 }] },
+    // Donut 4: "Need attention" — not in schema; keep as 0 unless you add it later
+    open_alerts: 0,
+    alerts_first_seen: '—'
+  };
+
+  const hours = Array.from({length:24}, (_,i)=> (i<10?'0':'') + i + ':00');
+
+  // --- Chart.js center number plugin (unchanged) ---
+  const centerTextPlugin = {
+    id: 'centerText',
+    afterDraw(chart, args, options) {
+      const {ctx, chartArea} = chart;
+      if (!chartArea) return;
+      const {left, top, width, height} = chartArea;
+      ctx.save();
+      ctx.font = 'bold 22px system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif';
+      ctx.fillStyle = '#111827';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(options.text, left + width/2, top + height/2);
+      ctx.restore();
+    }
+  };
+
+  const donutCfg = (value, max=20, color="#3b82f6") => ({
+    type: "doughnut",
+    data: {
+      datasets: [{
+        data: [value, Math.max(max - value, 0)],
+        backgroundColor: [color, "#f3f4f6"],
+        borderWidth: 0
+      }]
+    },
     options: {
-      cutout: '70%',
+      cutout: "72%",
       plugins: {
         legend: { display: false },
         tooltip: { enabled: false },
-        centerText: { text: center }
+        centerText: { text: String(value) }
       }
-    }
+    },
+    plugins: [centerTextPlugin]
   });
-}
 
-
-function buildHourBar(elId, hourPairs, title){
-  const el = document.getElementById(elId);
-  const labels = (hourPairs || []).map(p => String(p[0]).padStart(2,'0') + ':00');
-  const data = (hourPairs || []).map(p => Number(p[1] || 0));
-  return new Chart(el, {
-    type: 'bar',
-    plugins: [noDataPlugin],
-    data: { labels, datasets: [{ label: title, data, borderRadius: 6, backgroundColor: '#3590eb' }] },
+  const barCfg = (labels, data, labelName, color="#3b82f6") => ({
+    type: "bar",
+    data: {
+      labels,
+      datasets: [{
+        label: labelName,
+        data,
+        backgroundColor: color,
+        borderRadius: 6,
+        maxBarThickness: 22
+      }]
+    },
     options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: { callbacks: { label: (c)=> `Count: ${c.raw}` } },
-        noData: { text: 'No data available' }
-      },
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
       scales: {
-        x: { grid: { display: false }, title: { display: true, text: 'Hour (24h)' } },
-        y: { beginAtZero: true, title: { display: true, text: 'Count' } }
+        x: { grid: { display: false }, ticks: { autoSkip: true, maxTicksLimit: 12 } },
+        y: { beginAtZero: true, grid: { color: "#f3f4f6" } }
       }
     }
   });
-}
 
-/* =========================
-   3) Fetch + render
-========================= */
-async function loadSecurity(){
-  try{
-    const res = await fetch(API_URL);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const json = await res.json();
+  // --- Render charts with your data ---
+  new Chart(document.getElementById("donutMalware"), donutCfg(securityData.malware_count, 20, "#ef4444"));
+  document.getElementById("noteMalware").textContent = `First seen: ${securityData.malware_first_seen}`;
 
-    // Malware side
-    const malwareCount = json?.blocklist?.malware_count ?? 0;
-    const malwareByHour = Array.isArray(json?.blocklist?.malware_by_hour) ? json.blocklist.malware_by_hour : [];
-    const malwareFirstSeenTs = json?.blocklist?.first_seen ?? 0;
+  new Chart(document.getElementById("donutAttacks"), donutCfg(securityData.attack_count, 20, "#2563eb"));
+  document.getElementById("noteAttacks").textContent = `First seen: ${securityData.attack_first_seen}`;
 
-    // Brute-force side
-    const attackByHour = Array.isArray(json?.brute_force_attack?.attack_by_hour) ? json.brute_force_attack.attack_by_hour : [];
-    const attackCount = json?.brute_force_attack?.attack_count ?? 0;
-    const attackFirstSeenTs = json?.brute_force_attack?.first_seen ?? 0;
+  new Chart(document.getElementById("donutIPs"), donutCfg(securityData.suspicious_ips, 20, "#f59e0b"));
+  document.getElementById("noteIPs").textContent = `First seen: ${securityData.suspicious_first_seen}`;
 
+  new Chart(document.getElementById("donutAlerts"), donutCfg(securityData.open_alerts, 20, "#10b981"));
+  document.getElementById("noteAlerts").textContent = `First seen: ${securityData.alerts_first_seen}`;
 
-    // Donuts
-    makeCountDonut('malwareTotal', malwareCount, `${malwareCount}`);
-    makeCountDonut('attackCount', attackCount, `${attackCount}`, { zeroShowsZero: true });
+  new Chart(
+    document.getElementById("chartMalwareByHour"),
+    barCfg(hours, securityData.malware_by_hour, "Malware / hour", "#ef4444")
+  );
 
-
-    // Corner first_seen note under Malware Count
-    const firstSeenEl = document.getElementById('malwareFirstSeen');
-    if (firstSeenEl) firstSeenEl.textContent = fmtUnix(malwareFirstSeenTs);
-
-    const firstSeenAttackEl = document.getElementById('attackFirstSeen');
-    if (firstSeenAttackEl) firstSeenAttackEl.textContent = attackFirstSeenTs ? 'First seen: ' + fmtUnix(attackFirstSeenTs) : '';
-
-    // Bars
-    buildHourBar('malwareByHour', malwareByHour, 'Malware detections');
-    buildHourBar('attackByHour', attackByHour, 'Brute-force attempts');
-  }catch(err){
-    console.error(err);
-    const el = document.getElementById('apiError');
-    if (el){ el.style.display='block'; el.textContent = 'Failed to load security summary.'; }
-
-    // fallback empty views
-    makeCountDonut('malwareTotal', 0, '0');
-    makeCountDonut('attackCount', 0, '0');
-    const firstSeenEl = document.getElementById('malwareFirstSeen');
-    if (firstSeenEl) firstSeenEl.textContent = fmtUnix(0);
-    buildHourBar('malwareByHour', [], 'Malware detections');
-    buildHourBar('attackByHour', [], 'Brute-force attempts');
-  }
-}
-
-loadSecurity();
-});
+  new Chart(
+    document.getElementById("chartAttackByHour"),
+    barCfg(hours, securityData.attack_by_hour, "Attacks / hour", "#2563eb")
+  );
 </script>
-</body>
-</html>
