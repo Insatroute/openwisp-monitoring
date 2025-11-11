@@ -14,10 +14,7 @@
   .rtt-row{display:grid;gap:18px}
   .rtt-row.two{grid-template-columns:1fr 1fr}
   .rtt-row.one{grid-template-columns:1fr}
-
-  @media (max-width:1100px){
-    .rtt-row.two{grid-template-columns:1fr}
-  }
+  @media (max-width:1100px){.rtt-row.two{grid-template-columns:1fr}}
 
   .rtt-card{
     position:relative;overflow:hidden;
@@ -31,16 +28,17 @@
   .rtt-donut{width:180px !important;height:180px !important;display:block !important}
   .rtt-wrap canvas{position:static !important;display:block !important;max-width:100%;height:auto}
 
-  /* Vertical stack inside card: donut -> legend -> filter -> table -> pager */
+  /* Stacked body: donut -> legend -> filter -> table -> pagination */
   .rtt-vert{display:flex;flex-direction:column;gap:8px;min-height:420px}
+
   .rtt-legend{display:flex;flex-wrap:wrap;gap:8px;padding:0 2px}
   .rtt-legend-item{display:inline-flex;align-items:center;gap:8px;font-size:12px;color:#334155;background:#f8fafc;border:1px solid #e5e7eb;padding:6px 8px;border-radius:10px}
   .rtt-swatch{width:10px;height:10px;border-radius:50%;display:inline-block}
 
-  .rtt-filter{padding:0}
   .rtt-filter input{width:100%;padding:9px 10px;border:1px solid #e5e7eb;border-radius:10px;font-size:12px;background:#fff;outline:none}
 
-  .rtt-table-wrap{padding:0;flex:1 1 auto;min-height:120px;overflow:auto}
+  /* Table area grows & scrolls so pager stays pinned */
+  .rtt-table-wrap{flex:1 1 auto;min-height:120px;overflow:auto}
   .rtt-table{width:100%;border-collapse:separate;border-spacing:0 8px;font-size:13px}
   .rtt-table thead th{text-align:left;font-weight:700;color:#475569;font-size:12px;padding:0 8px 6px}
   .rtt-table tbody td{padding:10px 8px;border-top:1px solid #e5e7eb;border-bottom:1px solid #e5e7eb}
@@ -49,7 +47,7 @@
 
   .rtt-note{color:#6b7280;font-size:12px}
 
-  /* Pagination pinned bottom */
+  /* Pagination pinned at the bottom of the card body */
   .rtt-pager{
     margin-top:auto;position:sticky;bottom:0;z-index:1;
     display:flex;justify-content:space-between;align-items:center;
@@ -72,14 +70,12 @@
     <div class="rtt-card">
       <div class="rtt-header">Top Applications</div>
       <div class="rtt-card-pad rtt-vert">
-        <div class="rtt-donut-shell">
-          <canvas id="rtt-donut-apps" class="rtt-donut"></canvas>
-        </div>
+        <div class="rtt-donut-shell"><canvas id="rtt-donut-apps" class="rtt-donut"></canvas></div>
         <div class="rtt-legend" id="rtt-legend-apps"></div>
         <div class="rtt-filter"><input id="rtt-filter-apps" placeholder="Filter…"></div>
         <div class="rtt-table-wrap">
           <table class="rtt-table" id="rtt-table-apps">
-            <thead><tr><th>Application</th><th>Value</th></tr></thead><tbody></tbody>
+            <thead><tr><th>Application</th><th>Traffic</th></tr></thead><tbody></tbody>
           </table>
         </div>
         <div class="rtt-note" id="rtt-note-apps"></div>
@@ -91,14 +87,12 @@
     <div class="rtt-card">
       <div class="rtt-header">Top Protocols</div>
       <div class="rtt-card-pad rtt-vert">
-        <div class="rtt-donut-shell">
-          <canvas id="rtt-donut-protos" class="rtt-donut"></canvas>
-        </div>
+        <div class="rtt-donut-shell"><canvas id="rtt-donut-protos" class="rtt-donut"></canvas></div>
         <div class="rtt-legend" id="rtt-legend-protos"></div>
         <div class="rtt-filter"><input id="rtt-filter-protos" placeholder="Filter…"></div>
         <div class="rtt-table-wrap">
           <table class="rtt-table" id="rtt-table-protos">
-            <thead><tr><th>Protocol</th><th>Value</th></tr></thead><tbody></tbody>
+            <thead><tr><th>Protocol</th><th>Traffic</th></tr></thead><tbody></tbody>
           </table>
         </div>
         <div class="rtt-note" id="rtt-note-protos"></div>
@@ -107,19 +101,17 @@
     </div>
   </div>
 
-  <!-- Row 2: Top Hosts -->
+  <!-- Row 2: Hosts -->
   <div class="rtt-row two" style="margin-top:18px;">
     <div class="rtt-card">
-      <div class="rtt-header">Top Hosts</div>
+      <div class="rtt-header">Top Hosts (Clients)</div>
       <div class="rtt-card-pad rtt-vert">
-        <div class="rtt-donut-shell">
-          <canvas id="rtt-donut-hosts" class="rtt-donut"></canvas>
-        </div>
+        <div class="rtt-donut-shell"><canvas id="rtt-donut-hosts" class="rtt-donut"></canvas></div>
         <div class="rtt-legend" id="rtt-legend-hosts"></div>
         <div class="rtt-filter"><input id="rtt-filter-hosts" placeholder="Filter…"></div>
         <div class="rtt-table-wrap">
           <table class="rtt-table" id="rtt-table-hosts">
-            <thead><tr><th>Host / IP</th><th>Bandwidth</th></tr></thead><tbody></tbody>
+            <thead><tr><th>Host / IP</th><th>Traffic</th></tr></thead><tbody></tbody>
           </table>
         </div>
         <div class="rtt-note" id="rtt-note-hosts"></div>
@@ -133,32 +125,56 @@
 (() => {
   /* ---------- Read data ---------- */
   const talkers = JSON.parse(document.getElementById('rtt-data').textContent || '{}');
-  const topApps    = Array.isArray(talkers.top_apps)      ? talkers.top_apps      : [];
-  const topProtos  = Array.isArray(talkers.top_protocols) ? talkers.top_protocols : [];
-  const topHosts   = Array.isArray(talkers.top_hosts)     ? talkers.top_hosts     : [];
+  const topApps   = Array.isArray(talkers.top_apps) ? talkers.top_apps : [];
+  const topProtos = Array.isArray(talkers.top_protocols) ? talkers.top_protocols : [];
+  const topHosts  = Array.isArray(talkers.top_hosts) ? talkers.top_hosts : [];
 
   /* ---------- Utils ---------- */
   const rttColors = ["#3b82f6","#10b981","#f59e0b","#ef4444","#8b5cf6","#22c55e","#0ea5e9","#a78bfa","#f97316","#14b8a6","#eab308","#f43f5e"];
-  const fmtNum = (v)=> (Number(v)||0).toLocaleString(undefined,{maximumFractionDigits:2});
-  const sum = (arr, pick) => arr.reduce((s,x)=> s + Number(pick(x) || 0), 0);
+
+  function fmtBytes(bytes){
+    const b = Number(bytes)||0;
+    if(b>=1024**3) return (b/1024**3).toFixed(2)+' GB';
+    if(b>=1024**2) return (b/1024**2).toFixed(2)+' MB';
+    if(b>=1024)    return (b/1024).toFixed(2)+' KB';
+    return b.toFixed(2)+' B';
+  }
+
+  // Strip first two dot segments: "10669.netify.snort" -> "snort"
+  function trimTwoDots(name){
+    if(typeof name !== 'string') return name ?? '';
+    const parts = name.split('.');
+    return parts.length >= 3 ? parts.slice(2).join('.') : name;
+  }
+
+  const sum = (arr, fn) => arr.reduce((a,x)=> a + (Number(fn(x))||0), 0);
 
   /* ---------- Donut builder ---------- */
-  function buildDonut({canvas, items, labelFn, valueFn, legendEl, noteEl, topN=6}) {
+  function buildDonut({canvas,items,labelFn,valueFn,legendEl,noteEl,topN=6}){
     const sorted = [...items].sort((a,b)=> valueFn(b)-valueFn(a));
-    const head = sorted.slice(0, topN);
-    const tail = sorted.slice(topN);
+    const head   = sorted.slice(0, topN);
+    const tail   = sorted.slice(topN);
     const othersVal = sum(tail, valueFn);
-    if (othersVal > 0) head.push({__name:"Other", __value: othersVal});
+    if(othersVal > 0) head.push({__name: "Other", __value: othersVal});
 
     const labels = head.map(it => it.__name ?? labelFn(it));
     const values = head.map(it => it.__value ?? valueFn(it));
-    const total = values.reduce((a,b)=>a+b,0) || 1;
+    const total  = values.reduce((a,b)=>a+b,0) || 1;
 
     new Chart(canvas, {
       type:'doughnut',
-      data:{ labels, datasets:[{ data: values, backgroundColor: labels.map((_,i)=>rttColors[i%rttColors.length]), borderWidth:0 }]},
-      options:{ responsive:false, maintainAspectRatio:false, cutout:"65%", plugins:{ legend:{display:false},
-        tooltip:{ callbacks:{ label:(ctx)=>`${ctx.label}: ${fmtNum(ctx.parsed)} (${(ctx.parsed/total*100).toFixed(1)}%)` } } } }
+      data:{ labels, datasets:[{ data: values, backgroundColor: labels.map((_,i)=>rttColors[i%rttColors.length]), borderWidth:0 }] },
+      options:{
+        responsive:false, maintainAspectRatio:false, cutout:"65%",
+        plugins:{
+          legend:{display:false},
+          tooltip:{callbacks:{ label:(ctx)=>{
+            const v = ctx.parsed || 0;
+            const pct = (v/total*100).toFixed(1);
+            return `${ctx.label}: ${fmtBytes(v)} (${pct}%)`;
+          }}}
+        }
+      }
     });
 
     legendEl.innerHTML = "";
@@ -169,58 +185,56 @@
       legendEl.appendChild(d);
     });
 
-    if (noteEl) noteEl.textContent = `Total: ${fmtNum(total)} • ${labels.length - (othersVal>0?1:0)} top items${othersVal>0?' (+ Other)':''}`;
+    if(noteEl) noteEl.textContent = `Total: ${fmtBytes(total)} • ${labels.length - (othersVal>0?1:0)} top items${othersVal>0?' (+ Other)':''}`;
   }
 
-  /* ---------- Pagination + table (filter-aware) ---------- */
-  function makePager({rootId, rows, nameFn, valueFn, tableBodySel, filterInputSel, perPage=8}) {
-    const pagerEl = document.getElementById(rootId);
-    const tbody = document.querySelector(tableBodySel);
+  /* ---------- Table + Pagination (filter-aware) ---------- */
+  function makePager({rootId,rows,nameFn,valueFn,tableBodySel,filterInputSel,perPage=8}){
+    const pagerEl     = document.getElementById(rootId);
+    const tbody       = document.querySelector(tableBodySel);
     const filterInput = document.querySelector(filterInputSel);
 
     let state = { all: rows, filtered: rows, page: 1, perPage };
 
     const pageCount = () => Math.max(1, Math.ceil(state.filtered.length / state.perPage));
-    const clampPage = () => { state.page = Math.min(Math.max(1, state.page), pageCount()); };
+    const clamp     = () => { state.page = Math.min(Math.max(1, state.page), pageCount()); };
 
     function renderTable(){
-      clampPage();
-      const start = (state.page-1) * state.perPage;
-      const slice = state.filtered.slice(start, start + state.perPage);
+      clamp();
+      const start = (state.page-1)*state.perPage;
+      const slice = state.filtered.slice(start, start+state.perPage);
       tbody.innerHTML = "";
       slice.forEach(r=>{
         const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${nameFn(r)}</td><td>${fmtNum(valueFn(r))}</td>`;
+        tr.innerHTML = `<td>${nameFn(r)}</td><td>${fmtBytes(valueFn(r))}</td>`;
         tbody.appendChild(tr);
       });
     }
 
     function renderPager(){
-      const totalRows = state.filtered.length;
-      const pc = pageCount();
-
+      const total = state.filtered.length;
+      const pc    = pageCount();
       pagerEl.innerHTML = `
-        <span class="rtt-pager-info">Page ${state.page} of ${pc} — ${totalRows} ${totalRows===1?'row':'rows'}</span>
+        <span class="rtt-pager-info">Page ${state.page} of ${pc} — ${total} ${total===1?'row':'rows'}</span>
         <div class="rtt-pager-ctrls">
           <select id="${rootId}-rpp">
             <option ${state.perPage===6?'selected':''}>6</option>
             <option ${state.perPage===12?'selected':''}>12</option>
-            <option ${state.perPage===24?'selected':''}>24</option>
+            <option ${state.perPage===18?'selected':''}>18</option>
           </select>
           <button id="${rootId}-prev" ${state.page<=1?'disabled':''}>Prev</button>
           <button id="${rootId}-next" ${state.page>=pc?'disabled':''}>Next</button>
         </div>
       `;
-
       pagerEl.querySelector(`#${rootId}-rpp`).onchange = (e)=>{
         state.perPage = parseInt(e.target.value,10) || 8;
         state.page = 1; renderTable(); renderPager();
       };
       pagerEl.querySelector(`#${rootId}-prev`).onclick = ()=>{
-        if (state.page>1){ state.page--; renderTable(); renderPager(); }
+        if(state.page>1){ state.page--; renderTable(); renderPager(); }
       };
       pagerEl.querySelector(`#${rootId}-next`).onclick = ()=>{
-        if (state.page<pc){ state.page++; renderTable(); renderPager(); }
+        if(state.page<pc){ state.page++; renderTable(); renderPager(); }
       };
     }
 
@@ -233,17 +247,15 @@
     }
 
     applyFilter();
-    if (filterInput) filterInput.addEventListener('input', applyFilter);
-
-    return { refresh: applyFilter };
+    if(filterInput) filterInput.addEventListener('input', applyFilter);
   }
 
   /* ---------- Build donuts ---------- */
   buildDonut({
     canvas: document.getElementById('rtt-donut-apps'),
     items: topApps,
-    labelFn: (x)=> x.name ?? '—',
-    valueFn: (x)=> Number(x.value || 0),
+    labelFn: (x)=> trimTwoDots(x.name ?? '—'),
+    valueFn: (x)=> Number(x.value || 0),  // bytes
     legendEl: document.getElementById('rtt-legend-apps'),
     noteEl: document.getElementById('rtt-note-apps'),
     topN: 6
@@ -252,30 +264,29 @@
   buildDonut({
     canvas: document.getElementById('rtt-donut-protos'),
     items: topProtos,
-    labelFn: (x)=> x.name ?? '—',
-    valueFn: (x)=> Number(x.value || 0),
+    labelFn: (x)=> trimTwoDots(x.name ?? '—'),
+    valueFn: (x)=> Number(x.value || 0),  // bytes
     legendEl: document.getElementById('rtt-legend-protos'),
     noteEl: document.getElementById('rtt-note-protos'),
     topN: 6
   });
 
-  // For hosts, use totals.bandwidth as the value, label = host (fallback ip)
   buildDonut({
     canvas: document.getElementById('rtt-donut-hosts'),
     items: topHosts,
     labelFn: (h)=> (h.host || h.ip || '—'),
-    valueFn: (h)=> Number(h?.totals?.bandwidth || 0),
+    valueFn: (h)=> Number(h?.totals?.bandwidth || 0),  // bytes
     legendEl: document.getElementById('rtt-legend-hosts'),
     noteEl: document.getElementById('rtt-note-hosts'),
     topN: 6
   });
 
-  /* ---------- Tables + pagination ---------- */
+  /* ---------- Tables + Pagination ---------- */
   makePager({
     rootId: 'rtt-pager-apps',
-    rows: [...topApps].sort((a,b)=> (b.value||0)-(a.value||0)),
-    nameFn: r=> r.name ?? '—',
-    valueFn: r=> r.value ?? 0,
+    rows: [...topApps].sort((a,b)=>(b.value||0)-(a.value||0)),
+    nameFn: (r)=> trimTwoDots(r.name || '—'),
+    valueFn: (r)=> r.value || 0,
     tableBodySel: '#rtt-table-apps tbody',
     filterInputSel: '#rtt-filter-apps',
     perPage: 6
@@ -283,9 +294,9 @@
 
   makePager({
     rootId: 'rtt-pager-protos',
-    rows: [...topProtos].sort((a,b)=> (b.value||0)-(a.value||0)),
-    nameFn: r=> r.name ?? '—',
-    valueFn: r=> r.value ?? 0,
+    rows: [...topProtos].sort((a,b)=>(b.value||0)-(a.value||0)),
+    nameFn: (r)=> trimTwoDots(r.name || '—'),
+    valueFn: (r)=> r.value || 0,
     tableBodySel: '#rtt-table-protos tbody',
     filterInputSel: '#rtt-filter-protos',
     perPage: 6
@@ -293,9 +304,9 @@
 
   makePager({
     rootId: 'rtt-pager-hosts',
-    rows: [...topHosts].sort((a,b)=> ( (b?.totals?.bandwidth||0) - (a?.totals?.bandwidth||0) )),
-    nameFn: r=> (r.host || r.ip || '—'),
-    valueFn: r=> (r?.totals?.bandwidth || 0),
+    rows: [...topHosts].sort((a,b)=>( (b?.totals?.bandwidth||0) - (a?.totals?.bandwidth||0) )),
+    nameFn: (r)=> (r.host || r.ip || '—'),
+    valueFn: (r)=> (r?.totals?.bandwidth || 0),
     tableBodySel: '#rtt-table-hosts tbody',
     filterInputSel: '#rtt-filter-hosts',
     perPage: 6
