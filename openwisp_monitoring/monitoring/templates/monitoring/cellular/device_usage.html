@@ -36,10 +36,10 @@
 
   /* Chart container: centered and sized nicely */
   .du-chart {
-    margin: 0 auto;            /* center horizontally */
+    margin: 0 auto;
     width: 100%;
-    max-width: 720px;          /* keep it compact */
-    height: 340px;             /* fixed height for consistent look */
+    max-width: 720px;
+    height: 360px;
   }
 </style>
 
@@ -48,55 +48,102 @@
 <div class="du-wrap">
   <section class="du-card">
     <div class="du-hd">
-      <h3 class="du-title">{% trans "Applications" %}</h3>
+      <h3 class="du-title">{% trans "Wired Interfaces (eth0 / eth1)" %}</h3>
     </div>
     <div class="du-bd">
-      <div id="du-chart-apps" class="du-chart"></div>
+      <div id="du-chart-wired" class="du-chart"></div>
     </div>
   </section>
 </div>
 
 <script>
-  // ---- Data ----
-  const device_data = JSON.parse(document.getElementById('device-usage-data').textContent || '{}');
-  const talkers = (((device_data || {}).realtimemonitor || {}).real_time_traffic || {}).data?.talkers || {};
-  const APPS = Array.isArray(talkers.top_apps) ? talkers.top_apps : [];
+  /* ---------- STATIC FALLBACK (used only if device_data is missing/empty) ---------- */
+  const FALLBACK_RESPONSE = {
+    "type": "DeviceMonitoring",
+    "interfaces": [
+      {
+        "type": "ethernet",
+        "name": "eth0",
+        "statistics": { "rx_bytes": 384568998, "tx_bytes": 49336767 }
+      },
+      {
+        "type": "ethernet",
+        "name": "eth1",
+        "statistics": { "rx_bytes": 86859089, "tx_bytes": 249242488 }
+      }
+    ]
+  };
 
-  // Labels + values
-  const labels = APPS.map(a => a?.name || 'Unknown');
-  const values = APPS.map(a => Number(a?.bytes) || 0);
+  // Prefer JSON script (device_data); if missing or empty, use FALLBACK_RESPONSE
+  const scriptEl = document.getElementById('device-usage-data');
+  let source = {};
+  try { source = scriptEl ? JSON.parse(scriptEl.textContent || '{}') : {}; } catch (_) { }
+  console.log('Device Usage Source:====', source);
+  if (!source || !Array.isArray(source.interfaces) || !source.interfaces.length) {
+    source = FALLBACK_RESPONSE;
+  }
 
-  // Simple palette
-  const palette = ["#3b82f6", "#ef4444", "#f59e0b", "#10b981", "#8b5cf6", "#06b6d4", "#84cc16", "#eab308", "#ec4899", "#14b8a6", "#f97316", "#4f46e5"];
-  const colors = values.map((_, i) => palette[i % palette.length]);
+  /* ---------- Helpers ---------- */
+  const BYTES_PER_MB = 1024 * 1024;
+  const toMB = b => (Number(b) || 0) / BYTES_PER_MB;
 
-  // ---- Plotly bar chart ----
-  const data = [{
-    type: 'bar',
-    x: labels,
-    y: values,
-    marker: { color: colors },
-    hovertemplate: '%{x}<br>%{y} bytes<extra></extra>'
-  }];
+  /* ---------- Extract ethernet: eth0 & eth1 ---------- */
+  const wanted = new Set(['eth0', 'eth1']);
+  const ifaces = (source.interfaces || [])
+    .filter(i => i && i.type === 'ethernet' && wanted.has(i.name))
+    .sort((a, b) => (a.name > b.name ? 1 : -1)); // eth0 first
+
+  const labels = ifaces.map(i => i.name);
+  const rxMB = ifaces.map(i => toMB(i.statistics?.rx_bytes)); // Download
+  const txMB = ifaces.map(i => toMB(i.statistics?.tx_bytes)); // Upload
 
   const noData = labels.length === 0;
 
+  /* ---------- Plotly grouped bar chart ---------- */
+  const traceDownload = {
+    type: 'bar',
+    name: '{% trans "Download (RX)" %}',
+    x: labels,
+    y: rxMB,
+    marker: { color: '#1f77b4' },
+    width: 0.1, /* roughly 20px width per bar */
+    hovertemplate: '%{x}<br>{% trans "Download" %}: %{y:.2f} MB<extra></extra>'
+  };
+  const traceUpload = {
+    type: 'bar',
+    name: '{% trans "Upload (TX)" %}',
+    x: labels,
+    y: txMB,
+    marker: { color: '#ff7f0e' },
+    width: 0.1,
+    hovertemplate: '%{x}<br>{% trans "Upload" %}: %{y:.2f} MB<extra></extra>'
+  };
+
   const layout = {
-    margin: { l: 50, r: 20, t: 10, b: 60 },
-    xaxis: { title: '{% trans "Applications" %}', automargin: true },
-    yaxis: { title: '{% trans "Traffic (Bytes)" %}', automargin: true, rangemode: 'tozero' },
+    barmode: 'group',
+    margin: { l: 60, r: 20, t: 10, b: 60 },
+    xaxis: { title: '{% trans "Interface" %}', automargin: true },
+    yaxis: { title: '{% trans "MB" %}', rangemode: 'tozero', automargin: true },
     paper_bgcolor: 'rgba(0,0,0,0)',
     plot_bgcolor: 'rgba(0,0,0,0)',
+    legend: {
+      orientation: 'h',
+      yanchor: 'top',
+      y: -0.25,   // places legend below chart
+      x: 0.5,
+      xanchor: 'center'
+    },
     annotations: noData ? [{
-      text: '{% trans "No application traffic data" %}',
+      text: '{% trans "No eth0/eth1 ethernet data" %}',
       xref: 'paper', yref: 'paper', x: 0.5, y: 0.5,
       showarrow: false, font: { size: 14, color: '#6b7280' }
     }] : []
   };
 
-  Plotly.newPlot('du-chart-apps', noData ? [] : data, layout, {
-    displaylogo: false,
-    responsive: true,
-    modeBarButtonsToRemove: ['select2d','lasso2d','autoScale2d']
-  });
+  Plotly.newPlot(
+    'du-chart-wired',
+    noData ? [] : [traceDownload, traceUpload],
+    layout,
+    { displaylogo: false, responsive: true, modeBarButtonsToRemove: ['select2d', 'lasso2d', 'autoScale2d'] }
+  );
 </script>
