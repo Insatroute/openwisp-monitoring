@@ -1,491 +1,102 @@
-<!doctype html>
-<html lang="en">
+{% load i18n static %}
+<link rel="preconnect" href="https://cdn.jsdelivr.net" />
+<script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
 
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Device Usage Information</title>
-  <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
-  <style>
-    .dashboard-contain {
-      max-width: 1200px;
-      margin: 20px auto;
-    }
+<style>
+  /* Page wrap */
+  .du-wrap {
+    max-width: 960px;
+    margin: 24px auto;
+    padding: 0 16px;
+  }
 
-    #apiError {
-      display: none;
-      color: #b91c1c;
-      background: #fee2e2;
-      border: 1px solid #fecaca;
-      padding: 12px 16px;
-      border-radius: 8px;
-      margin-bottom: 20px;
-      font-size: 14px;
-    }
+  /* Card */
+  .du-card {
+    background: #fff;
+    border: 1px solid #e8eaee;
+    border-radius: 16px;
+    box-shadow: 0 6px 24px rgba(16, 24, 40, .06);
+    overflow: hidden;
+  }
 
-    .usage-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 20px;
-      margin-bottom: 30px;
-    }
+  .du-hd {
+    padding: 16px 20px;
+    border-bottom: 1px solid #e8eaee;
+  }
 
-    .usage-section {
-      background: #fff;
-      border: 1px solid #e5e7eb;
-      border-radius: 12px;
-      padding: 20px;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, .1);
-    }
+  .du-title {
+    margin: 0;
+    font: 700 18px/1.3 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto;
+    color: #0f172a;
+  }
 
-    .section-title {
-      font-size: 16px;
-      font-weight: 700;
-      color: #111827;
-      margin-bottom: 16px;
-      padding-bottom: 12px;
-      border-bottom: 2px solid #e5e7eb;
-    }
+  .du-bd {
+    padding: 18px 20px 22px;
+  }
 
-    #lastUpdated {
-      font-size: 11px;
-      color: #6b7280;
-      margin-left: 6px;
-    }
+  /* Chart container: centered and sized nicely */
+  .du-chart {
+    margin: 0 auto;            /* center horizontally */
+    width: 100%;
+    max-width: 720px;          /* keep it compact */
+    height: 340px;             /* fixed height for consistent look */
+  }
+</style>
 
-    .total-summary {
-      margin-bottom: 16px;
-    }
+{{ device_data|json_script:"device-usage-data" }}
 
-    .total-value {
-      font-size: 28px;
-      font-weight: 700;
-      color: #059669;
-      margin-bottom: 6px;
-    }
-
-    .total-stats {
-      font-size: 13px;
-      color: #6b7280;
-      line-height: 1.6;
-    }
-
-    .interface-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 12px;
-    }
-
-    .interface-card {
-      background: #f9fafb;
-      border: 1px solid #e5e7eb;
-      border-radius: 8px;
-      padding: 12px;
-    }
-
-    .interface-title {
-      font-size: 13px;
-      font-weight: 600;
-      color: #374151;
-      margin-bottom: 6px;
-    }
-
-    .interface-value {
-      font-size: 20px;
-      font-weight: 700;
-      color: #111827;
-      margin-bottom: 4px;
-    }
-
-    .interface-stats {
-      font-size: 12px;
-      color: #6b7280;
-      line-height: 1.5;
-    }
-
-    .chart-container {
-      background: #fff;
-      border: 1px solid #e5e7eb;
-      border-radius: 12px;
-      padding: 20px;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, .1);
-    }
-
-    .chart-title {
-      font-size: 16px;
-      font-weight: 700;
-      color: #111827;
-      margin-bottom: 16px;
-    }
-
-    #trafficCharts {
-      width: 100%;
-      height: 400px;
-    }
-
-    @media (max-width:900px) {
-      .usage-grid {
-        grid-template-columns: 1fr;
-        gap: 16px
-      }
-
-      .interface-grid {
-        grid-template-columns: 1fr
-      }
-    }
-
-    @media (min-width:901px) and (max-width:1200px) {
-      .usage-grid {
-        grid-template-columns: repeat(2, 1fr)
-      }
-    }
-  </style>
-</head>
-
-<body>
-  <div class="dashboard-contain">
-    <h1>Device Usage Information</h1>
-    <div id="apiError"></div>
-
-
-
-    <div class="usage-grid">
-      <!-- Cellular -->
-      <div class="usage-section">
-        <div class="section-title">
-          Cellular <span id="lastUpdated"></span>
-        </div>
-        <div class="total-summary" id="cellular-total-summary">
-          <div class="total-value">—</div>
-          <div class="total-stats">SIM1 / SIM2 signal overview</div>
-        </div>
-        <!-- <div class="interface-grid">
-          <div class="interface-card" id="sim1-card">
-            <div class="interface-title">SIM1:</div>
-            <div class="interface-value">—</div>
-            <div class="interface-stats">{{ device_data.interfaces.modem1.signal_strength|default:"—" }}</div>
-          </div>
-          <div class="interface-card" id="sim2-card">
-            <div class="interface-title">SIM2:</div>
-            <div class="interface-value">—</div>
-            <div class="interface-stats">{{ device_data.interfaces.modem2.signal_strength|default:"—" }}</div>
-          </div>
-        </div> -->
-
-
-        <div class="interface-grid">
-          {# ---------- SIM1 (modem) ---------- #}
-          <div class="interface-card" id="sim1-card">
-            <div class="interface-title">SIM1</div>
-
-            {# try to find an interface named "modem" that has statistics #}
-            {% with rendered=0 %}
-            {% for iface in device_data.interfaces %}
-            {% if iface.name == "modem" and iface.statistics and iface.statistics.rx and iface.statistics.tx %}
-            {% with rx=iface.statistics.rx.bytes tx=iface.statistics.tx.bytes total=rx|add:tx %}
-            <div class="interface-value">Total: {{ total|filesizeformat }}</div>
-            <div class="interface-stats">
-              Received: {{ rx|filesizeformat }}<br>
-              Sent: {{ tx|filesizeformat }}
-            </div>
-            {% endwith %}
-            {% with rendered=1 %}{% endwith %}
-            {% endif %}
-            {% endfor %}
-
-            {# Fallback if no "modem" entry had statistics in this payload #}
-            {% if rendered == 0 %}
-            <div class="interface-value">Total: NA</div>
-            <div class="interface-stats">Received: NA<br>Sent: NA</div>
-            {% endif %}
-            {% endwith %}
-          </div>
-
-          {# ---------- SIM2 (modem2) ---------- #}
-          <div class="interface-card" id="sim2-card">
-            <div class="interface-title">SIM2 </div>
-
-            {% with rendered=0 %}
-            {% for iface in device_data.interfaces %}
-            {% if iface.name == "modem2" and iface.statistics and iface.statistics.rx and iface.statistics.tx %}
-            {% with rx=iface.statistics.rx.bytes tx=iface.statistics.tx.bytes total=rx|add:tx %}
-            <div class="interface-value">Total: {{ total|filesizeformat }}</div>
-            <div class="interface-stats">
-              Received: {{ rx|filesizeformat }}<br>
-              Sent: {{ tx|filesizeformat }}
-            </div>
-            {% endwith %}
-            {% with rendered=1 %}{% endwith %}
-            {% endif %}
-            {% endfor %}
-
-            {% if rendered == 0 %}
-            <div class="interface-value">Total: NA</div>
-            <div class="interface-stats">Received: NA<br>Sent: NA</div>
-            {% endif %}
-            {% endwith %}
-          </div>
-        </div>
-
-      </div>
-
-      <!-- Wired -->
-      <div class="usage-section">
-        <div class="section-title">Wired</div>
-        <!-- <div class="section-title">Hello{{ device_data.interfaces.wired|default:"—" }}</div>
-        <div class="section-title">Operator</div>
-        <div class="section-title">{{ device_data.cellular.modem1.operator|default:"—" }}</div>
-        <div class="section-title"> Statsic rx tx {{ device_data.interfaces.statistics.rx.bytes|default:"NA" }}</div> -->
-
-        <div class="total-summary" id="wired-total-summary">
-          <div class="total-value">—</div>
-          <div class="total-stats">Sent: —<br>Received: —</div>
-        </div>
-        <div class="interface-grid">
-          <div class="interface-card" id="eth0-card">
-            <div class="interface-title">WAN1 (eth0):</div>
-            <div class="interface-value">—</div>
-            <div class="interface-stats">Sent: —<br>Received: —</div>
-          </div>
-          <div class="interface-card" id="eth1-card">
-            <div class="interface-title">WAN2 (eth1):</div>
-            <div class="interface-value">—</div>
-            <div class="interface-stats">Sent: —<br>Received: —</div>
-          </div>
-        </div>
-      </div>
-
-
-      <!-- Wireless placeholder -->
-      <div class="usage-section">
-        <div class="section-title">Wireless</div>
-        <div class="total-summary" id="wireless-total-summary">
-          <div class="total-value">40.00 MB</div>
-          <div class="total-stats">Sent: 35.00 MB<br>Received: 5.00 MB</div>
-        </div>
-      </div>
+<div class="du-wrap">
+  <section class="du-card">
+    <div class="du-hd">
+      <h3 class="du-title">{% trans "Applications" %}</h3>
     </div>
-
-    <!-- Chart -->
-    <div class="chart-container">
-      <div class="chart-title">General Traffic</div>
-      <div id="trafficCharts"></div>
+    <div class="du-bd">
+      <div id="du-chart-apps" class="du-chart"></div>
     </div>
-  </div>
+  </section>
+</div>
 
+<script>
+  // ---- Data ----
+  const device_data = JSON.parse(document.getElementById('device-usage-data').textContent || '{}');
+  const talkers = (((device_data || {}).realtimemonitor || {}).real_time_traffic || {}).data?.talkers || {};
+  const APPS = Array.isArray(talkers.top_apps) ? talkers.top_apps : [];
 
-  <script>
-    (function () {
-      'use strict';
+  // Labels + values
+  const labels = APPS.map(a => a?.name || 'Unknown');
+  const values = APPS.map(a => Number(a?.bytes) || 0);
 
-      /* -------------------- Fallback sample (used when no devicejson present) -------------------- */
-      const FALLBACK_INTERFACES = [
-        { "bridge_members": ["eth0.1"], "type": "bridge", "name": "br0", "mtu": 1500, "addresses": [{ "family": "ipv4", "mask": 24, "address": "192.168.6.1" }, { "family": "ipv6", "mask": 64, "address": "2001:d0b0:3000:3001::1" }, { "family": "ipv6", "mask": 64, "address": "fe80::60ce:91ff:fea3:e304" }], "statistics": { "rx": { "bytes": 5828895, "dropped": 0, "packets": 64390, "errors": 0 }, "tx": { "bytes": 17251549, "dropped": 0, "packets": 90761, "errors": 0 } }, "mac": "00:88:21:09:04:e3", "up": true },
-        { "mac": "00:88:21:09:04:e3", "type": "ethernet", "name": "eth0.1", "up": true, "statistics": { "rx": { "bytes": 5828895, "dropped": 0, "packets": 64390, "errors": 0 }, "tx": { "bytes": 17417473, "dropped": 0, "packets": 93275, "errors": 0 } }, "mtu": 1500 },
-        { "mac": "02:88:21:09:04:ec", "type": "ethernet", "name": "eth1", "up": false, "statistics": { "rx": { "bytes": 0, "dropped": 0, "packets": 0, "errors": 0 }, "tx": { "bytes": 0, "dropped": 0, "packets": 0, "errors": 0 } }, "mtu": 1500 },
-        { "mac": "02:88:21:c9:04:ec", "type": "ethernet", "name": "eth1-1", "up": false, "statistics": { "rx": { "bytes": 0, "dropped": 0, "packets": 0, "errors": 0 }, "tx": { "bytes": 0, "dropped": 0, "packets": 0, "errors": 0 } }, "mtu": 1500 },
-        { "mac": "02:88:21:d9:04:ec", "type": "ethernet", "name": "eth1-2", "up": false, "statistics": { "rx": { "bytes": 0, "dropped": 0, "packets": 0, "errors": 0 }, "tx": { "bytes": 0, "dropped": 0, "packets": 0, "errors": 0 } }, "mtu": 1500 },
-        { "mac": "da:e6:2f:4c:4e:8b", "type": "ethernet", "name": "inter-eth0", "up": false, "statistics": { "rx": { "bytes": 7007888, "dropped": 0, "packets": 64547, "errors": 0 }, "tx": { "bytes": 17795714, "dropped": 0, "packets": 93313, "errors": 0 } }, "addresses": [{ "family": "ipv6", "mask": 64, "address": "fe80::d8e6:2fff:fe4c:4e8b" }], "mtu": 1500 },
-        { "mac": "02:0c:29:a3:9b:6d", "type": "ethernet", "name": "modem", "up": true, "statistics": { "rx": { "bytes": 20075996, "dropped": 0, "packets": 61842, "errors": 0 }, "tx": { "bytes": 16355921, "dropped": 0, "packets": 79078, "errors": 0 } }, "addresses": [{ "family": "ipv4", "mask": 24, "address": "10.104.6.3" }, { "family": "ipv6", "mask": 64, "address": "fe80::c:29ff:fea3:9b6d" }], "mtu": 1500 },
-        { "mobile": { "operator_name": "Airtel", "power_status": "on", "operator_code": "40587", "model": "EC25-AFW", "signal": { "lte": { "rsrq": -10, "rsrp": -97, "snr": 22, "csq": 31, "rssi": -51 } }, "manufacturer": "Quectel", "imei": "356789012345678", "connection_status": "connected" }, "type": "mobile", "name": "modem1", "up": true },
-        { "mobile": { "operator_name": "Jio", "power_status": "on", "operator_code": "40584", "model": "EM9191", "signal": { "5g": { "snr": 18, "csq": 31, "rsrq": -12, "rsrp": -103 } }, "manufacturer": "Sierra", "imei": "862349012345679", "connection_status": "connected" }, "type": "mobile", "name": "modem2", "up": true },
-        { "mac": "4a:39:4d:cd:2e:8e", "type": "virtual", "name": "zt0", "up": false, "speed": "10", "statistics": { "rx": { "bytes": 26424, "dropped": 0, "packets": 324, "errors": 0 }, "tx": { "bytes": 25994, "dropped": 0, "packets": 315, "errors": 0 } }, "addresses": [{ "family": "ipv4", "mask": 24, "address": "10.0.0.115" }, { "family": "ipv6", "mask": 64, "address": "fe80::4839:4dff:fecd:2e8e" }], "mtu": 2800 }
-      ];
+  // Simple palette
+  const palette = ["#3b82f6", "#ef4444", "#f59e0b", "#10b981", "#8b5cf6", "#06b6d4", "#84cc16", "#eab308", "#ec4899", "#14b8a6", "#f97316", "#4f46e5"];
+  const colors = values.map((_, i) => palette[i % palette.length]);
 
-      /* --------------------------- Utilities --------------------------- */
-      const COLOR_DOWNLOAD = '#1f77b4';
-      const COLOR_UPLOAD = '#ff7f0e';
-      const COLOR_TOTAL = '#9ca3af';
+  // ---- Plotly bar chart ----
+  const data = [{
+    type: 'bar',
+    x: labels,
+    y: values,
+    marker: { color: colors },
+    hovertemplate: '%{x}<br>%{y} bytes<extra></extra>'
+  }];
 
-      const bytesToMB = b => (typeof b === 'number' ? b : Number(b || 0)) / (1024 * 1024);
-      const fmtMB = n => `${(Number(n) || 0).toFixed(2)} MB`;
+  const noData = labels.length === 0;
 
-      function pickInterfaces() {
-        // Prefer server-provided; else fallback
-        let root = {};
-        const holder = document.getElementById('devicejson');
-        if (holder && holder.textContent.trim().length) {
-          try { root = JSON.parse(holder.textContent) || {}; } catch (_) { }
-        }
-        const interfaces = Array.isArray(root.interfaces) ? root.interfaces : FALLBACK_INTERFACES.slice();
-        return interfaces;
-      }
+  const layout = {
+    margin: { l: 50, r: 20, t: 10, b: 60 },
+    xaxis: { title: '{% trans "Applications" %}', automargin: true },
+    yaxis: { title: '{% trans "Traffic (Bytes)" %}', automargin: true, rangemode: 'tozero' },
+    paper_bgcolor: 'rgba(0,0,0,0)',
+    plot_bgcolor: 'rgba(0,0,0,0)',
+    annotations: noData ? [{
+      text: '{% trans "No application traffic data" %}',
+      xref: 'paper', yref: 'paper', x: 0.5, y: 0.5,
+      showarrow: false, font: { size: 14, color: '#6b7280' }
+    }] : []
+  };
 
-      function findByName(list, name) {
-        for (let i = 0; i < list.length; i++) { if (list[i] && list[i].name === name) return list[i]; }
-        return null;
-      }
-      function extractSignal(mobile) {
-        const sig = mobile && mobile.signal || {};
-        const lte = sig.lte || null;
-        const nr = sig['5g'] || null;
-        const src = lte || nr || {};
-        const tech = lte ? 'LTE' : (nr ? '5G' : '');
-        return {
-          operator: mobile.operator_name || '',
-          tech,
-          csq: Number(src.csq),
-          rsrp: Number(src.rsrp),
-          rsrq: Number(src.rsrq),
-          snr: Number(src.snr)
-        };
-      }
-      function listMobiles(list) {
-        const out = []; for (const it of list) { if (it && it.type === 'mobile' && it.mobile) out.push(it.mobile); }
-        return out;
-      }
-      function sigLabel(csq) {
-        if (!(csq >= 0) || csq === 99) return 'Unknown';
-        if (csq <= 1) return 'Very Poor';
-        if (csq <= 3) return 'Poor';
-        if (csq <= 7) return 'Fair';
-        if (csq <= 11) return 'Good';
-        return 'Excellent';
-      }
-      function toStatsMB(intf) {
-        if (!intf || !intf.statistics) return { rxMB: 0, txMB: 0, totalMB: 0 };
-        const rxB = (intf.statistics.rx && intf.statistics.rx.bytes) || 0;
-        const txB = (intf.statistics.tx && intf.statistics.tx.bytes) || 0;
-        const rxMB = bytesToMB(rxB);
-        const txMB = bytesToMB(txB);
-        return { rxMB, txMB, totalMB: rxMB + txMB };
-      }
-
-      /* --------------------------- Render --------------------------- */
-      const interfaces = pickInterfaces();
-
-      // SIMs
-      const mobiles = listMobiles(interfaces);
-      const m1 = mobiles[0] ? extractSignal(mobiles[0]) : {};
-      const m2 = mobiles[1] ? extractSignal(mobiles[1]) : {};
-
-      const totalSummary = document.getElementById('cellular-total-summary');
-      if (totalSummary) {
-        const bits = [];
-        if (m1.operator) bits.push(`${m1.operator}${m1.tech ? ' (' + m1.tech + ')' : ''}`);
-        if (m2.operator) bits.push(`${m2.operator}${m2.tech ? ' (' + m2.tech + ')' : ''}`);
-        totalSummary.querySelector('.total-value').textContent = bits.join('  |  ') || '—';
-        totalSummary.querySelector('.total-stats').textContent = 'SIM1 / SIM2 signal overview';
-      }
-      const sim1Card = document.getElementById('sim1-card');
-      if (sim1Card) {
-        sim1Card.querySelector('.interface-title').textContent = `SIM1: ${m1.operator || '—'} ${m1.tech ? `(${m1.tech})` : ''}`;
-        sim1Card.querySelector('.interface-value').textContent =
-          (m1.csq >= 0) ? `CSQ ${m1.csq} — ${sigLabel(m1.csq)}` : '—';
-        sim1Card.querySelector('.interface-stats').innerHTML =
-          `CSQ: ${(m1.csq >= 0) ? m1.csq : '—'} | RSRP: ${isFinite(m1.rsrp) ? m1.rsrp + ' dBm' : '—'}<br>` +
-          `RSRQ: ${isFinite(m1.rsrq) ? m1.rsrq + ' dB' : '—'} | SNR: ${isFinite(m1.snr) ? m1.snr + ' dB' : '—'}`;
-      }
-      const sim2Card = document.getElementById('sim2-card');
-      if (sim2Card) {
-        sim2Card.querySelector('.interface-title').textContent = `SIM2: ${m2.operator || '—'} ${m2.tech ? `(${m2.tech})` : ''}`;
-        sim2Card.querySelector('.interface-value').textContent =
-          (m2.csq >= 0) ? `CSQ ${m2.csq} — ${sigLabel(m2.csq)}` : '—';
-        sim2Card.querySelector('.interface-stats').innerHTML =
-          `CSQ: ${(m2.csq >= 0) ? m2.csq : '—'} | RSRP: ${isFinite(m2.rsrp) ? m2.rsrp + ' dBm' : '—'}<br>` +
-          `RSRQ: ${isFinite(m2.rsrq) ? m2.rsrq + ' dB' : '—'} | SNR: ${isFinite(m2.snr) ? m2.snr + ' dB' : '—'}`;
-      }
-      const lastUpdated = document.getElementById('lastUpdated');
-      if (lastUpdated) lastUpdated.textContent = `(Updated: ${new Date().toLocaleTimeString()})`;
-
-      // Wired: prefer eth0 & eth1, otherwise try sensible substitutes
-      const eth0 = findByName(interfaces, 'eth0') || findByName(interfaces, 'eth0.1') || findByName(interfaces, 'inter-eth0');
-      const eth1 = findByName(interfaces, 'eth1') || findByName(interfaces, 'eth1-1') || findByName(interfaces, 'eth1-2');
-
-      const eth0Stats = toStatsMB(eth0);
-      const eth1Stats = toStatsMB(eth1);
-
-      const eth0Card = document.getElementById('eth0-card');
-      if (eth0Card) {
-        const label = eth0 ? eth0.name : 'eth0';
-        eth0Card.querySelector('.interface-title').textContent = `WAN1 (${label}):`;
-        eth0Card.querySelector('.interface-value').textContent = fmtMB(eth0Stats.totalMB);
-        eth0Card.querySelector('.interface-stats').innerHTML =
-          `Sent: ${fmtMB(eth0Stats.txMB)}<br>Received: ${fmtMB(eth0Stats.rxMB)}`;
-      }
-      const eth1Card = document.getElementById('eth1-card');
-      if (eth1Card) {
-        const label = eth1 ? eth1.name : 'eth1';
-        eth1Card.querySelector('.interface-title').textContent = `WAN2 (${label}):`;
-        eth1Card.querySelector('.interface-value').textContent = fmtMB(eth1Stats.totalMB);
-        eth1Card.querySelector('.interface-stats').innerHTML =
-          `Sent: ${fmtMB(eth1Stats.txMB)}<br>Received: ${fmtMB(eth1Stats.rxMB)}`;
-      }
-
-      const wiredTotal = document.getElementById('wired-total-summary');
-      if (wiredTotal) {
-        const sent = eth0Stats.txMB + eth1Stats.txMB;
-        const recv = eth0Stats.rxMB + eth1Stats.rxMB;
-        wiredTotal.querySelector('.total-value').textContent = fmtMB(sent + recv);
-        wiredTotal.querySelector('.total-stats').innerHTML =
-          `Sent: ${fmtMB(sent)}<br>Received: ${fmtMB(recv)}`;
-      }
-
-      // Chart (grouped bars + total line)
-      const names = [];
-      const downloadMB = [];
-      const uploadMB = [];
-      const totalMB = [];
-
-      function pushRow(intf, stats) {
-        if (!intf) return;
-        names.push(intf.name);
-        downloadMB.push(stats.rxMB);
-        uploadMB.push(stats.txMB);
-        totalMB.push(stats.totalMB);
-      }
-      pushRow(eth0, eth0Stats);
-      pushRow(eth1, eth1Stats);
-
-      const noData = names.length === 0;
-
-      const traceDownload = {
-        type: 'bar', name: 'Download', x: names, y: downloadMB,
-        marker: { color: COLOR_DOWNLOAD },
-        hovertemplate: 'Download: %{y:.2f} MB<br>%{x}<extra></extra>',
-        offsetgroup: 'dl'
-      };
-      const traceUpload = {
-        type: 'bar', name: 'Upload', x: names, y: uploadMB,
-        marker: { color: COLOR_UPLOAD },
-        hovertemplate: 'Upload: %{y:.2f} MB<br>%{x}<extra></extra>',
-        offsetgroup: 'ul'
-      };
-      const traceTotal = {
-        type: 'scatter', mode: 'lines+markers', name: 'Total',
-        x: names, y: totalMB,
-        line: { color: COLOR_TOTAL, width: 2 }, marker: { size: 5, color: COLOR_TOTAL },
-        hovertemplate: 'Total: %{y:.2f} MB<br>%{x}<extra></extra>'
-      };
-
-      const layout = {
-        barmode: 'group', bargap: 0.15,
-        margin: { l: 60, r: 20, t: 10, b: 60 },
-        xaxis: { type: 'category', gridcolor: '#e5e7eb', zeroline: false },
-        yaxis: { title: 'MB', gridcolor: '#e5e7eb', zeroline: false },
-        legend: { orientation: 'h', yanchor: 'top', y: -0.2, x: 0.5, xanchor: 'center' },
-        paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
-        annotations: noData ? [{
-          text: 'No eth0/eth1 statistics available',
-          xref: 'paper', yref: 'paper', x: 0.5, y: 0.5, showarrow: false,
-          font: { size: 14, color: '#6b7280' }
-        }] : []
-      };
-
-      Plotly.newPlot(
-        'trafficCharts',
-        noData ? [] : [traceTotal, traceDownload, traceUpload],
-        layout,
-        { displaylogo: false, responsive: true, modeBarButtonsToRemove: ['select2d', 'lasso2d', 'autoScale2d'] }
-      );
-
-      const el = document.getElementById('trafficCharts');
-      const resize = () => Plotly.Plots.resize(el);
-      window.addEventListener('resize', resize, { passive: true });
-      if ('ResizeObserver' in window) new ResizeObserver(resize).observe(el.parentElement);
-      requestAnimationFrame(resize);
-    })();
-  </script>
-</body>
-
-</html>
+  Plotly.newPlot('du-chart-apps', noData ? [] : data, layout, {
+    displaylogo: false,
+    responsive: true,
+    modeBarButtonsToRemove: ['select2d','lasso2d','autoScale2d']
+  });
+</script>
