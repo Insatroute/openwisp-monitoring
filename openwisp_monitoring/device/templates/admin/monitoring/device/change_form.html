@@ -2,7 +2,7 @@
 {% load i18n static %}
 {% block after_field_sets %}
 
- {% if not add or device_data %}
+ {% if not add and device_data.cellular %}
   <div class="inline-group" id="ow-cellular">
   <fieldset class="module">
      <h2>{% trans 'Cellular' %}</h2>
@@ -27,9 +27,6 @@
           <div id="details-cellular-signal" class="details-sub-content">
             {% include 'monitoring/cellular/cellular_signal.html' %}
           </div>
-          <div id="details-wan-uplinks" class="details-sub-content">
-            {% include 'monitoring/cellular/wan_uplinks.html' %}
-          </div>
         </div>
       </div>
     </div>
@@ -48,6 +45,7 @@
           <button type="button" data-target="traffic-traffic" class="active">Traffic</button>
           <button type="button" data-target="traffic-real-time-traffic">Real Time Traffic</button>
           <button type="button" data-target="traffic-security">Security</button>
+          <button type="button" data-target="traffic-wan-uplinks">Wan Uplinks</button>
 
         </div>
 
@@ -60,6 +58,12 @@
           </div>
           <div id="traffic-security" class="traffic-sub-content">
             {% include 'monitoring/traffic/security.html' %}
+          </div>
+          <div id="traffic-security" class="traffic-sub-content">
+            {% include 'monitoring/traffic/security.html' %}
+          </div>
+          <div id="traffic-wan-uplinks" class="traffic-sub-content">
+            {% include 'monitoring/traffic/wan_uplinks.html' %}
           </div>
         </div>
       </div>
