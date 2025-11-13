@@ -1,3 +1,7 @@
+<!-- =========================
+     Traffic Overview + Item Details (single page)
+     ========================= -->
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 {% if device_data.realtimemonitor.traffic %}
@@ -28,6 +32,7 @@
     background:#fff;border-radius:14px;border:1px solid #e5e7eb;
     box-shadow:0 6px 20px rgba(22,34,51,.08)
   }
+  .traffic-card.hidden{display:none !important}
   .traffic-card-pad{padding:16px}
   .traffic-header{
     background:#f0f0f0;padding:10px 12px;font-weight:700;color:#1f2937;
@@ -48,7 +53,7 @@
   .traffic-vert{display:flex;flex-direction:column;gap:8px}
 
   /* Legend */
-  .traffic-legend{display:flex;flex-wrap:wrap;gap:8px;padding:0 2px}
+  .traffic-legend{display:flex;margin:auto;flex-wrap:wrap;gap:8px;padding:0 2px}
   .traffic-legend-item{display:inline-flex;align-items:center;gap:8px;font-size:12px;color:#334155;background:#f8fafc;border:1px solid #e5e7eb;padding:6px 8px;border-radius:10px}
   .traffic-swatch{width:10px;height:10px;border-radius:50%;display:inline-block}
 
@@ -60,29 +65,29 @@
   .traffic-table{width:100%;border-collapse:separate;border-spacing:0 8px;font-size:13px}
   .traffic-table thead th{text-align:left;font-weight:700;color:#475569;font-size:12px;padding:0 8px 6px}
   .traffic-table tbody td{padding:10px 8px;border-top:1px solid #e5e7eb;border-bottom:1px solid #e5e7eb}
-  .traffic-table tbody tr td:first-child{border-left:1px solid #e5e7eb;border-top-left-radius:10px;border-bottom-left-radius:10px}
-  .traffic-table tbody tr td:last-child{border-right:1px solid #e5e7eb;border-top-right-radius:10px;border-bottom-right-radius:10px;text-align:right;color:#111827;font-weight:600}
+  .traffic-table tbody tr td:first-child{border-left:1px solid #e5e7eb;}
+  .traffic-table tbody tr td:last-child{border-right:1px solid #e5e7eb;text-align:right;color:#111827;font-weight:600}
+  .traffic-table tbody tr{cursor:pointer}
+  .traffic-table tbody tr:hover{background:#f8fafc}
 
   .traffic-note{color:#6b7280;font-size:12px}
 
   /* Pagination footer */
   .traffic-pagination{
-  margin-top:auto;      /* pushes footer to the bottom */
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  padding:10px 14px 12px;
-  font-size:12px;
-  color:#475569;
-  border-top:1px solid #e5e7eb;
-  border-bottom-left-radius:14px;
-  border-bottom-right-radius:14px;
-
-  /* optional: keep visible while the page scrolls within the card area */
-  position: sticky;     
-  bottom: 0;
-  z-index: 1;
-}
+    margin-top:auto;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:10px 14px 12px;
+    font-size:12px;
+    color:#475569;
+    border-top:1px solid #e5e7eb;
+    border-bottom-left-radius:14px;
+    border-bottom-right-radius:14px;
+    position: sticky;
+    bottom: 0;
+    z-index: 1;
+  }
   .traffic-pagination .traffic-page-info{color:#64748b}
   .traffic-pagination .traffic-page-controls{display:flex;align-items:center;gap:6px}
   .traffic-pagination select{
@@ -94,21 +99,37 @@
   }
   .traffic-pagination button:hover:not(:disabled){background:#e5e7eb}
   .traffic-pagination button:disabled{opacity:.5;cursor:default}
+
+  /* Page header (mode tags + back) */
+  .traffic-page-head{display:flex;gap:8px;align-items:center;margin:0 0 10px}
+  .traffic-tag{font-size:12px;font-weight:700;color:#374151;background:#f3f4f6;border:1px solid #e5e7eb;padding:4px 8px;border-radius:4px}
+  .traffic-head-spacer{flex:1}
+  .traffic-head-btn{border:1px solid #e5e7eb;background:#fff;border-radius:4px;padding:6px 10px;cursor:pointer}
+  #traffic-reset-btn { position: relative; z-index: 9999; background : #24415d; color: #e5e7eb; text-decoration: none; }
+
 </style>
 
 <div class="traffic-wrap">
 
+  <div class="traffic-page-head">
+    <div class="traffic-tag" id="traffic-mode-tag">Overview</div>
+    <div class="traffic-tag" id="traffic-context-tag" style="display:none"></div>
+    <div class="traffic-head-spacer"></div>
+    {% comment %} <button class="traffic-head-btn" id="traffic-reset-btn" style="display:none">Back to Overview</button> {% endcomment %}
+    <a id="traffic-reset-btn" class="traffic-head-btn" href="#" role="button">Back to Overview</a>
+  </div>
+
   <!-- ROW 1: Total + Hourly -->
   <div class="traffic-row top">
-    <div class="traffic-card">
-      <div class="traffic-header">Total (today)</div>
+    <div class="traffic-card" id="card-total">
+      <div class="traffic-header">Total Traffic</div>
       <div class="traffic-donut-shell">
         <canvas id="traffic-donut-total" class="traffic-donut"></canvas>
       </div>
       <div class="traffic-kpi-big" id="traffic-total-text">—</div>
     </div>
 
-    <div class="traffic-card">
+    <div class="traffic-card" id="card-hourly">
       <div class="traffic-header">Hourly Traffic</div>
       <div class="traffic-card-pad" style="height:360px;">
         <canvas id="traffic-bar-hourly"></canvas>
@@ -120,7 +141,7 @@
   <div class="traffic-row two" style="margin-top:18px;">
 
     <!-- Applications -->
-    <div class="traffic-card">
+    <div class="traffic-card" id="card-apps">
       <div class="traffic-header">Applications</div>
       <div class="traffic-card-pad traffic-vert">
         <div class="traffic-donut-shell">
@@ -135,13 +156,12 @@
           </table>
         </div>
 
-        <!-- Pagination -->
         <div class="traffic-pagination" id="traffic-pager-apps"></div>
       </div>
     </div>
 
     <!-- Remote Hosts -->
-    <div class="traffic-card">
+    <div class="traffic-card" id="card-hosts">
       <div class="traffic-header">Remote Hosts</div>
       <div class="traffic-card-pad traffic-vert">
         <div class="traffic-donut-shell">
@@ -156,7 +176,6 @@
           </table>
         </div>
 
-        <!-- Pagination -->
         <div class="traffic-pagination" id="traffic-pager-hosts"></div>
       </div>
     </div>
@@ -166,7 +185,7 @@
   <div class="traffic-row two" style="margin-top:18px;">
 
     <!-- Protocols -->
-    <div class="traffic-card">
+    <div class="traffic-card" id="card-protos">
       <div class="traffic-header">Protocols</div>
       <div class="traffic-card-pad traffic-vert">
         <div class="traffic-donut-shell">
@@ -181,13 +200,12 @@
           </table>
         </div>
 
-        <!-- Pagination -->
         <div class="traffic-pagination" id="traffic-pager-protos"></div>
       </div>
     </div>
 
     <!-- Clients (combined IPv4+IPv6) -->
-    <div class="traffic-card">
+    <div class="traffic-card" id="card-clients">
       <div class="traffic-header">Clients</div>
       <div class="traffic-card-pad traffic-vert">
         <div class="traffic-donut-shell">
@@ -202,7 +220,6 @@
           </table>
         </div>
 
-        <!-- Pagination -->
         <div class="traffic-pagination" id="traffic-pager-clients"></div>
       </div>
     </div>
@@ -212,27 +229,215 @@
 
 <script>
 (() => {
-  /* ---------- Data ingest ---------- */
+  /* ---------- Ingest ---------- */
   const raw = JSON.parse(document.getElementById('traffic-data').textContent || '{}');
-  const dpi = raw.dpi_summery_v2 || {};
-  const hourlyPairs = Array.isArray(dpi.hourly_traffic) ? dpi.hourly_traffic : [];
-  const apps   = Array.isArray(dpi.applications) ? dpi.applications : [];
-  const hosts  = Array.isArray(dpi.remote_hosts) ? dpi.remote_hosts : [];
-  const protos = Array.isArray(dpi.protocols) ? dpi.protocols : [];
-  const clients= Array.isArray(dpi.clients) ? dpi.clients : [];
-  const totalBytes = Number(dpi.total_traffic || 0);
 
-  /* ---------- Utils ---------- */
+  /* ---------- Utilities ---------- */
   const colors = ["#3b82f6","#10b981","#f59e0b","#ef4444","#8b5cf6","#22c55e","#0ea5e9","#a78bfa","#f97316","#14b8a6","#eab308","#f43f5e"];
   const fmtBytes = (b)=>{const n=Number(b)||0,KB=1024,MB=KB*1024,GB=MB*1024;if(n>=GB)return(n/GB).toFixed(2)+" GB";if(n>=MB)return(n/MB).toFixed(2)+" MB";if(n>=KB)return(n/KB).toFixed(2)+" KB";return n+" B"};
-  const toGB = (b)=>(Number(b)||0)/(1024**3);
-  const sumTraffic=(arr)=>arr.reduce((s,x)=>s+Number(x.traffic||0),0);
-
+  const toGB = (b)=>(Number(b)||0)/(1024**3).toFixed(2);
+  const toMB = (b) => (Number(b) || 0) / (1024 ** 2).toFixed(2);
   const hours=Array.from({length:24},(_,i)=>(i<10?"0":"")+i+":00");
-  const byHour=Array.from({length:24},()=>0);
-  for(const p of hourlyPairs){const h=parseInt(p.id,10);if(!isNaN(h)&&h>=0&&h<24)byHour[h]=Number(p.traffic||0);}
+  const sum=(obj)=>Object.values(obj||{}).reduce((s,v)=>s+Number(v||0),0);
 
-  /* ---------- Center text plugin for total donut ---------- */
+  function mapKV(obj, labelResolver) {
+    return Object.entries(obj||{}).map(([k,v])=>{
+      const lbl = labelResolver ? labelResolver(k) : k;
+      return { id:k, label:lbl, traffic:Number(v||0) };
+    });
+  }
+  function push(map, key, val){ map[key]=(map[key]||0)+Number(val||0); }
+  function ensure24(){ return Array.from({length:24},()=>0); }
+
+  // Master data for nicer app labels
+  const dpi = raw.dpi_summery_v2 || {};
+  const masterApps = Array.isArray(dpi.applications) ? dpi.applications : [];
+  const appLabelFromMaster = (id)=>{
+    const hit = masterApps.find(x=>x.id===id);
+    if (hit && hit.label) return hit.label;
+    if (id === 'unknown') return 'Unknown';
+    const m = String(id||'').split('.').pop().replace(/-/g,' ');
+    return m.charAt(0).toUpperCase()+m.slice(1);
+  };
+
+  /* ---------- Build VMs ---------- */
+
+  // Overview VM (first page)
+  const overviewVM = (() => {
+    const totalBytes = Number(dpi.total_traffic || 0);
+    const hourlyPairs = Array.isArray(dpi.hourly_traffic) ? dpi.hourly_traffic : [];
+    const byHour=ensure24();
+    for(const p of hourlyPairs){const h=parseInt(p.id,10);if(!isNaN(h)&&h>=0&&h<24)byHour[h]=Number(p.traffic||0);}
+
+    return {
+      mode:'overview',
+      title:"Today's Traffic",
+      total: totalBytes,
+      hourlySeries: byHour,
+      apps:   Array.isArray(dpi.applications) ? dpi.applications : [],
+      hosts:  Array.isArray(dpi.remote_hosts) ? dpi.remote_hosts : [],
+      protos: Array.isArray(dpi.protocols) ? dpi.protocols : [],
+      clients:Array.isArray(dpi.clients) ? dpi.clients : []
+    };
+  })();
+
+  // Detail VM builder (second page) — supports type: application | host | protocol | client
+  function buildDetailVM(type, id) {
+    const rows = Array.isArray(raw.dpi_client_data) ? raw.dpi_client_data : [];
+    const hourly = ensure24();
+    let total = 0;
+    const appsMap = {};
+    const hostsMap = {};
+    const protosMap = {};
+    const clientsMap = {};
+
+    for(const r of rows){
+      const hr = parseInt(r.hour,10); if (isNaN(hr) || hr<0 || hr>23) continue;
+      const D = r.data || {};
+      const addHour = (v)=>{ hourly[hr]+=Number(v||0); total+=Number(v||0); };
+
+      if (type==='client'){
+        if (String(r.client)!==String(id)) continue;
+        // full detail available
+        addHour(D.total||0);
+        for(const [k,v] of Object.entries(D.application||{})) push(appsMap,k,v);
+        for(const [k,v] of Object.entries(D.host||{}))        push(hostsMap,k,v);
+        for(const [k,v] of Object.entries(D.protocol||{}))    push(protosMap,k,v);
+        push(clientsMap, r.client, D.total||0);
+      }
+      else if (type==='application'){
+        const val = (D.application||{})[id];
+        if (!val) continue;
+        addHour(val);
+        push(clientsMap, r.client, val);
+        // We cannot reliably split by host/protocol from this payload → leave empty
+      }
+      else if (type==='host'){
+        const val = (D.host||{})[id];
+        if (!val) continue;
+        addHour(val);
+        push(clientsMap, r.client, val);
+        // No per-app/proto split in payload → leave empty
+      }
+      else if (type==='protocol'){
+        const val = (D.protocol||{})[id];
+        if (!val) continue;
+        addHour(val);
+        push(clientsMap, r.client, val);
+        // No per-app/host split in payload → leave empty
+      }
+    }
+
+    // Convert maps -> arrays
+    const appsArr    = mapKV(appsMap, appLabelFromMaster);
+    const hostsArr   = mapKV(hostsMap);
+    const protosArr  = mapKV(protosMap, (p)=>p.toUpperCase());
+    const clientsArr = mapKV(clientsMap);
+
+    // Title
+    const titleLookup = {
+      application: () => (masterApps.find(x=>x.id===id)?.label || appLabelFromMaster(id)),
+      host:        () => id,
+      protocol:    () => id.toUpperCase(),
+      client:      () => id
+    };
+
+    return {
+      mode:'detail',
+      type, id,
+      title: `${titleLookup[type]()}`,
+      total,
+      hourlySeries: hourly,
+      apps: appsArr,
+      hosts: hostsArr,
+      protos: protosArr,
+      clients: clientsArr
+    };
+  }
+
+  /* ---------- Router ---------- */
+  const url = new URL(window.location.href);
+  const qType = (url.searchParams.get('type')||'').toLowerCase(); // application|host|protocol|client
+  const qId   = url.searchParams.get('id');
+
+  const VM = (qType && qId) ? buildDetailVM(qType, qId) : overviewVM;
+
+  /* ---------- Mode header + back button ---------- */
+  const modeTag = document.getElementById('traffic-mode-tag');
+  const ctxTag  = document.getElementById('traffic-context-tag');
+  const resetBtn= document.getElementById('traffic-reset-btn');
+
+  if (VM.mode==='detail'){
+    modeTag.textContent = 'Overview';
+    ctxTag.style.display='inline-block';
+    ctxTag.textContent = `${qType}: ${qId}`;
+    resetBtn.style.display='inline-block';
+  } else {
+    modeTag.textContent = 'Overview';
+    ctxTag.style.display='none';
+    resetBtn.style.display='none';
+  }
+  // Safe binding even if page partially reloads (like Django success banner)
+function goOverview(){
+  const u = new URL(window.location.href);
+  u.searchParams.delete('type');
+  u.searchParams.delete('id');
+  window.location.replace(u.toString()); // force full reload
+}
+
+(function bindBackToOverview(){
+  const resetBtn = document.getElementById('traffic-reset-btn');
+  if (!resetBtn) return;
+
+  // Build a clean URL without type/id (and without dangling ? or &)
+  const buildOverviewUrl = () => {
+    const u = new URL(window.location.href);
+    u.searchParams.delete('type');
+    u.searchParams.delete('id');
+    // Clean up: remove empty query
+    if ([...u.searchParams.keys()].length === 0) u.search = '';
+    return u.toString();
+  };
+
+  const goOverview = (e) => {
+    if (e) e.preventDefault();
+    const href = buildOverviewUrl();
+    // Set real href (good fallback if JS gets detached later)
+    resetBtn.setAttribute('href', href);
+    // Force full navigation (avoids any SPA/admin interception)
+    window.location.assign(href);
+  };
+
+  // Always set a real href so it still works without JS
+  resetBtn.setAttribute('href', buildOverviewUrl());
+
+  // Bind multiple ways to survive admin scripts
+  resetBtn.addEventListener('click', goOverview, { capture: true });
+  resetBtn.onclick = goOverview;
+
+  // Global delegation fallback (in case element is re-rendered)
+  document.addEventListener('click', function(ev){
+    const a = ev.target.closest && ev.target.closest('#traffic-reset-btn');
+    if (a) goOverview(ev);
+  }, { capture: true });
+})();
+
+
+  /* ---------- Helpers to hide empty cards in Details mode ---------- */
+  const hideCardIf = (cond, id)=>{ const el=document.getElementById(id); if(!el)return; if(cond){el.classList.add('hidden')}else{el.classList.remove('hidden')} };
+  function hideIfEmpty(cardId, rows){
+    const total = (rows||[]).reduce((s,r)=>s+Number(r.traffic||0),0);
+    hideCardIf(VM.mode==='detail' && (!rows || !rows.length || total<=0), cardId);
+  }
+  function hideHourlyIfEmpty(){
+    const total = (VM.hourlySeries||[]).reduce((s,v)=>s+Number(v||0),0);
+    hideCardIf(VM.mode==='detail' && total<=0, 'card-hourly');
+  }
+  function hideTotalIfEmpty(){
+    hideCardIf(VM.mode==='detail' && (!VM.total || VM.total<=0), 'card-total');
+  }
+
+  /* ---------- Chart helpers ---------- */
   const centerTextPlugin={
     id:'trafficCenterText',
     afterDraw(chart,args,opts){
@@ -244,26 +449,7 @@
     }
   };
 
-  /* ---------- Total donut ---------- */
-  const totalGB=toGB(totalBytes);
-  document.getElementById('traffic-total-text').textContent = "Today's Traffic";
-  new Chart(document.getElementById('traffic-donut-total'),{
-    type:'doughnut',
-    data:{datasets:[{data:[totalGB,Math.max(0.01,1-(totalGB%1))],backgroundColor:["#60a5fa","#f3f4f6"],borderWidth:0}]},
-    options:{responsive:false,maintainAspectRatio:false,cutout:"72%",plugins:{legend:{display:false},tooltip:{enabled:false},trafficCenterText:{text:totalGB.toFixed(2)+" GB"}}},
-    plugins:[centerTextPlugin]
-  });
-
-  /* ---------- Hourly bar ---------- */
-  new Chart(document.getElementById('traffic-bar-hourly'),{
-    type:'bar',
-    data:{labels:hours,datasets:[{label:"Hourly (GB)",data:byHour.map(toGB),backgroundColor:"#60a5fa",borderRadius:6,maxBarThickness:22}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
-      scales:{x:{grid:{display:false},ticks:{autoSkip:true,maxTicksLimit:12}},y:{beginAtZero:true,grid:{color:"#eef2f7"}}}}
-  });
-
-  /* ---------- Donut + legend builder ---------- */
-  function buildDonut(elCanvas,list,labelKey,legendEl,noteEl,topN=6){
+  function buildDonut(elCanvas,list,labelKey,legendEl,topN=6){
     const sorted=[...list].sort((a,b)=>(b.traffic||0)-(a.traffic||0));
     const top=sorted.slice(0,topN);
     const others=sorted.slice(topN);
@@ -288,22 +474,14 @@
       d.innerHTML=`<span class="traffic-swatch" style="background:${colors[i%colors.length]}"></span>${name}`;
       legendEl.appendChild(d);
     });
-
-    if(noteEl) noteEl.textContent=`Total: ${fmtBytes(total)} • ${labels.length-(othersSum>0?1:0)} top items${othersSum>0?" (+ Other)":""}`;
   }
 
-  /* ---------- Pagination helpers ---------- */
-  function makePager({rootId, rows, nameKey, tableBodySel, filterInputSel, perPage=8}) {
+  function makePager({rootId, rows, nameKey, tableBodySel, filterInputSel, perPage=6, rowClick}) {
     const pagerEl = document.getElementById(rootId);
     const tbody = document.querySelector(tableBodySel);
     const filterInput = document.querySelector(filterInputSel);
 
-    let state = {
-      all: rows,
-      filtered: rows,
-      page: 1,
-      perPage
-    };
+    let state = { all: rows, filtered: rows, page: 1, perPage };
 
     function pageCount(){ return Math.max(1, Math.ceil(state.filtered.length / state.perPage)); }
     function clampPage(){ state.page = Math.min(Math.max(1, state.page), pageCount()); }
@@ -318,8 +496,13 @@
       slice.forEach(r=>{
         const tr=document.createElement('tr');
         const name=r.label || r[nameKey] || r.id;
-        tr.innerHTML = `<td>${name}</td><td>${fmtBytes(r.traffic||0)}</td>`;
+        tr.innerHTML = `<td><a class="traffic-row-link" href="#">${name}</a></td><td>${fmtBytes(r.traffic||0)}</td>`;
         tbody.appendChild(tr);
+
+        tr.querySelector('.traffic-row-link').addEventListener('click',(ev)=>{
+          ev.preventDefault();
+          if (typeof rowClick === 'function') rowClick(r, name);
+        });
       });
     }
 
@@ -340,9 +523,8 @@
         </div>
       `;
 
-      // hook controls
       pagerEl.querySelector(`#${rootId}-rpp`).onchange = (e)=>{
-        state.perPage = parseInt(e.target.value,10) || 8;
+        state.perPage = parseInt(e.target.value,10) || 6;
         state.page = 1;
         renderTable(); renderPager();
       };
@@ -350,7 +532,7 @@
         if(state.page>1){ state.page--; renderTable(); renderPager(); }
       };
       pagerEl.querySelector(`#${rootId}-next`).onclick = ()=>{
-        if(state.page<pageCount()){ state.page++; renderTable(); renderPager(); }
+        if(state.page<pc){ state.page++; renderTable(); renderPager(); }
       };
     }
 
@@ -363,63 +545,174 @@
       renderTable(); renderPager();
     }
 
-    // initial render
     applyFilter();
     if (filterInput) filterInput.addEventListener('input', applyFilter);
-
-    // expose a tiny API if ever needed
     return { refresh: applyFilter };
   }
 
-  /* ---------- Wire donuts ---------- */
-  buildDonut(document.getElementById('traffic-donut-apps'),apps,"id",
-             document.getElementById('traffic-legend-apps'),document.getElementById('traffic-note-apps'),6);
+  /* ---------- Hide cards (detail-only) BEFORE drawing ---------- */
+  const hideAllDetailDependent = ()=>{
+    hideIfEmpty('card-apps',   VM.apps);
+    hideIfEmpty('card-hosts',  VM.hosts);
+    hideIfEmpty('card-protos', VM.protos);
+    hideIfEmpty('card-clients',VM.clients);
+    hideHourlyIfEmpty();
+    hideTotalIfEmpty();
+  };
+  hideAllDetailDependent();
 
-  buildDonut(document.getElementById('traffic-donut-hosts'),hosts,"id",
-             document.getElementById('traffic-legend-hosts'),document.getElementById('traffic-note-hosts'),6);
+  /* ---------- Render: Total donut ---------- */
+  if (!document.getElementById('card-total').classList.contains('hidden')) {
+    const totalGB=toGB(VM.total);
+    document.getElementById('traffic-total-text').textContent = VM.title;
+    new Chart(document.getElementById('traffic-donut-total'),{
+      type:'doughnut',
+      data:{datasets:[{data:[Math.max(0.0001,totalGB), 1],backgroundColor:["#60a5fa","#f3f4f6"],borderWidth:0}]},
+      options:{responsive:false,maintainAspectRatio:false,cutout:"72%",plugins:{legend:{display:false},tooltip:{enabled:false},trafficCenterText:{text:totalGB.toFixed(2)+" GB"}}},
+      plugins:[centerTextPlugin]
+    });
+  }
 
-  buildDonut(document.getElementById('traffic-donut-protos'),protos,"id",
-             document.getElementById('traffic-legend-protos'),document.getElementById('traffic-note-protos'),6);
-
-  buildDonut(document.getElementById('traffic-donut-clients'),clients,"id",
-             document.getElementById('traffic-legend-clients'),document.getElementById('traffic-note-clients'),6);
-
-  /* ---------- Wire tables + pagination (dynamic) ---------- */
-  makePager({
-    rootId: 'traffic-pager-apps',
-    rows: [...apps].sort((a,b)=>(b.traffic||0)-(a.traffic||0)),
-    nameKey: 'id',
-    tableBodySel: '#traffic-table-apps tbody',
-    filterInputSel: '#traffic-filter-apps',
-    perPage: 6
+  /* ---------- Render: Hourly bar ---------- */
+if (!document.getElementById('card-hourly').classList.contains('hidden')) {
+  const bar = new Chart(document.getElementById('traffic-bar-hourly'), {
+    type: 'bar',
+    data: {
+      labels: hours,
+      datasets: [{
+        label: "Hourly Traffic (MB)",
+        data: VM.hourlySeries.map(toMB),
+        backgroundColor: "#60a5fa",
+        borderRadius: 6,
+        maxBarThickness: 22
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: false  // keep chart clean, we’ll use axis titles instead
+        },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => {
+              const v = ctx.parsed.y ?? ctx.raw ?? 0;
+              return `Traffic: ${v} MB`;
+            }
+          }
+        },
+      },
+      scales: {
+        x: {
+          title: {
+            display: true,
+            text: 'Hour of the Day',
+            color: '#374151',
+            font: { size: 13, weight: 'bold' }
+          },
+          grid: { display: false },
+          ticks: { autoSkip: true, maxTicksLimit: 12 }
+        },
+        y: {
+          title: {
+            display: true,
+            text: 'Traffic (MB)',
+            color: '#374151',
+            font: { size: 13, weight: 'bold' }
+          },
+          beginAtZero: true,
+          grid: { color: "#eef2f7" },
+          ticks: {
+            callback: (value) => `${value} MB`
+          }
+        }
+      }
+    }
   });
+}
 
-  makePager({
-    rootId: 'traffic-pager-hosts',
-    rows: [...hosts].sort((a,b)=>(b.traffic||0)-(a.traffic||0)),
-    nameKey: 'id',
-    tableBodySel: '#traffic-table-hosts tbody',
-    filterInputSel: '#traffic-filter-hosts',
-    perPage: 6
-  });
 
-  makePager({
-    rootId: 'traffic-pager-protos',
-    rows: [...protos].sort((a,b)=>(b.traffic||0)-(a.traffic||0)),
-    nameKey: 'id',
-    tableBodySel: '#traffic-table-protos tbody',
-    filterInputSel: '#traffic-filter-protos',
-    perPage: 6
-  });
+  /* ---------- Donuts ---------- */
+  if (!document.getElementById('card-apps').classList.contains('hidden')) {
+    buildDonut(document.getElementById('traffic-donut-apps'),VM.apps,"id",
+               document.getElementById('traffic-legend-apps'),6);
+  }
+  if (!document.getElementById('card-hosts').classList.contains('hidden')) {
+    buildDonut(document.getElementById('traffic-donut-hosts'),VM.hosts,"id",
+               document.getElementById('traffic-legend-hosts'),6);
+  }
+  if (!document.getElementById('card-protos').classList.contains('hidden')) {
+    buildDonut(document.getElementById('traffic-donut-protos'),VM.protos,"id",
+               document.getElementById('traffic-legend-protos'),6);
+  }
+  if (!document.getElementById('card-clients').classList.contains('hidden')) {
+    buildDonut(document.getElementById('traffic-donut-clients'),VM.clients,"id",
+               document.getElementById('traffic-legend-clients'),6);
+  }
 
-  makePager({
-    rootId: 'traffic-pager-clients',
-    rows: [...clients].sort((a,b)=>(b.traffic||0)-(a.traffic||0)),
-    nameKey: 'id',
-    tableBodySel: '#traffic-table-clients tbody',
-    filterInputSel: '#traffic-filter-clients',
-    perPage: 6
-  });
+  /* ---------- Tables + pagination + drilldown links ---------- */
+  // Helper to route to details
+  function goDetail(type,id){
+    const u = new URL(window.location.href);
+    u.searchParams.set('type', type);
+    u.searchParams.set('id', id);
+    window.location.href = u.toString();
+  }
+
+  // Overview rows -> drill into Details for that entity
+  const overviewRowClick = (entityType)=>(r, name)=> goDetail(entityType, r.id || r.label || name);
+
+  // In Details, only "Clients" can further drill to that specific client
+  const clientRowClick = (r, name)=> goDetail('client', r.id || r.label || name);
+
+  if (!document.getElementById('card-apps').classList.contains('hidden')) {
+    makePager({
+      rootId: 'traffic-pager-apps',
+      rows: [...VM.apps].sort((a,b)=>(b.traffic||0)-(a.traffic||0)),
+      nameKey: 'id',
+      tableBodySel: '#traffic-table-apps tbody',
+      filterInputSel: '#traffic-filter-apps',
+      perPage: 6,
+      rowClick: (VM.mode==='overview') ? overviewRowClick('application') : (()=>{})
+    });
+  }
+
+  if (!document.getElementById('card-hosts').classList.contains('hidden')) {
+    makePager({
+      rootId: 'traffic-pager-hosts',
+      rows: [...VM.hosts].sort((a,b)=>(b.traffic||0)-(a.traffic||0)),
+      nameKey: 'id',
+      tableBodySel: '#traffic-table-hosts tbody',
+      filterInputSel: '#traffic-filter-hosts',
+      perPage: 6,
+      rowClick: (VM.mode==='overview') ? overviewRowClick('host') : (()=>{})
+    });
+  }
+
+  if (!document.getElementById('card-protos').classList.contains('hidden')) {
+    makePager({
+      rootId: 'traffic-pager-protos',
+      rows: [...VM.protos].sort((a,b)=>(b.traffic||0)-(a.traffic||0)),
+      nameKey: 'id',
+      tableBodySel: '#traffic-table-protos tbody',
+      filterInputSel: '#traffic-filter-protos',
+      perPage: 6,
+      rowClick: (VM.mode==='overview') ? overviewRowClick('protocol') : (()=>{})
+    });
+  }
+
+  if (!document.getElementById('card-clients').classList.contains('hidden')) {
+    makePager({
+      rootId: 'traffic-pager-clients',
+      rows: [...VM.clients].sort((a,b)=>(b.traffic||0)-(a.traffic||0)),
+      nameKey: 'id',
+      tableBodySel: '#traffic-table-clients tbody',
+      filterInputSel: '#traffic-filter-clients',
+      perPage: 6,
+      rowClick: (VM.mode==='overview') ? overviewRowClick('client') : clientRowClick
+    });
+  }
 
 })();
 </script>
