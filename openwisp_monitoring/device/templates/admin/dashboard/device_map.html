@@ -60,6 +60,13 @@
       min-height: 420px;
     }
 
+    /* WAN has its own padding but is still a normal pane */
+    .home-tab-wanuplink-new {
+      padding: 30px 30px 0px 40px;
+      background: var(--home-bg);
+      min-height: 420px;
+    }
+
     .home-tab-pane.home-active {
       display: block;
     }
@@ -126,8 +133,9 @@
           {% include "./overview_tab.html" %}
         </section>
 
-        <!-- WAN UPLINK -->
-        <section id="home-pane-wanuplink" class="home-tab-pane" role="tabpanel" aria-labelledby="home-tab-wanuplink">
+        <!-- WAN UPLINK (note both classes here) -->
+        <section id="home-pane-wanuplink" class="home-tab-pane home-tab-wanuplink-new" role="tabpanel"
+          aria-labelledby="home-tab-wanuplink">
           {% include "./wan_uplink_tab.html" %}
         </section>
 
