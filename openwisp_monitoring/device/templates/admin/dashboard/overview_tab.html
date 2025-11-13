@@ -1,0 +1,674 @@
+{% load leaflet_tags i18n %}
+{% load i18n %}
+{% load static %}
+
+<script type="text/javascript">
+  window._owGeoMapConfig = {
+    geoJsonUrl: '{{ monitoring_location_geojson_url }}',
+    locationDeviceUrl: '{{ monitoring_device_list_url }}?page_size=5'
+  }
+</script>
+
+<script type="text/javascript" src={% static 'monitoring/js/lib/netjsongraph.min.js' %}></script>
+<script type="text/javascript" src={% static 'monitoring/js/lib/leaflet.fullscreen.min.js' %}></script>
+
+<div class="card-grid">
+
+  <!-- Devices Card -->
+  <div class="card">
+    <h4>Devices</h4>
+    <div class="stats">
+      <div class="stat-item">
+        <span class="badge badge-gray" id="total-devices">0</span>
+        <span class="card-label">Total</span>
+      </div>
+      <div class="stat-item">
+        <span class="badge badge-green" id="monitoring-ok">0</span>
+        <span class="card-label">Online</span>
+      </div>
+      <div class="stat-item">
+        <span class="badge badge-red" id="monitoring-critical">0</span>
+        <span class="card-label">Offline</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tunnels Card -->
+  <div class="card">
+    <h4>Tunnels</h4>
+    <div class="stats">
+      <div class="stat-item">
+        <span class="badge badge-gray" id="spoke-total">0</span>
+        <span class="card-label">Total</span>
+      </div>
+      <div class="stat-item">
+        <span class="badge badge-green" id="spoke-active">0</span>
+        <span class="card-label">Active</span>
+      </div>
+      <div class="stat-item">
+        <span class="badge badge-yellow" id="spoke-pending">0</span>
+        <span class="card-label">Pending</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Total Links Card -->
+  <div class="card">
+    <h4>Total Links</h4>
+    <div class="stats">
+      <div class="stat-item">
+        <span class="badge badge-gray" id="total-links">10</span>
+        <span class="card-label">Links</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Active Links Card -->
+  <div class="card">
+    <h4>Active Links</h4>
+    <div class="stats">
+      <div class="stat-item">
+        <span class="badge badge-green" id="active-links">10</span>
+        <span class="label">Active</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- built-in OpenWISP charts -->
+<div id="plot-container"></div>
+
+<!-- ===== your three matching cards ===== -->
+<div id="custom-distribution-row">
+  <div class="custom-distribution-grid">
+
+    <div class="ow-mini-card Carrier-Distribution-div">
+      <h4 class="ow-mini-title Carrier-Distribution-span">Carrier Distribution</h4>
+      <div class="ow-mini-inner">
+        <div id="Carrier-Distribution-chart" class="ow-mini-plot"></div>
+      </div>
+      <div class="ow-mini-legend" id="Carrier-Distribution-legend"></div>
+    </div>
+
+    <div class="ow-mini-card Network-Distribution-div">
+      <h4 class="ow-mini-title Network-Distribution-span">Network Distribution</h4>
+      <div class="ow-mini-inner">
+        <div id="Network-Distribution-chart" class="ow-mini-plot"></div>
+      </div>
+      <div class="ow-mini-legend" id="Network-Distribution-legend"></div>
+    </div>
+
+    <div class="ow-mini-card Interface-Distribution-div">
+      <h4 class="ow-mini-title Interface-Distribution-span">Interface Distribution</h4>
+      <div class="ow-mini-inner">
+        <div id="Interface-Distribution-chart" class="ow-mini-plot"></div>
+      </div>
+      <div class="ow-mini-legend" id="Interface-Distribution-legend"></div>
+    </div>
+
+  </div>
+</div>
+<!-- =============================================== -->
+
+<script>
+  /* ---------- Donut with clickable legend to hide/show slices ---------- */
+  function renderDonutWithLegend(opts) {
+    const { elId, legendId, labels, values, colors } = opts;
+
+    const el = document.getElementById(elId);
+    const legendRoot = document.getElementById(legendId);
+    if (!el || !legendRoot) return;
+
+    const baseValues = values.slice();                // keep originals
+    const active = baseValues.map(v => v > 0);        // visibility mask
+
+    function totalActive() {
+      return baseValues.reduce((acc, v, i) => acc + (active[i] ? v : 0), 0);
+    }
+
+    // initial plot
+    const rect = el.getBoundingClientRect();
+    const data = [{
+      type: 'pie',
+      labels: labels,
+      values: baseValues,             // start with all on
+      hole: 0.69,
+      sort: false,
+      direction: 'clockwise',
+      texttemplate: '%{value} (%{percent})',
+      textposition: 'inside',
+      insidetextorientation: 'auto',
+      textfont: { size: 9, color: '#ffffff' },
+      textinfo: 'none',
+      hoverinfo: 'label+value+percent',
+      marker: { colors: colors || [] }
+    }];
+    const layout = {
+      height: Math.max(140, Math.floor(rect.height)),
+      width: rect.width,
+      margin: { l: 6, r: 6, t: 6, b: 6 },
+      showlegend: false,
+      paper_bgcolor: 'rgba(0,0,0,0)',
+      plot_bgcolor: 'rgba(0,0,0,0)',
+      annotations: [{
+        showarrow: false,
+        text: String(totalActive() || 0),
+        x: 0.5, y: 0.5,
+        font: { size: 13, color: '#2b2f36' }
+      }]
+    };
+    Plotly.newPlot(el, data, layout, { responsive: true, displayModeBar: false });
+
+    // build legend
+    legendRoot.innerHTML = '';
+    labels.forEach((label, i) => {
+      const item = document.createElement('div');
+      item.className = 'legend-item';
+      item.dataset.index = i;
+      const sw = document.createElement('span');
+      sw.className = 'legend-swatch';
+      sw.style.background = (colors && colors[i]) ? colors[i] : '#353c44';
+      const txt = document.createElement('span');
+      txt.textContent = label;
+      item.appendChild(sw);
+      item.appendChild(txt);
+      legendRoot.appendChild(item);
+    });
+
+    // legend click -> toggle slice
+    legendRoot.addEventListener('click', (e) => {
+      const node = e.target.closest('.legend-item');
+      if (!node) return;
+      const idx = parseInt(node.dataset.index, 10);
+      active[idx] = !active[idx];                         // toggle
+
+      // update values: turn off slice -> set value 0
+      const newVals = baseValues.map((v, i) => active[i] ? v : 0);
+      Plotly.restyle(el, { values: [newVals] });
+
+      // update center total
+      Plotly.relayout(el, { 'annotations[0].text': String(totalActive() || 0) });
+
+      // update legend look
+      node.classList.toggle('is-off', !active[idx]);
+    });
+
+    // keep snug on resize
+    const ro = new ResizeObserver(() => {
+      const r = el.getBoundingClientRect();
+      Plotly.relayout(el, { width: r.width, height: Math.max(140, Math.floor(r.height)) });
+    });
+    ro.observe(el);
+  }
+
+  /* ================== DYNAMIC DATA FROM YOUR API ================== */
+
+  /* helpers used by buildAuthFetchOptions */
+  function sameOrigin(url) {
+    try { return new URL(url, location.href).origin === location.origin; }
+    catch (e) { return false; }
+  }
+  function getCookie(name) {
+    const m = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+    return m ? m.pop() : '';
+  }
+
+  /* your function as provided */
+  function buildAuthFetchOptions(url) {
+    const headers = { 'Accept': 'application/json' };
+    const opts = { method: 'GET', headers, credentials: window.API_TOKEN ? 'omit' : 'include', mode: 'cors' };
+    if (window.API_TOKEN) headers['Authorization'] = `Bearer ${window.API_TOKEN}`;
+    if (sameOrigin(url)) {
+      const csrftoken = getCookie('csrftoken') || getCookie('csrf');
+      if (csrftoken) headers['X-CSRFToken'] = csrftoken;
+    }
+    return opts;
+  }
+
+  /* sample fallback payload (used if fetch fails) */
+  const APIResponse = {
+    "interfaces": [
+      {
+        "mobile": {
+          "operator_name": "Airtel",
+          "power_status": "on",
+          "operator_code": "40587",
+          "model": "EC25-AFW",
+          "signal": { "lte": { "rsrq": -10, "rsrp": -97, "snr": 22, "csq": 31, "rssi": -51 } },
+          "manufacturer": "Quectel",
+          "imei": "356789012345678",
+          "connection_status": "connected"
+        },
+        "type": "mobile",
+        "name": "modem1",
+        "up": true
+      },
+      {
+        "mobile": {
+          "operator_name": "Jio",
+          "power_status": "on",
+          "operator_code": "40584",
+          "model": "EM9191",
+          "signal": { "5g": { "snr": 18, "csq": 31, "rsrq": -12, "rsrp": -103 } },
+          "manufacturer": "Sierra",
+          "imei": "862349012345679",
+          "connection_status": "connected"
+        },
+        "type": "mobile",
+        "name": "modem2",
+        "up": true
+      }
+    ]
+  };
+
+  /* fetch + aggregate → labels/values for the two charts */
+  async function getDynamicDistributions() {
+    // device UUID from URL; fallback so the code runs even outside device page
+    const match = location.pathname.match(/[0-9a-fA-F-]{36}/);
+    const DEVICE_UUID = match ? match[0] : 'd9d5e0a3-32ba-4152-b56d-5c56f6ca983a';
+    const API_URL = `https://controller.nexapp.co.in/api/v1/monitoring/device/${DEVICE_UUID}/interfaces-summary/`;
+
+    let json;
+    try {
+      const res = await fetch(API_URL, buildAuthFetchOptions(API_URL));
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      json = await res.json();
+    } catch (e) {
+      // fall back to the provided object
+      json = APIResponse;
+    }
+
+    const carriersCount = new Map();  // operator_name counts
+    const techCount = new Map();      // 4G/5G counts
+
+    const interfaces = Array.isArray(json?.interfaces) ? json.interfaces : [];
+    for (const iface of interfaces) {
+      if (iface?.type !== 'mobile' || !iface?.mobile) continue;
+
+      // --- Carrier bucket ---
+      const op = (iface.mobile.operator_name || 'Unknown').trim();
+      carriersCount.set(op, (carriersCount.get(op) || 0) + 1);
+
+      // --- Network tech bucket ---
+      const sig = iface.mobile.signal || {};
+      // key might be "lte" or "5g" (use the *first* present key)
+      const key = Object.keys(sig)[0];
+      if (key) {
+        const label = (key.toLowerCase() === 'lte') ? '4G' : (key.toLowerCase() === '5g' ? '5G' : key.toUpperCase());
+        techCount.set(label, (techCount.get(label) || 0) + 1);
+      }
+    }
+
+    // Build arrays (stable order)
+    const carrierLabels = Array.from(carriersCount.keys());
+    const carrierValues = carrierLabels.map(k => carriersCount.get(k));
+
+    const networkOrder = ['5G', '4G', 'Ethernet', 'Wi-Fi']; // keep nice order if present
+    const networkLabels = Array.from(new Set([...networkOrder, ...techCount.keys()]))
+      .filter(k => techCount.has(k));
+    const networkValues = networkLabels.map(k => techCount.get(k));
+
+    return { carrierLabels, carrierValues, networkLabels, networkValues };
+  }
+
+  /* ================== INIT (mix dynamic + existing third chart) ================== */
+
+  const palette1 = ['#ff7f0e', '#1f77b4', '#2ca02c', '#353c44', '#a72d1d', '#267126']; // carriers
+  const palette2 = ['#2ca02c', '#1f77b4', '#353c44', '#a72d1d', '#f59e0b', '#22c55e']; // network
+
+  (function initDonuts() {
+    async function go() {
+      const { carrierLabels, carrierValues, networkLabels, networkValues } = await getDynamicDistributions();
+
+      // 1) Carrier Distribution (dynamic)
+      renderDonutWithLegend({
+        elId: 'Carrier-Distribution-chart',
+        legendId: 'Carrier-Distribution-legend',
+        labels: carrierLabels.length ? carrierLabels : ['Airtel', 'Jio'],
+        values: carrierValues.length ? carrierValues : [1, 1],
+        colors: palette1,
+        centerLabel: 'Carrier Distribution'
+      });
+
+      // 2) Network Distribution (dynamic; lte -> 4G, 5g -> 5G)
+      renderDonutWithLegend({
+        elId: 'Network-Distribution-chart',
+        legendId: 'Network-Distribution-legend',
+        labels: networkLabels.length ? networkLabels : ['5G', '4G'],
+        values: networkValues.length ? networkValues : [1, 1],
+        colors: palette2
+      });
+
+      // 3) Interface Distribution (leave as-is / static, or wire later)
+      const interfaceLabels = ['eth0', 'wlan0', 'wlan1', 'usb0'];
+      const interfaceValues = [5, 2, 1, 0];
+      renderDonutWithLegend({
+        elId: 'Interface-Distribution-chart',
+        legendId: 'Interface-Distribution-legend',
+        labels: interfaceLabels,
+        values: interfaceValues,
+        colors: ['#ff7f0e', '#1f77b4', '#2ca02c', '#353c44']
+      });
+    }
+
+    if (document.readyState === 'complete' || document.readyState === 'interactive') go();
+    else document.addEventListener('DOMContentLoaded', go);
+  })();
+</script>
+
+{% leaflet_js %}
+
+<script>
+  let cachedToken = sessionStorage.getItem('cachedToken') || '80ee082483ee2a41d520909e571a3970f06d5907';
+
+  async function fetchAuthToken() {
+    if (cachedToken) return cachedToken;
+    // add real token logic here if needed
+  }
+
+  async function fetchDeviceData() {
+    const token = await fetchAuthToken();
+    if (!token) {
+      document.getElementById('total-devices').innerText = 'Auth error';
+      document.getElementById('monitoring-ok').innerText = 'Auth error';
+      document.getElementById('monitoring-critical').innerText = 'Auth error';
+      return;
+    }
+
+    try {
+      const response = await fetch(`${window.API_BASE_URL}/api/v1/monitoring/device`, {
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': `Token ${token}`
+        }
+      });
+      const data = await response.json();
+
+      const totalDevices = data.count ?? (Array.isArray(data.results) ? data.results.length : 0);
+      document.getElementById('total-devices').innerText = totalDevices;
+
+      let okStatusCount = 0;
+      let criticalStatusCount = 0;
+      const devices = data.results || [];
+      devices.forEach(device => {
+        const status = device.monitoring?.status;
+        if (status === 'ok') okStatusCount++;
+        else if (status === 'critical') criticalStatusCount++;
+      });
+
+      document.getElementById('monitoring-ok').innerText = okStatusCount;
+      document.getElementById('monitoring-critical').innerText = criticalStatusCount;
+
+    } catch (error) {
+      console.error('Error fetching device data:', error);
+      document.getElementById('total-devices').innerText = '0';
+      document.getElementById('monitoring-ok').innerText = '0';
+      document.getElementById('monitoring-critical').innerText = '0';
+    }
+  }
+
+  async function fetchSpokeData() {
+    const elems = {
+      total: document.getElementById('spoke-total'),
+      active: document.getElementById('spoke-active'),
+      pending: document.getElementById('spoke-pending'),
+    };
+    if (Object.values(elems).some(el => !el)) {
+      console.error('One or more spoke DOM elements not found.');
+      return;
+    }
+
+    Object.values(elems).forEach(el => el.innerText = '0');
+
+    let token;
+    try {
+      token = await fetchAuthToken();
+    } catch (e) {
+      console.error('Token fetch failed', e);
+    }
+    if (!token) {
+      Object.values(elems).forEach(el => el.innerText = 'Auth error');
+      return;
+    }
+
+    let json;
+    try {
+      const resp = await fetch(`${window.API_BASE_URL}/api/v1/spoke/`, {
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': `Token ${token}`
+        }
+      });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      json = await resp.json();
+    } catch (err) {
+      console.error('Error fetching spoke data:', err);
+      Object.values(elems).forEach(el => el.innerText = '0');
+      return;
+    }
+
+    const items = Array.isArray(json) ? json : [];
+    const counts = items.reduce((acc, { status }) => {
+      const st = status || 'error';
+      acc[st] = (acc[st] || 0) + 1;
+      return acc;
+    }, {});
+
+    const result = {
+      active: counts.active || 0,
+      pending: counts.pending || 0,
+      error: counts.error || 0,
+    };
+    result.total = Object.values(result).reduce((sum, v) => sum + v, 0);
+
+    elems.total.innerText = result.total;
+    elems.active.innerText = result.active;
+    elems.pending.innerText = result.pending;
+  }
+
+  // initial + polling
+  fetchDeviceData();
+  fetchSpokeData();
+  setInterval(fetchDeviceData, 30000);
+  setInterval(fetchSpokeData, 30000);
+</script>
+
+{% leaflet_css %}
+
+<style>
+  /* row right under the built-in dashboard tiles */
+  #custom-distribution-row {
+    /* max-width: 1200px; */
+    margin: 0 auto 0;
+    padding: 10px 40px 10px 40px;
+  }
+
+  .custom-distribution-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(240px, 1fr));
+    gap: 22px;
+  }
+
+  @media (max-width: 1100px) {
+    .custom-distribution-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (max-width: 720px) {
+    .custom-distribution-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* card shell to match built-in widgets */
+  .ow-mini-card {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .1);
+    padding: 14px;
+    max-width: 500px;
+    height: 280px;
+  }
+
+  @media screen and (max-width: 7680px) {
+    .ow-mini-card {
+      max-width: 1690px;
+    }
+  }
+
+   @media screen and (max-width: 1536px) {
+    .ow-mini-card {
+      max-width: 1000px;
+    }
+  }
+
+  .ow-mini-title {
+    text-align: center;
+    margin: 0 0 8px 0;
+    font-size: 13px;
+    font-weight: 480;
+    color: #2b2f36;
+  }
+
+  /* inner light panel (donut area) */
+  .ow-mini-inner {
+    margin-top: 30px;
+    background: #fbfbfb;
+    border-radius: 12px;
+    height: 150px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* Plotly target fills the inner panel */
+  .ow-mini-plot {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Legend area (like OpenWISP tiles) */
+  .ow-mini-legend {
+    display: grid;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 6px 2px 6px;
+  }
+
+  .legend-item {
+    display: inline-flex;
+    align-items: center;
+    font-size: 12px;
+    color: #374151;
+    white-space: nowrap;
+    cursor: pointer;
+    user-select: none;
+    transition: opacity .15s ease, color .15s ease;
+  }
+
+  .legend-item.is-off {
+    opacity: .45;
+    text-decoration: line-through;
+  }
+
+  .legend-swatch {
+    width: 12px;
+    height: 12px;
+    margin-right: 6px;
+    background: #353c44;
+    flex: 0 0 auto;
+  }
+</style>
+
+<style>
+  .svg-container .main-svg {
+    background: rgb(255 255 255 / 0%) !important;
+  }
+
+  .content {
+    background-color: #d3d3d30f !important;
+  }
+
+  .card-grid {
+    display: grid;
+    grid-gap: 20px;
+    grid-template-columns: repeat(4, 1fr);
+    margin: 10px auto;
+    padding: 10px 40px 10px 40px;
+  }
+
+  .card {
+    background-color: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    padding: 1rem;
+    text-align: center;
+  }
+
+  .stats {
+    display: flex;
+    justify-content: space-around;
+    margin-top: 10px;
+  }
+
+  .stat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-size: 13px;
+  }
+
+  .badge {
+    padding: 5px 10px;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 13px;
+    margin-bottom: 4px;
+  }
+
+  .badge-gray {
+    background: #e0e0e0;
+    color: #333;
+  }
+
+  .badge-green {
+    background: #28a745;
+    color: #fff;
+  }
+
+  .badge-red {
+    background: #dc3545;
+    color: #fff;
+  }
+
+  .badge-yellow {
+    background: #FFA500;
+    color: #333;
+  }
+
+  .card-label {
+    font-size: 12px;
+    color: #666;
+  }
+
+  @media screen and (max-width: 1024px) {
+    .card-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media screen and (max-width: 600px) {
+    .card-grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+
+    .badge {
+      font-size: 11px;
+      padding: 4px 8px;
+    }
+  }
+</style>

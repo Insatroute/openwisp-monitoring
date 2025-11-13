@@ -1,759 +1,188 @@
-{% load leaflet_tags i18n %}
-{% load i18n %}
-{% load static %}
-<script type="text/javascript">
-  window._owGeoMapConfig = {
-    geoJsonUrl: '{{ monitoring_location_geojson_url }}',
-    locationDeviceUrl: '{{ monitoring_device_list_url }}?page_size=5'
-  }
-</script>
+<!DOCTYPE html>
+<html lang="en">
 
-<!-- Chart.js v3+ -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+<head>
+  <meta charset="UTF-8" />
+  <title>Home • Overview / WAN Uplink / Data Usage / Security / Map</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-<script type="text/javascript" src={%static 'monitoring/js/lib/netjsongraph.min.js' %}></script>
-<script type="text/javascript" src={%static 'monitoring/js/lib/leaflet.fullscreen.min.js' %}></script>
-
-
-
-
-<div id='leaflet-config'>
-  {% autoescape on %}{% leaflet_json_config %}{% endautoescape %}
-</div>
-
-
-<div class="map-view">
-  <div id="device-map-container">
-    <div class="no-data">
-      <p>{% trans 'No map data to show' %}.</p>
-      <p><a class="button submit" href="#close">Close</a></p>
-    </div>
-    <div class="ow-loading-spinner"></div>
-  </div>
-</div>
-
-
-<div class="card-grid">
-
-  <!-- Devices Card -->
-  <div class="card">
-    <h4>Devices</h4>
-    <div class="stats">
-      <div class="stat-item">
-        <span class="badge badge-gray" id="total-devices">0</span>
-        <span class="card-label">Total</span>
-      </div>
-      <div class="stat-item">
-        <span class="badge badge-green" id="monitoring-ok">0</span>
-        <span class="card-label">Online</span>
-      </div>
-      <div class="stat-item">
-        <span class="badge badge-red" id="monitoring-critical">0</span>
-        <span class="card-label">Offline</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- Tunnels Card -->
-  <div class="card">
-    <h4>Tunnels</h4>
-    <div class="stats">
-      <div class="stat-item">
-        <span class="badge badge-gray" id="spoke-total">0</span>
-        <span class="card-label">Total</span>
-      </div>
-      <div class="stat-item">
-        <span class="badge badge-green" id="spoke-active">0</span>
-        <span class="card-label">Active</span>
-      </div>
-      <div class="stat-item">
-        <span class="badge badge-yellow" id="spoke-pending">0</span>
-        <span class="card-label">Pending</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- Total Links Card -->
-  <div class="card">
-    <h4>Total Links</h4>
-    <div class="stats">
-      <div class="stat-item">
-        <span class="badge badge-gray" id="total-links">10</span>
-        <span class="card-label">Links</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- Active Links Card -->
-  <div class="card">
-    <h4>Active Links</h4>
-    <div class="stats">
-      <div class="stat-item">
-        <span class="badge badge-green" id="active-links">10</span>
-        <span class="label">Active</span>
-      </div>
-    </div>
-  </div>
-
-</div>
-
-
-
-
-<div class="card-grid-two graph-grid">
-  <div class="card-app top-apps">
-    <h4>
-      <span>Top Applications</span>
-    </h4>
-    <div class="chart-container">
-      <div id="chart-loading" class="loading-text">Loading…</div>
-      <canvas id="topAppsChart"></canvas>
-    </div>
-  </div>
-
-  <div class="card-app top-apps">
-    <h4>
-      <span>Top Branches</span>
-    </h4>
-     <div class="chart-container" id="top-devices-chart-container">
-      <div id="chart-loading-devices" class="loading-text">Loading…</div>
-      <canvas id="topDevicesChart"></canvas>
-    </div>
-  </div>
-</div>
-
-
-
-{% leaflet_js %}
-
-<script>
-  let cachedToken = sessionStorage.getItem('cachedToken') || '80ee082483ee2a41d520909e571a3970f06d5907'; // Use fallback token
-  Chart.register(ChartDataLabels);
-
-  async function fetchAuthToken() {
-    if (cachedToken) return cachedToken;
-    // try {
-    //   const response = await fetch(`${window.API_BASE_URL}/api/v1/users/token/`, {
-    //     method: 'POST',
-    //     headers: {
-    //       'Content-Type': 'application/x-www-form-urlencoded'
-    //     },
-    //     body: new URLSearchParams({
-    //       'username': 'admin',
-    //       'password': 'Nexapp@123'
-    //     }),
-    //     mode: 'cors'
-    //   });
-
-    //   if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-    //   const data = await response.json();
-    //   cachedToken = data.token;
-    //   sessionStorage.setItem('cachedToken', cachedToken);
-    //   return cachedToken;
-    // } catch (error) {
-    //   console.error('Token fetch failed:', error);
-    //   return null;
-    // }
-  }
-
-  async function delay(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-  }
-
-  async function fetchDeviceData() {
-    const token = await fetchAuthToken();
-    if (!token) {
-      document.getElementById('total-devices').innerText = 'Auth error';
-      document.getElementById('monitoring-ok').innerText = 'Auth error';
-      document.getElementById('monitoring-critical').innerText = 'Auth error';
-      return;
+  <style>
+    /* ========= UNIQUE HOME TAB STYLES ========= */
+    :root {
+      --home-bg: #ffffff;
+      --home-border: #e5e7eb;
+      --home-text: #24415d;
+      --home-text-active: #11274b;
     }
 
-    try {
-      const response = await fetch(`${window.API_BASE_URL}/api/v1/monitoring/device`, {
-        headers: {
-          'Accept': 'application/json',
-          'Authorization': `Token ${token}`
-        }
-      });
-      const data = await response.json();
-
-      // Update total devices count
-      const totalDevices = data.count ?? (Array.isArray(data.results) ? data.results.length : 0);
-      document.getElementById('total-devices').innerText = totalDevices;
-
-      // Count statuses
-      let okStatusCount = 0;
-      let criticalStatusCount = 0;
-      const devices = data.results || [];
-      devices.forEach(device => {
-        const status = device.monitoring?.status;
-        if (status === 'ok') {
-          okStatusCount++;
-        } else if (status === 'critical') {
-          criticalStatusCount++;
-        }
-      });
-
-      document.getElementById('monitoring-ok').innerText = okStatusCount;
-      document.getElementById('monitoring-critical').innerText = criticalStatusCount;
-
-    } catch (error) {
-      console.error('Error fetching device data:', error);
-      document.getElementById('total-devices').innerText = '0';
-      document.getElementById('monitoring-ok').innerText = '0';
-      document.getElementById('monitoring-critical').innerText = '0';
-    }
-  }
-  async function fetchSpokeData() {
-    // Cache your DOM elements and guard against missing IDs
-    const elems = {
-      total: document.getElementById('spoke-total'),
-      active: document.getElementById('spoke-active'),
-      pending: document.getElementById('spoke-pending'),
-
-
-    };
-    if (Object.values(elems).some(el => !el)) {
-      console.error('One or more spoke DOM elements not found.');
-      return;
+    /* TAB BAR */
+    .home-tabsbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--home-bg);
+      padding: 0 8px;
+      border-bottom: 1px solid var(--home-border);
     }
 
-    // Show loading state
-    Object.values(elems).forEach(el => el.innerText = '0');
-
-    // 1️⃣ Fetch auth token
-    let token;
-    try {
-      token = await fetchAuthToken();
-    } catch (e) {
-      console.error('Token fetch failed', e);
-    }
-    if (!token) {
-      Object.values(elems).forEach(el => el.innerText = 'Auth error');
-      return;
-    }
-
-    // 2️⃣ Fetch spoke data
-    let json;
-    try {
-      const resp = await fetch(`${window.API_BASE_URL}/api/v1/spoke/`, {
-        headers: {
-          'Accept': 'application/json',
-          'Authorization': `Token ${token}`
-        }
-      });
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      json = await resp.json();
-    } catch (err) {
-      console.error('Error fetching spoke data:', err);
-      Object.values(elems).forEach(el => el.innerText = '0');
-      return;
+    .home-tablink {
+      appearance: none;
+      border: none;
+      background: transparent;
+      padding: 14px 18px;
+      margin: 0 6px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--home-text);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      outline: none;
     }
 
-    // 3️⃣ Count statuses
-    const items = Array.isArray(json) ? json : [];
-    const counts = items.reduce((acc, { status }) => {
-      const st = status || 'error';  // treat missing/unknown as "error" if you like
-      acc[st] = (acc[st] || 0) + 1;
-      return acc;
-    }, {});
-
-    // 4️⃣ Update UI
-    const result = {
-      active: counts.active || 0,
-      pending: counts.pending || 0,
-      error: counts.error || 0,
-    };
-    result.total = Object.values(result).reduce((sum, v) => sum + v, 0);
-
-    elems.total.innerText = result.total;
-    elems.active.innerText = result.active;
-    elems.pending.innerText = result.pending;
-  }
-
-
-async function fetchAndDisplayTopAppsChart() {
-  const loadingEl = document.getElementById('chart-loading');
-  const canvas = document.getElementById('topAppsChart');
-
-  if (loadingEl) loadingEl.style.display = 'block';
-  if (canvas) canvas.style.display = 'none';
-
-  try {
-    // Fetch global top apps
-    const response = await fetch('https://controller.nexapp.co.in/api/v1/monitoring/global-top-apps/', {
-      headers: { 'accept': 'application/json' }
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status} – ${response.statusText}`);
+    .home-tablink:hover {
+      color: var(--home-text-active);
     }
 
-    const data = await response.json();
-    const topApps = Array.isArray(data?.top_10_apps) ? data.top_10_apps : [];
-
-    // Prepare labels and values (bytes → MB or GB)
-    const labels = topApps.map(item => String(item.label ?? ''));
-    const values = topApps.map(item => {
-      const bytes = Number(item.traffic) || 0;
-      const mb = bytes / (1024 * 1024);
-      if (mb >= 1000) {
-        return { value: +(mb / 1024).toFixed(2), unit: 'GB' };
-      } else {
-        return { value: +mb.toFixed(1), unit: 'MB' };
-      }
-    });
-
-    // Hide loading
-    const chartContainer = document.getElementById('top-apps-chart-container');
-    if (chartContainer) {
-      const loadingElem = chartContainer.querySelector('.loading-text');
-      if (loadingElem) loadingElem.style.display = 'none';
+    .home-tablink[aria-selected="true"] {
+      color: var(--home-text-active);
+      border-bottom-color: var(--home-text);
     }
 
-    // Destroy old chart
-    const existingChart = Chart.getChart('topAppsChart');
-    if (existingChart) existingChart.destroy();
+    /* PANES */
+    .home-tabpanes {
+      background: var(--home-bg);
+    }
 
-    const ctx = document.getElementById('topAppsChart').getContext('2d');
+    .home-tab-pane {
+      display: none;
+      padding: 10px;
+      background: var(--home-bg);
+      min-height: 420px;
+    }
 
-    new Chart(ctx, {
-      type: 'bar',
-      data: {
-        labels,
-        datasets: [
-          {
-            data: values.map(v => v.value),
-            backgroundColor: '#00acea',
-            borderRadius: 10,
-            barPercentage: 0.5,
-            categoryPercentage: 0.5,
-            barThickness: 8,
-            stack: 'stack0',
-            order: 2
-          }
-        ]
-      },
-      options: {
-        indexAxis: 'y',
-        layout: { padding: { right: 60 } },
-        scales: {
-          x: {
-            beginAtZero: true,
-            ticks: {
-              callback: (val, index) => {
-                const unit = values[index]?.unit || 'MB';
-                return `${val} ${unit}`;
-              }
-            },
-            grid: { display: false }
-          },
-          y: {
-            grid: { display: false },
-            ticks: { font: { size: 12, weight: '500' } }
-          }
-        },
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            callbacks: {
-              label: (ctx) => {
-                const unit = values[ctx.dataIndex]?.unit || 'MB';
-                return ` ${ctx.parsed.x} ${unit}`;
-              }
-            }
-          },
-          datalabels: {
-            anchor: 'end',
-            align: 'end',
-            offset: 6,
-            formatter: (val, ctx) => {
-              const unit = values[ctx.dataIndex]?.unit || 'MB';
-              return `${val} ${unit}`;
-            },
-            font: { weight: '500', size: 10 }
-          }
-        },
-        responsive: true,
-        maintainAspectRatio: false
-      }
-    });
+    .home-tab-pane.home-active {
+      display: block;
+    }
 
-    if (loadingEl) loadingEl.remove();
-    if (canvas) canvas.style.display = '';
-  } catch (error) {
-    console.error('Error fetching global top apps:', error);
-    const chartContainer = document.getElementById('top-apps-chart-container');
-    if (chartContainer) chartContainer.innerText = 'Error loading top apps';
-  }
-}
-
-fetchAndDisplayTopAppsChart();
-
-
-  fetchDeviceData();
-
-  // Fetch device data every 30 seconds
-  setInterval(() => {
-    fetchDeviceData();
-  }, 30000);
-
-  // Fetch top apps chart every 30 seconds
-  setInterval(fetchAndDisplayTopAppsChart, 30000);
-
-  // Helper: format bytes nicely (GB/TB etc.)
-  function humanBytesShort(b) {
-    const KB = 1024, MB = KB**2, GB = KB**3, TB = KB**4;
-    if (b >= TB) return (b/TB).toFixed(2) + ' TB';
-    if (b >= GB) return (b/GB).toFixed(2) + ' GB';
-    if (b >= MB) return (b/MB).toFixed(1) + ' MB';
-    if (b >= KB) return (b/KB).toFixed(0) + ' KB';
-    return (b||0) + ' B';
-  }
-
-  async function fetchAndDisplayTopDevicesChart({
-
-    
-    org = 'ALL', time = '7d', limit = 10, wan_ifs = ''   // leave wan_ifs blank to sum all interfaces
-  } = {}) {
-   
-    const loader = document.getElementById('chart-loading-devices');
-    const canvas = document.getElementById('topDevicesChart');
-    const container = document.getElementById('top-devices-chart-container');
-
-    loader.style.display = 'block';
-    canvas.style.display = 'none';
-
-    const qs = new URLSearchParams({ org, time, limit, include_org: '1' });
-    if (wan_ifs) qs.set('wan_ifs', wan_ifs);
-
-    try {
-      const resp = await fetch(`${window.API_BASE_URL}/api/v1/monitoring/top-devices-simple/?${qs.toString()}`, { credentials: 'include' });
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      const json = await resp.json();
-      console.log('Top Devices data:', json);
-
-      const rows = (json.top || []).slice(0, limit);
-      if (!rows.length) {
-        loader.textContent = 'No Data';
-        return;
+    /* Responsive */
+    @media (max-width: 640px) {
+      .home-tablink {
+        padding: 12px 10px;
+        margin: 0 2px;
       }
 
-      const labels = rows.map(r => r.name || r.device_id);
-      const valuesGB = rows.map(r => (typeof r.total_gb === 'number')
-        ? +r.total_gb
-        : +( (r.total_bytes || 0) / (1024**3) ).toFixed(3)
+      .home-tab-pane {
+        padding: 12px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="home-page-wrap">
+    <div class="home-card">
+
+      <!-- ======================= TAB BUTTONS ======================= -->
+      <div class="home-tabsbar" role="tablist" aria-label="Home device pages">
+
+        <!-- 1) OVERVIEW (default active) -->
+        <button class="home-tablink" role="tab" aria-selected="true" aria-controls="home-pane-overview"
+          id="home-tab-overview">
+          Overview
+        </button>
+
+        <!-- 2) WAN UPLINK -->
+        <button class="home-tablink" role="tab" aria-selected="false" aria-controls="home-pane-wanuplink"
+          id="home-tab-wanuplink">
+          WAN Uplinks
+        </button>
+
+        <!-- 3) DATA USAGE -->
+        <button class="home-tablink" role="tab" aria-selected="false" aria-controls="home-pane-data-usage"
+          id="home-tab-data-usage">
+          Data Usage
+        </button>
+
+        <!-- 4) SECURITY -->
+        <button class="home-tablink" role="tab" aria-selected="false" aria-controls="home-pane-security"
+          id="home-tab-security">
+          Security
+        </button>
+
+        <!-- 5) MAP (last) -->
+        <button class="home-tablink" role="tab" aria-selected="false" aria-controls="home-pane-map" id="home-tab-map">
+          Map
+        </button>
+
+      </div>
+
+      <!-- ======================= TAB CONTENTS ======================= -->
+      <div class="home-tabpanes">
+
+        <!-- OVERVIEW -->
+        <section id="home-pane-overview" class="home-tab-pane home-active" role="tabpanel"
+          aria-labelledby="home-tab-overview">
+          {% include "./overview_tab.html" %}
+        </section>
+
+        <!-- WAN UPLINK -->
+        <section id="home-pane-wanuplink" class="home-tab-pane" role="tabpanel" aria-labelledby="home-tab-wanuplink">
+          {% include "./wan_uplink_tab.html" %}
+        </section>
+
+        <!-- DATA USAGE -->
+        <section id="home-pane-data-usage" class="home-tab-pane" role="tabpanel" aria-labelledby="home-tab-data-usage">
+          {% include "./data_usage_tab.html" %}
+        </section>
+
+        <!-- SECURITY -->
+        <section id="home-pane-security" class="home-tab-pane" role="tabpanel" aria-labelledby="home-tab-security">
+          {% include "./security_tab.html" %}
+        </section>
+
+        <!-- MAP (last) -->
+        <section id="home-pane-map" class="home-tab-pane" role="tabpanel" aria-labelledby="home-tab-map">
+          {% include "./new_map.html" %}
+        </section>
+
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ======================= TAB SCRIPT ======================= -->
+  <script>
+    const homeTabs = Array.from(document.querySelectorAll('.home-tablink'));
+    const homePanes = Array.from(document.querySelectorAll('.home-tab-pane'));
+
+    function homeActivate(suffix) {
+      // toggle selected state
+      homeTabs.forEach(t =>
+        t.setAttribute('aria-selected', String(t.id === 'home-tab-' + suffix))
       );
 
-      // Destroy previous chart if present
-      const existing = Chart.getChart('topDevicesChart');
-      if (existing) existing.destroy();
+      // toggle panes
+      homePanes.forEach(p =>
+        p.classList.toggle('home-active', p.id === 'home-pane-' + suffix)
+      );
+    }
 
-      const ctx = canvas.getContext('2d');
-      new Chart(ctx, {
-        type: 'bar',
-        data: {
-          labels,
-          datasets: [{
-            data: valuesGB,
-            backgroundColor: '#00acea',
-            borderRadius: 10,
-            barThickness: 8,
-            barPercentage: 0.5,
-            categoryPercentage: 0.5
-          }]
-        },
-        options: {
-          indexAxis: 'y',
-          responsive: true,
-          maintainAspectRatio: false,
-          scales: {
-            x: {
-              beginAtZero: true,
-              grid: { display: false },
-              //title: { display: true, text: 'Total (GB)', font: { size: 10, weight: '500' } },
-              ticks: {
-                callback: (v) => `${v} GB`
-              }
-            },
-            y: {
-              grid: { display: false },
-              ticks: { font: { size: 12, weight: '500' } }
-            }
-          },
-          plugins: {
-            legend: { display: false },
-            tooltip: {
-              callbacks: {
-                label: (ctx) => ` ${ctx.parsed.x.toFixed(2)} GB`
-              }
-            },
-            datalabels: {
-              anchor: 'end',
-              align: 'end',
-              offset: 6,
-              formatter: (v, ctx) => `${v.toFixed(2)} GB`,
-              font: { weight: '500', size: 10 }
-            }
-          }
-        }
+    homeTabs.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const suffix = btn.id.replace('home-tab-', '');
+        homeActivate(suffix);
       });
 
-      loader.style.display = 'none';
-      canvas.style.display = '';
-    } catch (e) {
-      console.error('Top Devices error:', e);
-    }
-  }
+      // keyboard navigation
+      btn.addEventListener('keydown', e => {
+        const i = homeTabs.indexOf(btn);
+        if (e.key === 'ArrowRight') (homeTabs[i + 1] || homeTabs[0]).focus();
+        if (e.key === 'ArrowLeft') (homeTabs[i - 1] || homeTabs[homeTabs.length - 1]).focus();
+      });
+    });
+  </script>
 
-  // Initial draw + refresh every 30s (matches your other intervals)
-  fetchAndDisplayTopDevicesChart(); 
-  setInterval(fetchAndDisplayTopDevicesChart, 300000);
+</body>
 
-  document.addEventListener('DOMContentLoaded', () => {
-    fetchSpokeData();
-    setTimeout(() => map.invalidateSize(), 200);
-    fetchAndDisplayTopAppsChart();
-    fetchDeviceData();
-    fetchAndDisplayTopDevicesChart(); 
-  });
-</script>
-
-{% leaflet_css %}
-
-<style>
-  .svg-container .main-svg{
-    background: rgb(255 255 255 / 0%) !important;
-  }
-
-
-  @media screen and (min-width: 1280px) and (max-width: 1379px) {
-    .data-card {
-      width: 85%;
-    }
-  }
-
-  #plot-container .system-type {
-    display: none !important;
-  }
-
-  #plot-container .currently-active-wifi-sessions {
-    display: none !important;
-  }
-
-  .content {
-    background-color: #d3d3d30f !important;
-  }
-
-
-  .card-grid {
-    display: grid;
-    grid-gap: 20px;
-    grid-template-columns: repeat(4, 1fr);
-    /* max-width: 1800px; */
-    margin: 0 auto;
-    padding: 10px 40px 10px 40px;
-  }
-
-  .card-grid-two {
-    display: grid;
-    grid-gap: 20px;
-    grid-template-columns: repeat(2, 1fr);
-    /* max-width: 1800px; */
-    margin: 0 auto;
-    padding: 10px 40px 10px 40px;
-  }
-
-
-  .card {
-    background-color: #ffffff;
-    border-radius: 8px;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-    padding: 1rem 1rem 1rem 1rem;
-    text-align: center;
-  }
-
-  #map {
-    width: 90% !important;
-    height: 300px !important;
-    /* or whatever fits your layout */
-  }
-
-
-  .card-app {
-    background-color: #ffffff;
-    border-radius: 8px;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-    padding: 1rem 1rem 1rem 1rem;
-    text-align: center;
-  }
-
-  .data-card {
-    width: 90%;
-  }
-
-  .card-app h4 {
-    margin-top: 0px;
-    font-size: 14px;
-    margin-bottom: 0.4rem;
-    color: #777;
-    text-align: left;
-  }
-
-  .card-app p {
-    font-size: 13px;
-    font-weight: bold;
-    color: #555;
-  }
-
-  .card-app h4,
-  .card-app p {
-    word-wrap: break-word;
-  }
-
-
-  /* 5) Networks card specific styling */
-  .card.networks {
-    text-align: left;
-    padding: 1rem 1rem;
-  }
-
-  .card.networks h4 {
-    font-size: 14px;
-    margin-bottom: 0.75rem;
-  }
-
-  .network-button {
-
-    color: #fff;
-    border: none;
-    border-radius: 4px;
-    padding: 0.25rem 0.75rem;
-    font-size: 10px;
-    cursor: pointer;
-    float: right;
-  }
-
-  .network-button:hover {
-    background-color: #0056b3;
-  }
-
-  .network-body {
-    display: flex;
-    align-items: center;
-    font-size: 13px;
-    color: #333;
-    font-weight: 500;
-
-  }
-
-  .globe-icon {
-    font-size: 13px;
-    margin-right: 0.5rem;
-  }
-
-  .network-stats {
-    font-weight: 500;
-  }
-
-  .chart-container canvas {
-
-    width: 100% !important;
-    height: 270px !important;
-
-  }
-
-
-
-  #content-main>div:not(.app-sdwan_tunnel) {
-    display: none;
-  }
-
-  .percircle-container {
-    margin-top: 50px;
-  }
-
-  .map-view {
-    padding: 20px 40px 10px 40px;
-    margin: 0 auto;
-
-  }
-
-  #device-map-container {
-    margin: 0 auto !important;
-    width: 100% !important;
-  }
-
-  .graph-grid .card {
-    height: 230px !important;
-  }
-
-  #topAppsChart {
-    height: 270px !important;
-  }
-  /* Stats redesigned */
-  .stats {
-    display: flex;
-    justify-content: space-around;
-    margin-top: 10px;
-  }
-
-  .stat-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    font-size: 13px;
-  }
-
-  .badge {
-    padding: 5px 10px;
-    border-radius: 10px;
-    font-weight: 600;
-    font-size: 13px;
-    margin-bottom: 4px;
-  }
-
-  .badge-gray { background: #e0e0e0; color: #333; }
-  .badge-green { background: #28a745; color: #fff; }
-  .badge-red { background: #dc3545; color: #fff; }
-  .badge-yellow { background: #FFA500; color: #333; }
-
-  .card-label {
-    font-size: 12px;
-    color: #666;
-  }
-
-@media screen and (max-width: 1024px) {
-  .card-grid {
-    grid-template-columns: repeat(2, 1fr); 
-  }
-
-  .card-grid-two {
-    grid-template-columns: 1fr; 
-  }
-}
-
-@media screen and (max-width: 600px) {
-  .card-grid {
-    grid-template-columns: repeat(2, 1fr); 
-    gap: 12px; 
-  }
-
-  .card-grid-two {
-    grid-template-columns: 1fr;
-  }
-
-  .chart-container canvas {
-    height: 220px !important;
-  }
-
-  .badge {
-    font-size: 11px;
-    padding: 4px 8px;
-  }
-}
-
-</style>
+</html>
