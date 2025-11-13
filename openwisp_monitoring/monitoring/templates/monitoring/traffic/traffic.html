@@ -58,17 +58,70 @@
   .traffic-swatch{width:10px;height:10px;border-radius:50%;display:inline-block}
 
   /* Filter + table */
-  .traffic-filter-bar{padding:0}
-  .traffic-filter-bar input{width:100%;padding:9px 10px;border:1px solid #e5e7eb;border-radius:10px;font-size:12px;background:#fff;outline:none}
+.traffic-filter-bar{padding:0}
+.traffic-filter-bar input{
+  width:100%;padding:9px 10px;border:1px solid #e5e7eb;border-radius:10px;font-size:12px;background:#fff;outline:none
+}
 
-  .traffic-table-wrap{padding:0;max-height:340px;overflow:auto}
-  .traffic-table{width:100%;border-collapse:separate;border-spacing:0 8px;font-size:13px}
-  .traffic-table thead th{text-align:left;font-weight:700;color:#475569;font-size:12px;padding:0 8px 6px}
-  .traffic-table tbody td{padding:10px 8px;border-top:1px solid #e5e7eb;border-bottom:1px solid #e5e7eb}
-  .traffic-table tbody tr td:first-child{border-left:1px solid #e5e7eb;}
-  .traffic-table tbody tr td:last-child{border-right:1px solid #e5e7eb;text-align:right;color:#111827;font-weight:600}
-  .traffic-table tbody tr{cursor:pointer}
-  .traffic-table tbody tr:hover{background:#f8fafc}
+.traffic-table-wrap{padding:0;max-height:340px;overflow:auto}
+
+/* Keep columns aligned between thead and tbody */
+.traffic-table{
+  width:100%;
+  border-collapse:separate;
+  border-spacing:0 8px;
+  font-size:13px;
+  table-layout:fixed; /* <-- ensures header/body column widths match */
+}
+
+/* Header cells */
+.traffic-table thead th{
+  text-align:left;
+  font-weight:700;
+  color:#475569;
+  font-size:12px;
+  padding:10px 8px;       /* match tbody padding for perfect alignment */
+  vertical-align:middle;
+}
+
+/* First/last header cells to mirror body styling */
+.traffic-table thead th:first-child{
+  border-left:1px solid #e5e7eb;
+  border-top-left-radius:10px;
+  border-bottom-left-radius:10px;
+}
+.traffic-table thead th:last-child{
+  text-align:right;                  /* align TRAFFIC header with values */
+  border-right:1px solid #e5e7eb;
+  border-top-right-radius:10px;
+  border-bottom-right-radius:10px;
+}
+
+/* Body cells */
+.traffic-table tbody td{
+  padding:10px 8px;
+  border-top:1px solid #e5e7eb;
+  border-bottom:1px solid #e5e7eb;
+  vertical-align:middle;
+}
+.traffic-table tbody tr td:first-child{
+  border-left:1px solid #e5e7eb;
+  border-top-left-radius:10px;
+  border-bottom-left-radius:10px;
+}
+.traffic-table tbody tr td:last-child{
+  border-right:1px solid #e5e7eb;
+  text-align:right;
+  color:#111827;
+  font-weight:600;
+  border-top-right-radius:10px;
+  border-bottom-right-radius:10px;
+}
+
+/* Row UX */
+.traffic-table tbody tr{cursor:pointer}
+.traffic-table tbody tr:hover{background:#f8fafc}
+
 
   .traffic-note{color:#6b7280;font-size:12px}
 
@@ -598,7 +651,7 @@ if (!document.getElementById('card-hourly').classList.contains('hidden')) {
           callbacks: {
             label: (ctx) => {
               const v = ctx.parsed.y ?? ctx.raw ?? 0;
-              return `Traffic: ${v} MB`;
+              return `Traffic: ${v.toFixed(2)} MB`;
             }
           }
         },
