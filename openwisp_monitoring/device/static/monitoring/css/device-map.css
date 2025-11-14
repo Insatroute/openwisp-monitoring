@@ -30,10 +30,10 @@
   color: #fff;
 }
 #device-map-container {
-  margin: 50px auto;
+  margin: 30px 66px 0px 41px !important;
   position: relative;
   height: 300px;
-  width: 90%;
+  width: 92%;
   border: 1px solid rgba(0, 0, 0, 0.3);
 }
 #device-map-container .ow-loading-spinner {
