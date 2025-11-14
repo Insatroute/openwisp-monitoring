@@ -134,69 +134,50 @@
     (function () {
       'use strict';
 
-      /* ---------- FALLBACK (used if no device-usage-data script is present) ---------- */
-      const FALLBACK_RESPONSE = {
-        "type": "DeviceMonitoring",
-        "interfaces": [
-          { "type": "mobile", "name": "modem", "statistics": { "rx_bytes": 22187150, "tx_bytes": 45236625 } },
-          { "type": "mobile", "name": "modem2", "statistics": { "rx_bytes": 21218234, "tx_bytes": 45236888 } },
-          { "type": "ethernet", "name": "eth0", "statistics": { "rx_bytes": 384568998, "tx_bytes": 49336767 } },
-          { "type": "ethernet", "name": "eth1", "statistics": { "rx_bytes": 86859089, "tx_bytes": 249242488 } },
-          {
-            "mobile": {
-              "operator_name": "Airtel",
-              "power_status": "on",
-              "operator_code": "40587",
-              "model": "EC25-AFW",
-              "signal": {
-                "lte": { "rsrq": -10, "rsrp": -97, "snr": 22, "csq": 31, "rssi": -51 }
-              },
-              "manufacturer": "Quectel",
-              "imei": "356789012345678",
-              "connection_status": "connected"
-            },
-            "type": "mobile",
-            "name": "modem",
-            "up": true
-          },
-          {
-            "mobile": {
-              "operator_name": "Jio",
-              "power_status": "on",
-              "operator_code": "40584",
-              "model": "EM9191",
-              "signal": {
-                "5g": {
-                  "snr": 18,
-                  "csq": 21,
-                  "rsrq": -12,
-                  "rsrp": -103,
-                  "rssi": -90 
-                }
-              },
-              "manufacturer": "Sierra",
-              "imei": "862349012345679",
-              "connection_status": "connected"
-            },
-            "type": "mobile",
-            "name": "modem2",
-            "up": true
-          }
-        ]
+      /* ---------- Read values directly from device_data.cellular.* via Django ---------- */
+      // SIM1 (modem)
+      const DJ_M1 = {
+        operator: "{{ device_data.cellular.modem.operator|default:'—' }}",
+        nettype: "{{ device_data.cellular.modem.nettype|default:'—' }}",
+        csq: "{{ device_data.cellular.modem.csq|default:'—' }}",
+        rsrp: "{{ device_data.cellular.modem.rsrp|default:'—' }}",
+        rsrq: "{{ device_data.cellular.modem.rsrq|default:'—' }}",
+        // some payloads use SINR instead of SNR
+        snr: "{{ device_data.cellular.modem.sinr|default:'—' }}",
+        // RSSI not present in your sample cellular block; leave as '—'
+        rssi: "{{ device_data.cellular.modem.rssi|default:'—' }}"
       };
 
-      /* ---------- Pull from device_data if provided; else fallback ---------- */
-      let source = {};
-      const jsonEl = document.getElementById('device-usage-data');
-      try { source = jsonEl ? JSON.parse(jsonEl.textContent || '{}') : {}; } catch (_) { source = {}; }
-      console.log('Cellular Signal Charts - source data:=======', source);
-      if (!source || !Array.isArray(source.interfaces) || !source.interfaces.length) {
-        source = FALLBACK_RESPONSE;
-      }
+      // SIM2 (modem2)
+      const DJ_M2 = {
+        operator: "{{ device_data.cellular.modem2.operator|default:'—' }}",
+        nettype: "{{ device_data.cellular.modem2.nettype|default:'—' }}",
+        csq: "{{ device_data.cellular.modem2.csq|default:'—' }}",
+        rsrp: "{{ device_data.cellular.modem2.rsrp|default:'—' }}",
+        rsrq: "{{ device_data.cellular.modem2.rsrq|default:'—' }}",
+        snr: "{{ device_data.cellular.modem2.sinr|default:'—' }}",
+        rssi: "{{ device_data.cellular.modem2.rssi|default:'—' }}"
+      };
 
-      /* ---------- Helpers (unchanged functionality) ---------- */
-      const coerceNumber = v => v == null ? NaN : (typeof v === 'number' ? v : (Number.isFinite(parseFloat(String(v).trim())) ? parseFloat(String(v).trim()) : NaN));
-      function sevenDaySeries(val) { const x = [], y = [], now = new Date(); for (let i = 6; i >= 0; i--) { const d = new Date(now); d.setDate(now.getDate() - i); d.setHours(12, 0, 0, 0); x.push(d); y.push(Number(val)); } return { x, y }; }
+      /* ---------- Helpers (unchanged) ---------- */
+      const coerceNumber = v => {
+        if (v == null) return NaN;
+        const s = String(v).trim();
+        if (!s || s === '—') return NaN;
+        const n = Number(s);
+        return Number.isFinite(n) ? n : NaN;
+      };
+      function sevenDaySeries(val) {
+        const x = [], y = [], now = new Date();
+        for (let i = 6; i >= 0; i--) {
+          const d = new Date(now);
+          d.setDate(now.getDate() - i);
+          d.setHours(12, 0, 0, 0);
+          x.push(d);
+          y.push(Number(val));
+        }
+        return { x, y };
+      }
       function plotAndAttachResize(targetId, traces, layout) {
         const el = document.getElementById(targetId);
         Plotly.newPlot(el, traces, layout, { displayModeBar: false, responsive: true });
@@ -214,55 +195,45 @@
         if (csq >= 12 && csq <= 31) return { label: 'Excellent', color: '#22c55e', dbm: '-89 to ≥-51 dBm' };
         return { label: 'Unknown', color: '#9ca3af', dbm: 'Unknown' };
       }
-      function buildModemLegendLabel(prefix, mobile) {
+      function buildModemLegendLabel(prefix, operator, nettype) {
         const pieces = [];
-        if (mobile.operator_name) pieces.push(mobile.operator_name);
-        const netType = mobile.signal?.lte ? 'LTE' : mobile.signal?.['5g'] ? '5G' : null;
-        if (netType) pieces.push(`(${netType})`);
+        if (operator && operator !== '—') pieces.push(operator);
+        if (nettype && nettype !== '—') pieces.push(`(${nettype})`);
         return pieces.length ? `${prefix} — ${pieces.join(' ')}` : prefix;
       }
-      function buildMetaLine(m1Mobile, m2Mobile) {
-        const parts = [];
-        if (m1Mobile && (m1Mobile.operator_name || m1Mobile.signal)) {
-          const bits = [m1Mobile.operator_name, m1Mobile.signal?.lte ? 'LTE' : m1Mobile.signal?.['5g'] ? '5G' : null].filter(Boolean).join(' • ');
-          if (bits) parts.push(`M1: ${bits}`);
-        }
-        if (m2Mobile && (m2Mobile.operator_name || m2Mobile.signal)) {
-          const bits = [m2Mobile.operator_name, m2Mobile.signal?.lte ? 'LTE' : m2Mobile.signal?.['5g'] ? '5G' : null].filter(Boolean).join(' • ');
-          if (bits) parts.push(`M2: ${bits}`);
-        }
-        return parts.join('  |  ');
-      }
-      function extractMetrics(mobile) {
-        const signal = mobile?.signal?.lte || mobile?.signal?.['5g'] || {};
-        return {
-          csq: coerceNumber(signal.csq),
-          rsrp: coerceNumber(signal.rsrp),
-          rsrq: coerceNumber(signal.rsrq),
-          rssi: coerceNumber(signal.rssi),
-          snr: coerceNumber(signal.snr)
-        };
-      }
 
-      /* ---------- Get modem & build series (no API, only local data) ---------- */
-      const interfaces = source?.interfaces || [];
-
-      // Find interfaces named modem / modem2 that have a 'mobile' object (signal data)
-      const modem1Interface = interfaces.find(i => i?.type === 'mobile' && i?.name === 'modem' && i.mobile) || {};
-      const modem2Interface = interfaces.find(i => i?.type === 'mobile' && i?.name === 'modem2' && i.mobile) || {};
-
-      const m1Mobile = modem1Interface.mobile || {};
-      const m2Mobile = modem2Interface.mobile || {};
+      /* ---------- Build series from Django values ---------- */
+      const m1m = {
+        csq: coerceNumber(DJ_M1.csq),
+        rsrp: coerceNumber(DJ_M1.rsrp),
+        rsrq: coerceNumber(DJ_M1.rsrq),
+        rssi: coerceNumber(DJ_M1.rssi),
+        snr: coerceNumber(DJ_M1.snr)
+      };
+      const m2m = {
+        csq: coerceNumber(DJ_M2.csq),
+        rsrp: coerceNumber(DJ_M2.rsrp),
+        rsrq: coerceNumber(DJ_M2.rsrq),
+        rssi: coerceNumber(DJ_M2.rssi),
+        snr: coerceNumber(DJ_M2.snr)
+      };
 
       // Meta line
       const metaEl = document.getElementById('cellular_signal_meta');
-      if (metaEl) metaEl.textContent = buildMetaLine(m1Mobile, m2Mobile);
+      if (metaEl) {
+        const parts = [];
+        const m1Bits = [DJ_M1.operator, DJ_M1.nettype].filter(v => v && v !== '—').join(' • ');
+        const m2Bits = [DJ_M2.operator, DJ_M2.nettype].filter(v => v && v !== '—').join(' • ');
+        if (m1Bits) parts.push(`M1: ${m1Bits}`);
+        if (m2Bits) parts.push(`M2: ${m2Bits}`);
+        metaEl.textContent = parts.join('  |  ');
+      }
 
-      // Extract metrics
-      const m1m = extractMetrics(m1Mobile);
-      const m2m = extractMetrics(m2Mobile);
+      // Names / legend
+      const name1 = buildModemLegendLabel('Sim1', DJ_M1.operator, DJ_M1.nettype);
+      const name2 = buildModemLegendLabel('Sim2', DJ_M2.operator, DJ_M2.nettype);
 
-      // Build 7-day repeated series (placeholder timeline)
+      // Repeated 7-day series
       const csq1 = sevenDaySeries(Number.isFinite(m1m.csq) ? m1m.csq : 0);
       const csq2 = sevenDaySeries(Number.isFinite(m2m.csq) ? m2m.csq : 0);
       const rsrp1 = sevenDaySeries(Number.isFinite(m1m.rsrp) ? m1m.rsrp : -120);
@@ -273,12 +244,6 @@
       const rssi2 = sevenDaySeries(Number.isFinite(m2m.rssi) ? m2m.rssi : -120);
       const snr1 = sevenDaySeries(Number.isFinite(m1m.snr) ? m1m.snr : 0);
       const snr2 = sevenDaySeries(Number.isFinite(m2m.snr) ? m2m.snr : 0);
-
-      // Names / quality
-      const name1 = buildModemLegendLabel('Sim1', m1Mobile);
-      const name2 = buildModemLegendLabel('Sim2', m2Mobile);
-      const quality1 = getSignalQuality(m1m.csq);
-      const quality2 = getSignalQuality(m2m.csq);
 
       /* ----- Layouts (unchanged) ----- */
       const csqLayout = {
@@ -328,27 +293,34 @@
         legend: commonLegend, plot_bgcolor: '#ffffff', paper_bgcolor: '#ffffff'
       };
 
-      /* ---------- Plot all 5 charts ---------- */
+      /* ---------- Plot all 5 charts (colors unchanged) ---------- */
+      // CSQ
+      const q1 = getSignalQuality(m1m.csq);
+      const q2 = getSignalQuality(m2m.csq);
       plotAndAttachResize('cellular_signal_div_csq', [
-        { x: csq1.x, y: csq1.y, type: 'scatter', mode: 'lines+markers', name: `${name1} (${getSignalQuality(m1m.csq).label})`, line: { color: '#ff7f0e', width: 2.5 }, marker: { size: 7, color: '#ff7f0e' } },
-        { x: csq2.x, y: csq2.y, type: 'scatter', mode: 'lines+markers', name: `${name2} (${getSignalQuality(m2m.csq).label})`, line: { color: '#1f77b4', width: 2.5 }, marker: { size: 7, color: '#1f77b4' } }
+        { x: csq1.x, y: csq1.y, type: 'scatter', mode: 'lines+markers', name: `${name1} (${q1.label})`, line: { color: '#ff7f0e', width: 2.5 }, marker: { size: 7, color: '#ff7f0e' } },
+        { x: csq2.x, y: csq2.y, type: 'scatter', mode: 'lines+markers', name: `${name2} (${q2.label})`, line: { color: '#1f77b4', width: 2.5 }, marker: { size: 7, color: '#1f77b4' } }
       ], csqLayout);
 
+      // RSRP
       plotAndAttachResize('cellular_signal_div_rsrp', [
         { x: rsrp1.x, y: rsrp1.y, type: 'scatter', mode: 'lines+markers', name: name1, line: { width: 2, color: '#ff7f0e' }, marker: { size: 6, color: '#ff7f0e' } },
         { x: rsrp2.x, y: rsrp2.y, type: 'scatter', mode: 'lines+markers', name: name2, line: { width: 2, color: '#1f77b4' }, marker: { size: 6, color: '#1f77b4' } }
       ], rsrpLayout);
 
+      // RSRQ
       plotAndAttachResize('cellular_signal_div_rsrq', [
         { x: rsrq1.x, y: rsrq1.y, type: 'scatter', mode: 'lines+markers', name: name1, line: { width: 2, color: '#ff7f0e' }, marker: { size: 6, color: '#ff7f0e' } },
         { x: rsrq2.x, y: rsrq2.y, type: 'scatter', mode: 'lines+markers', name: name2, line: { width: 2, color: '#1f77b4' }, marker: { size: 6, color: '#1f77b4' } }
       ], rsrqLayout);
 
+      // RSSI (may be missing; if so, defaults to -120 series)
       plotAndAttachResize('cellular_signal_div_rssi', [
         { x: rssi1.x, y: rssi1.y, type: 'scatter', mode: 'lines+markers', name: name1, line: { width: 2, color: '#ff7f0e' }, marker: { size: 6, color: '#ff7f0e' } },
         { x: rssi2.x, y: rssi2.y, type: 'scatter', mode: 'lines+markers', name: name2, line: { width: 2, color: '#1f77b4' }, marker: { size: 6, color: '#1f77b4' } }
       ], rssiLayout);
 
+      // SNR/SINR
       plotAndAttachResize('cellular_signal_div_snr', [
         { x: snr1.x, y: snr1.y, type: 'scatter', mode: 'lines+markers', name: name1, line: { width: 2, color: '#ff7f0e' }, marker: { size: 6, color: '#ff7f0e' } },
         { x: snr2.x, y: snr2.y, type: 'scatter', mode: 'lines+markers', name: name2, line: { width: 2, color: '#1f77b4' }, marker: { size: 6, color: '#1f77b4' } }
