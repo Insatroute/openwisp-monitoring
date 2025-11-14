@@ -159,6 +159,9 @@
         rssi: "{{ device_data.cellular.modem2.rssi|default:'—' }}"
       };
 
+      console.log('DJ_M1:====', DJ_M1)
+      console.log('DJ_M2:====', DJ_M2);
+      
       /* ---------- Helpers (unchanged) ---------- */
       const coerceNumber = v => {
         if (v == null) return NaN;

@@ -92,15 +92,6 @@
   <div class="chart-container">
     <div class="chart-title-row">
       <h3 class="chart-title">General Traffic</h3>
-      <div class="chart-controls">
-        <select id="rangeSelect" class="range-select" title="Time range">
-          <option value="7">Last 7 days</option>
-          <option value="15">Last 15 days</option>
-          <option value="30" selected>Last 1 month</option>
-          <option value="180">Last 6 months</option>
-          <option value="365">Last 1 year</option>
-        </select>
-      </div>
     </div>
     <div id="trafficCharts"></div>
   </div>
@@ -132,6 +123,7 @@
   const scriptEl = document.getElementById('device-usage-data');
   let source = {};
   try { source = scriptEl ? JSON.parse(scriptEl.textContent || '{}') : {}; } catch (_) {}
+  console.log('Device Usage Source:====', source);
   // if (!source || !Array.isArray(source.interfaces) || !source.interfaces.length) source = FALLBACK_RESPONSE;
 
   /* ---------- Helpers ---------- */
