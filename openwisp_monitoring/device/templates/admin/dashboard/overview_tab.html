@@ -1,7 +1,6 @@
 {% load leaflet_tags i18n %}
 {% load i18n %}
 {% load static %}
-
 <script type="text/javascript">
   window._owGeoMapConfig = {
     geoJsonUrl: '{{ monitoring_location_geojson_url }}',
@@ -9,11 +8,29 @@
   }
 </script>
 
-<script type="text/javascript" src={% static 'monitoring/js/lib/netjsongraph.min.js' %}></script>
-<script type="text/javascript" src={% static 'monitoring/js/lib/leaflet.fullscreen.min.js' %}></script>
+<!-- Chart.js v3+ -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+
+<script type="text/javascript" src={%static 'monitoring/js/lib/netjsongraph.min.js' %}></script>
+<script type="text/javascript" src={%static 'monitoring/js/lib/leaflet.fullscreen.min.js' %}></script>
+
+<div id='leaflet-config'>
+  {% autoescape on %}{% leaflet_json_config %}{% endautoescape %}
+</div>
+
+
+<div class="map-view">
+  <div id="device-map-container">
+    <div class="no-data">
+      <p>{% trans 'No map data to show' %}.</p>
+      <p><a class="button submit" href="#close">Close</a></p>
+    </div>
+    <div class="ow-loading-spinner"></div>
+  </div>
+</div>
 
 <div class="card-grid">
-
   <!-- Devices Card -->
   <div class="card">
     <h4>Devices</h4>
@@ -144,8 +161,8 @@
       marker: { colors: colors || [] }
     }];
     const layout = {
-      height: Math.max(140, Math.floor(rect.height)),
-      width: rect.width,
+      height: Math.max(140, Math.floor(rect.height || 150)),
+      width: rect.width || el.clientWidth || 200,
       margin: { l: 6, r: 6, t: 6, b: 6 },
       showlegend: false,
       paper_bgcolor: 'rgba(0,0,0,0)',
@@ -157,6 +174,7 @@
         font: { size: 13, color: '#2b2f36' }
       }]
     };
+    if (typeof Plotly === 'undefined') return;
     Plotly.newPlot(el, data, layout, { responsive: true, displayModeBar: false });
 
     // build legend
@@ -193,12 +211,7 @@
       node.classList.toggle('is-off', !active[idx]);
     });
 
-    // keep snug on resize
-    const ro = new ResizeObserver(() => {
-      const r = el.getBoundingClientRect();
-      Plotly.relayout(el, { width: r.width, height: Math.max(140, Math.floor(r.height)) });
-    });
-    ro.observe(el);
+    // NOTE: Removed ResizeObserver here to avoid scroll jitter.
   }
 
   /* ================== DYNAMIC DATA FROM YOUR API ================== */
@@ -518,7 +531,7 @@
     }
   }
 
-   @media screen and (max-width: 1536px) {
+  @media screen and (max-width: 1536px) {
     .ow-mini-card {
       max-width: 1000px;
     }

@@ -4,22 +4,113 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 
-<div class="card-grid-two graph-grid">
-    <!-- Top Applications -->
-    <div class="card-app top-apps">
-        <h4><span>Top Applications</span></h4>
-        <div class="chart-container" id="top-apps-chart-container">
-            <div id="chart-loading" class="loading-text">Loading…</div>
-            <canvas id="topAppsChart"></canvas>
+<div class="home-datausage-wrap">
+
+    <!-- ================= SUMMARY ROW ================= -->
+    <div class="home-datausage-summary-section">
+        <h4 class="home-datausage-summary-title">Summary</h4>
+
+        <div class="home-datausage-summary-grid">
+            <!-- Total Data Usage -->
+            <div class="home-datausage-summary-card">
+                <div class="home-datausage-summary-label">Total Data Usage</div>
+                <div class="home-datausage-summary-main">
+                    <span id="home-datausage-total-value" class="home-datausage-summary-value">0.00</span>
+                    <span class="home-datausage-summary-unit">MB</span>
+                </div>
+                <div class="home-datausage-summary-metrics">
+                    <div class="home-datausage-summary-metric">
+                        <span class="home-datausage-summary-metric-label">Sent:</span>
+                        <span id="home-datausage-total-sent" class="home-datausage-summary-metric-value">0.00 MB</span>
+                    </div>
+                    <div class="home-datausage-summary-metric">
+                        <span class="home-datausage-summary-metric-label">Received:</span>
+                        <span id="home-datausage-total-recv" class="home-datausage-summary-metric-value">0.00 MB</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cellular -->
+            <div class="home-datausage-summary-card">
+                <div class="home-datausage-summary-label">Cellular</div>
+                <div class="home-datausage-summary-main">
+                    <span id="home-datausage-cellular-value" class="home-datausage-summary-value">0.00</span>
+                    <span class="home-datausage-summary-unit">MB</span>
+                </div>
+                <div class="home-datausage-summary-metrics">
+                    <div class="home-datausage-summary-metric">
+                        <span class="home-datausage-summary-metric-label">Sent:</span>
+                        <span id="home-datausage-cellular-sent" class="home-datausage-summary-metric-value">0.00
+                            MB</span>
+                    </div>
+                    <div class="home-datausage-summary-metric">
+                        <span class="home-datausage-summary-metric-label">Received:</span>
+                        <span id="home-datausage-cellular-recv" class="home-datausage-summary-metric-value">0.00
+                            MB</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Wired -->
+            <div class="home-datausage-summary-card">
+                <div class="home-datausage-summary-label">Wired</div>
+                <div class="home-datausage-summary-main">
+                    <span id="home-datausage-wired-value" class="home-datausage-summary-value">0.00</span>
+                    <span class="home-datausage-summary-unit">MB</span>
+                </div>
+                <div class="home-datausage-summary-metrics">
+                    <div class="home-datausage-summary-metric">
+                        <span class="home-datausage-summary-metric-label">Sent:</span>
+                        <span id="home-datausage-wired-sent" class="home-datausage-summary-metric-value">0.00 MB</span>
+                    </div>
+                    <div class="home-datausage-summary-metric">
+                        <span class="home-datausage-summary-metric-label">Received:</span>
+                        <span id="home-datausage-wired-recv" class="home-datausage-summary-metric-value">0.00 MB</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Wireless -->
+            <div class="home-datausage-summary-card">
+                <div class="home-datausage-summary-label">Wireless</div>
+                <div class="home-datausage-summary-main">
+                    <span id="home-datausage-wireless-value" class="home-datausage-summary-value">0.00</span>
+                    <span class="home-datausage-summary-unit">MB</span>
+                </div>
+                <div class="home-datausage-summary-metrics">
+                    <div class="home-datausage-summary-metric">
+                        <span class="home-datausage-summary-metric-label">Sent:</span>
+                        <span id="home-datausage-wireless-sent" class="home-datausage-summary-metric-value">0.00
+                            MB</span>
+                    </div>
+                    <div class="home-datausage-summary-metric">
+                        <span class="home-datausage-summary-metric-label">Received:</span>
+                        <span id="home-datausage-wireless-recv" class="home-datausage-summary-metric-value">0.00
+                            MB</span>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
-    <!-- Top Branches (Top Devices) -->
-    <div class="card-app top-apps">
-        <h4><span>Top Branches</span></h4>
-        <div class="chart-container" id="top-devices-chart-container">
-            <div id="chart-loading-devices" class="loading-text">Loading…</div>
-            <canvas id="topDevicesChart"></canvas>
+    <!-- ================= GRAPHS ROW ================= -->
+    <div class="home-datausage-graph-grid">
+        <!-- Top Applications -->
+        <div class="home-datausage-card home-datausage-top-apps">
+            <h4><span>Top Applications</span></h4>
+            <div class="home-datausage-chart-container" id="top-apps-chart-container">
+                <div id="chart-loading" class="home-datausage-loading-text">Loading…</div>
+                <canvas id="topAppsChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Top Branches (Top Devices) -->
+        <div class="home-datausage-card home-datausage-top-branches">
+            <h4><span>Top Branches</span></h4>
+            <div class="home-datausage-chart-container" id="top-devices-chart-container">
+                <div id="chart-loading-devices" class="home-datausage-loading-text">Loading…</div>
+                <canvas id="topDevicesChart"></canvas>
+            </div>
         </div>
     </div>
 </div>
@@ -60,7 +151,7 @@
 
             const chartContainer = document.getElementById('top-apps-chart-container');
             if (chartContainer) {
-                const loadingElem = chartContainer.querySelector('.loading-text');
+                const loadingElem = chartContainer.querySelector('.home-datausage-loading-text');
                 if (loadingElem) loadingElem.style.display = 'none';
             }
 
@@ -232,12 +323,96 @@
     // Initial render + refresh intervals
     fetchAndDisplayTopAppsChart();
     fetchAndDisplayTopDevicesChart();
-    setInterval(fetchAndDisplayTopAppsChart, 30000);   // 30s
+    setInterval(fetchAndDisplayTopAppsChart, 30000);     // 30s
     setInterval(fetchAndDisplayTopDevicesChart, 300000); // 5 min
 </script>
 
 <style>
-    .card-grid-two {
+    .home-datausage-wrap {
+        padding-top: 4px;
+    }
+
+    /* ====== SUMMARY ROW ====== */
+
+    .home-datausage-summary-section {
+        padding: 0 40px 10px 40px;
+    }
+
+    .home-datausage-summary-title {
+        margin: 0 0 6px 0;
+        font-size: 14px;
+        font-weight: 600;
+        color: #4b5563;
+    }
+
+    .home-datausage-summary-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(160px, 1fr));
+        gap: 20px;
+        background-color: #ffffff;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+        padding: 16px 18px;
+    }
+
+    .home-datausage-summary-card {
+        padding: 4px 6px;
+        border-right: 1px solid #e5e7eb;
+    }
+
+    .home-datausage-summary-card:last-child {
+        border-right: none;
+    }
+
+    .home-datausage-summary-label {
+        font-size: 12px;
+        color: #6b7280;
+        margin-bottom: 4px;
+    }
+
+    .home-datausage-summary-main {
+        display: flex;
+        align-items: baseline;
+        gap: 4px;
+        margin-bottom: 6px;
+    }
+
+    .home-datausage-summary-value {
+        font-size: 22px;
+        font-weight: 700;
+        color: #111827;
+    }
+
+    .home-datausage-summary-unit {
+        font-size: 11px;
+        font-weight: 600;
+        color: #6b7280;
+    }
+
+    .home-datausage-summary-metrics {
+        font-size: 11px;
+        color: #4b5563;
+    }
+
+    .home-datausage-summary-metric {
+        display: flex;
+        gap: 4px;
+        line-height: 1.3;
+    }
+
+    .home-datausage-summary-metric-label {
+        color: #6b7280;
+    }
+
+    .home-datausage-summary-metric-value {
+        color: #16a34a;
+        /* green text similar to arrow up style */
+        font-weight: 500;
+    }
+
+    /* ====== GRAPH ROW ====== */
+
+    .home-datausage-graph-grid {
         display: grid;
         grid-gap: 20px;
         grid-template-columns: repeat(2, 1fr);
@@ -245,7 +420,7 @@
         padding: 10px 40px 10px 40px;
     }
 
-    .card-app {
+    .home-datausage-card {
         background-color: #ffffff;
         border-radius: 8px;
         box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
@@ -253,7 +428,7 @@
         text-align: center;
     }
 
-    .card-app h4 {
+    .home-datausage-card h4 {
         margin-top: 0;
         font-size: 14px;
         margin-bottom: 0.4rem;
@@ -261,51 +436,74 @@
         text-align: left;
     }
 
-    .card-app p {
-        font-size: 13px;
-        font-weight: bold;
-        color: #555;
-    }
-
-    .chart-container {
+    .home-datausage-chart-container {
         position: relative;
         width: 100%;
         height: 270px;
     }
 
-    .chart-container canvas {
+    .home-datausage-chart-container canvas {
         width: 100% !important;
         height: 270px !important;
     }
 
-    .loading-text {
+    .home-datausage-loading-text {
         font-size: 13px;
         color: #666;
         text-align: center;
         margin-top: 40px;
     }
 
-    .graph-grid .card {
-        height: 230px !important;
-    }
+    @media screen and (max-width: 1280px) {
+        .home-datausage-summary-grid {
+            grid-template-columns: repeat(2, minmax(180px, 1fr));
+        }
 
-    #topAppsChart {
-        height: 270px !important;
+        .home-datausage-summary-card {
+            border-right: none;
+            border-bottom: 1px solid #e5e7eb;
+            padding-bottom: 10px;
+        }
+
+        .home-datausage-summary-card:nth-child(3),
+        .home-datausage-summary-card:nth-child(4) {
+            padding-top: 8px;
+        }
+
+        .home-datausage-summary-card:last-child {
+            border-bottom: none;
+        }
     }
 
     @media screen and (max-width: 1024px) {
-        .card-grid-two {
+        .home-datausage-graph-grid {
             grid-template-columns: 1fr;
         }
     }
 
     @media screen and (max-width: 600px) {
-        .card-grid-two {
-            grid-template-columns: 1fr;
+
+        .home-datausage-summary-section,
+        .home-datausage-graph-grid {
             padding: 10px 16px;
         }
 
-        .chart-container canvas {
+        .home-datausage-summary-grid {
+            grid-template-columns: 1fr;
+            padding: 12px 12px;
+        }
+
+        .home-datausage-summary-card {
+            border-right: none;
+            border-bottom: 1px solid #e5e7eb;
+            padding-bottom: 8px;
+        }
+
+        .home-datausage-summary-card:last-child {
+            border-bottom: none;
+        }
+
+        .home-datausage-chart-container canvas {
             height: 220px !important;
         }
     }

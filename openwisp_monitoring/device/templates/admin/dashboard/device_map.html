@@ -111,17 +111,6 @@
           Data Usage
         </button>
 
-        <!-- 4) SECURITY -->
-        <button class="home-tablink" role="tab" aria-selected="false" aria-controls="home-pane-security"
-          id="home-tab-security">
-          Security
-        </button>
-
-        <!-- 5) MAP (last) -->
-        <button class="home-tablink" role="tab" aria-selected="false" aria-controls="home-pane-map" id="home-tab-map">
-          Map
-        </button>
-
       </div>
 
       <!-- ======================= TAB CONTENTS ======================= -->
@@ -143,17 +132,6 @@
         <section id="home-pane-data-usage" class="home-tab-pane" role="tabpanel" aria-labelledby="home-tab-data-usage">
           {% include "./data_usage_tab.html" %}
         </section>
-
-        <!-- SECURITY -->
-        <section id="home-pane-security" class="home-tab-pane" role="tabpanel" aria-labelledby="home-tab-security">
-          {% include "./security_tab.html" %}
-        </section>
-
-        <!-- MAP (last) -->
-        <section id="home-pane-map" class="home-tab-pane" role="tabpanel" aria-labelledby="home-tab-map">
-          {% include "./new_map.html" %}
-        </section>
-
       </div>
 
     </div>
@@ -170,10 +148,18 @@
         t.setAttribute('aria-selected', String(t.id === 'home-tab-' + suffix))
       );
 
-      // toggle panes
+      // toggle panes visibility
       homePanes.forEach(p =>
         p.classList.toggle('home-active', p.id === 'home-pane-' + suffix)
       );
+
+      // ALWAYS go back to top so tab bar + map + cards are visible
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+
+      // Broadcast a custom event so inner tabs (overview/etc.) can react
+      document.dispatchEvent(new CustomEvent('home:tabchange', {
+        detail: { suffix }
+      }));
     }
 
     homeTabs.forEach(btn => {
