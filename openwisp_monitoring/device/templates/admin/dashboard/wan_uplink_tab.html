@@ -1,97 +1,104 @@
-{# WAN Uplink tab: summary chips + filters + table #}
+{# wan_uplink.html - WAN Uplink tab: single summary card + table #}
 
 <style>
-    /* ========= SUMMARY BAR ========= */
-    .home-wan-summary-bar {
-        display: flex;
-        gap: 115px;
-        padding: 12px 8px 6px;
-        align-items: center;
+    /* ======= SUMMARY CARD (LIKE DATA USAGE SUMMARY) ======= */
+    .wan-summary-wrap {
+        max-width: 1200px;
+        margin: 10px auto 12px;
         font-family: inherit;
-        max-width: 800px;
-        /* NEW: limit width */
-        margin: 8px auto 6px;
-        /* NEW: center inside card */
     }
 
-    .home-wan-summary-item {
+    .wan-summary-title {
+        font-size: 16px;
+        font-weight: 700;
+        color: #111827;
+        margin: 0 0 10px 0;
+    }
+
+    .wan-summary-card {
+        background: #ffffff;
+        border-radius: 12px;
+        /* box-shadow: 0 1px 3px rgba(15, 23, 42, .08); */
+        border: 1px solid #f3f4f6;
+        padding: 14px 18px;
+        display: flex;
+        gap: 0;
+    }
+
+    .wan-summary-item {
+        flex: 1 1 0;
+        padding: 4px 18px;
         display: flex;
         flex-direction: column;
         gap: 4px;
-        font-size: 13px;
     }
 
-    .home-wan-summary-label {
+    .wan-summary-item+.wan-summary-item {
+        border-left: 1px solid #e5e7eb;
+        /* vertical dash between items */
+    }
+
+    .wan-summary-label {
+        font-size: 13px;
+        font-weight: 500;
         color: #6b7280;
     }
 
-    .home-wan-summary-value {
+    .wan-summary-main {
+        display: flex;
+        align-items: baseline;
+        gap: 4px;
+    }
+
+    .wan-summary-value {
         font-size: 20px;
         font-weight: 700;
-        display: flex;
-        align-items: center;
-        gap: 6px;
+        color: #111827;
     }
 
-    .home-wan-dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 999px;
-        display: inline-block;
+    .wan-summary-unit {
+        font-size: 12px;
+        color: #9ca3af;
     }
 
-    .home-wan-dot-green {
-        background: #22c55e;
-    }
-
-    .home-wan-dot-amber {
-        background: #f59e0b;
-    }
-
-    .home-wan-dot-gray {
-        background: #9ca3af;
-    }
-
-    .home-wan-dot-silver {
-        background: #d1d5db;
-    }
-
-    .home-wan-summary-spacer {
-        flex: 1 1 auto;
-    }
-
-    .home-wan-summary-updated {
+    .wan-summary-sub {
         font-size: 11px;
         color: #9ca3af;
     }
 
-    /* ========= FILTER ROW ========= */
-    .home-wan-filter-row {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        padding: 8px 8px 12px;
-        align-items: center;
-    }
-
-    .home-wan-filter-row select,
-    .home-wan-filter-row input[type="text"] {
-        appearance: none;
-        border: 1px solid #e5e7eb;
-        border-radius: 6px;
-        font-size: 12px;
-        padding: 6px 8px;
-        min-width: 130px;
-    }
-
-    .home-wan-filter-row input[type="text"] {
-        min-width: 180px;
-    }
-
-    .home-wan-filter-label {
-        font-size: 12px;
-        color: #6b7280;
+    .wan-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 999px;
+        display: inline-block;
         margin-right: 4px;
+    }
+
+    .wan-dot-green {
+        background: #22c55e;
+    }
+
+    .wan-dot-amber {
+        background: #f59e0b;
+    }
+
+    .wan-dot-gray {
+        background: #9ca3af;
+    }
+
+    .wan-dot-silver {
+        background: #d1d5db;
+    }
+
+    @media (max-width: 900px) {
+        .wan-summary-card {
+            flex-direction: column;
+        }
+
+        .wan-summary-item+.wan-summary-item {
+            border-left: none;
+            border-top: 1px solid #e5e7eb;
+        }
     }
 
     /* ========= TABLE SHELL ========= */
@@ -100,22 +107,9 @@
         border: 1px solid #e5e7eb;
         box-shadow: 0 6px 18px rgba(15, 23, 42, .06);
         overflow: hidden;
-        margin: 10px 0 0;
+        margin: 0 0 0;
     }
 
-    .home-wan-table-header {
-        padding: 10px 12px 0;
-        border-bottom: 1px solid #eef0f3;
-    }
-
-    .home-wan-table-title {
-        font-size: 14px;
-        font-weight: 700;
-        color: #111827;
-        padding: 0 8px 8px;
-    }
-
-    /* ========= TABLE ========= */
     .home-wan-table {
         width: 100%;
         border-collapse: separate;
@@ -220,110 +214,65 @@
         white-space: nowrap;
     }
 
-    /* ========= RESPONSIVE ========= */
     @media (max-width: 900px) {
-        .home-wan-summary-bar {
-            flex-wrap: wrap;
-            gap: 16px;
-        }
-
-        .home-wan-summary-spacer {
-            display: none;
-        }
-
         .home-wan-table thead {
             font-size: 11px;
         }
     }
 </style>
 
-<div class="home-wan-table-wrap">
-
-    <!-- Top summary bar -->
-    <div class="home-wan-summary-bar">
-        <div class="home-wan-summary-item">
-            <span class="home-wan-summary-label">Total</span>
-            <span class="home-wan-summary-value" id="home-wan-total">0</span>
+{# ====== SINGLE SUMMARY CARD ====== #}
+<div class="wan-summary-wrap">
+    <div class="wan-summary-title">Summary</div>
+    <div class="wan-summary-card">
+        <!-- Total -->
+        <div class="wan-summary-item">
+            <div class="wan-summary-label">Total WAN Uplinks</div>
+            <div class="wan-summary-main">
+                <span class="wan-summary-value" id="home-wan-total">0</span>
+                <span class="wan-summary-unit">links</span>
+            </div>
+            <div class="wan-summary-sub">All WAN interfaces (including cellular)</div>
         </div>
 
-        <div class="home-wan-summary-item">
-            <span class="home-wan-summary-label">Connected</span>
-            <span class="home-wan-summary-value">
-                <span class="home-wan-dot home-wan-dot-green"></span>
-                <span id="home-wan-connected">0</span>
-            </span>
+        <!-- Connected -->
+        <div class="wan-summary-item">
+            <div class="wan-summary-label">Connected</div>
+            <div class="wan-summary-main">
+                <span class="wan-dot wan-dot-green"></span>
+                <span class="wan-summary-value" id="home-wan-connected">0</span>
+            </div>
+            <div class="wan-summary-sub">Currently online</div>
         </div>
 
-        <div class="home-wan-summary-item">
-            <span class="home-wan-summary-label">Abnormal</span>
-            <span class="home-wan-summary-value">
-                <span class="home-wan-dot home-wan-dot-amber"></span>
-                <span id="home-wan-abnormal">0</span>
-            </span>
+        <!-- Abnormal -->
+        <div class="wan-summary-item">
+            <div class="wan-summary-label">Abnormal</div>
+            <div class="wan-summary-main">
+                <span class="wan-dot wan-dot-amber"></span>
+                <span class="wan-summary-value" id="home-wan-abnormal">0</span>
+            </div>
+            <div class="wan-summary-sub">Degraded / error state</div>
         </div>
 
-        <div class="home-wan-summary-item">
-            <span class="home-wan-summary-label">Disconnected</span>
-            <span class="home-wan-summary-value">
-                <span class="home-wan-dot home-wan-dot-gray"></span>
-                <span id="home-wan-disconnected">0</span>
-            </span>
-        </div>
-
-        <div class="home-wan-summary-item">
-            <span class="home-wan-summary-label">Disabled</span>
-            <span class="home-wan-summary-value">
-                <span class="home-wan-dot home-wan-dot-silver"></span>
+        <!-- Disconnected + Disabled -->
+        <div class="wan-summary-item">
+            <div class="wan-summary-label">Disconnected</div>
+            <div class="wan-summary-main">
+                <span class="wan-dot wan-dot-gray"></span>
+                <span class="wan-summary-value" id="home-wan-disconnected">0</span>
+            </div>
+            <div class="wan-summary-sub">
+                <span class="wan-dot wan-dot-silver"></span>
+                Disabled:
                 <span id="home-wan-disabled">0</span>
-            </span>
-        </div>
-
-        <div class="home-wan-summary-spacer"></div>
-
-        <!-- <div class="home-wan-summary-updated">
-            Last Updated:
-            {% if device_data.general.local_time %}
-            {{ device_data.general.local_time|date:"Y-m-d H:i:s" }}
-            {% else %}
-            —
-            {% endif %}
-        </div> -->
-    </div>
-
-    <!-- Filters + title (currently not used) -->
-    <!--
-    <div class="home-wan-table-header">
-        <div class="home-wan-table-title">WAN Uplink</div>
-
-        <div class="home-wan-filter-row">
-            <div>
-                <span class="home-wan-filter-label">Status</span>
-                <select id="home-wan-filter-status">
-                    <option value="all">All Statuses</option>
-                    <option value="connected">Connected</option>
-                    <option value="abnormal">Abnormal</option>
-                    <option value="disconnected">Disconnected</option>
-                    <option value="disabled">Disabled</option>
-                </select>
-            </div>
-
-            <div>
-                <span class="home-wan-filter-label">Uplink</span>
-                <select id="home-wan-filter-uplink">
-                    <option value="all">All Uplinks</option>
-                    {# extra options will be filled by JS based on rows #}
-                </select>
-            </div>
-
-            <div>
-                <span class="home-wan-filter-label">Interface</span>
-                <input type="text" id="home-wan-filter-search" placeholder="Search…" />
             </div>
         </div>
     </div>
-    -->
+</div>
 
-    <!-- Table -->
+{# ========= TABLE ========= #}
+<div class="home-wan-table-wrap">
     <table class="home-wan-table">
         <thead>
             <tr>
@@ -345,7 +294,6 @@
             {# skip sub-interfaces like eth0.10 or eth0-1 #}
             {% if iface.name|cut:'.' == iface.name and iface.name|cut:'-' == iface.name %}
 
-            {# simple status mapping; extend later if you add abnormal/disabled server-side #}
             {% with iface.up|yesno:"connected,disconnected" as status_label %}
 
             <tr data-status="{{ status_label }}" data-uplink="{{ iface.name|upper }}">
@@ -404,30 +352,21 @@
             {% endif %}
 
             {% empty %}
-            {# ===== STATIC FALLBACK ROWS (shown only when there is no API data) ===== #}
+            {# STATIC FALLBACK WHEN NO device_data #}
             <tr data-status="connected" data-uplink="WAN1">
                 <td class="home-wan-status-cell">
                     <span class="home-wan-status-dot home-wan-status-connected"></span>
                     Connected
                 </td>
-                <td class="home-wan-nowrap">
-                    <a class="home-wan-linkish">WAN1</a>
-                </td>
+                <td class="home-wan-nowrap"><a class="home-wan-linkish">WAN1</a></td>
                 <td class="home-wan-nowrap">4 weeks 1 day 20 hours</td>
                 <td>
-                    <div>
-                        203.0.113.10/24
-                        <span class="home-wan-muted">(IPV4)</span>
-                    </div>
+                    <div>203.0.113.10/24 <span class="home-wan-muted">(IPV4)</span></div>
                 </td>
                 <td class="home-wan-nowrap">8.8.8.8</td>
                 <td class="home-wan-throughput">
-                    <span class="home-wan-kp home-wan-kp-up">
-                        <i></i>3.62 GB
-                    </span>
-                    <span class="home-wan-kp home-wan-kp-down">
-                        <i></i>2.83 GB
-                    </span>
+                    <span class="home-wan-kp home-wan-kp-up"><i></i>3.62 GB</span>
+                    <span class="home-wan-kp home-wan-kp-down"><i></i>2.83 GB</span>
                 </td>
                 <td class="home-wan-nowrap">15 ms</td>
                 <td class="home-wan-nowrap">0.6 ms</td>
@@ -439,24 +378,15 @@
                     <span class="home-wan-status-dot home-wan-status-connected"></span>
                     Connected
                 </td>
-                <td class="home-wan-nowrap">
-                    <a class="home-wan-linkish">WAN2</a>
-                </td>
+                <td class="home-wan-nowrap"><a class="home-wan-linkish">WAN2</a></td>
                 <td class="home-wan-nowrap">1 month 5 days 23 hours</td>
                 <td>
-                    <div>
-                        198.51.100.24/24
-                        <span class="home-wan-muted">(IPV4)</span>
-                    </div>
+                    <div>198.51.100.24/24 <span class="home-wan-muted">(IPV4)</span></div>
                 </td>
                 <td class="home-wan-nowrap">1.1.1.1</td>
                 <td class="home-wan-throughput">
-                    <span class="home-wan-kp home-wan-kp-up">
-                        <i></i>4.88 GB
-                    </span>
-                    <span class="home-wan-kp home-wan-kp-down">
-                        <i></i>3.74 GB
-                    </span>
+                    <span class="home-wan-kp home-wan-kp-up"><i></i>4.88 GB</span>
+                    <span class="home-wan-kp home-wan-kp-down"><i></i>3.74 GB</span>
                 </td>
                 <td class="home-wan-nowrap">18 ms</td>
                 <td class="home-wan-nowrap">0.8 ms</td>
@@ -468,27 +398,18 @@
                     <span class="home-wan-status-dot home-wan-status-disconnected"></span>
                     Disconnected
                 </td>
-                <td class="home-wan-nowrap">
-                    <a class="home-wan-linkish">WAN3</a>
-                </td>
+                <td class="home-wan-nowrap"><a class="home-wan-linkish">WAN3</a></td>
                 <td class="home-wan-nowrap">—</td>
-                <td>
-                    <span class="home-wan-muted">—</span>
-                </td>
+                <td><span class="home-wan-muted">—</span></td>
                 <td class="home-wan-nowrap">8.8.4.4</td>
                 <td class="home-wan-throughput">
-                    <span class="home-wan-kp home-wan-kp-up">
-                        <i></i>0 B
-                    </span>
-                    <span class="home-wan-kp home-wan-kp-down">
-                        <i></i>0 B
-                    </span>
+                    <span class="home-wan-kp home-wan-kp-up"><i></i>0 B</span>
+                    <span class="home-wan-kp home-wan-kp-down"><i></i>0 B</span>
                 </td>
                 <td class="home-wan-nowrap">—</td>
                 <td class="home-wan-nowrap">—</td>
                 <td class="home-wan-nowrap">—</td>
             </tr>
-            {# ===== END STATIC FALLBACK ROWS ===== #}
             {% endfor %}
 
         </tbody>
@@ -501,52 +422,12 @@
         if (!tbody) return;
 
         const rows = Array.from(tbody.querySelectorAll('tr'));
-        const statusSel = document.getElementById('home-wan-filter-status');
-        const uplinkSel = document.getElementById('home-wan-filter-uplink');
-        const searchInput = document.getElementById('home-wan-filter-search');
 
         const totalEl = document.getElementById('home-wan-total');
         const connectedEl = document.getElementById('home-wan-connected');
         const abnormalEl = document.getElementById('home-wan-abnormal');
         const disconnectedEl = document.getElementById('home-wan-disconnected');
         const disabledEl = document.getElementById('home-wan-disabled');
-
-        // ---- build Uplink select options from rows ----
-        const uplinks = new Set();
-        rows.forEach(r => {
-            const u = r.dataset.uplink || '';
-            if (u) uplinks.add(u);
-        });
-        if (uplinkSel) {
-            uplinks.forEach(name => {
-                const opt = document.createElement('option');
-                opt.value = name;
-                opt.textContent = name;
-                uplinkSel.appendChild(opt);
-            });
-        }
-
-        // ---- filtering + summary ----
-        function applyFilters() {
-            const statusVal = statusSel ? statusSel.value : 'all';
-            const uplinkVal = uplinkSel ? uplinkSel.value.toLowerCase() : 'all';
-            const term = (searchInput && searchInput.value || '').trim().toLowerCase();
-
-            rows.forEach(row => {
-                const rowStatus = (row.dataset.status || '').toLowerCase();
-                const rowUplink = (row.dataset.uplink || '').toLowerCase();
-                const text = row.textContent.toLowerCase();
-
-                const okStatus = (statusVal === 'all') || (rowStatus === statusVal);
-                const okUplink = (uplinkVal === 'all') || (rowUplink === uplinkVal);
-                const okSearch = !term || text.indexOf(term) !== -1;
-
-                const show = okStatus && okUplink && okSearch;
-                row.style.display = show ? '' : 'none';
-            });
-
-            updateSummary();
-        }
 
         function updateSummary() {
             let total = 0,
@@ -556,7 +437,6 @@
                 disabled = 0;
 
             rows.forEach(row => {
-                if (row.style.display === 'none') return; // count only visible rows
                 total++;
                 const st = (row.dataset.status || '').toLowerCase();
                 if (st === 'connected') connected++;
@@ -565,18 +445,13 @@
                 else if (st === 'disabled') disabled++;
             });
 
-            totalEl.textContent = total;
-            connectedEl.textContent = connected;
-            abnormalEl.textContent = abnormal;
-            disconnectedEl.textContent = disconnected;
-            disabledEl.textContent = disabled;
+            if (totalEl) totalEl.textContent = total;
+            if (connectedEl) connectedEl.textContent = connected;
+            if (abnormalEl) abnormalEl.textContent = abnormal;
+            if (disconnectedEl) disconnectedEl.textContent = disconnected;
+            if (disabledEl) disabledEl.textContent = disabled;
         }
 
-        if (statusSel) statusSel.addEventListener('change', applyFilters);
-        if (uplinkSel) uplinkSel.addEventListener('change', applyFilters);
-        if (searchInput) searchInput.addEventListener('input', applyFilters);
-
-        // initial
-        applyFilters();
+        updateSummary();
     })();
 </script>
