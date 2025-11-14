@@ -111,31 +111,30 @@
           <div id="wp-tile-eth{{n}}" class="wp-port-tile wp-disconnected">
             <div class="wp-icon"><svg><use href="#wp-icon-rj45"/></svg></div>
             <div class="wp-port-label">ETH{{n}}</div>
-            <div class="wp-port-role" id="wp-role-eth{{n}}">—</div>
+            <div class="wp-port-role" id="wp-role-eth{{n}}"></div>
           </div>
         {% endfor %}
       </div>
-
       <div class="wp-ports-box">
         <!-- SIMs -->
         <div id="wp-tile-sim1" class="wp-port-tile wp-disconnected">
           <div class="wp-icon"><svg><use href="#wp-icon-sim"/></svg></div>
           <div class="wp-port-label">SIM1</div>
-          <div class="wp-port-role">—</div>
+          {% comment %} <div class="wp-port-role">—</div> {% endcomment %}
+          <div class="wp-port-role">-</div>
         </div>
         <div id="wp-tile-sim2" class="wp-port-tile wp-disconnected">
           <div class="wp-icon"><svg><use href="#wp-icon-sim"/></svg></div>
           <div class="wp-port-label">SIM2</div>
-          <div class="wp-port-role">—</div>
+          <div class="wp-port-role">-</div>
         </div>
       </div>
-
       <div class="wp-ports-box">
         <!-- Wi-Fi -->
         <div id="wp-tile-wifi" class="wp-port-tile wp-disconnected">
           <div class="wp-icon"><svg><use href="#wp-icon-wifi"/></svg></div>
           <div class="wp-port-label">Wi-Fi(STA)</div>
-          <div class="wp-port-role">—</div>
+          <div class="wp-port-role">-</div>
         </div>
       </div>
     </div>
@@ -198,7 +197,7 @@
             {% endif %}
           </td>
 
-          <td class="wp-nowrap">—</td>
+          <td class="wp-nowrap">-</td>
 
           {% comment %} <td class="wp-nowrap">
             {% with pub="—" %}
@@ -233,18 +232,18 @@
             {% endif %}
           </td>
 
-          <td class="wp-nowrap">—</td>
+          <td class="wp-nowrap">{{iface.measurements.ping.dest_ip}}</td>
 
           <td class="wp-nowrap">
             <span class="wp-kp-arrows">
-              <span class="wp-kp-up"><i></i>{{ iface.statistics.tx.bytes|default:0|filesizeformat }}</span>
-              <span class="wp-kp-down"><i></i>{{ iface.statistics.rx.bytes|default:0|filesizeformat }}</span>
+              <span class="wp-kp-up"><i></i>{{ iface.ping.throughput.tx_bytes_per_s|default:0|filesizeformat }}</span>
+              <span class="wp-kp-down"><i></i>{{ iface.ping.throughput.rx_bytes_per_s|default:0|filesizeformat }}</span>
             </span>
           </td>
 
-          <td class="wp-nowrap">—</td>
-          <td class="wp-nowrap">—</td>
-          <td class="wp-nowrap">—</td>
+          <td class="wp-nowrap">{{iface.ping.latency_ms|default:0}}</td>
+          <td class="wp-nowrap">{{iface.ping.jitter_ms|default:0}}</td>
+          <td class="wp-nowrap">{{iface.ping.packet_loss|default:"0%"}}</td>
         </tr>
       {% endif %}
     {% endif %}
@@ -287,10 +286,10 @@
   // Helper: compute role of an ethernet iface
   function roleOf(name){
     var i = IFACES.find(function(x){ return x.name === name; });
-    if(!i) return '—';
+    if(!i) return '-';
     if(i.is_wan || (i.role && i.role.toLowerCase() === 'wan')) return 'WAN';
     if(lanSet.has(name)) return 'LAN';
-    return '—';
+    return '-';
   }
 
   // ETH0..ETH5 (skip sub-ifs)
