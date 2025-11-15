@@ -128,210 +128,227 @@
   </div>
 
   <script>
-    /* Reads your Django data for one sample */
-    function getSampleData() {
-      // local_time from backend; make sure it becomes a valid Date
-      const rawLocalTime = "{{ device_data.general.local_time|default:'' }}";
-      let dd = new Date(rawLocalTime || '2025-11-14T01:00:48+05:30');
-      if (isNaN(dd.getTime())) {
-        dd = new Date(); // final fallback – avoids "Invalid Date"
+    document.addEventListener('DOMContentLoaded', function () {
+      /* ====== 1. Get one “sample” from Django data ====== */
+      function getSampleData() {
+        // local_time from backend
+        const rawLocalTime = "{{ device_data.general.local_time|default:'' }}";
+        console.log('Raw local time:======', rawLocalTime);
+        let ts = new Date(rawLocalTime || '2025-11-14T01:00:48+05:30');
+        if (isNaN(ts.getTime())) {
+          ts = new Date(); // avoid "Invalid Date"
+        }
+
+        function coerceNum(v) {
+          if (v == null || v === '—' || v === '-' || v === '') return 0;
+          const n = parseFloat(v);
+          return isNaN(n) ? 0 : n;
+        }
+
+        return {
+          timestamp: ts,
+          m1: {
+            csq: coerceNum("{{ device_data.cellular.modem.csq|default:'—' }}"),
+            rsrp: coerceNum("{{ device_data.cellular.modem.rsrp|default:'—' }}"),
+            rsrq: coerceNum("{{ device_data.cellular.modem.rsrq|default:'—' }}"),
+            rssi: coerceNum("{{ device_data.cellular.modem.rssi|default:'—' }}"),
+            snr: coerceNum("{{ device_data.cellular.modem.sinr|default:'—' }}"),
+            operator: "{{ device_data.cellular.modem.operator|default:'—' }}",
+            nettype: "{{ device_data.cellular.modem.nettype|default:'—' }}"
+          },
+          m2: {
+            csq: coerceNum("{{ device_data.cellular.modem2.csq|default:'—' }}"),
+            rsrp: coerceNum("{{ device_data.cellular.modem2.rsrp|default:'—' }}"),
+            rsrq: coerceNum("{{ device_data.cellular.modem2.rsrq|default:'—' }}"),
+            rssi: coerceNum("{{ device_data.cellular.modem2.rssi|default:'—' }}"),
+            snr: coerceNum("{{ device_data.cellular.modem2.sinr|default:'—' }}"),
+            operator: "{{ device_data.cellular.modem2.operator|default:'—' }}",
+            nettype: "{{ device_data.cellular.modem2.nettype|default:'—' }}"
+          }
+        };
       }
 
-      function coerceNum(v) {
-        if (v == null || v === '—' || v === '-' || v === '') return 0;
-        const n = parseFloat(v);
-        return isNaN(n) ? 0 : n;
+      /* ====== 2. History + hourly aggregation ====== */
+
+      let history = []; // last 24h of 5-min samples
+
+      function addSample(sample) {
+        history.push(sample);
+        if (history.length > 288) history.shift(); // 24h at 5-min
       }
 
-      return {
-        timestamp: dd,
-        m1: {
-          csq: coerceNum("{{ device_data.cellular.modem.csq|default:'—' }}"),
-          rsrp: coerceNum("{{ device_data.cellular.modem.rsrp|default:'—' }}"),
-          rsrq: coerceNum("{{ device_data.cellular.modem.rsrq|default:'—' }}"),
-          rssi: coerceNum("{{ device_data.cellular.modem.rssi|default:'—' }}"),
-          snr: coerceNum("{{ device_data.cellular.modem.sinr|default:'—' }}"),
-          operator: "{{ device_data.cellular.modem.operator|default:'—' }}",
-          nettype: "{{ device_data.cellular.modem.nettype|default:'—' }}"
-        },
-        m2: {
-          csq: coerceNum("{{ device_data.cellular.modem2.csq|default:'—' }}"),
-          rsrp: coerceNum("{{ device_data.cellular.modem2.rsrp|default:'—' }}"),
-          rsrq: coerceNum("{{ device_data.cellular.modem2.rsrq|default:'—' }}"),
-          rssi: coerceNum("{{ device_data.cellular.modem2.rssi|default:'—' }}"),
-          snr: coerceNum("{{ device_data.cellular.modem2.sinr|default:'—' }}"),
-          operator: "{{ device_data.cellular.modem2.operator|default:'—' }}",
-          nettype: "{{ device_data.cellular.modem2.nettype|default:'—' }}"
+      function formatHourLabel(d) {
+        return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      }
+
+      // labels for last 24 hours (oldest → newest), every 1 hour
+      function hourlyLabels(baseDate) {
+        const labels = [];
+        const d = new Date(baseDate);
+        d.setMinutes(0, 0, 0); // snap to top of hour
+        for (let i = 23; i >= 0; i--) {
+          const copy = new Date(d);
+          copy.setHours(d.getHours() - i);
+          labels.push(formatHourLabel(copy));
+        }
+        return labels;
+      }
+
+      function average(values) {
+        const nonZero = values.filter(v => v !== 0 && !isNaN(v));
+        if (!nonZero.length) return 0;
+        return nonZero.reduce((a, b) => a + b, 0) / nonZero.length;
+      }
+
+      function aggregateHourly(history) {
+        if (!history.length) return null;
+
+        const result = {
+          csq1: [], csq2: [],
+          rsrp1: [], rsrp2: [],
+          rsrq1: [], rsrq2: [],
+          rssi1: [], rssi2: [],
+          snr1: [], snr2: [],
+          operator1: '—', operator2: '—',
+          nettype1: '—', nettype2: '—'
+        };
+
+        const baseTime = history[history.length - 1].timestamp;
+        const labels = hourlyLabels(baseTime);
+
+        const buckets = {};
+        labels.forEach(label => {
+          buckets[label] = { m1: [], m2: [] };
+        });
+
+        // put each 5-min sample into its hour bucket
+        history.forEach(entry => {
+          const label = formatHourLabel(entry.timestamp);
+          if (!buckets[label]) return;
+          buckets[label].m1.push(entry.m1);
+          buckets[label].m2.push(entry.m2);
+        });
+
+        function avgProp(arr, prop) {
+          if (!arr.length) return 0;
+          return average(arr.map(x => x[prop] ?? 0));
+        }
+
+        labels.forEach(label => {
+          const arrM1 = buckets[label].m1;
+          const arrM2 = buckets[label].m2;
+
+          result.csq1.push(avgProp(arrM1, 'csq'));
+          result.csq2.push(avgProp(arrM2, 'csq'));
+          result.rsrp1.push(avgProp(arrM1, 'rsrp'));
+          result.rsrp2.push(avgProp(arrM2, 'rsrp'));
+          result.rsrq1.push(avgProp(arrM1, 'rsrq'));
+          result.rsrq2.push(avgProp(arrM2, 'rsrq'));
+          result.rssi1.push(avgProp(arrM1, 'rssi'));
+          result.rssi2.push(avgProp(arrM2, 'rssi'));
+          result.snr1.push(avgProp(arrM1, 'snr'));
+          result.snr2.push(avgProp(arrM2, 'snr'));
+        });
+
+        const last = history[history.length - 1];
+        result.operator1 = last.m1.operator || '—';
+        result.operator2 = last.m2.operator || '—';
+        result.nettype1 = last.m1.nettype || '—';
+        result.nettype2 = last.m2.nettype || '—';
+
+        return { labels, result };
+      }
+
+      /* ====== 3. Draw charts ====== */
+
+      function drawCharts(data) {
+        if (!data) return;
+        const { labels, result } = data;
+
+        const name1 = "Sim1 — " + result.operator1 + (result.nettype1 && result.nettype1 !== '—' ? " (" + result.nettype1 + ")" : "");
+        const name2 = "Sim2 — " + result.operator2 + (result.nettype2 && result.nettype2 !== '—' ? " (" + result.nettype2 + ")" : "");
+
+        const baseLayout = (ytitle, yRange, yDtick) => ({
+          margin: { l: 60, r: 20, t: 50, b: 80 },
+          yaxis: { title: ytitle, range: yRange, dtick: yDtick, zeroline: false, gridcolor: '#e5e7eb' },
+          xaxis: {
+            type: 'category',
+            categoryorder: 'array',
+            categoryarray: labels,
+            gridcolor: '#e5e7eb',
+            tickangle: -45
+          },
+          legend: { orientation: 'h', yanchor: 'bottom', y: 1.12, x: 0, xanchor: 'left' },
+          plot_bgcolor: '#ffffff',
+          paper_bgcolor: '#ffffff'
+        });
+
+        Plotly.newPlot('cellular_signal_div_csq', [
+          { x: labels, y: result.csq1, type: 'scatter', mode: 'lines+markers', name: name1, line: { color: '#ff7f0e', width: 3 }, marker: { size: 7 } },
+          { x: labels, y: result.csq2, type: 'scatter', mode: 'lines+markers', name: name2, line: { color: '#1f77b4', width: 3 }, marker: { size: 7 } }
+        ], baseLayout('CSQ', [0, 40], 5));
+
+        Plotly.newPlot('cellular_signal_div_rsrp', [
+          { x: labels, y: result.rsrp1, type: 'scatter', mode: 'lines+markers', name: name1, line: { color: '#ff7f0e' }, marker: { size: 6 } },
+          { x: labels, y: result.rsrp2, type: 'scatter', mode: 'lines+markers', name: name2, line: { color: '#1f77b4' }, marker: { size: 6 } }
+        ], baseLayout('RSRP (dBm)', [-140, -44], 20));
+
+        Plotly.newPlot('cellular_signal_div_rsrq', [
+          { x: labels, y: result.rsrq1, type: 'scatter', mode: 'lines+markers', name: name1, line: { color: '#ff7f0e' }, marker: { size: 6 } },
+          { x: labels, y: result.rsrq2, type: 'scatter', mode: 'lines+markers', name: name2, line: { color: '#1f77b4' }, marker: { size: 6 } }
+        ], baseLayout('RSRQ (dB)', [-20, -3], 2));
+
+        // RSSI: if all zero, you’ll just see a flat line at 0
+        Plotly.newPlot('cellular_signal_div_rssi', [
+          { x: labels, y: result.rssi1, type: 'scatter', mode: 'lines+markers', name: name1, line: { color: '#ff7f0e' }, marker: { size: 6 } },
+          { x: labels, y: result.rssi2, type: 'scatter', mode: 'lines+markers', name: name2, line: { color: '#1f77b4' }, marker: { size: 6 } }
+        ], baseLayout('RSSI (dBm)', [-120, -40], 10));
+
+        Plotly.newPlot('cellular_signal_div_snr', [
+          { x: labels, y: result.snr1, type: 'scatter', mode: 'lines+markers', name: name1, line: { color: '#ff7f0e' }, marker: { size: 6 } },
+          { x: labels, y: result.snr2, type: 'scatter', mode: 'lines+markers', name: name2, line: { color: '#1f77b4' }, marker: { size: 6 } }
+        ], baseLayout('SNR (dB)', [-5, 35], 5));
+      }
+
+      /* ====== 4. Initial load + 5-minute updates ====== */
+
+      function updateMeta(sample) {
+        const metaEl = document.getElementById('cellular_signal_meta');
+        if (!metaEl) return;
+        metaEl.textContent =
+          `M1: ${sample.m1.operator} • ${sample.m1.nettype} | ` +
+          `M2: ${sample.m2.operator} • ${sample.m2.nettype}`;
+      }
+
+      function initialLoad() {
+        try {
+          const sample = getSampleData();
+          addSample(sample);
+          const data = aggregateHourly(history);
+          drawCharts(data);
+          updateMeta(sample);
+          console.log('Initial sample:', sample);
+        } catch (e) {
+          console.error('Cellular charts init error:', e);
         }
       }
-    }
 
-    /* We keep poll history and aggregate per hour (averaging) */
-    let history = [];
+      // Simulated new sample every 5 minutes (same Django data each refresh).
+      // If you later wire this to an API, just replace getSampleData().
+      setInterval(() => {
+        try {
+          const sample = getSampleData();
+          addSample(sample);
+          const data = aggregateHourly(history);
+          drawCharts(data);
+          updateMeta(sample);
+        } catch (e) {
+          console.error('Cellular charts update error:', e);
+        }
+      }, 300000); // 5 minutes
 
-    function addSample(sample) {
-      history.push(sample);
-      if (history.length > 288) history.shift(); // max 24h @ 5min
-    }
-
-    // Consistent label formatter: HH:MM
-    function formatHourLabel(d) {
-      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    }
-
-    // Returns 24 hour labels for last 24h (oldest → newest)
-    function hourlyLabels(baseDate) {
-      const labels = [];
-      const d = new Date(baseDate);
-      d.setMinutes(0, 0, 0);           // snap to hour
-      for (let i = 23; i >= 0; i--) {  // 23h ago ... now
-        const copy = new Date(d);
-        copy.setHours(d.getHours() - i);
-        labels.push(formatHourLabel(copy));
-      }
-      return labels;
-    }
-
-    function average(values) {
-      const nonZero = values.filter(v => v > 0);
-      if (!nonZero.length) return 0;
-      return nonZero.reduce((a, b) => a + b, 0) / nonZero.length;
-    }
-
-    function aggregateHourly(history) {
-      if (!history.length) return null;
-
-      const result = {
-        csq1: [], csq2: [],
-        rsrp1: [], rsrp2: [],
-        rsrq1: [], rsrq2: [],
-        rssi1: [], rssi2: [],
-        snr1: [], snr2: [],
-        operator1: '—', operator2: '—',
-        nettype1: '—', nettype2: '—'
-      };
-
-      const baseTime = history[history.length - 1].timestamp;
-      const labels = hourlyLabels(baseTime);
-
-      // Create buckets keyed by the formatted hour label
-      const buckets = {};
-      labels.forEach(label => {
-        buckets[label] = { m1: [], m2: [] };
-      });
-
-      history.forEach(entry => {
-        const label = formatHourLabel(entry.timestamp);
-        if (!buckets[label]) return; // outside our 24h window
-        buckets[label].m1.push(entry.m1);
-        buckets[label].m2.push(entry.m2);
-      });
-
-      function avgProp(arr, prop) {
-        if (!arr.length) return 0;
-        return average(arr.map(x => x[prop] || 0));
-      }
-
-      labels.forEach(label => {
-        const arrM1 = buckets[label].m1;
-        const arrM2 = buckets[label].m2;
-
-        result.csq1.push(avgProp(arrM1, 'csq'));
-        result.csq2.push(avgProp(arrM2, 'csq'));
-        result.rsrp1.push(avgProp(arrM1, 'rsrp'));
-        result.rsrp2.push(avgProp(arrM2, 'rsrp'));
-        result.rsrq1.push(avgProp(arrM1, 'rsrq'));
-        result.rsrq2.push(avgProp(arrM2, 'rsrq'));
-        result.rssi1.push(avgProp(arrM1, 'rssi'));
-        result.rssi2.push(avgProp(arrM2, 'rssi'));
-        result.snr1.push(avgProp(arrM1, 'snr'));
-        result.snr2.push(avgProp(arrM2, 'snr'));
-      });
-
-      const last = history[history.length - 1];
-      result.operator1 = last.m1.operator || '—';
-      result.operator2 = last.m2.operator || '—';
-      result.nettype1 = last.m1.nettype || '—';
-      result.nettype2 = last.m2.nettype || '—';
-
-      return { labels, result };
-    }
-
-    function drawCharts(data) {
-      if (!data) return;
-      const { labels, result } = data;
-
-      const name1 = "Sim1 — " + result.operator1 + (result.nettype1 && result.nettype1 !== '—' ? " (" + result.nettype1 + ")" : "");
-      const name2 = "Sim2 — " + result.operator2 + (result.nettype2 && result.nettype2 !== '—' ? " (" + result.nettype2 + ")" : "");
-
-      const baseLayout = (ytitle, yRange, yDtick) => ({
-        margin: { l: 60, r: 20, t: 50, b: 80 },
-        yaxis: { title: ytitle, range: yRange, dtick: yDtick, zeroline: false, gridcolor: '#e5e7eb' },
-        xaxis: {
-          type: 'category',             // <<< treat hour labels as categories
-          categoryorder: 'array',
-          categoryarray: labels,
-          gridcolor: '#e5e7eb',
-          tickangle: -45
-        },
-        legend: { orientation: 'h', yanchor: 'bottom', y: 1.12, x: 0, xanchor: 'left' },
-        plot_bgcolor: '#ffffff',
-        paper_bgcolor: '#ffffff'
-      });
-
-      Plotly.newPlot('cellular_signal_div_csq', [
-        { x: labels, y: result.csq1, type: 'scatter', mode: 'lines+markers', name: name1, line: { color: '#ff7f0e', width: 3 }, marker: { size: 7 } },
-        { x: labels, y: result.csq2, type: 'scatter', mode: 'lines+markers', name: name2, line: { color: '#1f77b4', width: 3 }, marker: { size: 7 } }
-      ], baseLayout('CSQ', [0, 40], 5));
-
-      Plotly.newPlot('cellular_signal_div_rsrp', [
-        { x: labels, y: result.rsrp1, type: 'scatter', mode: 'lines+markers', name: name1, line: { color: '#ff7f0e' }, marker: { size: 6 } },
-        { x: labels, y: result.rsrp2, type: 'scatter', mode: 'lines+markers', name: name2, line: { color: '#1f77b4' }, marker: { size: 6 } }
-      ], baseLayout('RSRP (dBm)', [-140, -44], 20));
-
-      Plotly.newPlot('cellular_signal_div_rsrq', [
-        { x: labels, y: result.rsrq1, type: 'scatter', mode: 'lines+markers', name: name1, line: { color: '#ff7f0e' }, marker: { size: 6 } },
-        { x: labels, y: result.rsrq2, type: 'scatter', mode: 'lines+markers', name: name2, line: { color: '#1f77b4' }, marker: { size: 6 } }
-      ], baseLayout('RSRQ (dB)', [-20, -3], 2));
-
-      Plotly.newPlot('cellular_signal_div_rssi', [
-        { x: labels, y: result.rssi1, type: 'scatter', mode: 'lines+markers', name: name1, line: { color: '#ff7f0e' }, marker: { size: 6 } },
-        { x: labels, y: result.rssi2, type: 'scatter', mode: 'lines+markers', name: name2, line: { color: '#1f77b4' }, marker: { size: 6 } }
-      ], baseLayout('RSSI (dBm)', [-120, -40], 10));
-
-      Plotly.newPlot('cellular_signal_div_snr', [
-        { x: labels, y: result.snr1, type: 'scatter', mode: 'lines+markers', name: name1, line: { color: '#ff7f0e' }, marker: { size: 6 } },
-        { x: labels, y: result.snr2, type: 'scatter', mode: 'lines+markers', name: name2, line: { color: '#1f77b4' }, marker: { size: 6 } }
-      ], baseLayout('SNR (dB)', [-5, 35], 5));
-    }
-
-    function initialLoad() {
-      const sample = getSampleData();
-      console.log('Initial sample:======', sample);
-      addSample(sample);
-      const data = aggregateHourly(history);
-      drawCharts(data);
-
-      const metaEl = document.getElementById('cellular_signal_meta');
-      if (metaEl) {
-        metaEl.textContent = `M1: ${sample.m1.operator} • ${sample.m1.nettype} | M2: ${sample.m2.operator} • ${sample.m2.nettype}`;
-      }
-    }
-
-    // Simulated update every 5 minutes – hook this up to real data if needed
-    setInterval(() => {
-      const newSample = getSampleData();
-      addSample(newSample);
-      const data = aggregateHourly(history);
-      drawCharts(data);
-
-      const metaEl = document.getElementById('cellular_signal_meta');
-      if (metaEl) {
-        metaEl.textContent = `M1: ${newSample.m1.operator} • ${newSample.m1.nettype} | M2: ${newSample.m2.operator} • ${newSample.m2.nettype}`;
-      }
-    }, 300000); // 5 minutes
-
-    initialLoad();
+      initialLoad();
+    });
   </script>
 
 </body>
