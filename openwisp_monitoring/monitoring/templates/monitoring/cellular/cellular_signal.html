@@ -128,14 +128,17 @@
   </div>
 
   <script>
-    /* Reads your Django robot-injected data for one sample */
+    /* Reads your Django data for one sample */
     function getSampleData() {
-      // Any real-time polling you do, replace this with actual API fetching logic
-
-      const dd = new Date("{{ device_data.general.local_time|default:'2025-11-14T01:00:48+05:30' }}");
+      // local_time from backend; make sure it becomes a valid Date
+      const rawLocalTime = "{{ device_data.general.local_time|default:'' }}";
+      let dd = new Date(rawLocalTime || '2025-11-14T01:00:48+05:30');
+      if (isNaN(dd.getTime())) {
+        dd = new Date(); // final fallback – avoids "Invalid Date"
+      }
 
       function coerceNum(v) {
-        if (v == null || v === '—' || v === '-' || v === '0' || v === 0) return 0;
+        if (v == null || v === '—' || v === '-' || v === '') return 0;
         const n = parseFloat(v);
         return isNaN(n) ? 0 : n;
       }
@@ -166,65 +169,73 @@
     /* We keep poll history and aggregate per hour (averaging) */
     let history = [];
 
-    // Add sample every 5min, max keep 1 day (288 slots)
     function addSample(sample) {
       history.push(sample);
-      if (history.length > 288) history.shift();
+      if (history.length > 288) history.shift(); // max 24h @ 5min
     }
 
-    console.log('Initial sample data:====', history);
+    // Consistent label formatter: HH:MM
+    function formatHourLabel(d) {
+      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
 
-    // Returns array of hour strings (e.g. "01:00", "02:00"...) for last 24h from sample timestamp
+    // Returns 24 hour labels for last 24h (oldest → newest)
     function hourlyLabels(baseDate) {
       const labels = [];
       const d = new Date(baseDate);
-      d.setMinutes(0, 0, 0);
-      for (let i = 0; i < 24; i++) {
-        labels.unshift(d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-        d.setHours(d.getHours() - 1);
+      d.setMinutes(0, 0, 0);           // snap to hour
+      for (let i = 23; i >= 0; i--) {  // 23h ago ... now
+        const copy = new Date(d);
+        copy.setHours(d.getHours() - i);
+        labels.push(formatHourLabel(copy));
       }
-      return labels.reverse(); // oldest to newest on x-axis
+      return labels;
     }
 
-    // Average filters array ignoring zeros
     function average(values) {
       const nonZero = values.filter(v => v > 0);
-      if (nonZero.length === 0) return 0;
+      if (!nonZero.length) return 0;
       return nonZero.reduce((a, b) => a + b, 0) / nonZero.length;
     }
 
-    // Aggregate to per-hour averages
     function aggregateHourly(history) {
       if (!history.length) return null;
+
       const result = {
-        csq1: [], csq2: [], rsrp1: [], rsrp2: [], rsrq1: [], rsrq2: [],
-        rssi1: [], rssi2: [], snr1: [], snr2: [],
-        operator1: '—', operator2: '—', nettype1: '—', nettype2: '—'
+        csq1: [], csq2: [],
+        rsrp1: [], rsrp2: [],
+        rsrq1: [], rsrq2: [],
+        rssi1: [], rssi2: [],
+        snr1: [], snr2: [],
+        operator1: '—', operator2: '—',
+        nettype1: '—', nettype2: '—'
       };
-      // pick last sample's timestamp as base for hourly labels
+
       const baseTime = history[history.length - 1].timestamp;
       const labels = hourlyLabels(baseTime);
+
+      // Create buckets keyed by the formatted hour label
       const buckets = {};
-      // Initialize buckets for each hour as array of values
       labels.forEach(label => {
         buckets[label] = { m1: [], m2: [] };
       });
-      // Sort each sample into buckets by hour label aware of timezone
+
       history.forEach(entry => {
-        const label = entry.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        if (!(label in buckets)) return; // outside 24h range
+        const label = formatHourLabel(entry.timestamp);
+        if (!buckets[label]) return; // outside our 24h window
         buckets[label].m1.push(entry.m1);
         buckets[label].m2.push(entry.m2);
       });
-      // For each bucket/h, average each metric from all samples
+
+      function avgProp(arr, prop) {
+        if (!arr.length) return 0;
+        return average(arr.map(x => x[prop] || 0));
+      }
+
       labels.forEach(label => {
         const arrM1 = buckets[label].m1;
         const arrM2 = buckets[label].m2;
-        // Helper to average one property
-        function avgProp(arr, prop) {
-          if (!arr.length) return 0;
-          return average(arr.map(x => x[prop] || 0));
-        }
+
         result.csq1.push(avgProp(arrM1, 'csq'));
         result.csq2.push(avgProp(arrM2, 'csq'));
         result.rsrp1.push(avgProp(arrM1, 'rsrp'));
@@ -236,27 +247,36 @@
         result.snr1.push(avgProp(arrM1, 'snr'));
         result.snr2.push(avgProp(arrM2, 'snr'));
       });
-      // Use last sample metadata for legend
+
       const last = history[history.length - 1];
       result.operator1 = last.m1.operator || '—';
       result.operator2 = last.m2.operator || '—';
       result.nettype1 = last.m1.nettype || '—';
       result.nettype2 = last.m2.nettype || '—';
+
       return { labels, result };
     }
 
-    // Draw charts using Plotly
     function drawCharts(data) {
+      if (!data) return;
       const { labels, result } = data;
-      const name1 = "Sim1 — " + result.operator1 + (result.nettype1 ? " (" + result.nettype1 + ")" : "");
-      const name2 = "Sim2 — " + result.operator2 + (result.nettype2 ? " (" + result.nettype2 + ")" : "");
+
+      const name1 = "Sim1 — " + result.operator1 + (result.nettype1 && result.nettype1 !== '—' ? " (" + result.nettype1 + ")" : "");
+      const name2 = "Sim2 — " + result.operator2 + (result.nettype2 && result.nettype2 !== '—' ? " (" + result.nettype2 + ")" : "");
+
       const baseLayout = (ytitle, yRange, yDtick) => ({
         margin: { l: 60, r: 20, t: 50, b: 80 },
         yaxis: { title: ytitle, range: yRange, dtick: yDtick, zeroline: false, gridcolor: '#e5e7eb' },
-        xaxis: { tickvals: labels, ticktext: labels, gridcolor: '#e5e7eb', tickangle: -45 },
+        xaxis: {
+          type: 'category',             // <<< treat hour labels as categories
+          categoryorder: 'array',
+          categoryarray: labels,
+          gridcolor: '#e5e7eb',
+          tickangle: -45
+        },
         legend: { orientation: 'h', yanchor: 'bottom', y: 1.12, x: 0, xanchor: 'left' },
-        plot_bgcolor: '#fff',
-        paper_bgcolor: '#fff'
+        plot_bgcolor: '#ffffff',
+        paper_bgcolor: '#ffffff'
       });
 
       Plotly.newPlot('cellular_signal_div_csq', [
@@ -285,33 +305,33 @@
       ], baseLayout('SNR (dB)', [-5, 35], 5));
     }
 
-    // Initial data from Django injected variables
     function initialLoad() {
       const sample = getSampleData();
+      console.log('Initial sample:======', sample);
       addSample(sample);
       const data = aggregateHourly(history);
       drawCharts(data);
-      // Update header meta
+
       const metaEl = document.getElementById('cellular_signal_meta');
       if (metaEl) {
         metaEl.textContent = `M1: ${sample.m1.operator} • ${sample.m1.nettype} | M2: ${sample.m2.operator} • ${sample.m2.nettype}`;
       }
     }
 
-    // Periodic new sample arrival simulation every 5 minutes (replaced in prod with real backend async)
+    // Simulated update every 5 minutes – hook this up to real data if needed
     setInterval(() => {
-      const newSample = getSampleData(); // New sample from Django context or API
+      const newSample = getSampleData();
       addSample(newSample);
       const data = aggregateHourly(history);
       drawCharts(data);
+
       const metaEl = document.getElementById('cellular_signal_meta');
       if (metaEl) {
         metaEl.textContent = `M1: ${newSample.m1.operator} • ${newSample.m1.nettype} | M2: ${newSample.m2.operator} • ${newSample.m2.nettype}`;
       }
-    }, 300000); // 300000 ms = 5 min
+    }, 300000); // 5 minutes
 
     initialLoad();
-
   </script>
 
 </body>

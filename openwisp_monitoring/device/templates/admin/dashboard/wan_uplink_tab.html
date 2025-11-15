@@ -105,8 +105,11 @@
         background: #fff;
         border: 1px solid #e5e7eb;
         box-shadow: 0 6px 18px rgba(15, 23, 42, .06);
-        overflow: hidden;
         margin: 0 0 0;
+        overflow-x: auto;
+        /* <<< allow horizontal scroll */
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
     }
 
     .home-wan-table {
@@ -114,6 +117,8 @@
         border-collapse: separate;
         border-spacing: 0;
         font-size: 12px;
+        min-width: 1100px;
+        /* <<< ensure all columns fit; scroll when needed */
     }
 
     .home-wan-table thead th {
@@ -133,6 +138,7 @@
         padding: 10px 12px;
         border-bottom: 1px solid #f1f5f9;
         vertical-align: middle;
+        white-space: nowrap;
     }
 
     .home-wan-table tbody tr:last-child td {
@@ -276,6 +282,11 @@
         <thead>
             <tr>
                 <th>Status</th>
+                <th>Hostname</th>
+                <th>Serial Number</th>
+                <th>Model</th>
+                <th>Location</th>
+                <th>Path Label</th>
                 <th>Uplink</th>
                 <th>Uptime</th>
                 <th>Interface IP/Mask</th>
@@ -299,6 +310,26 @@
                 <td class="home-wan-status-cell">
                     <span class="home-wan-status-dot home-wan-status-{{ status_label }}"></span>
                     {{ status_label|capfirst }}
+                </td>
+
+                <td class="home-wan-nowrap">
+                    {{ device_data.general.hostname|default:"Core-Router-01" }}
+                </td>
+                <td class="home-wan-nowrap">
+                    {{ device_data.general.serialnumber|default:"SN-114GSQ2209N23015" }}
+                </td>
+                <td class="home-wan-nowrap">
+                    {{ device_data.general.model|default:"NX-6005" }}
+                </td>
+                <td class="home-wan-nowrap">
+                    {{ device_data.general.location|default:"Head Office" }}
+                </td>
+                <td class="home-wan-nowrap">
+                    {% if iface.type == 'mobile' %}
+                    Cellular Path
+                    {% else %}
+                    Wired Path
+                    {% endif %}
                 </td>
 
                 <td class="home-wan-nowrap">
@@ -357,6 +388,11 @@
                     <span class="home-wan-status-dot home-wan-status-connected"></span>
                     Connected
                 </td>
+                <td class="home-wan-nowrap">Core-Router-01</td>
+                <td class="home-wan-nowrap">SN-114GSQ2209N23015</td>
+                <td class="home-wan-nowrap">NX-6005</td>
+                <td class="home-wan-nowrap">Head Office</td>
+                <td class="home-wan-nowrap">Primary Path</td>
                 <td class="home-wan-nowrap"><a class="home-wan-linkish">WAN1</a></td>
                 <td class="home-wan-nowrap">4 weeks 1 day 20 hours</td>
                 <td>
@@ -377,6 +413,11 @@
                     <span class="home-wan-status-dot home-wan-status-connected"></span>
                     Connected
                 </td>
+                <td class="home-wan-nowrap">Core-Router-01</td>
+                <td class="home-wan-nowrap">SN-114GSQ2209N23015</td>
+                <td class="home-wan-nowrap">NX-6005</td>
+                <td class="home-wan-nowrap">Branch Office</td>
+                <td class="home-wan-nowrap">Secondary Path</td>
                 <td class="home-wan-nowrap"><a class="home-wan-linkish">WAN2</a></td>
                 <td class="home-wan-nowrap">1 month 5 days 23 hours</td>
                 <td>
@@ -397,6 +438,11 @@
                     <span class="home-wan-status-dot home-wan-status-disconnected"></span>
                     Disconnected
                 </td>
+                <td class="home-wan-nowrap">Core-Router-01</td>
+                <td class="home-wan-nowrap">SN-114GSQ2209N23015</td>
+                <td class="home-wan-nowrap">NX-6005</td>
+                <td class="home-wan-nowrap">DR Site</td>
+                <td class="home-wan-nowrap">Backup Path</td>
                 <td class="home-wan-nowrap"><a class="home-wan-linkish">WAN3</a></td>
                 <td class="home-wan-nowrap">—</td>
                 <td><span class="home-wan-muted">—</span></td>
