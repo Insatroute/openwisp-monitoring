@@ -116,26 +116,9 @@
 </div>
 
 <script>
-    // Register plugin
     Chart.register(ChartDataLabels);
 
-    /* ========================================================
-       STATIC FALLBACK DATA FOR TOP BRANCHES (YOUR RESPONSE)
-       ======================================================== */
-    const STATIC_TOP_BRANCHES_DATA = [
-        { label: "Snort", traffic: 4197345033 },
-        { label: "Unknown", traffic: 41252968 },
-        { label: "Ubiquiti", traffic: 4568234 },
-        { label: "Internal-network", traffic: 3163043 },
-        { label: "Nethserver", traffic: 1389574 },
-        { label: "Censys-scanner", traffic: 753296 },
-        { label: "Bing", traffic: 441186 },
-        { label: "Shadowserver-bot", traffic: 410304 },
-        { label: "Microsoft", traffic: 407657 },
-        { label: "Reverse-dns", traffic: 327412 }
-    ];
-
-    /* ========== TOP APPLICATIONS (works already) ========== */
+    /* ========== TOP APPLICATIONS (from device_map, adapted to this DOM) ========== */
     async function fetchAndDisplayTopAppsChart() {
         const loadingEl = document.getElementById('chart-loading');
         const canvas = document.getElementById('topAppsChart');
@@ -144,9 +127,12 @@
         if (canvas) canvas.style.display = 'none';
 
         try {
+            // Fetch global top apps
             const response = await fetch('https://controller.nexapp.co.in/api/v1/monitoring/global-top-apps/', {
                 headers: { 'accept': 'application/json' }
             });
+
+            console.log('Fetching Global Top Apps with URL:===', response.url);
 
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status} – ${response.statusText}`);
@@ -155,6 +141,7 @@
             const data = await response.json();
             const topApps = Array.isArray(data?.top_10_apps) ? data.top_10_apps : [];
 
+            // Prepare labels and values (bytes → MB or GB)
             const labels = topApps.map(item => String(item.label ?? ''));
             const values = topApps.map(item => {
                 const bytes = Number(item.traffic) || 0;
@@ -166,12 +153,14 @@
                 }
             });
 
+            // Hide loading
             const chartContainer = document.getElementById('top-apps-chart-container');
             if (chartContainer) {
                 const loadingElem = chartContainer.querySelector('.home-datausage-loading-text');
                 if (loadingElem) loadingElem.style.display = 'none';
             }
 
+            // Destroy old chart
             const existingChart = Chart.getChart('topAppsChart');
             if (existingChart) existingChart.destroy();
 
@@ -181,16 +170,18 @@
                 type: 'bar',
                 data: {
                     labels,
-                    datasets: [{
-                        data: values.map(v => v.value),
-                        backgroundColor: '#00acea',
-                        borderRadius: 10,
-                        barPercentage: 0.5,
-                        categoryPercentage: 0.5,
-                        barThickness: 8,
-                        stack: 'stack0',
-                        order: 2
-                    }]
+                    datasets: [
+                        {
+                            data: values.map(v => v.value),
+                            backgroundColor: '#00acea',
+                            borderRadius: 10,
+                            barPercentage: 0.5,
+                            categoryPercentage: 0.5,
+                            barThickness: 8,
+                            stack: 'stack0',
+                            order: 2
+                        }
+                    ]
                 },
                 options: {
                     indexAxis: 'y',
@@ -246,148 +237,114 @@
         }
     }
 
-    /* ========== TOP BRANCHES (with static fallback) ========== */
+    /* ========== TOP BRANCHES (top-devices-simple from device_map) ========== */
+    async function fetchAndDisplayTopDevicesChart({
+        org = 'ALL',
+        time = '7d',
+        limit = 10,
+        wan_ifs = ''   // leave wan_ifs blank to sum all interfaces
+    } = {}) {
 
-    // Build base URL safely. If API_BASE_URL is not defined, you can put your default here.
-    const API_BASE = (typeof window !== 'undefined' && window.API_BASE_URL)
-        ? window.API_BASE_URL
-        : 'https://controller.nexapp.co.in';
-
-    const TOP_BRANCHES_URL = `${API_BASE}/api/v1/monitoring/top-branches/`;
-
-    async function fetchAndDisplayTopBranchesChart() {
         const loader = document.getElementById('chart-loading-devices');
         const canvas = document.getElementById('topDevicesChart');
+        const container = document.getElementById('top-devices-chart-container');
 
         if (loader) loader.style.display = 'block';
         if (canvas) canvas.style.display = 'none';
 
-        let list = [];
+        const qs = new URLSearchParams({ org, time, limit, include_org: '1' });
+        if (wan_ifs) qs.set('wan_ifs', wan_ifs);
 
         try {
-            const resp = await fetch(TOP_BRANCHES_URL, {
-                headers: { 'accept': 'application/json' },
-                credentials: 'include'
-            });
-
-            if (!resp.ok) {
-                throw new Error(`HTTP ${resp.status}`);
-            }
-
+            const resp = await fetch(
+                `${window.API_BASE_URL}/api/v1/monitoring/top-devices-simple/?${qs.toString()}`,
+                { credentials: 'include' }
+            );
+            console.log('Fetching Top Devices with URL:===', resp.url);
+            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
             const json = await resp.json();
+            console.log('Top Devices data:===', json);
 
-            console.log('Top Branches API response:====', json);
-
-            // Support multiple possible keys:
-            // top_10_branches, top_10_apps, or top
-            list =
-                Array.isArray(json.top_10_branches) ? json.top_10_branches :
-                    Array.isArray(json.top_10_apps) ? json.top_10_apps :
-                        Array.isArray(json.top) ? json.top :
-                            [];
-
-            console.log('Parsed Top Branches list:====', list);
-        } catch (e) {
-            console.error('Top Branches API error, will use static data:====', e);
-        }
-
-        // If no data from API, use static fallback
-        if (!list || !list.length) {
-            console.warn('No branches data from API. Using static fallback data.====');
-            list = STATIC_TOP_BRANCHES_DATA;
-        }
-
-        if (!list.length) {
-            if (loader) loader.textContent = 'No Data';
-            return;
-        }
-
-        const labels = list.map(item => String(item.label ?? item.name ?? ''));
-        const values = list.map(item => {
-            const bytes = Number(item.traffic ?? item.total_bytes ?? 0);
-            const mb = bytes / (1024 * 1024);
-            if (mb >= 1000) {
-                return { value: +(mb / 1024).toFixed(2), unit: 'GB' };
-            } else {
-                return { value: +mb.toFixed(1), unit: 'MB' };
+            const rows = (json.top || []).slice(0, limit);
+            if (!rows.length) {
+                if (loader) loader.textContent = 'No Data';
+                return;
             }
-        });
 
-        const existing = Chart.getChart('topDevicesChart');
-        if (existing) existing.destroy();
+            const labels = rows.map(r => r.name || r.device_id);
+            const valuesGB = rows.map(r =>
+                (typeof r.total_gb === 'number')
+                    ? +r.total_gb
+                    : +((r.total_bytes || 0) / (1024 ** 3)).toFixed(3)
+            );
 
-        if (!canvas) {
-            if (loader) loader.textContent = 'Canvas missing';
-            return;
-        }
+            // Destroy previous chart if present
+            const existing = Chart.getChart('topDevicesChart');
+            if (existing) existing.destroy();
 
-        const ctx = canvas.getContext('2d');
-        new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels,
-                datasets: [{
-                    data: values.map(v => v.value),
-                    backgroundColor: '#00acea',
-                    borderRadius: 10,
-                    barThickness: 8,
-                    barPercentage: 0.5,
-                    categoryPercentage: 0.5
-                }]
-            },
-            options: {
-                indexAxis: 'y',
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    x: {
-                        beginAtZero: true,
-                        grid: { display: false },
-                        ticks: {
-                            callback: (val, index) => {
-                                const unit = values[index]?.unit || 'MB';
-                                return `${val} ${unit}`;
-                            }
-                        }
-                    },
-                    y: {
-                        grid: { display: false },
-                        ticks: { font: { size: 12, weight: '500' } }
-                    }
+            const ctx = canvas.getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels,
+                    datasets: [{
+                        data: valuesGB,
+                        backgroundColor: '#00acea',
+                        borderRadius: 10,
+                        barThickness: 8,
+                        barPercentage: 0.5,
+                        categoryPercentage: 0.5
+                    }]
                 },
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        callbacks: {
-                            label: (ctx) => {
-                                const unit = values[ctx.dataIndex]?.unit || 'MB';
-                                return ` ${ctx.parsed.x} ${unit}`;
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            grid: { display: false },
+                            ticks: {
+                                callback: (v) => `${v} GB`
                             }
+                        },
+                        y: {
+                            grid: { display: false },
+                            ticks: { font: { size: 12, weight: '500' } }
                         }
                     },
-                    datalabels: {
-                        anchor: 'end',
-                        align: 'end',
-                        offset: 6,
-                        formatter: (val, ctx) => {
-                            const unit = values[ctx.dataIndex]?.unit || 'MB';
-                            return `${Number(val).toFixed(2)} ${unit}`;
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (ctx) => ` ${ctx.parsed.x.toFixed(2)} GB`
+                            }
                         },
-                        font: { weight: '500', size: 10 }
+                        datalabels: {
+                            anchor: 'end',
+                            align: 'end',
+                            offset: 6,
+                            formatter: (v, ctx) => `${v.toFixed(2)} GB`,
+                            font: { weight: '500', size: 10 }
+                        }
                     }
                 }
-            }
-        });
+            });
 
-        if (loader) loader.style.display = 'none';
-        if (canvas) canvas.style.display = '';
+            loader.style.display = 'none';
+            canvas.style.display = '';
+        } catch (e) {
+            console.error('Top Devices error:', e);
+            if (loader) loader.textContent = 'Error';
+        }
     }
 
-    // Initial render + refresh intervals
+    // Initial render + refresh intervals (same behaviour as device_map)
     fetchAndDisplayTopAppsChart();
-    fetchAndDisplayTopBranchesChart();
-    setInterval(fetchAndDisplayTopAppsChart, 30000);       // 30s
-    setInterval(fetchAndDisplayTopBranchesChart, 300000);  // 5 min
+    fetchAndDisplayTopDevicesChart();
+
+    setInterval(fetchAndDisplayTopAppsChart, 30000);      // 30s
+    setInterval(fetchAndDisplayTopDevicesChart, 300000);  // 5 min
 </script>
 
 <style>
