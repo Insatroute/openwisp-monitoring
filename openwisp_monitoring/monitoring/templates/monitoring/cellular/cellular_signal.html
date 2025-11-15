@@ -545,14 +545,14 @@
 
       /* ---------- Fetch new response every 5 minutes ---------- */
       async function fetchAndUpdateFromApi() {
-        if (!API_URL) {
-          // No API configured – seed dummy history if needed
-          if (!dummySeeded) {
-            seedDummyHistory();
-            renderAllCharts();
-          }
-          return;
-        }
+        // if (!API_URL) {
+        //   // No API configured – seed dummy history if needed
+        //   if (!dummySeeded) {
+        //     seedDummyHistory();
+        //     renderAllCharts();
+        //   }
+        //   return;
+        // }
         try {
           const resp = await fetch(API_URL, { headers: { 'accept': 'application/json' } });
           if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
@@ -600,11 +600,12 @@
 
       // If API exists, poll it; otherwise, seed dummy immediately
       if (API_URL) {
+        console.log('Starting cellular data polling from API:======', API_URL);
         fetchAndUpdateFromApi();
         setInterval(fetchAndUpdateFromApi, FETCH_INTERVAL_MS);
       } else {
-        seedDummyHistory();
-        renderAllCharts();
+        // seedDummyHistory();
+        // renderAllCharts();
       }
 
     })();
