@@ -240,8 +240,6 @@
     /* ========== TOP BRANCHES (top-devices-simple from device_map) ========== */
 
     async function fetchAndDisplayTopDevicesChart({
-
-
         org = 'ALL', time = '7d', limit = 10, wan_ifs = ''   // leave wan_ifs blank to sum all interfaces
     } = {}) {
 
@@ -335,12 +333,14 @@
         }
     }
 
-    // Initial render + refresh intervals (same behaviour as device_map)
-    fetchAndDisplayTopAppsChart();
-    fetchAndDisplayTopDevicesChart();
+    // Initial render + refresh intervals WHEN PAGE LOADS
+    document.addEventListener('DOMContentLoaded', () => {
+        fetchAndDisplayTopAppsChart();
+        fetchAndDisplayTopDevicesChart();
 
-    setInterval(fetchAndDisplayTopAppsChart, 30000);      // 30s
-    setInterval(fetchAndDisplayTopDevicesChart, 30000);  // 30s
+        setInterval(fetchAndDisplayTopAppsChart, 30000);      // 30s
+        setInterval(fetchAndDisplayTopDevicesChart, 30000);   // 30s
+    });
 </script>
 
 <style>
@@ -351,7 +351,7 @@
     /* ====== SUMMARY ROW ====== */
 
     .home-datausage-summary-section {
-        padding: 0 40px 10px 40px;
+        padding: 25px 40px 10px 40px;
     }
 
     .home-datausage-summary-title {
@@ -369,6 +369,7 @@
         border-radius: 8px;
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
         padding: 16px 18px;
+        border: 1px solid #f3f4f6;
     }
 
     .home-datausage-summary-card {
