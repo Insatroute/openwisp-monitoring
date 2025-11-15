@@ -238,44 +238,40 @@
     }
 
     /* ========== TOP BRANCHES (top-devices-simple from device_map) ========== */
+
     async function fetchAndDisplayTopDevicesChart({
-        org = 'ALL',
-        time = '7d',
-        limit = 10,
-        wan_ifs = ''   // leave wan_ifs blank to sum all interfaces
+
+
+        org = 'ALL', time = '7d', limit = 10, wan_ifs = ''   // leave wan_ifs blank to sum all interfaces
     } = {}) {
 
         const loader = document.getElementById('chart-loading-devices');
         const canvas = document.getElementById('topDevicesChart');
         const container = document.getElementById('top-devices-chart-container');
 
-        if (loader) loader.style.display = 'block';
-        if (canvas) canvas.style.display = 'none';
+        loader.style.display = 'block';
+        canvas.style.display = 'none';
 
         const qs = new URLSearchParams({ org, time, limit, include_org: '1' });
         if (wan_ifs) qs.set('wan_ifs', wan_ifs);
 
         try {
-            const resp = await fetch(
-                `${window.API_BASE_URL}/api/v1/monitoring/top-devices-simple/?${qs.toString()}`,
-                { credentials: 'include' }
-            );
-            console.log('Fetching Top Devices with URL:===', resp.url);
+            const resp = await fetch(`${window.API_BASE_URL}/api/v1/monitoring/top-devices-simple/?${qs.toString()}`, { credentials: 'include' });
+            console.log('Fetching Top Devices with URL:===', resp);
             if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
             const json = await resp.json();
-            console.log('Top Devices data:===', json);
+            console.log('Top Devices data:', json);
 
             const rows = (json.top || []).slice(0, limit);
             if (!rows.length) {
-                if (loader) loader.textContent = 'No Data';
+                loader.textContent = 'No Data';
                 return;
             }
 
             const labels = rows.map(r => r.name || r.device_id);
-            const valuesGB = rows.map(r =>
-                (typeof r.total_gb === 'number')
-                    ? +r.total_gb
-                    : +((r.total_bytes || 0) / (1024 ** 3)).toFixed(3)
+            const valuesGB = rows.map(r => (typeof r.total_gb === 'number')
+                ? +r.total_gb
+                : +((r.total_bytes || 0) / (1024 ** 3)).toFixed(3)
             );
 
             // Destroy previous chart if present
@@ -304,6 +300,7 @@
                         x: {
                             beginAtZero: true,
                             grid: { display: false },
+                            //title: { display: true, text: 'Total (GB)', font: { size: 10, weight: '500' } },
                             ticks: {
                                 callback: (v) => `${v} GB`
                             }
@@ -335,7 +332,6 @@
             canvas.style.display = '';
         } catch (e) {
             console.error('Top Devices error:', e);
-            if (loader) loader.textContent = 'Error';
         }
     }
 
@@ -344,7 +340,7 @@
     fetchAndDisplayTopDevicesChart();
 
     setInterval(fetchAndDisplayTopAppsChart, 30000);      // 30s
-    setInterval(fetchAndDisplayTopDevicesChart, 300000);  // 5 min
+    setInterval(fetchAndDisplayTopDevicesChart, 30000);  // 30s
 </script>
 
 <style>
