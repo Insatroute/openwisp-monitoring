@@ -121,12 +121,12 @@
           <div class="wp-icon"><svg><use href="#wp-icon-sim"/></svg></div>
           <div class="wp-port-label">SIM1</div>
           {% comment %} <div class="wp-port-role">—</div> {% endcomment %}
-          <div class="wp-port-role">-</div>
+          <div class="wp-port-role" id="wp-role-sim1">-</div>
         </div>
         <div id="wp-tile-sim2" class="wp-port-tile wp-disconnected">
           <div class="wp-icon"><svg><use href="#wp-icon-sim"/></svg></div>
           <div class="wp-port-label">SIM2</div>
-          <div class="wp-port-role">-</div>
+          <div class="wp-port-role" id="wp-role-sim2">-</div>
         </div>
       </div>
       <div class="wp-ports-box">
@@ -160,6 +160,7 @@
     <thead>
       <tr>
         <th>Status</th>
+        <th>Path Label</th>
         <th>Uplink</th>
         <th>Uptime</th>
         {% comment %} <th>Public IP</th> {% endcomment %}
@@ -181,7 +182,19 @@
             <span class="wp-status-dot {% if iface.up %}wp-dot-green{% else %}wp-dot-gray{% endif %}"></span>
             {% if iface.up %}Online{% else %}Offline{% endif %}
           </td>
-
+          <td class="wp-nowrap">
+            {% if iface.type == 'mobile' %}
+              {% if iface.name == 'modem' %}
+                <a class="wp-linkish">{% if iface.mobile and iface.mobile.operator_name %}{{ iface.mobile.operator_name }}{% endif %}</a>
+              {% elif iface.name == 'modem2' %}
+                <a class="wp-linkish">{% if iface.mobile and iface.mobile.operator_name %}{{ iface.mobile.operator_name }}{% endif %}</a>
+              {% else %}
+                <a class="wp-linkish">-</a>
+              {% endif %}
+            {% else %}
+              <a class="wp-linkish">-</a>
+            {% endif %}
+          </td>
           <td class="wp-nowrap">
             {% if iface.type == 'mobile' %}
               {% if iface.name == 'modem' %}
@@ -196,6 +209,8 @@
               <span class="wp-muted" id="wp-row-role-{{ iface.name }}"> (WAN)</span>
             {% endif %}
           </td>
+  
+
 
           <td class="wp-nowrap">-</td>
 
@@ -258,12 +273,25 @@
   var IFACES = [
     {% for iface in device_data.interfaces %}
       {
-        "name":"{{ iface.name }}",
-        "type":"{{ iface.type }}",
+        "name": "{{ iface.name }}",
+        "type": "{{ iface.type }}",
         "up": {% if iface.up %}true{% else %}false{% endif %},
         "is_wan": {% if iface.is_wan %}true{% else %}false{% endif %},
-        "role":"{{ iface.role|default_if_none:'' }}",
-        {% if iface.bridge_members %}"bridge_members":[{% for m in iface.bridge_members %}"{{ m }}"{% if not forloop.last %},{% endif %}{% endfor %}],{% else %}"bridge_members":[],{% endif %}
+        "role": "{{ iface.role|default_if_none:'' }}",
+        {% if iface.bridge_members %}
+          "bridge_members": [
+            {% for m in iface.bridge_members %}"{{ m }}"{% if not forloop.last %},{% endif %}{% endfor %}
+          ],
+        {% else %}
+          "bridge_members": [],
+        {% endif %}
+        "mobile": {
+          {% if iface.mobile and iface.mobile.operator_name %}
+            "operator_name": "{{ iface.mobile.operator_name|escapejs }}"
+          {% else %}
+            "operator_name": null
+          {% endif %}
+        }
       },
     {% endfor %}
   ];
@@ -292,6 +320,14 @@
     return '-';
   }
 
+  function operatorOf(name){
+    var i = IFACES.find(function(x){
+      return x.name === name && x.type === 'mobile';
+    });
+    if (!i || !i.mobile || !i.mobile.operator_name) return '-';
+    return i.mobile.operator_name;
+  }
+
   // ETH0..ETH5 (skip sub-ifs)
   ['eth0','eth1','eth2','eth3','eth4','eth5'].forEach(function(name){
     var m = IFACES.find(function(i){
@@ -310,11 +346,37 @@
     if(rowRole){ rowRole.textContent = ' (' + roleOf(name) + ')'; }
   });
 
-  // SIM tiles (unchanged)
-  var sim1 = IFACES.find(function(i){ return i.name === 'modem' && i.type === 'mobile'; });
-  var sim2 = IFACES.find(function(i){ return i.name === 'modem2' && i.type === 'mobile'; });
+  // ================== SIM tiles: show operator as role ==================
+  var sim1Name = 'modem';
+  var sim2Name = 'modem2';
+
+  var sim1 = IFACES.find(function(i){ return i.name === sim1Name && i.type === 'mobile'; });
+  var sim2 = IFACES.find(function(i){ return i.name === sim2Name && i.type === 'mobile'; });
+
+  // state
   wpSetState('wp-tile-sim1', !!(sim1 && sim1.up));
   wpSetState('wp-tile-sim2', !!(sim2 && sim2.up));
+
+  var sim1RoleEl = document.getElementById('wp-role-sim1');
+  if (sim1RoleEl) {
+    sim1RoleEl.textContent = operatorOf(sim1Name);
+  }
+
+  var sim2RoleEl = document.getElementById('wp-role-sim2');
+  if (sim2RoleEl) {
+    sim2RoleEl.textContent = operatorOf(sim2Name);
+  }
+
+  // optional: if you have row labels in a table
+  var sim1RowRole = document.getElementById('wp-row-role-sim1');
+  if (sim1RowRole) {
+    sim1RowRole.textContent = ' (' + operatorOf(sim1Name) + ')';
+  }
+
+  var sim2RowRole = document.getElementById('wp-row-role-sim2');
+  if (sim2RowRole) {
+    sim2RowRole.textContent = ' (' + operatorOf(sim2Name) + ')';
+  }
 
   // Wi-Fi placeholder (keep gray unless you map an iface like wlan0)
   // var wifi = IFACES.find(i => i.name === 'wlan0');
