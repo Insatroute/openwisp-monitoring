@@ -82,9 +82,6 @@
 </head>
 
 <body>
-  <!-- OPTIONAL: inject your live device_data here.
-       Example (Django): {{ device_data|json_script:"device-usage-data" }} -->
-  <!-- <script id="device-usage-data" type="application/json">{ ... }</script> -->
 
   <div class="cellular_signal_page">
     <div class="cellular_signal_header">
@@ -131,485 +128,192 @@
   </div>
 
   <script>
-    (function () {
-      'use strict';
+    /* Reads your Django robot-injected data for one sample */
+    function getSampleData() {
+      // Any real-time polling you do, replace this with actual API fetching logic
 
-      /* ---------- Initial values from Django (first sample) ---------- */
-      // SIM1 (modem)
-      const DJ_M1 = {
-        operator: "{{ device_data.cellular.modem.operator|default:'—' }}",
-        nettype: "{{ device_data.cellular.modem.nettype|default:'—' }}",
-        csq: "{{ device_data.cellular.modem.csq|default:'0' }}",
-        rsrp: "{{ device_data.cellular.modem.rsrp|default:'0' }}",
-        rsrq: "{{ device_data.cellular.modem.rsrq|default:'0' }}",
-        snr: "{{ device_data.cellular.modem.sinr|default:'0' }}",
-        rssi: "{{ device_data.cellular.modem.rssi|default:'0' }}"
-      };
+      const dd = new Date("{{ device_data.general.local_time|default:'2025-11-14T01:00:48+05:30' }}");
 
-      // SIM2 (modem2)
-      const DJ_M2 = {
-        operator: "{{ device_data.cellular.modem2.operator|default:'—' }}",
-        nettype: "{{ device_data.cellular.modem2.nettype|default:'—' }}",
-        csq: "{{ device_data.cellular.modem2.csq|default:'0' }}",
-        rsrp: "{{ device_data.cellular.modem2.rsrp|default:'0' }}",
-        rsrq: "{{ device_data.cellular.modem2.rsrq|default:'0' }}",
-        snr: "{{ device_data.cellular.modem2.sinr|default:'0' }}",
-        rssi: "{{ device_data.cellular.modem2.rssi|default:'0' }}"
-      };
+      function coerceNum(v) {
+        if (v == null || v === '—' || v === '-' || v === '0' || v === 0) return 0;
+        const n = parseFloat(v);
+        return isNaN(n) ? 0 : n;
+      }
 
-      // General info (for local_time)
-      const DJ_LOCAL_TIME = "{{ device_data.general.local_time|default:'' }}";
-
-      console.log('DJ_M1:====', DJ_M1);
-      console.log('DJ_M2:====', DJ_M2);
-
-      /* ---------- Config ---------- */
-      const HOUR_MS = 60 * 60 * 1000;
-      const FETCH_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
-
-      // Set this globally in your template or another script:
-      // window.CELLULAR_SIGNAL_API_URL = "<your API URL that returns the Response JSON>";
-      const API_URL = window.CELLULAR_SIGNAL_API_URL || null;
-
-      /* ---------- Dummy fallback data (from your sample Response) ---------- */
-      const DUMMY_RESPONSE_BASE = {
-        type: "DeviceMonitoring",
-        general: {
-          serialnumber: "114GSQ2209N23015",
-          local_time: "2025-11-14T01:00:48+05:30",
-          uptime: "1 days, 6 hours and 26 minutes",
-          hostname: "Router"
+      return {
+        timestamp: dd,
+        m1: {
+          csq: coerceNum("{{ device_data.cellular.modem.csq|default:'—' }}"),
+          rsrp: coerceNum("{{ device_data.cellular.modem.rsrp|default:'—' }}"),
+          rsrq: coerceNum("{{ device_data.cellular.modem.rsrq|default:'—' }}"),
+          rssi: coerceNum("{{ device_data.cellular.modem.rssi|default:'—' }}"),
+          snr: coerceNum("{{ device_data.cellular.modem.sinr|default:'—' }}"),
+          operator: "{{ device_data.cellular.modem.operator|default:'—' }}",
+          nettype: "{{ device_data.cellular.modem.nettype|default:'—' }}"
         },
-        cellular: {
-          modem2: {
-            operator: "AIRTEL",
-            nettype: "FDD LTE",
-            csq: "29",
-            rsrp: "-92",
-            rsrq: "-16",
-            sinr: "0",
-            rssi: "0"
-          },
-          modem: {
-            operator: "AIRTEL",
-            nettype: "FDD LTE",
-            csq: "31",
-            rsrp: "-83",
-            rsrq: "-16",
-            sinr: "-2",
-            rssi: "0"
-          }
+        m2: {
+          csq: coerceNum("{{ device_data.cellular.modem2.csq|default:'—' }}"),
+          rsrp: coerceNum("{{ device_data.cellular.modem2.rsrp|default:'—' }}"),
+          rsrq: coerceNum("{{ device_data.cellular.modem2.rsrq|default:'—' }}"),
+          rssi: coerceNum("{{ device_data.cellular.modem2.rssi|default:'—' }}"),
+          snr: coerceNum("{{ device_data.cellular.modem2.sinr|default:'—' }}"),
+          operator: "{{ device_data.cellular.modem2.operator|default:'—' }}",
+          nettype: "{{ device_data.cellular.modem2.nettype|default:'—' }}"
         }
+      }
+    }
+
+    /* We keep poll history and aggregate per hour (averaging) */
+    let history = [];
+
+    // Add sample every 5min, max keep 1 day (288 slots)
+    function addSample(sample) {
+      history.push(sample);
+      if (history.length > 288) history.shift();
+    }
+
+    console.log('Initial sample data:====', history);
+
+    // Returns array of hour strings (e.g. "01:00", "02:00"...) for last 24h from sample timestamp
+    function hourlyLabels(baseDate) {
+      const labels = [];
+      const d = new Date(baseDate);
+      d.setMinutes(0, 0, 0);
+      for (let i = 0; i < 24; i++) {
+        labels.unshift(d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+        d.setHours(d.getHours() - 1);
+      }
+      return labels.reverse(); // oldest to newest on x-axis
+    }
+
+    // Average filters array ignoring zeros
+    function average(values) {
+      const nonZero = values.filter(v => v > 0);
+      if (nonZero.length === 0) return 0;
+      return nonZero.reduce((a, b) => a + b, 0) / nonZero.length;
+    }
+
+    // Aggregate to per-hour averages
+    function aggregateHourly(history) {
+      if (!history.length) return null;
+      const result = {
+        csq1: [], csq2: [], rsrp1: [], rsrp2: [], rsrq1: [], rsrq2: [],
+        rssi1: [], rssi2: [], snr1: [], snr2: [],
+        operator1: '—', operator2: '—', nettype1: '—', nettype2: '—'
       };
-
-      let dummySeeded = false;
-
-      /* ---------- Helpers ---------- */
-      // "-" / "—" / "" / null / NaN => 0, numeric string => number (keep negatives), 0 stays 0
-      function normalizeMetric(v) {
-        if (v == null) return 0;
-        const s = String(v).trim();
-        if (!s || s === '-' || s === '—') return 0;
-        const n = Number(s);
-        if (!Number.isFinite(n)) return 0;
-        return n;
-      }
-
-      function parseLocalTime(str) {
-        if (!str) return null;
-        const d = new Date(str);
-        if (Number.isNaN(d.getTime())) return null;
-        return d;
-      }
-
-      function bucketToHour(dateObj) {
-        const d = new Date(dateObj);
-        d.setMinutes(0, 0, 0);
-        return d;
-      }
-
-      function getSignalQuality(csq) {
-        const val = Number.isFinite(csq) ? csq : 0;
-        if (val === 99) return { label: 'Unknown', color: '#9ca3af', dbm: 'Unknown' };
-        if (val === 0 || val === 1) return { label: 'Very Poor', color: '#ef4444', dbm: '≤ -111 dBm' };
-        if (val >= 2 && val <= 3) return { label: 'Poor', color: '#f97316', dbm: '-109 to -107 dBm' };
-        if (val >= 4 && val <= 7) return { label: 'Fair', color: '#eab308', dbm: '-105 to -99 dBm' };
-        if (val >= 8 && val <= 11) return { label: 'Good', color: '#3b82f6', dbm: '-97 to -91 dBm' };
-        if (val >= 12 && val <= 31) return { label: 'Excellent', color: '#22c55e', dbm: '-89 to ≥-51 dBm' };
-        return { label: 'Unknown', color: '#9ca3af', dbm: 'Unknown' };
-      }
-
-      function buildModemLegendLabel(prefix, operator, nettype) {
-        const pieces = [];
-        if (operator && operator !== '—') pieces.push(operator);
-        if (nettype && nettype !== '—') pieces.push(`(${nettype})`);
-        return pieces.length ? `${prefix} — ${pieces.join(' ')}` : prefix;
-      }
-
-      function plotAndAttachResize(targetId, traces, layout) {
-        const el = document.getElementById(targetId);
-        if (!el) return;
-        Plotly.newPlot(el, traces, layout, { displayModeBar: false, responsive: true });
-
-        if (!el.__resizeAttached) {
-          const resize = () => Plotly.Plots.resize(el);
-          window.addEventListener('resize', resize, { passive: true });
-          if ('ResizeObserver' in window && el.parentElement) {
-            const ro = new ResizeObserver(resize);
-            ro.observe(el.parentElement);
-          }
-          requestAnimationFrame(resize);
-          el.__resizeAttached = true;
+      // pick last sample's timestamp as base for hourly labels
+      const baseTime = history[history.length - 1].timestamp;
+      const labels = hourlyLabels(baseTime);
+      const buckets = {};
+      // Initialize buckets for each hour as array of values
+      labels.forEach(label => {
+        buckets[label] = { m1: [], m2: [] };
+      });
+      // Sort each sample into buckets by hour label aware of timezone
+      history.forEach(entry => {
+        const label = entry.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        if (!(label in buckets)) return; // outside 24h range
+        buckets[label].m1.push(entry.m1);
+        buckets[label].m2.push(entry.m2);
+      });
+      // For each bucket/h, average each metric from all samples
+      labels.forEach(label => {
+        const arrM1 = buckets[label].m1;
+        const arrM2 = buckets[label].m2;
+        // Helper to average one property
+        function avgProp(arr, prop) {
+          if (!arr.length) return 0;
+          return average(arr.map(x => x[prop] || 0));
         }
+        result.csq1.push(avgProp(arrM1, 'csq'));
+        result.csq2.push(avgProp(arrM2, 'csq'));
+        result.rsrp1.push(avgProp(arrM1, 'rsrp'));
+        result.rsrp2.push(avgProp(arrM2, 'rsrp'));
+        result.rsrq1.push(avgProp(arrM1, 'rsrq'));
+        result.rsrq2.push(avgProp(arrM2, 'rsrq'));
+        result.rssi1.push(avgProp(arrM1, 'rssi'));
+        result.rssi2.push(avgProp(arrM2, 'rssi'));
+        result.snr1.push(avgProp(arrM1, 'snr'));
+        result.snr2.push(avgProp(arrM2, 'snr'));
+      });
+      // Use last sample metadata for legend
+      const last = history[history.length - 1];
+      result.operator1 = last.m1.operator || '—';
+      result.operator2 = last.m2.operator || '—';
+      result.nettype1 = last.m1.nettype || '—';
+      result.nettype2 = last.m2.nettype || '—';
+      return { labels, result };
+    }
+
+    // Draw charts using Plotly
+    function drawCharts(data) {
+      const { labels, result } = data;
+      const name1 = "Sim1 — " + result.operator1 + (result.nettype1 ? " (" + result.nettype1 + ")" : "");
+      const name2 = "Sim2 — " + result.operator2 + (result.nettype2 ? " (" + result.nettype2 + ")" : "");
+      const baseLayout = (ytitle, yRange, yDtick) => ({
+        margin: { l: 60, r: 20, t: 50, b: 80 },
+        yaxis: { title: ytitle, range: yRange, dtick: yDtick, zeroline: false, gridcolor: '#e5e7eb' },
+        xaxis: { tickvals: labels, ticktext: labels, gridcolor: '#e5e7eb', tickangle: -45 },
+        legend: { orientation: 'h', yanchor: 'bottom', y: 1.12, x: 0, xanchor: 'left' },
+        plot_bgcolor: '#fff',
+        paper_bgcolor: '#fff'
+      });
+
+      Plotly.newPlot('cellular_signal_div_csq', [
+        { x: labels, y: result.csq1, type: 'scatter', mode: 'lines+markers', name: name1, line: { color: '#ff7f0e', width: 3 }, marker: { size: 7 } },
+        { x: labels, y: result.csq2, type: 'scatter', mode: 'lines+markers', name: name2, line: { color: '#1f77b4', width: 3 }, marker: { size: 7 } }
+      ], baseLayout('CSQ', [0, 40], 5));
+
+      Plotly.newPlot('cellular_signal_div_rsrp', [
+        { x: labels, y: result.rsrp1, type: 'scatter', mode: 'lines+markers', name: name1, line: { color: '#ff7f0e' }, marker: { size: 6 } },
+        { x: labels, y: result.rsrp2, type: 'scatter', mode: 'lines+markers', name: name2, line: { color: '#1f77b4' }, marker: { size: 6 } }
+      ], baseLayout('RSRP (dBm)', [-140, -44], 20));
+
+      Plotly.newPlot('cellular_signal_div_rsrq', [
+        { x: labels, y: result.rsrq1, type: 'scatter', mode: 'lines+markers', name: name1, line: { color: '#ff7f0e' }, marker: { size: 6 } },
+        { x: labels, y: result.rsrq2, type: 'scatter', mode: 'lines+markers', name: name2, line: { color: '#1f77b4' }, marker: { size: 6 } }
+      ], baseLayout('RSRQ (dB)', [-20, -3], 2));
+
+      Plotly.newPlot('cellular_signal_div_rssi', [
+        { x: labels, y: result.rssi1, type: 'scatter', mode: 'lines+markers', name: name1, line: { color: '#ff7f0e' }, marker: { size: 6 } },
+        { x: labels, y: result.rssi2, type: 'scatter', mode: 'lines+markers', name: name2, line: { color: '#1f77b4' }, marker: { size: 6 } }
+      ], baseLayout('RSSI (dBm)', [-120, -40], 10));
+
+      Plotly.newPlot('cellular_signal_div_snr', [
+        { x: labels, y: result.snr1, type: 'scatter', mode: 'lines+markers', name: name1, line: { color: '#ff7f0e' }, marker: { size: 6 } },
+        { x: labels, y: result.snr2, type: 'scatter', mode: 'lines+markers', name: name2, line: { color: '#1f77b4' }, marker: { size: 6 } }
+      ], baseLayout('SNR (dB)', [-5, 35], 5));
+    }
+
+    // Initial data from Django injected variables
+    function initialLoad() {
+      const sample = getSampleData();
+      addSample(sample);
+      const data = aggregateHourly(history);
+      drawCharts(data);
+      // Update header meta
+      const metaEl = document.getElementById('cellular_signal_meta');
+      if (metaEl) {
+        metaEl.textContent = `M1: ${sample.m1.operator} • ${sample.m1.nettype} | M2: ${sample.m2.operator} • ${sample.m2.nettype}`;
       }
+    }
 
-      /* ---------- In-memory hourly history ---------- */
-      const history = {
-        times: [], // hourly bucket Date objects
-        m1: { csq: [], rsrp: [], rsrq: [], rssi: [], snr: [] },
-        m2: { csq: [], rsrp: [], rsrq: [], rssi: [], snr: [] }
-      };
-
-      let latestSample = null;
-
-      function upsertSample(sample) {
-        if (!sample || !sample.general || !sample.cellular) return;
-        const t = parseLocalTime(sample.general.local_time);
-        if (!t) return;
-        const bucket = bucketToHour(t);
-
-        let idx = history.times.findIndex(d => d.getTime() === bucket.getTime());
-        if (idx === -1) {
-          history.times.push(bucket);
-          for (const key of ['csq', 'rsrp', 'rsrq', 'rssi', 'snr']) {
-            history.m1[key].push(0);
-            history.m2[key].push(0);
-          }
-          idx = history.times.length - 1;
-        }
-
-        const m1 = sample.cellular.modem || {};
-        const m2 = sample.cellular.modem2 || {};
-
-        history.m1.csq[idx] = normalizeMetric(m1.csq);
-        history.m1.rsrp[idx] = normalizeMetric(m1.rsrp);
-        history.m1.rsrq[idx] = normalizeMetric(m1.rsrq);
-        history.m1.rssi[idx] = normalizeMetric(m1.rssi);
-        history.m1.snr[idx] = normalizeMetric(m1.sinr ?? m1.snr);
-
-        history.m2.csq[idx] = normalizeMetric(m2.csq);
-        history.m2.rsrp[idx] = normalizeMetric(m2.rsrp);
-        history.m2.rsrq[idx] = normalizeMetric(m2.rsrq);
-        history.m2.rssi[idx] = normalizeMetric(m2.rssi);
-        history.m2.snr[idx] = normalizeMetric(m2.sinr ?? m2.snr);
-
-        latestSample = sample;
+    // Periodic new sample arrival simulation every 5 minutes (replaced in prod with real backend async)
+    setInterval(() => {
+      const newSample = getSampleData(); // New sample from Django context or API
+      addSample(newSample);
+      const data = aggregateHourly(history);
+      drawCharts(data);
+      const metaEl = document.getElementById('cellular_signal_meta');
+      if (metaEl) {
+        metaEl.textContent = `M1: ${newSample.m1.operator} • ${newSample.m1.nettype} | M2: ${newSample.m2.operator} • ${newSample.m2.nettype}`;
       }
+    }, 300000); // 300000 ms = 5 min
 
-      /* ---------- Seed dummy hourly data if API not working ---------- */
-      function seedDummyHistory() {
-        if (dummySeeded) return;
-        dummySeeded = true;
+    initialLoad();
 
-        const baseTime = parseLocalTime(DUMMY_RESPONSE_BASE.general.local_time) || new Date();
-
-        // Create 6 hourly points: baseTime -5h ... baseTime (hour buckets)
-        for (let i = 5; i >= 0; i--) {
-          const d = new Date(baseTime);
-          d.setHours(d.getHours() - i);
-
-          const sample = JSON.parse(JSON.stringify(DUMMY_RESPONSE_BASE));
-          sample.general.local_time = d.toISOString(); // still parses fine
-          upsertSample(sample);
-        }
-      }
-
-      /* ---------- Render charts from history (hourly X axis) ---------- */
-      function renderAllCharts() {
-        if (!history.times.length) return;
-
-        const latestCell = latestSample || {
-          cellular: { modem: DJ_M1, modem2: DJ_M2 },
-          general: { local_time: DJ_LOCAL_TIME }
-        };
-
-        // Meta line under title
-        const metaEl = document.getElementById('cellular_signal_meta');
-        if (metaEl) {
-          const parts = [];
-          const m1Bits = [latestCell.cellular.modem.operator, latestCell.cellular.modem.nettype]
-            .filter(v => v && v !== '—').join(' • ');
-          const m2Bits = [latestCell.cellular.modem2.operator, latestCell.cellular.modem2.nettype]
-            .filter(v => v && v !== '—').join(' • ');
-          if (m1Bits) parts.push(`M1: ${m1Bits}`);
-          if (m2Bits) parts.push(`M2: ${m2Bits}`);
-          const t = parseLocalTime(latestCell.general.local_time);
-          if (t) {
-            parts.push(t.toLocaleString());
-          }
-          metaEl.textContent = parts.join('  |  ');
-        }
-
-        const name1 = buildModemLegendLabel(
-          'Sim1',
-          latestCell.cellular.modem.operator || DJ_M1.operator,
-          latestCell.cellular.modem.nettype || DJ_M1.nettype
-        );
-        const name2 = buildModemLegendLabel(
-          'Sim2',
-          latestCell.cellular.modem2.operator || DJ_M2.operator,
-          latestCell.cellular.modem2.nettype || DJ_M2.nettype
-        );
-
-        const x = history.times;
-        const lastIdx = x.length - 1;
-        const csq1Latest = history.m1.csq[lastIdx];
-        const csq2Latest = history.m2.csq[lastIdx];
-        const q1 = getSignalQuality(csq1Latest);
-        const q2 = getSignalQuality(csq2Latest);
-
-        const commonXaxis = {
-          tickformat: '%H:%M<br>%b %d',
-          dtick: HOUR_MS,
-          gridcolor: '#e5e7eb'
-        };
-
-        /* ----- Layouts ----- */
-        const csqLayout = {
-          margin: { l: 50, r: 20, t: 60, b: 60 },
-          yaxis: { title: 'Signal Level (CSQ)', range: [0, 40], dtick: 5, zeroline: false, gridcolor: '#e5e7eb' },
-          xaxis: commonXaxis,
-          legend: { orientation: 'h', yanchor: 'bottom', y: 1.08, x: 0, xanchor: 'left' },
-          plot_bgcolor: '#ffffff',
-          paper_bgcolor: '#ffffff',
-          shapes: [
-            { type: 'line', xref: 'paper', yref: 'y', x0: 0, y0: 35, x1: 1, y1: 35, line: { color: '#22c55e', width: 1.5, dash: 'dot' } },
-            { type: 'line', xref: 'paper', yref: 'y', x0: 0, y0: 25, x1: 1, y1: 25, line: { color: '#3b82f6', width: 1.5, dash: 'dot' } },
-            { type: 'line', xref: 'paper', yref: 'y', x0: 0, y0: 15, x1: 1, y1: 15, line: { color: '#eab308', width: 1.5, dash: 'dot' } },
-            { type: 'line', xref: 'paper', yref: 'y', x0: 0, y0: 5, x1: 1, y1: 5, line: { color: '#f97316', width: 1.5, dash: 'dot' } }
-          ],
-          annotations: [
-            { x: 0.98, y: 40, xref: 'paper', yref: 'y', text: 'Excellent', showarrow: false, xanchor: 'right', font: { size: 10, color: '#16a34a' }, bgcolor: 'rgba(255,255,255,0.7)', borderpad: 3 },
-            { x: 0.98, y: 30, xref: 'paper', yref: 'y', text: 'Good', showarrow: false, xanchor: 'right', font: { size: 10, color: '#2563eb' }, bgcolor: 'rgba(255,255,255,0.7)', borderpad: 3 },
-            { x: 0.98, y: 20, xref: 'paper', yref: 'y', text: 'Fair', showarrow: false, xanchor: 'right', font: { size: 10, color: '#ca8a04' }, bgcolor: 'rgba(255,255,255,0.7)', borderpad: 3 },
-            { x: 0.98, y: 10, xref: 'paper', yref: 'y', text: 'Poor', showarrow: false, xanchor: 'right', font: { size: 10, color: '#ea580c' }, bgcolor: 'rgba(255,255,255,0.7)', borderpad: 3 },
-            { x: 0.98, y: 1, xref: 'paper', yref: 'y', text: 'Very Poor', showarrow: false, xanchor: 'right', font: { size: 10, color: '#dc2626' }, bgcolor: 'rgba(255,255,255,0.7)', borderpad: 3 }
-          ]
-        };
-
-        const commonLegend = { orientation: 'h', yanchor: 'bottom', y: 1.08, x: 0, xanchor: 'left' };
-        const rsrpLayout = {
-          margin: { l: 60, r: 20, t: 60, b: 60 },
-          yaxis: { title: 'dBm', range: [-140, -44], dtick: 20, zeroline: false, gridcolor: '#e5e7eb' },
-          xaxis: commonXaxis,
-          legend: commonLegend, plot_bgcolor: '#ffffff', paper_bgcolor: '#ffffff'
-        };
-        const rsrqLayout = {
-          margin: { l: 60, r: 20, t: 60, b: 60 },
-          yaxis: { title: 'dB', range: [-20, -3], dtick: 2, zeroline: false, gridcolor: '#e5e7eb' },
-          xaxis: commonXaxis,
-          legend: commonLegend, plot_bgcolor: '#ffffff', paper_bgcolor: '#ffffff'
-        };
-
-        // ---- RSSI layout: if all data is 0, show axis around 0 so line is visible ----
-        const allRssiValues = history.m1.rssi.concat(history.m2.rssi);
-        const hasRealRssi = allRssiValues.some(v => v !== 0);
-
-        const rssiLayout = {
-          margin: { l: 60, r: 20, t: 60, b: 60 },
-          yaxis: hasRealRssi
-            ? { title: 'dBm', range: [-120, -40], dtick: 10, zeroline: false, gridcolor: '#e5e7eb' }
-            : { title: 'dBm', range: [-10, 10], dtick: 5, zeroline: true, gridcolor: '#e5e7eb' },
-          xaxis: commonXaxis,
-          legend: commonLegend, plot_bgcolor: '#ffffff', paper_bgcolor: '#ffffff'
-        };
-
-        const snrLayout = {
-          margin: { l: 60, r: 20, t: 60, b: 60 },
-          yaxis: { title: 'dB', range: [-5, 35], dtick: 5, zeroline: false, gridcolor: '#e5e7eb' },
-          xaxis: commonXaxis,
-          legend: commonLegend, plot_bgcolor: '#ffffff', paper_bgcolor: '#ffffff'
-        };
-
-        /* ----- Plot all 5 charts ----- */
-        // CSQ
-        plotAndAttachResize('cellular_signal_div_csq', [
-          {
-            x,
-            y: history.m1.csq,
-            type: 'scatter',
-            mode: 'lines+markers',
-            name: `${name1} (${q1.label})`,
-            line: { color: '#ff7f0e', width: 2.5 },
-            marker: { size: 7, color: '#ff7f0e' }
-          },
-          {
-            x,
-            y: history.m2.csq,
-            type: 'scatter',
-            mode: 'lines+markers',
-            name: `${name2} (${q2.label})`,
-            line: { color: '#1f77b4', width: 2.5 },
-            marker: { size: 7, color: '#1f77b4' }
-          }
-        ], csqLayout);
-
-        // RSRP
-        plotAndAttachResize('cellular_signal_div_rsrp', [
-          {
-            x,
-            y: history.m1.rsrp,
-            type: 'scatter',
-            mode: 'lines+markers',
-            name: name1,
-            line: { width: 2, color: '#ff7f0e' },
-            marker: { size: 6, color: '#ff7f0e' }
-          },
-          {
-            x,
-            y: history.m2.rsrp,
-            type: 'scatter',
-            mode: 'lines+markers',
-            name: name2,
-            line: { width: 2, color: '#1f77b4' },
-            marker: { size: 6, color: '#1f77b4' }
-          }
-        ], rsrpLayout);
-
-        // RSRQ
-        plotAndAttachResize('cellular_signal_div_rsrq', [
-          {
-            x,
-            y: history.m1.rsrq,
-            type: 'scatter',
-            mode: 'lines+markers',
-            name: name1,
-            line: { width: 2, color: '#ff7f0e' },
-            marker: { size: 6, color: '#ff7f0e' }
-          },
-          {
-            x,
-            y: history.m2.rsrq,
-            type: 'scatter',
-            mode: 'lines+markers',
-            name: name2,
-            line: { width: 2, color: '#1f77b4' },
-            marker: { size: 6, color: '#1f77b4' }
-          }
-        ], rsrqLayout);
-
-        // RSSI
-        plotAndAttachResize('cellular_signal_div_rssi', [
-          {
-            x,
-            y: history.m1.rssi,
-            type: 'scatter',
-            mode: 'lines+markers',
-            name: name1,
-            line: { width: 2, color: '#ff7f0e' },
-            marker: { size: 6, color: '#ff7f0e' }
-          },
-          {
-            x,
-            y: history.m2.rssi,
-            type: 'scatter',
-            mode: 'lines+markers',
-            name: name2,
-            line: { width: 2, color: '#1f77b4' },
-            marker: { size: 6, color: '#1f77b4' }
-          }
-        ], rssiLayout);
-
-        // SNR
-        plotAndAttachResize('cellular_signal_div_snr', [
-          {
-            x,
-            y: history.m1.snr,
-            type: 'scatter',
-            mode: 'lines+markers',
-            name: name1,
-            line: { width: 2, color: '#ff7f0e' },
-            marker: { size: 6, color: '#ff7f0e' }
-          },
-          {
-            x,
-            y: history.m2.snr,
-            type: 'scatter',
-            mode: 'lines+markers',
-            name: name2,
-            line: { width: 2, color: '#1f77b4' },
-            marker: { size: 6, color: '#1f77b4' }
-          }
-        ], snrLayout);
-      }
-
-      /* ---------- Fetch new response every 5 minutes ---------- */
-      async function fetchAndUpdateFromApi() {
-        // if (!API_URL) {
-        //   // No API configured – seed dummy history if needed
-        //   if (!dummySeeded) {
-        //     seedDummyHistory();
-        //     renderAllCharts();
-        //   }
-        //   return;
-        // }
-        try {
-          const resp = await fetch(API_URL, { headers: { 'accept': 'application/json' } });
-          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-          const data = await resp.json();
-          console.log('API cellular response:======', data);
-          upsertSample(data);
-          renderAllCharts();
-        } catch (e) {
-          console.error('Error fetching cellular data:', e);
-          // If we only have initial data, fill with dummy so charts still look alive
-          if (history.times.length <= 1 && !dummySeeded) {
-            seedDummyHistory();
-            renderAllCharts();
-          }
-        }
-      }
-
-      /* ---------- Initial sample from Django + start polling ---------- */
-      const initialSample = {
-        general: { local_time: DJ_LOCAL_TIME || DUMMY_RESPONSE_BASE.general.local_time },
-        cellular: {
-          modem: {
-            operator: DJ_M1.operator || DUMMY_RESPONSE_BASE.cellular.modem.operator,
-            nettype: DJ_M1.nettype || DUMMY_RESPONSE_BASE.cellular.modem.nettype,
-            csq: DJ_M1.csq || DUMMY_RESPONSE_BASE.cellular.modem.csq,
-            rsrp: DJ_M1.rsrp || DUMMY_RESPONSE_BASE.cellular.modem.rsrp,
-            rsrq: DJ_M1.rsrq || DUMMY_RESPONSE_BASE.cellular.modem.rsrq,
-            sinr: DJ_M1.snr || DUMMY_RESPONSE_BASE.cellular.modem.sinr,
-            rssi: DJ_M1.rssi || DUMMY_RESPONSE_BASE.cellular.modem.rssi
-          },
-          modem2: {
-            operator: DJ_M2.operator || DUMMY_RESPONSE_BASE.cellular.modem2.operator,
-            nettype: DJ_M2.nettype || DUMMY_RESPONSE_BASE.cellular.modem2.nettype,
-            csq: DJ_M2.csq || DUMMY_RESPONSE_BASE.cellular.modem2.csq,
-            rsrp: DJ_M2.rsrp || DUMMY_RESPONSE_BASE.cellular.modem2.rsrp,
-            rsrq: DJ_M2.rsrq || DUMMY_RESPONSE_BASE.cellular.modem2.rsrq,
-            sinr: DJ_M2.snr || DUMMY_RESPONSE_BASE.cellular.modem2.sinr,
-            rssi: DJ_M2.rssi || DUMMY_RESPONSE_BASE.cellular.modem2.rssi
-          }
-        }
-      };
-
-      upsertSample(initialSample);
-      renderAllCharts();
-
-      // If API exists, poll it; otherwise, seed dummy immediately
-      if (API_URL) {
-        console.log('Starting cellular data polling from API:======', API_URL);
-        fetchAndUpdateFromApi();
-        setInterval(fetchAndUpdateFromApi, FETCH_INTERVAL_MS);
-      } else {
-        // seedDummyHistory();
-        // renderAllCharts();
-      }
-
-    })();
   </script>
+
 </body>
 
 </html>
