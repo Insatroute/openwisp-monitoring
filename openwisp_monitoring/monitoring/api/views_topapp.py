@@ -185,11 +185,11 @@ def wan_uplinks_all_devices(request):
             # if not (iface.get("is_wan") is True or iface.get("role") == "wan"):
             #     continue
             # ONLY ethernet WAN interfaces
-            if not (
-                iface.get("type") == "ethernet"
-                and iface.get("is_wan") is True
-            ):
-                continue
+            # if not (
+            #     iface.get("type") == "ethernet"
+            #     and iface.get("is_wan") is True
+            # ):
+            #     continue
 
 
             # determine link status
