@@ -134,11 +134,11 @@
       function parseLocalTime(raw) {
         if (!raw) return null;
 
-        // 1) try native Date (works if it's already ISO "2025-11-12T22:50:26+05:30")
+        // 1) try native Date (ISO format)
         let d = new Date(raw);
         if (!isNaN(d.getTime())) return d;
 
-        // 2) try Django-style: "12 Nov 2025, 10:50 p.m."
+        // 2) "12 Nov 2025, 10:50 p.m."
         const m = raw.match(/(\d{1,2})\s+([A-Za-z]{3})\s+(\d{4}),\s+(\d{1,2}):(\d{2})\s*([ap]\.m\.)/i);
         if (m) {
           const day = parseInt(m[1], 10);
@@ -146,7 +146,7 @@
           const year = parseInt(m[3], 10);
           let hour = parseInt(m[4], 10);
           const minute = parseInt(m[5], 10);
-          const ampm = m[6].toLowerCase(); // "a.m." or "p.m."
+          const ampm = m[6].toLowerCase();
 
           const monthMap = {
             jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
@@ -154,7 +154,6 @@
           };
           const monthIdx = monthMap[monthName] ?? 0;
 
-          // convert to 24h
           if (ampm.startsWith('p') && hour < 12) hour += 12;
           if (ampm.startsWith('a') && hour === 12) hour = 0;
 
@@ -162,19 +161,13 @@
           if (!isNaN(d.getTime())) return d;
         }
 
-        // 3) last resort (should rarely happen) – current time
         return new Date();
       }
 
-      /* ====== 1. Read one snapshot from Django (local_time + modem values) ====== */
+      /* ====== 1. Read one snapshot from Django ====== */
       function getSampleFromDjango() {
         const rawLocalTime = "{{ device_data.general.local_time|default:'' }}";
         console.log("Raw local_time:====", rawLocalTime);
-
-        // let ts = new Date(rawLocalTime || '2025-11-12T21:32:54+05:30');
-        // if (isNaN(ts.getTime())) {
-        //   ts = new Date(); // avoid "Invalid Date"
-        // }
 
         const ts = parseLocalTime(rawLocalTime || '2025-11-12T21:32:54+05:30');
 
@@ -207,24 +200,23 @@
         };
       }
 
-      /* ====== 2. History of samples (each sample is one snapshot) ====== */
+      /* ====== 2. History of samples ====== */
 
       const history = [];
 
       function addSample(sample) {
-        // push new sample and keep history sorted by time (oldest → newest)
         history.push(sample);
         history.sort(function (a, b) {
           return a.timestamp - b.timestamp;
         });
       }
 
-      /* ====== 3. Build series directly from history (real timestamps only) ====== */
+      /* ====== 3. Build series from history ====== */
 
       function buildSeriesFromHistory() {
         if (!history.length) return null;
 
-        const labels = history.map(s => s.timestamp); // Date objects for x-axis
+        const labels = history.map(s => s.timestamp);
 
         const csq1 = history.map(s => s.m1.csq || 0);
         const csq2 = history.map(s => s.m2.csq || 0);
@@ -239,8 +231,16 @@
 
         const last = history[history.length - 1];
 
+        const minTime = labels[0].getTime();
+        const maxTime = labels[labels.length - 1].getTime();
+        const pad = 15 * 60 * 1000;
+        const xMin = new Date(minTime - pad);
+        const xMax = new Date(maxTime + pad);
+
         return {
           labels,
+          xMin,
+          xMax,
           csq1, csq2,
           rsrp1, rsrp2,
           rsrq1, rsrq2,
@@ -253,12 +253,35 @@
         };
       }
 
-      /* ====== 4. Draw charts with Plotly (points only at real times) ====== */
+      /* Helper to format time label HH:MM for ticks */
+      function formatTimeHHMM(d) {
+        return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      }
+
+      /* ====== 4. Plotly helper (keeps charts responsive) ====== */
+
+      function plotAndAttachResize(targetId, traces, layout) {
+        const el = document.getElementById(targetId);
+        if (!el) return;
+        Plotly.newPlot(el, traces, layout, {
+          displayModeBar: false,
+          responsive: true
+        });
+        const resize = () => Plotly.Plots.resize(el);
+        window.addEventListener('resize', resize, { passive: true });
+        if ('ResizeObserver' in window) {
+          new ResizeObserver(resize).observe(el.parentElement);
+        }
+      }
+
+      /* ====== 5. Draw charts (x ticks = actual sample times) ====== */
 
       function drawCharts(series) {
         if (!series) return;
 
         const labels = series.labels;
+        const tickVals = labels;
+        const tickText = labels.map(formatTimeHHMM);
 
         const name1 = "Sim1 — " + series.operator1 +
           (series.nettype1 && series.nettype1 !== '—' ? " (" + series.nettype1 + ")" : "");
@@ -266,7 +289,7 @@
           (series.nettype2 && series.nettype2 !== '—' ? " (" + series.nettype2 + ")" : "");
 
         const baseLayout = (ytitle, yRange, yDtick) => ({
-          margin: { l: 60, r: 20, t: 50, b: 80 },
+          margin: { l: 60, r: 40, t: 50, b: 70 },   // extra bottom margin for labels
           yaxis: {
             title: ytitle,
             range: yRange,
@@ -275,17 +298,23 @@
             gridcolor: '#e5e7eb'
           },
           xaxis: {
-            type: 'date',                               // real time axis
+            type: 'date',
+            range: [series.xMin, series.xMax],
             gridcolor: '#e5e7eb',
-            tickformat: '%H:%M\n%b %d',                // 10:13 / Nov 12, etc.
-            tickangle: 0
+            tickmode: 'array',       // <<< show ticks exactly at sample times
+            tickvals: tickVals,
+            ticktext: tickText,
+            tickangle: 0,
+            showline: true,
+            ticks: 'outside'
           },
           legend: { orientation: 'h', yanchor: 'bottom', y: 1.12, x: 0, xanchor: 'left' },
           plot_bgcolor: '#ffffff',
           paper_bgcolor: '#ffffff'
         });
 
-        Plotly.newPlot('cellular_signal_div_csq', [
+        // CSQ
+        plotAndAttachResize('cellular_signal_div_csq', [
           {
             x: labels,
             y: series.csq1,
@@ -306,7 +335,8 @@
           }
         ], baseLayout('CSQ', [0, 40], 5));
 
-        Plotly.newPlot('cellular_signal_div_rsrp', [
+        // RSRP
+        plotAndAttachResize('cellular_signal_div_rsrp', [
           {
             x: labels,
             y: series.rsrp1,
@@ -327,7 +357,8 @@
           }
         ], baseLayout('RSRP (dBm)', [-140, -44], 20));
 
-        Plotly.newPlot('cellular_signal_div_rsrq', [
+        // RSRQ
+        plotAndAttachResize('cellular_signal_div_rsrq', [
           {
             x: labels,
             y: series.rsrq1,
@@ -348,7 +379,8 @@
           }
         ], baseLayout('RSRQ (dB)', [-20, -3], 2));
 
-        Plotly.newPlot('cellular_signal_div_rssi', [
+        // RSSI
+        plotAndAttachResize('cellular_signal_div_rssi', [
           {
             x: labels,
             y: series.rssi1,
@@ -369,7 +401,8 @@
           }
         ], baseLayout('RSSI (dBm)', [-120, -40], 10));
 
-        Plotly.newPlot('cellular_signal_div_snr', [
+        // SNR
+        plotAndAttachResize('cellular_signal_div_snr', [
           {
             x: labels,
             y: series.snr1,
@@ -391,7 +424,7 @@
         ], baseLayout('SNR (dB)', [-5, 35], 5));
       }
 
-      /* ====== 5. Initial load (one point at local_time) ====== */
+      /* ====== 6. Initial load ====== */
 
       const firstSample = getSampleFromDjango();
       addSample(firstSample);
@@ -405,17 +438,8 @@
           `M2: ${firstSample.m2.operator} • ${firstSample.m2.nettype}`;
       }
 
-      /* ====== 6. Optional: helper to add new samples later ======
-       * If you later receive a new snapshot (with a new local_time and values),
-       * create the same shape object and call:
-       *
-       *   addSample(newSample);
-       *   drawCharts(buildSeriesFromHistory());
-       *
-       * That will keep the old points and add the new one at its real time.
-       */
+      /* ====== 7. Optional helper for future samples ====== */
       window.__addCellularSample = function (sample) {
-        // sample should have {timestamp: Date, m1: {...}, m2: {...}}
         addSample(sample);
         drawCharts(buildSeriesFromHistory());
       };
