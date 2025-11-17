@@ -27,6 +27,11 @@ urlpatterns = [
         views_topapp.global_top_apps,
         name="api_global_top_apps"
     ),
+    path(
+        "api/v1/monitoring/wan-uplinks/",
+        views_topapp.wan_uplinks_all_devices,
+        name="api_wan_uplinks_all_devices"
+    ),
     re_path(
         r'^api/v1/monitoring/device/(?P<device_id>[^/]+)/traffic-summary/$',
         views_realdata.traffic_summary_data,

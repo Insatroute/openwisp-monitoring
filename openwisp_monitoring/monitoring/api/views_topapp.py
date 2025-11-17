@@ -90,3 +90,144 @@ def global_top_devices(request):
     return Response({
         "top_10_devices": top_devices
     })
+
+
+def _is_wan_iface(iface: dict) -> bool:
+    """
+    WAN interface = only when:
+    - iface["is_wan"] == True
+    - OR iface["role"] == "wan"
+    """
+    if iface.get("is_wan") is True:
+        return True
+    if iface.get("role") == "wan":
+        return True
+    return False
+def _ipv4_addr_mask(iface: dict):
+    ipv4 = next(
+        (a for a in iface.get("addresses", []) if a.get("family") == "ipv4"),
+        None,
+    )
+    if not ipv4:
+        return None, None
+    return ipv4.get("address"), ipv4.get("mask")
+
+
+def _link_status(iface: dict) -> str:
+    """
+    connected  -> up and ping ok
+    abnormal   -> up but packet loss > 0 or no ping
+    disconnected -> up == False
+    """
+    if not iface.get("up"):
+        return "disconnected"
+
+    ping = iface.get("ping") or {}
+    loss = ping.get("packet_loss")
+    latency = ping.get("latency_ms")
+
+    # packet_loss comes like "0%" in your sample
+    try:
+        loss_val = float(str(loss).replace("%", "")) if loss is not None else 0.0
+    except ValueError:
+        loss_val = 0.0
+
+    if loss_val > 0 or latency is None:
+        return "abnormal"
+
+    return "connected"
+
+
+def _human_uptime(seconds: int | None) -> str:
+    if not seconds:
+        return "-"
+    td = timedelta(seconds=int(seconds))
+    days = td.days
+    hours, rem = divmod(td.seconds, 3600)
+    minutes, _ = divmod(rem, 60)
+
+    parts = []
+    if days:
+        parts.append(f"{days} day{'s' if days != 1 else ''}")
+    if hours:
+        parts.append(f"{hours} hour{'s' if hours != 1 else ''}")
+    if minutes and not days:
+        # only show minutes if uptime < 1 day to keep it short
+        parts.append(f"{minutes} min")
+    return " ".join(parts) or "0 min"
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def wan_uplinks_all_devices(request):
+    devices = Device.objects.all()
+
+    summary = {
+        "total": 0,
+        "connected": 0,
+        "abnormal": 0,
+        "disconnected": 0,
+    }
+
+    rows = []
+
+    for device in devices:
+        try:
+            data = fetch_device_data(device)
+        except Exception:
+            continue
+
+        general = data.get("general", {}) or {}
+        hostname = general.get("hostname") or getattr(device, "hostname", "")
+        uptime_sec = general.get("uptime")
+
+        interfaces = data.get("interfaces", []) or []
+        wan_index = 0
+
+        for iface in interfaces:
+
+            # -----------------------
+            # ONLY WAN FILTER HERE ✔
+            # -----------------------
+            if not (iface.get("is_wan") is True or iface.get("role") == "wan"):
+                continue
+
+            wan_index += 1
+
+            # determine link status
+            status = _link_status(iface)
+
+            summary["total"] += 1
+            summary[status] += 1
+
+            ipv4_addr, ipv4_mask = _ipv4_addr_mask(iface)
+            ping = iface.get("ping") or {}
+
+            rows.append({
+                "device_id": device.pk,
+                "hostname": hostname,
+                "serial_number": getattr(device, "serial_number", ""),
+                "model": getattr(device, "model", ""),
+                "location": getattr(device, "location_name", ""),
+                "path_label": getattr(device, "wan_path_label", ""),
+                "uplink": f"WAN{wan_index}",
+
+                "interface_name": iface.get("name"),
+                "uplink_type": iface.get("type"),
+
+                "uptime": _human_uptime(uptime_sec),
+
+                "interface_ip": ipv4_addr,
+                "interface_mask": ipv4_mask,
+
+                "ping_dest": ping.get("dest_ip"),
+                "ping_latency_ms": ping.get("latency_ms"),
+                "ping_packet_loss": ping.get("packet_loss"),
+                "ping_jitter_ms": ping.get("jitter_ms"),
+
+                "status": status,  # connected / abnormal / disconnected
+            })
+
+    return Response({
+        "summary": summary,
+        "rows": rows,
+    })
