@@ -9,10 +9,12 @@ from rest_framework.response import Response
 from collections import Counter
 from datetime import timedelta
 from django.utils import timezone
+from .views_realdata import fetch_device_data
 
  
 Device = load_model("config", "Device")
 DeviceData = load_model("device_monitoring", "DeviceData")
+DeviceLocation = load_model("geo", "DeviceLocation")
  
 def get_api_token(user):
     """Get or create DRF token for the given user dynamically."""
@@ -92,17 +94,6 @@ def global_top_devices(request):
     })
 
 
-def _is_wan_iface(iface: dict) -> bool:
-    """
-    WAN interface = only when:
-    - iface["is_wan"] == True
-    - OR iface["role"] == "wan"
-    """
-    if iface.get("is_wan") is True:
-        return True
-    if iface.get("role") == "wan":
-        return True
-    return False
 def _ipv4_addr_mask(iface: dict):
     ipv4 = next(
         (a for a in iface.get("addresses", []) if a.get("family") == "ipv4"),
@@ -138,23 +129,23 @@ def _link_status(iface: dict) -> str:
     return "connected"
 
 
-def _human_uptime(seconds: int | None) -> str:
-    if not seconds:
-        return "-"
-    td = timedelta(seconds=int(seconds))
-    days = td.days
-    hours, rem = divmod(td.seconds, 3600)
-    minutes, _ = divmod(rem, 60)
+# def _human_uptime(seconds: int | None) -> str:
+#     if not seconds:
+#         return "-"
+#     td = timedelta(seconds=int(seconds))
+#     days = td.days
+#     hours, rem = divmod(td.seconds, 3600)
+#     minutes, _ = divmod(rem, 60)
 
-    parts = []
-    if days:
-        parts.append(f"{days} day{'s' if days != 1 else ''}")
-    if hours:
-        parts.append(f"{hours} hour{'s' if hours != 1 else ''}")
-    if minutes and not days:
-        # only show minutes if uptime < 1 day to keep it short
-        parts.append(f"{minutes} min")
-    return " ".join(parts) or "0 min"
+#     parts = []
+#     if days:
+#         parts.append(f"{days} day{'s' if days != 1 else ''}")
+#     if hours:
+#         parts.append(f"{hours} hour{'s' if hours != 1 else ''}")
+#     if minutes and not days:
+#         # only show minutes if uptime < 1 day to keep it short
+#         parts.append(f"{minutes} min")
+#     return " ".join(parts) or "0 min"
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
@@ -178,20 +169,28 @@ def wan_uplinks_all_devices(request):
 
         general = data.get("general", {}) or {}
         hostname = general.get("hostname") or getattr(device, "hostname", "")
-        uptime_sec = general.get("uptime")
+        serialnumber = general.get("serialnumber") or getattr(device, "serialnumber", "")
 
         interfaces = data.get("interfaces", []) or []
-        wan_index = 0
+
+        dl = DeviceLocation.objects.filter(content_object_id=device.id).select_related("location").first()
+        location_name = dl.location.name if dl and dl.location else "-"
+
 
         for iface in interfaces:
 
             # -----------------------
             # ONLY WAN FILTER HERE ✔
             # -----------------------
-            if not (iface.get("is_wan") is True or iface.get("role") == "wan"):
+            # if not (iface.get("is_wan") is True or iface.get("role") == "wan"):
+            #     continue
+            # ONLY ethernet WAN interfaces
+            if not (
+                iface.get("type") == "ethernet"
+                and iface.get("is_wan") is True
+            ):
                 continue
 
-            wan_index += 1
 
             # determine link status
             status = _link_status(iface)
@@ -205,16 +204,15 @@ def wan_uplinks_all_devices(request):
             rows.append({
                 "device_id": device.pk,
                 "hostname": hostname,
-                "serial_number": getattr(device, "serial_number", ""),
+                "serial_number": serialnumber,
                 "model": getattr(device, "model", ""),
-                "location": getattr(device, "location_name", ""),
+                "location": location_name,
                 "path_label": getattr(device, "wan_path_label", ""),
-                "uplink": f"WAN{wan_index}",
 
                 "interface_name": iface.get("name"),
                 "uplink_type": iface.get("type"),
 
-                "uptime": _human_uptime(uptime_sec),
+                # "uptime": _human_uptime(uptime_sec),
 
                 "interface_ip": ipv4_addr,
                 "interface_mask": ipv4_mask,
