@@ -29,7 +29,7 @@
   .wp-connected .wp-icon svg { opacity:1; filter:brightness(100%) contrast(110%); }
   .wp-disconnected .wp-icon { background:#e5e7eb; border-color:#cbd5e1; }
 
-  .wp-legend { display:flex; align-items:center; gap:18px; margin-top:12px; }
+  .wp-legend { display:flex; align-items:center; gap:18px; margin-top:12px; justify-content: center; }
   .wp-legend .wp-dot { width:10px; height:10px; border-radius:50%; display:inline-block; margin-right:6px; }
   .wp-dot-green{ background:#22c55e; }
   .wp-dot-gray{ background:#cbd5e1; }
@@ -49,7 +49,7 @@
   .wp-dot-green { background:#22c55e; }
   .wp-dot-gray  { background:#cbd5e1; }
 
-  .wp-linkish { color:#0b63c5; font-weight:700; text-decoration:none; }
+  .wp-linkish { color:#11274b; font-weight:700; text-decoration:none; }
   .wp-linkish:hover { text-decoration:underline; }
 
   .wp-nowrap { white-space:nowrap; }
@@ -60,6 +60,16 @@
   .wp-kp-up i, .wp-kp-down i { display:inline-block; width:0; height:0; border-left:5px solid transparent; border-right:5px solid transparent; }
   .wp-kp-up  i { border-bottom:8px solid #22c55e; }
   .wp-kp-down i { border-top:8px solid #94a3b8; }
+  .wp-empty-msg {
+    width: 100%;
+    padding: 10px 0;
+    text-align: center;
+    color: #64748b;
+    font-size: 13px;
+    border: 1px dashed #e3e7ee;
+    border-radius: 10px;
+    background: #f9fafb;
+  }
 </style>
 
 {# ===== SVG symbols (prefixed ids) ===== #}
@@ -163,7 +173,6 @@
         <th>Path Label</th>
         <th>Uplink</th>
         <th>Uptime</th>
-        {% comment %} <th>Public IP</th> {% endcomment %}
         <th>Interface IP/Mask</th>
         <th>Ping Destination</th>
         <th>Throughput</th>
@@ -173,6 +182,7 @@
       </tr>
     </thead>
     <tbody>
+  <tbody id="wp-uplink-tbody">
   {% for iface in device_data.interfaces %}
     {# Show only WAN interfaces OR mobile interfaces #}
     {% if iface.is_wan or iface.type == 'mobile' %}
@@ -185,14 +195,18 @@
           <td class="wp-nowrap">
             {% if iface.type == 'mobile' %}
               {% if iface.name == 'modem' %}
-                <a class="wp-linkish">{% if iface.mobile and iface.mobile.operator_name %}{{ iface.mobile.operator_name }}{% endif %}</a>
+                <span>
+                  {% if iface.mobile and iface.mobile.operator_name %}{{ iface.mobile.operator_name }}{% else %}-{% endif %}
+                </span>
               {% elif iface.name == 'modem2' %}
-                <a class="wp-linkish">{% if iface.mobile and iface.mobile.operator_name %}{{ iface.mobile.operator_name }}{% endif %}</a>
+                <span>
+                  {% if iface.mobile and iface.mobile.operator_name %}{{ iface.mobile.operator_name }}{% else %}-{% endif %}
+                </span>
               {% else %}
-                <a class="wp-linkish">-</a>
+                <span>-</span>
               {% endif %}
             {% else %}
-              <a class="wp-linkish">-</a>
+              <span>-</span>
             {% endif %}
           </td>
           <td class="wp-nowrap">
@@ -209,30 +223,8 @@
               <span class="wp-muted" id="wp-row-role-{{ iface.name }}"> (WAN)</span>
             {% endif %}
           </td>
-  
-
 
           <td class="wp-nowrap">-</td>
-
-          {% comment %} <td class="wp-nowrap">
-            {% with pub="—" %}
-              {% if iface.addresses %}
-                {% for a in iface.addresses %}
-                  {% if a.family == 'ipv4' and pub == "—" %}
-                    {% with pub=a.address %}{% endwith %}
-                  {% endif %}
-                {% endfor %}
-                {% if pub == "—" %}
-                  {% for a in iface.addresses %}
-                    {% if a.family == 'ipv6' and pub == "—" %}
-                      {% with pub=a.address %}{% endwith %}
-                    {% endif %}
-                  {% endfor %}
-                {% endif %}
-              {% endif %}
-              {{ pub }}
-            {% endwith %}
-          </td> {% endcomment %}
 
           <td>
             {% if iface.addresses %}
@@ -247,7 +239,7 @@
             {% endif %}
           </td>
 
-          <td class="wp-nowrap">{{iface.ping.dest_ip}}</td>
+          <td class="wp-nowrap">{{ iface.ping.dest_ip }}</td>
 
           <td class="wp-nowrap">
             <span class="wp-kp-arrows">
@@ -256,16 +248,22 @@
             </span>
           </td>
 
-          <td class="wp-nowrap">{{iface.ping.latency_ms|default:0}}</td>
-          <td class="wp-nowrap">{{iface.ping.jitter_ms|default:0}}</td>
-          <td class="wp-nowrap">{{iface.ping.packet_loss|default:"0%"}}</td>
+          <td class="wp-nowrap">{{ iface.ping.latency_ms|default:0 }}</td>
+          <td class="wp-nowrap">{{ iface.ping.jitter_ms|default:0 }}</td>
+          <td class="wp-nowrap">{{ iface.ping.packet_loss|default:"0%" }}</td>
         </tr>
       {% endif %}
     {% endif %}
   {% endfor %}
-</tbody>
-
-  </table>
+        <tr id="wp-uplink-empty-row" style="display:none;">
+          <td colspan="10">
+            <div class="wp-empty-msg">
+              No active WAN uplinks available.
+            </div>
+          </td>
+        </tr>
+      </tbody>
+</table>
 </div>
 
 <script>
@@ -378,6 +376,17 @@
     sim2RowRole.textContent = ' (' + operatorOf(sim2Name) + ')';
   }
 
+  (function () {
+  var tbody    = document.getElementById('wp-uplink-tbody');
+  var emptyRow = document.getElementById('wp-uplink-empty-row');
+  if (!tbody || !emptyRow) return;
+
+  var dataRows = Array.prototype.filter.call(tbody.querySelectorAll('tr'), function (tr) {
+    return tr.id !== 'wp-uplink-empty-row';
+  });
+
+  emptyRow.style.display = (dataRows.length === 0) ? 'table-row' : 'none';
+})();
   // Wi-Fi placeholder (keep gray unless you map an iface like wlan0)
   // var wifi = IFACES.find(i => i.name === 'wlan0');
   // wpSetState('wp-tile-wifi', !!(wifi && wifi.up));
