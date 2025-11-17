@@ -130,15 +130,19 @@
   <script>
     document.addEventListener('DOMContentLoaded', function () {
 
+      /* ========= 0. Storage key per device (so routers don't mix history) ========= */
+      const serialNumber = "{{ device_data.general.serialnumber|default:'unknown' }}";
+      const STORAGE_KEY = "cellular_history_" + serialNumber;
+
       /* ---------- Helper to parse Django local_time (ISO or "12 Nov 2025, 10:50 p.m.") ---------- */
       function parseLocalTime(raw) {
         if (!raw) return null;
 
-        // 1) try native Date (ISO format)
+        // 1) try native Date (ISO "2025-11-12T22:50:26+05:30" etc.)
         let d = new Date(raw);
         if (!isNaN(d.getTime())) return d;
 
-        // 2) "12 Nov 2025, 10:50 p.m."
+        // 2) try "12 Nov 2025, 10:50 p.m."
         const m = raw.match(/(\d{1,2})\s+([A-Za-z]{3})\s+(\d{4}),\s+(\d{1,2}):(\d{2})\s*([ap]\.m\.)/i);
         if (m) {
           const day = parseInt(m[1], 10);
@@ -161,10 +165,11 @@
           if (!isNaN(d.getTime())) return d;
         }
 
+        // 3) last resort – current time
         return new Date();
       }
 
-      /* ====== 1. Read one snapshot from Django ====== */
+      /* ====== 1. Read one snapshot from Django (local_time + modem values) ====== */
       function getSampleFromDjango() {
         const rawLocalTime = "{{ device_data.general.local_time|default:'' }}";
         console.log("Raw local_time:====", rawLocalTime);
@@ -200,52 +205,110 @@
         };
       }
 
-      /* ====== 2. History of samples ====== */
+      /* ====== 2. Load / save history in localStorage ====== */
 
-      const history = [];
+      function loadHistoryFromStorage() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (!raw) return [];
+          const arr = JSON.parse(raw);
+          if (!Array.isArray(arr)) return [];
+          return arr.map(function (s) {
+            return {
+              timestamp: new Date(s.timestamp),
+              m1: s.m1 || {},
+              m2: s.m2 || {}
+            };
+          }).filter(function (s) {
+            return !isNaN(s.timestamp.getTime());
+          });
+        } catch (e) {
+          console.error('Failed to load cellular history from storage:', e);
+          return [];
+        }
+      }
+
+      function saveHistoryToStorage(history) {
+        try {
+          const plain = history.map(function (s) {
+            return {
+              timestamp: s.timestamp.toISOString(),
+              m1: s.m1,
+              m2: s.m2
+            };
+          });
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(plain));
+        } catch (e) {
+          console.error('Failed to save cellular history to storage:', e);
+        }
+      }
+
+      /* ====== 3. In-memory history (+ trimming to last 24h) ====== */
+
+      let history = loadHistoryFromStorage(); // oldest → newest after we sort below
 
       function addSample(sample) {
+        if (!sample || !sample.timestamp || isNaN(sample.timestamp.getTime())) return;
+
         history.push(sample);
+
+        // sort by time
         history.sort(function (a, b) {
           return a.timestamp - b.timestamp;
         });
+
+        // keep only last 24 hours (based on latest sample)
+        const lastTs = history[history.length - 1].timestamp;
+        const cutoff = new Date(lastTs.getTime() - 24 * 60 * 60 * 1000);
+        history = history.filter(function (s) {
+          return s.timestamp >= cutoff;
+        });
+
+        // safety cap on number of points
+        if (history.length > 500) {
+          history = history.slice(history.length - 500);
+        }
+
+        saveHistoryToStorage(history);
       }
 
-      /* ====== 3. Build series from history ====== */
+      /* ====== 4. Build series from history (real timestamps only) ====== */
 
       function buildSeriesFromHistory() {
         if (!history.length) return null;
 
-        const labels = history.map(s => s.timestamp);
+        const labels = history.map(function (s) { return s.timestamp; });
 
-        const csq1 = history.map(s => s.m1.csq || 0);
-        const csq2 = history.map(s => s.m2.csq || 0);
-        const rsrp1 = history.map(s => s.m1.rsrp || 0);
-        const rsrp2 = history.map(s => s.m2.rsrp || 0);
-        const rsrq1 = history.map(s => s.m1.rsrq || 0);
-        const rsrq2 = history.map(s => s.m2.rsrq || 0);
-        const rssi1 = history.map(s => s.m1.rssi || 0);
-        const rssi2 = history.map(s => s.m2.rssi || 0);
-        const snr1 = history.map(s => s.m1.snr || 0);
-        const snr2 = history.map(s => s.m2.snr || 0);
+        const csq1 = history.map(function (s) { return s.m1.csq || 0; });
+        const csq2 = history.map(function (s) { return s.m2.csq || 0; });
+        const rsrp1 = history.map(function (s) { return s.m1.rsrp || 0; });
+        const rsrp2 = history.map(function (s) { return s.m2.rsrp || 0; });
+        const rsrq1 = history.map(function (s) { return s.m1.rsrq || 0; });
+        const rsrq2 = history.map(function (s) { return s.m2.rsrq || 0; });
+        const rssi1 = history.map(function (s) { return s.m1.rssi || 0; });
+        const rssi2 = history.map(function (s) { return s.m2.rssi || 0; });
+        const snr1 = history.map(function (s) { return s.m1.snr || 0; });
+        const snr2 = history.map(function (s) { return s.m2.snr || 0; });
+
+        const firstTs = labels[0];
+        const lastTs = labels[labels.length - 1];
+
+        // add 15 minutes padding on both sides so point isn't at card edge
+        const pad = 15 * 60 * 1000;
+        const xMin = new Date(firstTs.getTime() - pad);
+        const xMax = new Date(lastTs.getTime() + pad);
 
         const last = history[history.length - 1];
 
-        const minTime = labels[0].getTime();
-        const maxTime = labels[labels.length - 1].getTime();
-        const pad = 15 * 60 * 1000;
-        const xMin = new Date(minTime - pad);
-        const xMax = new Date(maxTime + pad);
-
         return {
-          labels,
-          xMin,
-          xMax,
-          csq1, csq2,
-          rsrp1, rsrp2,
-          rsrq1, rsrq2,
-          rssi1, rssi2,
-          snr1, snr2,
+          labels: labels,
+          xMin: xMin,
+          xMax: xMax,
+          csq1: csq1, csq2: csq2,
+          rsrp1: rsrp1, rsrp2: rsrp2,
+          rsrq1: rsrq1, rsrq2: rsrq2,
+          rssi1: rssi1, rssi2: rssi2,
+          snr1: snr1, snr2: snr2,
           operator1: last.m1.operator || '—',
           operator2: last.m2.operator || '—',
           nettype1: last.m1.nettype || '—',
@@ -253,68 +316,49 @@
         };
       }
 
-      /* Helper to format time label HH:MM for ticks */
       function formatTimeHHMM(d) {
+        // ensure nice HH:MM (24h) for tick labels
         return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       }
 
-      /* ====== 4. Plotly helper (keeps charts responsive) ====== */
-
-      function plotAndAttachResize(targetId, traces, layout) {
-        const el = document.getElementById(targetId);
-        if (!el) return;
-        Plotly.newPlot(el, traces, layout, {
-          displayModeBar: false,
-          responsive: true
-        });
-        const resize = () => Plotly.Plots.resize(el);
-        window.addEventListener('resize', resize, { passive: true });
-        if ('ResizeObserver' in window) {
-          new ResizeObserver(resize).observe(el.parentElement);
-        }
-      }
-
-      /* ====== 5. Draw charts (x ticks = actual sample times) ====== */
+      /* ====== 5. Draw charts with Plotly (points only at real times) ====== */
 
       function drawCharts(series) {
         if (!series) return;
 
         const labels = series.labels;
-        const tickVals = labels;
-        const tickText = labels.map(formatTimeHHMM);
 
         const name1 = "Sim1 — " + series.operator1 +
           (series.nettype1 && series.nettype1 !== '—' ? " (" + series.nettype1 + ")" : "");
         const name2 = "Sim2 — " + series.operator2 +
           (series.nettype2 && series.nettype2 !== '—' ? " (" + series.nettype2 + ")" : "");
 
-        const baseLayout = (ytitle, yRange, yDtick) => ({
-          margin: { l: 60, r: 40, t: 50, b: 70 },   // extra bottom margin for labels
-          yaxis: {
-            title: ytitle,
-            range: yRange,
-            dtick: yDtick,
-            zeroline: false,
-            gridcolor: '#e5e7eb'
-          },
-          xaxis: {
-            type: 'date',
-            range: [series.xMin, series.xMax],
-            gridcolor: '#e5e7eb',
-            tickmode: 'array',       // <<< show ticks exactly at sample times
-            tickvals: tickVals,
-            ticktext: tickText,
-            tickangle: 0,
-            showline: true,
-            ticks: 'outside'
-          },
-          legend: { orientation: 'h', yanchor: 'bottom', y: 1.12, x: 0, xanchor: 'left' },
-          plot_bgcolor: '#ffffff',
-          paper_bgcolor: '#ffffff'
-        });
+        const baseLayout = function (ytitle, yRange, yDtick) {
+          return {
+            margin: { l: 60, r: 20, t: 50, b: 60 },
+            yaxis: {
+              title: ytitle,
+              range: yRange,
+              dtick: yDtick,
+              zeroline: false,
+              gridcolor: '#e5e7eb'
+            },
+            xaxis: {
+              type: 'date',
+              range: [series.xMin, series.xMax],
+              gridcolor: '#e5e7eb',
+              tickmode: 'array',
+              tickvals: labels,
+              ticktext: labels.map(formatTimeHHMM),
+              tickangle: 0
+            },
+            legend: { orientation: 'h', yanchor: 'bottom', y: 1.12, x: 0, xanchor: 'left' },
+            plot_bgcolor: '#ffffff',
+            paper_bgcolor: '#ffffff'
+          };
+        };
 
-        // CSQ
-        plotAndAttachResize('cellular_signal_div_csq', [
+        Plotly.newPlot('cellular_signal_div_csq', [
           {
             x: labels,
             y: series.csq1,
@@ -335,8 +379,7 @@
           }
         ], baseLayout('CSQ', [0, 40], 5));
 
-        // RSRP
-        plotAndAttachResize('cellular_signal_div_rsrp', [
+        Plotly.newPlot('cellular_signal_div_rsrp', [
           {
             x: labels,
             y: series.rsrp1,
@@ -357,8 +400,7 @@
           }
         ], baseLayout('RSRP (dBm)', [-140, -44], 20));
 
-        // RSRQ
-        plotAndAttachResize('cellular_signal_div_rsrq', [
+        Plotly.newPlot('cellular_signal_div_rsrq', [
           {
             x: labels,
             y: series.rsrq1,
@@ -379,8 +421,7 @@
           }
         ], baseLayout('RSRQ (dB)', [-20, -3], 2));
 
-        // RSSI
-        plotAndAttachResize('cellular_signal_div_rssi', [
+        Plotly.newPlot('cellular_signal_div_rssi', [
           {
             x: labels,
             y: series.rssi1,
@@ -401,8 +442,7 @@
           }
         ], baseLayout('RSSI (dBm)', [-120, -40], 10));
 
-        // SNR
-        plotAndAttachResize('cellular_signal_div_snr', [
+        Plotly.newPlot('cellular_signal_div_snr', [
           {
             x: labels,
             y: series.snr1,
@@ -424,7 +464,7 @@
         ], baseLayout('SNR (dB)', [-5, 35], 5));
       }
 
-      /* ====== 6. Initial load ====== */
+      /* ====== 6. Initial load: add Django sample, redraw, and show meta ====== */
 
       const firstSample = getSampleFromDjango();
       addSample(firstSample);
@@ -438,8 +478,9 @@
           `M2: ${firstSample.m2.operator} • ${firstSample.m2.nettype}`;
       }
 
-      /* ====== 7. Optional helper for future samples ====== */
+      /* ====== 7. Optional: function to add new sample without full page reload ====== */
       window.__addCellularSample = function (sample) {
+        // sample should have { timestamp: Date, m1: {...}, m2: {...} }
         addSample(sample);
         drawCharts(buildSeriesFromHistory());
       };
