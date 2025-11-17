@@ -130,15 +130,53 @@
   <script>
     document.addEventListener('DOMContentLoaded', function () {
 
+      /* ---------- Helper to parse Django local_time (ISO or "12 Nov 2025, 10:50 p.m.") ---------- */
+      function parseLocalTime(raw) {
+        if (!raw) return null;
+
+        // 1) try native Date (works if it's already ISO "2025-11-12T22:50:26+05:30")
+        let d = new Date(raw);
+        if (!isNaN(d.getTime())) return d;
+
+        // 2) try Django-style: "12 Nov 2025, 10:50 p.m."
+        const m = raw.match(/(\d{1,2})\s+([A-Za-z]{3})\s+(\d{4}),\s+(\d{1,2}):(\d{2})\s*([ap]\.m\.)/i);
+        if (m) {
+          const day = parseInt(m[1], 10);
+          const monthName = m[2].toLowerCase();
+          const year = parseInt(m[3], 10);
+          let hour = parseInt(m[4], 10);
+          const minute = parseInt(m[5], 10);
+          const ampm = m[6].toLowerCase(); // "a.m." or "p.m."
+
+          const monthMap = {
+            jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
+            jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11
+          };
+          const monthIdx = monthMap[monthName] ?? 0;
+
+          // convert to 24h
+          if (ampm.startsWith('p') && hour < 12) hour += 12;
+          if (ampm.startsWith('a') && hour === 12) hour = 0;
+
+          d = new Date(year, monthIdx, day, hour, minute, 0, 0);
+          if (!isNaN(d.getTime())) return d;
+        }
+
+        // 3) last resort (should rarely happen) – current time
+        return new Date();
+      }
+
       /* ====== 1. Read one snapshot from Django (local_time + modem values) ====== */
       function getSampleFromDjango() {
         const rawLocalTime = "{{ device_data.general.local_time|default:'' }}";
         console.log("Raw local_time:====", rawLocalTime);
 
-        let ts = new Date(rawLocalTime || '2025-11-12T21:32:54+05:30');
-        if (isNaN(ts.getTime())) {
-          ts = new Date(); // avoid "Invalid Date"
-        }
+        // let ts = new Date(rawLocalTime || '2025-11-12T21:32:54+05:30');
+        // if (isNaN(ts.getTime())) {
+        //   ts = new Date(); // avoid "Invalid Date"
+        // }
+
+        const ts = parseLocalTime(rawLocalTime || '2025-11-12T21:32:54+05:30');
 
         function coerceNum(v) {
           if (v == null || v === '—' || v === '-' || v === '') return 0;
