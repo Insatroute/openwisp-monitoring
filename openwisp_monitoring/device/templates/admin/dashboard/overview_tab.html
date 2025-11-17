@@ -482,8 +482,8 @@
   // initial + polling
   fetchDeviceData();
   fetchSpokeData();
-  setInterval(fetchDeviceData, 3000);
-  setInterval(fetchSpokeData, 3000);
+  setInterval(fetchDeviceData, 100);
+  setInterval(fetchSpokeData, 100);
 </script>
 
 {% leaflet_css %}
