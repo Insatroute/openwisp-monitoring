@@ -91,6 +91,19 @@ chart_query = {
             "object_id = '{object_id}' GROUP BY time(1d)"
         )
     },
+    "lte_signal": {
+    "influxdb": (
+        "SELECT "
+        "MEAN(rsrp) AS rsrp, "
+        "MEAN(rsrq) AS rsrq, "
+        "MEAN(rssi) AS rssi, "
+        "MEAN(csq)  AS csq, "
+        "MEAN(snr)  AS snr "
+        "FROM {key} WHERE "
+        "time >= '{time}' {end_date} AND content_type = '{content_type}' AND "
+        "object_id = '{object_id}' GROUP BY time(5m)"
+    )
+    },
     "access_tech": {
         "influxdb": (
             "SELECT MODE(access_tech) AS access_tech FROM {key} WHERE "
