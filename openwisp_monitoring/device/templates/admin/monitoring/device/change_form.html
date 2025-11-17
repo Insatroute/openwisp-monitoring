@@ -2,7 +2,7 @@
 {% load i18n static %}
 {% block after_field_sets %}
 
- {% if not add and device_data.cellular %}
+ {% if not add or device_data.cellular %}
   <div class="inline-group" id="ow-cellular">
   <fieldset class="module">
      <h2>{% trans 'Cellular' %}</h2>
@@ -93,6 +93,7 @@
         <button class="status-tab-network" data-target="tab-network">
           Network
         </button>
+        {% if device_data.device_type != '4g_5g_router' %}
         <button class="status-tab-users" data-target="tab-users">Users</button>
         <button class="status-tab-firewall" data-target="tab-firewall">
           Firewall
@@ -101,17 +102,19 @@
           Security
         </button>
         <button class="status-tab-vpn" data-target="tab-vpn">VPN</button>
-
         <!-- add your other 3 here -->
+        {% endif %}
       </div>
 
       <!-- TAB PANELS -->
       <div id="tab-system" class="status-tab-panel active">
         <div class="status-sub-tabs">
           <button class="active" data-target="tab-system-general">General</button>
+          {% if device_data.device_type != '4g_5g_router' %}
           <button data-target="tab-system-snmp">SNMP</button>
           <button data-target="tab-system-icmp">ICMP Check</button>
           <button data-target="tab-system-schedule">Schedule</button>       
+          {% endif %}
         </div>
          <div class="status-sub-contents">
           <div id="tab-system-general" class="status-sub-content active">   
@@ -124,7 +127,7 @@
             {% include 'monitoring/paritals/system/icmp.html' %}      
           </div>
            <div id="tab-system-schedule" class="status-sub-content ">
-            {% include 'monitoring/paritals/system/schedule.html' %}   
+            {% include 'monitoring/paritals/system/schedule.html' %}
           </div>
         </div>
       </div>
@@ -144,6 +147,7 @@
   <div id="tab-network" class="status-tab-panel">
         <div class="status-sub-tabs">
           <button class="active" data-target="tab-network-interface">Interface</button>
+          {% if device_data.device_type != '4g_5g_router' %}
           <button data-target="tab-network-dnsdhcp">DNS/DHCP</button>
           <button data-target="tab-network-routes">Routes</button>
           <button data-target="tab-network-vxlan">VXLAN</button>
@@ -155,6 +159,7 @@
           <button data-target="tab-network-ospf">OSPF</button>
           <button data-target="tab-network-bgp">BGP</button>
           <button data-target="tab-network-vrf">VRF</button>
+          {% endif %}
         </div>
         <div class="status-sub-contents">
           <div id="tab-network-interface" class="status-sub-content active">
@@ -225,9 +230,6 @@
           </div>
         </div>
       </div>
-
-
-
         <!-- TAB PANEL Security -->
       <div id="tab-security" class="status-tab-panel">
         <div class="status-sub-tabs">
@@ -309,7 +311,7 @@
 </div>
 
 <style>
-    .change-form{
+  .change-form{
      margin: 0 !important;
     }
   .status-tabs-container {
@@ -453,7 +455,6 @@
       padding: 0rem 0rem !important;
     
 }
-
 
 
 /* Scoped styles so nothing else is affected */
