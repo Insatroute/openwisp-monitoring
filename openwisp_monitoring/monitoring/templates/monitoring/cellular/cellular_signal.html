@@ -131,12 +131,10 @@
     document.addEventListener('DOMContentLoaded', function () {
 
       /* ====== 1. Read one snapshot from Django (local_time + modem values) ====== */
-      function getSampleData() {
+      function getSampleFromDjango() {
         const rawLocalTime = "{{ device_data.general.local_time|default:'' }}";
-        const device_data = "{{ device_data|default:'' }}";
-
         console.log("Raw local_time:====", rawLocalTime);
-        console.log("Device data:====", device_data);
+
         let ts = new Date(rawLocalTime || '2025-11-12T21:32:54+05:30');
         if (isNaN(ts.getTime())) {
           ts = new Date(); // avoid "Invalid Date"
@@ -171,35 +169,37 @@
         };
       }
 
-      /* ====== 2. Build 24 hourly points from local_time ====== */
+      /* ====== 2. History of samples (each sample is one snapshot) ====== */
 
-      function formatHourLabel(d) {
-        return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const history = [];
+
+      function addSample(sample) {
+        // push new sample and keep history sorted by time (oldest → newest)
+        history.push(sample);
+        history.sort(function (a, b) {
+          return a.timestamp - b.timestamp;
+        });
       }
 
-      function buildHourlySeries(sample) {
-        const labels = [];
-        const base = new Date(sample.timestamp);
-        base.setMinutes(0, 0, 0); // snap to top of the current hour
+      /* ====== 3. Build series directly from history (real timestamps only) ====== */
 
-        // last 24 hours: oldest → newest
-        for (let i = 23; i >= 0; i--) {
-          const d = new Date(base);
-          d.setHours(base.getHours() - i);
-          labels.push(formatHourLabel(d));
-        }
+      function buildSeriesFromHistory() {
+        if (!history.length) return null;
 
-        // repeat the same reading for each hour (only one snapshot available)
-        const csq1 = labels.map(() => sample.m1.csq || 0);
-        const csq2 = labels.map(() => sample.m2.csq || 0);
-        const rsrp1 = labels.map(() => sample.m1.rsrp || 0);
-        const rsrp2 = labels.map(() => sample.m2.rsrp || 0);
-        const rsrq1 = labels.map(() => sample.m1.rsrq || 0);
-        const rsrq2 = labels.map(() => sample.m2.rsrq || 0);
-        const rssi1 = labels.map(() => sample.m1.rssi || 0);
-        const rssi2 = labels.map(() => sample.m2.rssi || 0);
-        const snr1 = labels.map(() => sample.m1.snr || 0);
-        const snr2 = labels.map(() => sample.m2.snr || 0);
+        const labels = history.map(s => s.timestamp); // Date objects for x-axis
+
+        const csq1 = history.map(s => s.m1.csq || 0);
+        const csq2 = history.map(s => s.m2.csq || 0);
+        const rsrp1 = history.map(s => s.m1.rsrp || 0);
+        const rsrp2 = history.map(s => s.m2.rsrp || 0);
+        const rsrq1 = history.map(s => s.m1.rsrq || 0);
+        const rsrq2 = history.map(s => s.m2.rsrq || 0);
+        const rssi1 = history.map(s => s.m1.rssi || 0);
+        const rssi2 = history.map(s => s.m2.rssi || 0);
+        const snr1 = history.map(s => s.m1.snr || 0);
+        const snr2 = history.map(s => s.m2.snr || 0);
+
+        const last = history[history.length - 1];
 
         return {
           labels,
@@ -208,16 +208,18 @@
           rsrq1, rsrq2,
           rssi1, rssi2,
           snr1, snr2,
-          operator1: sample.m1.operator || '—',
-          operator2: sample.m2.operator || '—',
-          nettype1: sample.m1.nettype || '—',
-          nettype2: sample.m2.nettype || '—'
+          operator1: last.m1.operator || '—',
+          operator2: last.m2.operator || '—',
+          nettype1: last.m1.nettype || '—',
+          nettype2: last.m2.nettype || '—'
         };
       }
 
-      /* ====== 3. Draw charts with Plotly ====== */
+      /* ====== 4. Draw charts with Plotly (points only at real times) ====== */
 
       function drawCharts(series) {
+        if (!series) return;
+
         const labels = series.labels;
 
         const name1 = "Sim1 — " + series.operator1 +
@@ -227,13 +229,18 @@
 
         const baseLayout = (ytitle, yRange, yDtick) => ({
           margin: { l: 60, r: 20, t: 50, b: 80 },
-          yaxis: { title: ytitle, range: yRange, dtick: yDtick, zeroline: false, gridcolor: '#e5e7eb' },
+          yaxis: {
+            title: ytitle,
+            range: yRange,
+            dtick: yDtick,
+            zeroline: false,
+            gridcolor: '#e5e7eb'
+          },
           xaxis: {
-            type: 'category',
-            categoryorder: 'array',
-            categoryarray: labels,
+            type: 'date',                               // real time axis
             gridcolor: '#e5e7eb',
-            tickangle: -45
+            tickformat: '%H:%M\n%b %d',                // 10:13 / Nov 12, etc.
+            tickangle: 0
           },
           legend: { orientation: 'h', yanchor: 'bottom', y: 1.12, x: 0, xanchor: 'left' },
           plot_bgcolor: '#ffffff',
@@ -346,18 +353,34 @@
         ], baseLayout('SNR (dB)', [-5, 35], 5));
       }
 
-      /* ====== 4. Initialise page ====== */
+      /* ====== 5. Initial load (one point at local_time) ====== */
 
-      const sample = getSampleData();
-      const series = buildHourlySeries(sample);
-      drawCharts(series);
+      const firstSample = getSampleFromDjango();
+      addSample(firstSample);
+      const initialSeries = buildSeriesFromHistory();
+      drawCharts(initialSeries);
 
       const metaEl = document.getElementById('cellular_signal_meta');
       if (metaEl) {
         metaEl.textContent =
-          `M1: ${sample.m1.operator} • ${sample.m1.nettype} | ` +
-          `M2: ${sample.m2.operator} • ${sample.m2.nettype}`;
+          `M1: ${firstSample.m1.operator} • ${firstSample.m1.nettype} | ` +
+          `M2: ${firstSample.m2.operator} • ${firstSample.m2.nettype}`;
       }
+
+      /* ====== 6. Optional: helper to add new samples later ======
+       * If you later receive a new snapshot (with a new local_time and values),
+       * create the same shape object and call:
+       *
+       *   addSample(newSample);
+       *   drawCharts(buildSeriesFromHistory());
+       *
+       * That will keep the old points and add the new one at its real time.
+       */
+      window.__addCellularSample = function (sample) {
+        // sample should have {timestamp: Date, m1: {...}, m2: {...}}
+        addSample(sample);
+        drawCharts(buildSeriesFromHistory());
+      };
     });
   </script>
 
