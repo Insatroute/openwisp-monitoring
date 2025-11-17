@@ -133,7 +133,10 @@
       /* ====== 1. Read one snapshot from Django (local_time + modem values) ====== */
       function getSampleData() {
         const rawLocalTime = "{{ device_data.general.local_time|default:'' }}";
+        const device_data = "{{ device_data|default:'' }}";
+
         console.log("Raw local_time:====", rawLocalTime);
+        console.log("Device data:====", device_data);
         let ts = new Date(rawLocalTime || '2025-11-12T21:32:54+05:30');
         if (isNaN(ts.getTime())) {
           ts = new Date(); // avoid "Invalid Date"
