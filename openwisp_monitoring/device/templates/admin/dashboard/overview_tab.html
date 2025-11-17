@@ -353,7 +353,7 @@
       });
 
       // 3) Interface Distribution (leave as-is / static, or wire later)
-      const interfaceLabels = ['eth0', 'wlan0', 'wlan1', 'usb0'];
+      const interfaceLabels = ['wan1', 'wan2', 'cellular1', 'cellular2'];
       const interfaceValues = [5, 2, 1, 0];
       renderDonutWithLegend({
         elId: 'Interface-Distribution-chart',
@@ -503,6 +503,10 @@
   }
 
   .js-plotly-plot.system-type {
+    display: none !important;
+  }
+
+  .ow-chart-contents{
     display: none !important;
   }
 

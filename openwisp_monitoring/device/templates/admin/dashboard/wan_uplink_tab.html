@@ -1,6 +1,10 @@
 {# wan_uplink.html - WAN Uplink tab: single summary card + table #}
 
 <style>
+    .ow-chart-contents {
+        display: none !important;
+    }
+
     /* ======= SUMMARY CARD (LIKE DATA USAGE SUMMARY) ======= */
     .wan-summary-wrap {
         /* max-width: 1200px; */
@@ -223,6 +227,31 @@
         .home-wan-table thead {
             font-size: 11px;
         }
+    }
+
+    /* ========= PAGINATION ========= */
+    .home-wan-pagination {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+        padding: 8px 4px;
+        margin-top: 6px;
+    }
+
+    .home-wan-page-btn {
+        padding: 4px 10px;
+        border-radius: 999px;
+        border: 1px solid #d1d5db;
+        background: #ffffff;
+        cursor: pointer;
+        font-size: 12px;
+    }
+
+    .home-wan-page-btn[disabled] {
+        opacity: .5;
+        cursor: default;
     }
 </style>
 
@@ -461,12 +490,17 @@
     </table>
 </div>
 
+{# ========= PAGINATION CONTROLS ========= #}
+<div id="home-wan-pagination" class="home-wan-pagination" style="display:none">
+    <button type="button" class="home-wan-page-btn" data-dir="prev">&laquo; Prev</button>
+    <span class="home-wan-page-info"></span>
+    <button type="button" class="home-wan-page-btn" data-dir="next">Next &raquo;</button>
+</div>
+
 <script>
     (function () {
         const tbody = document.getElementById('home-wan-tbody');
         if (!tbody) return;
-
-        const rows = Array.from(tbody.querySelectorAll('tr'));
 
         const totalEl = document.getElementById('home-wan-total');
         const connectedEl = document.getElementById('home-wan-connected');
@@ -474,12 +508,78 @@
         const disconnectedEl = document.getElementById('home-wan-disconnected');
         const disabledEl = document.getElementById('home-wan-disabled');
 
-        function updateSummary() {
-            let total = 0,
-                connected = 0,
-                abnormal = 0,
-                disconnected = 0,
-                disabled = 0;
+        const paginationEl = document.getElementById('home-wan-pagination');
+        const pageInfoEl = paginationEl ? paginationEl.querySelector('.home-wan-page-info') : null;
+        const prevBtn = paginationEl ? paginationEl.querySelector('[data-dir="prev"]') : null;
+        const nextBtn = paginationEl ? paginationEl.querySelector('[data-dir="next"]') : null;
+
+        const PAGE_SIZE = 10;
+        let allRows = [];
+        let currentPage = 1;
+        let totalPages = 1;
+
+        function formatBytes(bytes) {
+            if (typeof bytes !== 'number' || isNaN(bytes) || bytes < 0) return '—';
+            const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+            let i = 0;
+            let val = bytes;
+            while (val >= 1024 && i < units.length - 1) {
+                val /= 1024;
+                i++;
+            }
+            return val.toFixed(2) + ' ' + units[i];
+        }
+
+        function humanizeStatus(status) {
+            const s = (status || '').toLowerCase();
+            if (s === 'connected') return 'Connected';
+            if (s === 'abnormal') return 'Abnormal';
+            if (s === 'disabled') return 'Disabled';
+            if (s === 'disconnected') return 'Disconnected';
+            return s ? s.charAt(0).toUpperCase() + s.slice(1) : 'Unknown';
+        }
+
+        function normalizeStatus(status) {
+            const s = (status || '').toLowerCase();
+            if (s === 'connected' || s === 'abnormal' || s === 'disabled' || s === 'disconnected') return s;
+            return 'disconnected';
+        }
+
+        function renderSummaryFromApi(summary) {
+            let total = 0, connected = 0, abnormal = 0, disconnected = 0, disabled = 0;
+
+            if (summary) {
+                if (typeof summary.total === 'number') total = summary.total;
+                if (typeof summary.connected === 'number') connected = summary.connected;
+                if (typeof summary.abnormal === 'number') abnormal = summary.abnormal;
+                if (typeof summary.disconnected === 'number') disconnected = summary.disconnected;
+            } else {
+                total = allRows.length;
+                allRows.forEach(row => {
+                    const st = normalizeStatus(row.status);
+                    if (st === 'connected') connected++;
+                    else if (st === 'abnormal') abnormal++;
+                    else if (st === 'disconnected') disconnected++;
+                    else if (st === 'disabled') disabled++;
+                });
+            }
+
+            // disabled is not in API summary, so always compute from rows:
+            allRows.forEach(row => {
+                const st = normalizeStatus(row.status);
+                if (st === 'disabled') disabled++;
+            });
+
+            if (totalEl) totalEl.textContent = total;
+            if (connectedEl) connectedEl.textContent = connected;
+            if (abnormalEl) abnormalEl.textContent = abnormal;
+            if (disconnectedEl) disconnectedEl.textContent = disconnected;
+            if (disabledEl) disabledEl.textContent = disabled;
+        }
+
+        function renderSummaryFromDom() {
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+            let total = 0, connected = 0, abnormal = 0, disconnected = 0, disabled = 0;
 
             rows.forEach(row => {
                 total++;
@@ -497,6 +597,155 @@
             if (disabledEl) disabledEl.textContent = disabled;
         }
 
-        updateSummary();
+        function createRowEl(row) {
+            const tr = document.createElement('tr');
+
+            const status = normalizeStatus(row.status);
+            const statusLabel = humanizeStatus(status);
+            const uplinkName = (row.interface_name || '').toUpperCase() || '—';
+            const hostname = row.hostname || '—';
+            const serial = row.serial_number || '—';
+            const model = row.model || '—';
+            const location = row.location || '—';
+
+            let pathLabel = row.path_label || '';
+            if (!pathLabel) {
+                if (row.uplink_type === 'mobile' || row.uplink_type === 'cellular') pathLabel = 'Cellular Path';
+                else if (row.uplink_type === 'ethernet') pathLabel = 'Wired Path';
+            }
+            if (!pathLabel) pathLabel = '—';
+
+            const uptime = row.uptime || '—';
+
+            let ipMask = '—';
+            if (row.interface_ip) {
+                ipMask = row.interface_ip;
+                if (row.interface_mask !== null && row.interface_mask !== undefined) {
+                    ipMask += '/' + row.interface_mask;
+                }
+            }
+
+            const pingDest = row.ping_dest || '—';
+            const latency = (typeof row.ping_latency_ms === 'number')
+                ? row.ping_latency_ms.toFixed(1) + ' ms'
+                : '—';
+            const jitter = (typeof row.ping_jitter_ms === 'number')
+                ? row.ping_jitter_ms.toFixed(1) + ' ms'
+                : '—';
+            const loss = (row.ping_packet_loss !== null && row.ping_packet_loss !== undefined && row.ping_packet_loss !== '')
+                ? row.ping_packet_loss
+                : '—';
+
+            const tx = (typeof row.tx_bytes === 'number') ? formatBytes(row.tx_bytes) : '—';
+            const rx = (typeof row.rx_bytes === 'number') ? formatBytes(row.rx_bytes) : '—';
+
+            tr.dataset.status = status;
+            tr.dataset.uplink = uplinkName;
+
+            tr.innerHTML = `
+                <td class="home-wan-status-cell">
+                    <span class="home-wan-status-dot home-wan-status-${status}"></span>
+                    ${statusLabel}
+                </td>
+                <td class="home-wan-nowrap">${hostname}</td>
+                <td class="home-wan-nowrap">${serial}</td>
+                <td class="home-wan-nowrap">${model}</td>
+                <td class="home-wan-nowrap">${location}</td>
+                <td class="home-wan-nowrap">${pathLabel}</td>
+                <td class="home-wan-nowrap"><a class="home-wan-linkish">${uplinkName}</a></td>
+                <td class="home-wan-nowrap">${uptime}</td>
+                <td>${ipMask !== '—'
+                    ? `<div>${ipMask} <span class="home-wan-muted">(IPV4)</span></div>`
+                    : `<span class="home-wan-muted">—</span>`}
+                </td>
+                <td class="home-wan-nowrap">${pingDest}</td>
+                <td class="home-wan-throughput">
+                    <span class="home-wan-kp home-wan-kp-up"><i></i>${tx}</span>
+                    <span class="home-wan-kp home-wan-kp-down"><i></i>${rx}</span>
+                </td>
+                <td class="home-wan-nowrap">${latency}</td>
+                <td class="home-wan-nowrap">${jitter}</td>
+                <td class="home-wan-nowrap">${loss}</td>
+            `;
+
+            return tr;
+        }
+
+        function renderPage(page) {
+            if (!tbody) return;
+
+            totalPages = Math.max(1, Math.ceil(allRows.length / PAGE_SIZE));
+
+            if (page < 1) page = 1;
+            if (page > totalPages) page = totalPages;
+            currentPage = page;
+
+            tbody.innerHTML = '';
+
+            const start = (currentPage - 1) * PAGE_SIZE;
+            const end = start + PAGE_SIZE;
+            const pageRows = allRows.slice(start, end);
+
+            pageRows.forEach(row => {
+                tbody.appendChild(createRowEl(row));
+            });
+
+            if (paginationEl && allRows.length > PAGE_SIZE) {
+                paginationEl.style.display = 'flex';
+                if (pageInfoEl) pageInfoEl.textContent = `Page ${currentPage} of ${totalPages}`;
+                if (prevBtn) prevBtn.disabled = currentPage === 1;
+                if (nextBtn) nextBtn.disabled = currentPage === totalPages;
+            } else if (paginationEl) {
+                paginationEl.style.display = 'none';
+            }
+        }
+
+        if (prevBtn) {
+            prevBtn.addEventListener('click', function () {
+                if (currentPage > 1) renderPage(currentPage - 1);
+            });
+        }
+
+        if (nextBtn) {
+            nextBtn.addEventListener('click', function () {
+                if (currentPage < totalPages) renderPage(currentPage + 1);
+            });
+        }
+
+        async function init() {
+        
+            // Use your API base, in the same style you gave
+            const API_URL = `https://controller.nexapp.co.in/api/v1/monitoring/wan-uplinks/`;
+
+            let json;
+
+            try {
+                const fetchOptions = (typeof buildAuthFetchOptions === 'function')
+                    ? buildAuthFetchOptions(API_URL)
+                    : { credentials: 'include' };
+
+                const res = await fetch(API_URL, fetchOptions);
+                console.log('WAN uplinks API response status:=====', res);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                json = await res.json();
+            } catch (e) {
+                console.error('WAN uplinks API error:', e);
+                // fall back to any provided object if it exists
+                if (typeof APIResponse !== 'undefined') {
+                    json = APIResponse;
+                } else {
+                    // if we can't get JSON at all, keep server-rendered rows + summary
+                    renderSummaryFromDom();
+                    return;
+                }
+            }
+
+            allRows = Array.isArray(json.rows) ? json.rows : [];
+            renderSummaryFromApi(json.summary || null);
+            renderPage(1);
+        }
+
+        // Kick everything off
+        init();
     })();
 </script>
