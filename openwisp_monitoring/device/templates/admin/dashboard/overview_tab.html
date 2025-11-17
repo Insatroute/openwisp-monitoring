@@ -115,13 +115,13 @@
       <div class="ow-mini-legend" id="Network-Distribution-legend"></div>
     </div>
 
-    <div class="ow-mini-card Interface-Distribution-div">
+    <!-- <div class="ow-mini-card Interface-Distribution-div">
       <h4 class="ow-mini-title Interface-Distribution-span">Interface Distribution</h4>
       <div class="ow-mini-inner">
         <div id="Interface-Distribution-chart" class="ow-mini-plot"></div>
       </div>
       <div class="ow-mini-legend" id="Interface-Distribution-legend"></div>
-    </div>
+    </div> -->
 
   </div>
 </div>
@@ -480,10 +480,19 @@
   }
 
   // initial + polling
-  fetchDeviceData();
-  fetchSpokeData();
-  setInterval(fetchDeviceData, 100);
-  setInterval(fetchSpokeData, 100);
+  // fetchDeviceData();
+  // fetchSpokeData();
+  // setInterval(fetchDeviceData, 30000);
+  // setInterval(fetchSpokeData, 30000);
+
+  // Initial render + refresh intervals WHEN PAGE LOADS
+  document.addEventListener('DOMContentLoaded', () => {
+    fetchDeviceData();
+    fetchSpokeData();
+
+    setInterval(fetchDeviceData, 30000);      // 30s
+    setInterval(fetchSpokeData, 30000);   // 30s
+  });
 </script>
 
 {% leaflet_css %}
