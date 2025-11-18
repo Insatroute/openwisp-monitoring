@@ -266,6 +266,20 @@
       return pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
     }
 
+    // Round a date string to the beginning of the hour
+    function getHourStart(iso) {
+      const d = iso ? new Date(iso) : new Date();
+      if (isNaN(d.getTime())) return new Date();
+      return new Date(d.getFullYear(), d.getMonth(), d.getDate(), d.getHours(), 0, 0, 0);
+    }
+
+    function formatHourLabel(isoHour) {
+      const d = new Date(isoHour);
+      if (isNaN(d.getTime())) return isoHour;
+      const pad = n => n.toString().padStart(2, '0');
+      return pad(d.getHours()) + ':00';
+    }
+
     /* ---------- Compute sections ---------- */
     // Cellular: SIM1 = "modem", SIM2 = "modem2"
     const sim1 = readStatsMB(get('modem'));
@@ -343,7 +357,7 @@
         `Upload: ${fmtData(wirelessUp)}<br>Download: ${fmtData(wirelessDown)}`;
     }
 
-    /* ---------- Build / store history for chart ---------- */
+    /* ---------- Build / store HOURLY history for chart ---------- */
     const totals = {
       cellular: cellularUp + cellularDown,
       wired: wiredUp + wiredDown,
@@ -351,41 +365,58 @@
     };
 
     const serial = general.serialnumber || 'default';
-    const HISTORY_KEY = 'device_usage_history_' + serial;
+    const HISTORY_KEY = 'device_usage_hourly_' + serial;
+    const MAX_HOURS = 50; // keep last 50 hourly buckets
 
-    let history = [];
+    let hourly = [];
     try {
-      history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
-      if (!Array.isArray(history)) history = [];
+      hourly = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+      if (!Array.isArray(hourly) || (hourly[0] && typeof hourly[0].hour === 'undefined')) {
+        hourly = [];
+      }
     } catch (e) {
-      history = [];
+      hourly = [];
     }
 
-    const timeLabel = formatTimeLabel(general.local_time);
-    history.push({
-      t: timeLabel,
-      cellular: totals.cellular,
-      wired: totals.wired,
-      wireless: totals.wireless
-    });
+    // Determine the current hour bucket
+    const hourStartDate = getHourStart(general.local_time);
+    const hourKey = hourStartDate.toISOString();
 
-    // keep last 50 points only
-    if (history.length > 50) {
-      history = history.slice(history.length - 50);
+    // Find or create bucket for this hour, then ADD the current totals
+    let bucket = hourly.find(h => h.hour === hourKey);
+    if (!bucket) {
+      bucket = {
+        hour: hourKey,
+        cellular: 0,
+        wired: 0,
+        wireless: 0
+      };
+      hourly.push(bucket);
+    }
+    bucket.cellular += totals.cellular;
+    bucket.wired += totals.wired;
+    bucket.wireless += totals.wireless;
+
+    // Sort by hour ascending
+    hourly.sort((a, b) => new Date(a.hour) - new Date(b.hour));
+
+    // keep only last MAX_HOURS buckets
+    if (hourly.length > MAX_HOURS) {
+      hourly = hourly.slice(hourly.length - MAX_HOURS);
     }
 
     try {
-      localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(hourly));
     } catch (e) {
-      console.warn('Unable to save usage history:', e);
+      console.warn('Unable to save hourly usage history:', e);
     }
 
-    const labels = history.map(h => h.t);
-    const cellularSeries = history.map(h => h.cellular);
-    const wiredSeries = history.map(h => h.wired);
-    const wirelessSeries = history.map(h => h.wireless);
+    const labels = hourly.map(h => formatHourLabel(h.hour));
+    const cellularSeries = hourly.map(h => h.cellular);
+    const wiredSeries = hourly.map(h => h.wired);
+    const wirelessSeries = hourly.map(h => h.wireless);
 
-    /* ---------- General Traffic chart: X axis = time ---------- */
+    /* ---------- Data Usage Traffic chart: X axis = 1-hour buckets ---------- */
     const traces = [
       {
         type: 'bar',
@@ -393,7 +424,7 @@
         x: labels,
         y: cellularSeries,
         marker: { color: '#2ca02c' },
-        hovertemplate: 'Cellular<br>Time: %{x}<br>Total: %{y:.2f} MB<extra></extra>'
+        hovertemplate: 'Cellular<br>Hour: %{x}<br>Total: %{y:.2f} MB<extra></extra>'
       },
       {
         type: 'bar',
@@ -401,7 +432,7 @@
         x: labels,
         y: wiredSeries,
         marker: { color: '#ff7f0e' },
-        hovertemplate: 'Wired<br>Time: %{x}<br>Total: %{y:.2f} MB<extra></extra>'
+        hovertemplate: 'Wired<br>Hour: %{x}<br>Total: %{y:.2f} MB<extra></extra>'
       },
       {
         type: 'bar',
@@ -409,22 +440,23 @@
         x: labels,
         y: wirelessSeries,
         marker: { color: '#1f77b4' },
-        hovertemplate: 'Wireless<br>Time: %{x}<br>Total: %{y:.2f} MB<extra></extra>'
+        hovertemplate: 'Wireless<br>Hour: %{x}<br>Total: %{y:.2f} MB<extra></extra>'
       }
     ];
 
     const layout = {
       barmode: 'stack',
       margin: { l: 60, r: 20, t: 10, b: 60 },
-      xaxis: { title: 'Time', automargin: true },
-      yaxis: { title: 'MB', rangemode: 'tozero', automargin: true },
+      xaxis: { title: 'Time (per hour)', automargin: true },
+      yaxis: { title: 'MB (hourly total)', rangemode: 'tozero', automargin: true },
       paper_bgcolor: 'rgba(0,0,0,0)',
       plot_bgcolor: 'rgba(0,0,0,0)',
       legend: { orientation: 'h', yanchor: 'top', y: -0.25, x: 0.5, xanchor: 'center' }
     };
 
     Plotly.newPlot('trafficCharts', traces, layout, {
-      displaylogo: false, responsive: true,
+      displaylogo: false,
+      responsive: true,
       modeBarButtonsToRemove: ['select2d', 'lasso2d', 'autoScale2d']
     });
 
