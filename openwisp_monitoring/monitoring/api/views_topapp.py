@@ -104,29 +104,35 @@ def _ipv4_addr_mask(iface: dict):
     return ipv4.get("address"), ipv4.get("mask")
 
 
+# def _link_status(iface: dict) -> str:
+#     """
+#     connected  -> up and ping ok
+#     abnormal   -> up but packet loss > 0 or no ping
+#     disconnected -> up == False
+#     """
+#     if not iface.get("up"):
+#         return "disconnected"
+
+#     ping = iface.get("ping") or {}
+#     loss = ping.get("packet_loss")
+#     latency = ping.get("latency_ms")
+
+#     # packet_loss comes like "0%" in your sample
+#     try:
+#         loss_val = float(str(loss).replace("%", "")) if loss is not None else 0.0
+#     except ValueError:
+#         loss_val = 0.0
+
+#     if loss_val > 0 or latency is None:
+#         return "abnormal"
+
+#     return "connected"
+
 def _link_status(iface: dict) -> str:
-    """
-    connected  -> up and ping ok
-    abnormal   -> up but packet loss > 0 or no ping
-    disconnected -> up == False
-    """
-    if not iface.get("up"):
+    if iface.get("up"):
+        return "connected"
+    else:
         return "disconnected"
-
-    ping = iface.get("ping") or {}
-    loss = ping.get("packet_loss")
-    latency = ping.get("latency_ms")
-
-    # packet_loss comes like "0%" in your sample
-    try:
-        loss_val = float(str(loss).replace("%", "")) if loss is not None else 0.0
-    except ValueError:
-        loss_val = 0.0
-
-    if loss_val > 0 or latency is None:
-        return "abnormal"
-
-    return "connected"
 
 
 # def _human_uptime(seconds: int | None) -> str:
@@ -184,12 +190,12 @@ def wan_uplinks_all_devices(request):
             # -----------------------
             # if not (iface.get("is_wan") is True or iface.get("role") == "wan"):
             #     continue
-            # ONLY ethernet WAN interfaces
-            # if not (
-            #     iface.get("type") == "ethernet"
-            #     and iface.get("is_wan") is True
-            # ):
-            #     continue
+            #ONLY ethernet WAN interfaces
+            if not (
+                iface.get("type") == "ethernet"
+                and iface.get("is_wan") is True
+            ):
+                continue
 
 
             # determine link status
@@ -229,3 +235,56 @@ def wan_uplinks_all_devices(request):
         "summary": summary,
         "rows": rows,
     })
+
+def _add_traffic(bucket, tx_bytes, rx_bytes):
+    bucket["sent"] += tx_bytes or 0
+    bucket["received"] += rx_bytes or 0
+    bucket["total"] = bucket["sent"] + bucket["received"]
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def data_usage_all_devices(request):
+
+    summary = {
+        "total":    {"sent": 0, "received": 0, "total": 0},
+        "cellular": {"sent": 0, "received": 0, "total": 0},
+        "wired":    {"sent": 0, "received": 0, "total": 0},
+        "wireless": {"sent": 0, "received": 0, "total": 0},
+    }
+
+    devices = Device.objects.all()
+
+    for device in devices:
+        try:
+            data = fetch_device_data(device)
+        except Exception:
+            continue
+
+        interfaces = data.get("interfaces", []) or []
+
+        for iface in interfaces:
+            stats = iface.get("statistics") or {}
+            tx = stats.get("tx_bytes") or 0
+            rx = stats.get("rx_bytes") or 0
+
+
+            iface_type = iface.get("type")
+            
+            # decide which bucket this interface belongs to
+            if iface_type == "mobile":
+                _add_traffic(summary["cellular"], tx, rx)
+            elif iface_type == "ethernet":
+                _add_traffic(summary["wired"], tx, rx)
+            elif iface_type in ("wifi", "wireless"):
+                _add_traffic(summary["wireless"], tx, rx)
+            else:
+                # ignore bridges, tunnels, etc. for category tiles
+                continue
+
+       # now compute TOTAL = sum of categories (no extra hidden bytes)
+    for key in ("cellular", "wired", "wireless"):
+        _add_traffic(summary["total"],
+                     summary[key]["sent"],
+                     summary[key]["received"])
+
+    return Response(summary)

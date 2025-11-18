@@ -32,6 +32,11 @@ urlpatterns = [
         views_topapp.wan_uplinks_all_devices,
         name="api_wan_uplinks_all_devices"
     ),
+    path(
+        "api/v1/monitoring/data-usage/",
+        views_topapp.data_usage_all_devices,
+        name="api_data_usage_all_devices"
+    ),
     re_path(
         r'^api/v1/monitoring/device/(?P<device_id>[^/]+)/traffic-summary/$',
         views_realdata.traffic_summary_data,
