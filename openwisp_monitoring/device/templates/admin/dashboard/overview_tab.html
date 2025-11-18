@@ -235,12 +235,14 @@
     let json;
     try {
       json = await fetchInterfacesSummary();
+      console.log('Fetched interfaces-summary:====', json);
     } catch (e) {
       console.error('Error fetching interfaces-summary:', e);
       json = {};
     }
 
     const interfaces = Array.isArray(json.interfaces) ? json.interfaces : [];
+    console.log('interfaces-summary data:===', interfaces);
 
     // ====== NO DATA CASE: show all 0 in all three charts ======
     if (!interfaces.length) {
