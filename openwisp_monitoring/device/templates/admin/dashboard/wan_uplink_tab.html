@@ -506,6 +506,11 @@
         const tbody = document.getElementById('home-wan-tbody');
         if (!tbody) return;
 
+
+        const totalEls = document.querySelectorAll('.home-wan-total');
+        const connectedEls = document.querySelectorAll('.home-wan-connected');
+
+
         const totalEl = document.getElementById('home-wan-total');
         const connectedEl = document.getElementById('home-wan-connected');
         const abnormalEl = document.getElementById('home-wan-abnormal');
@@ -573,6 +578,10 @@
                 const st = normalizeStatus(row.status);
                 if (st === 'disabled') disabled++;
             });
+
+            totalEls.forEach(el => el.textContent = total);
+            connectedEls.forEach(el => el.textContent = connected);
+
 
             if (totalEl) totalEl.textContent = total;
             if (connectedEl) connectedEl.textContent = connected;
