@@ -127,26 +127,6 @@
 <!-- =============================================== -->
 
 <script>
-  // ========= Build a light-weight JS array from device_data.interfaces =========
-  // (No json_script, no API calls)
-  const ifaces = JSON.parse(String.raw`
-    [
-      {% for iface in device_data.interfaces %}
-      {
-        "type": "{{ iface.type|default_if_none:''|escapejs }}",
-        "name": "{{ iface.name|default_if_none:''|escapejs }}",
-
-        "operator_name": "{% if iface.mobile %}{{ iface.mobile.operator_name|default_if_none:''|escapejs }}{% else %}{% endif %}",
-
-        "has_lte": {% if iface.mobile and iface.mobile.signal.lte %}true{% else %}false{% endif %},
-        "has_5g":  {% if iface.mobile and iface.mobile.signal.5g %}true{% else %}false{% endif %}
-      }{% if not forloop.last %},{% endif %}
-      {% endfor %}
-    ]
-  `);
-
-  console.log("IFACES:=====", ifaces);
-
   /* ---------- Donut with clickable legend to hide/show slices ---------- */
   function renderDonutWithLegend(opts) {
     const { elId, legendId, labels, values, colors } = opts;
@@ -226,121 +206,80 @@
     });
   }
 
-  /* ================== BUILD DATA FROM ifaces (NO JSON PARSE / API) ================== */
+  /* ================== FETCH INTERFACES-SUMMARY + BUILD CHART DATA ================== */
 
-  function getDistributionsFromIfaces() {
+  async function fetchInterfacesSummary() {
+    // get device UUID from URL
+    const path = window.location.pathname;
+    const match = path.match(/[0-9a-fA-F-]{36}/);
+    const DEVICE_UUID = match ? match[0] : 'b5224a8d-ee4c-44a3-a7b0-5f30fac484b9';
+
+    const base = window.API_BASE_URL || 'https://controller.nexapp.co.in';
+    const url = `${base}/api/v1/monitoring/device/${DEVICE_UUID}/interfaces-summary/`;
+
+    let token = null;
+    try {
+      token = await fetchAuthToken();
+    } catch (e) {
+      console.warn('fetchAuthToken error for interfaces-summary:', e);
+    }
+
+    const headers = { 'Accept': 'application/json' };
+    if (token) headers['Authorization'] = `Token ${token}`;
+
+    const resp = await fetch(url, { headers });
+    if (!resp.ok) {
+      throw new Error(`interfaces-summary HTTP ${resp.status}`);
+    }
+    return resp.json();
+  }
+
+  async function initDistributionChartsFromApi() {
+    let json;
+    try {
+      json = await fetchInterfacesSummary();
+    } catch (e) {
+      console.error('Error fetching interfaces-summary:', e);
+      // fall back to empty charts
+      json = {};
+    }
+
+    const interfaces = Array.isArray(json.interfaces) ? json.interfaces : [];
+
     const carriersCount = new Map();   // operator_name => count
     const techCount = new Map();       // 4G / 5G / other => count
     const ifaceCount = new Map();      // interface.name => count
 
-    for (const iface of ifaces) {
-      if (!iface || !iface.name) continue;
+    for (const iface of interfaces) {
+      if (!iface) continue;
 
       // Interface Distribution: per interface name
-      const ifaceName = (iface.name || 'Unknown').trim();
+      const ifaceName = (iface.name || iface.type || 'Unknown').trim();
       ifaceCount.set(ifaceName, (ifaceCount.get(ifaceName) || 0) + 1);
 
-      // Only mobiles carry carrier + network tech info
-      if (iface.type === 'mobile') {
-        const op = (iface.operator_name || 'Unknown').trim() || 'Unknown';
+      // Carrier + Network: only for entries that have nested "mobile"
+      if (iface.type === 'mobile' && iface.mobile) {
+        const op = (iface.mobile.operator_name || 'Unknown').trim() || 'Unknown';
         carriersCount.set(op, (carriersCount.get(op) || 0) + 1);
 
-        if (iface.has_lte) {
-          techCount.set('4G', (techCount.get('4G') || 0) + 1);
-        }
-        if (iface.has_5g) {
-          techCount.set('5G', (techCount.get('5G') || 0) + 1);
+        const sig = iface.mobile.signal || {};
+        const sigKey = Object.keys(sig)[0]; // e.g. "lte" or "5g"
+        if (sigKey) {
+          let label;
+          const low = sigKey.toLowerCase();
+          if (low === 'lte') {
+            label = '4G';
+          } else if (low === '5g') {
+            label = '5G';
+          } else {
+            label = sigKey.toUpperCase();
+          }
+          techCount.set(label, (techCount.get(label) || 0) + 1);
         }
       }
     }
 
-    // Carrier arrays
-    const carrierLabels = Array.from(carriersCount.keys());
-    const carrierValues = carrierLabels.map(k => carriersCount.get(k));
-
-    // Network arrays with nice ordering
-    const networkPreferredOrder = ['5G', '4G'];
-    const allTechKeys = Array.from(techCount.keys());
-    const orderedTech = [
-      ...networkPreferredOrder.filter(k => techCount.has(k)),
-      ...allTechKeys.filter(k => !networkPreferredOrder.includes(k))
-    ];
-    const networkLabels = orderedTech;
-    const networkValues = networkLabels.map(k => techCount.get(k));
-
-    // Interface arrays
-    const interfaceLabels = Array.from(ifaceCount.keys());
-    const interfaceValues = interfaceLabels.map(k => ifaceCount.get(k));
-
-    return {
-      carrierLabels,
-      carrierValues,
-      networkLabels,
-      networkValues,
-      interfaceLabels,
-      interfaceValues
-    };
-  }
-
-  /* ================== INIT (use ifaces) ================== */
-
-  const palette1 = ['#ff7f0e', '#1f77b4', '#2ca02c', '#353c44', '#a72d1d', '#267126']; // carriers
-  const palette2 = ['#2ca02c', '#1f77b4', '#353c44', '#a72d1d', '#f59e0b', '#22c55e']; // network
-  const palette3 = ['#ff7f0e', '#1f77b4', '#2ca02c', '#353c44', '#a72d1d', '#22c55e', '#6366f1', '#0ea5e9']; // interfaces
-
-  (function () {
-    'use strict';
-
-    // coerce "—" or empty string to null, otherwise keep string
-    function coerceStr(raw) {
-      if (raw == null) return null;
-      const s = String(raw).trim();
-      if (!s || s === '—') return null;
-      return s;
-    }
-
-    // ========== 1) Build small JS objects from device_data like your csq example ==========
-
-    // NOTE: these follow your pattern:
-    //   csq: coerceNum("{{ device_data.cellular.modem.csq|default:'—' }}"),
-    // here we do the same for operator/nettype, etc.
-
-    const modem1 = {
-      operator: coerceStr("{{ device_data.cellular.modem.operator|default:'—' }}"),
-      nettype: coerceStr("{{ device_data.cellular.modem.nettype|default:'—' }}")
-    };
-
-    const modem2 = {
-      operator: coerceStr("{{ device_data.cellular.modem2.operator|default:'—' }}"),
-      nettype: coerceStr("{{ device_data.cellular.modem2.nettype|default:'—' }}")
-    };
-
-    // ========== 2) Interface list from device_data.interfaces (names only) ==========
-
-    // We build a JSON array using Django in a JS string and parse it.
-    // No json_script, but safe and simple.
-    const interfaceNames = JSON.parse(String.raw`
-      [
-        {% for iface in device_data.interfaces %}
-          "{{ iface.name|default_if_none:''|escapejs }}"{% if not forloop.last %},{% endif %}
-        {% endfor %}
-      ]
-    `).filter(Boolean);  // remove empty strings
-
-    // ========== 3) Build distributions ==========
-
-    console.log("Modem1:====", modem1);
-    console.log("Modem2:====", modem2);
-    console.log("Interface Names:====", interfaceNames);
-
-    // ---- Carrier Distribution (by operator) ----
-    const carriersCount = new Map();
-    [modem1, modem2].forEach(m => {
-      if (!m || !m.operator) return;
-      const key = m.operator.toUpperCase();
-      carriersCount.set(key, (carriersCount.get(key) || 0) + 1);
-    });
-
+    // Carrier arrays (fallback if no data)
     const carrierLabels = carriersCount.size
       ? Array.from(carriersCount.keys())
       : ['Unknown'];
@@ -348,84 +287,62 @@
       ? carrierLabels.map(k => carriersCount.get(k))
       : [0];
 
-    // ---- Network Distribution (4G / 5G using nettype) ----
-    const netCounts = new Map(); // key: '4G' / '5G' / other
-    [modem1, modem2].forEach(m => {
-      if (!m || !m.nettype) return;
-      let t = m.nettype.toUpperCase();
-      if (t.includes('LTE')) t = '4G';
-      if (t.includes('NR') || t.includes('5G')) t = '5G';
-      netCounts.set(t, (netCounts.get(t) || 0) + 1);
-    });
-
+    // Network arrays in preferred order 5G, 4G, then others
     const preferredOrder = ['5G', '4G'];
-    const netLabels = netCounts.size
-      ? [
-        ...preferredOrder.filter(t => netCounts.has(t)),
-        ...Array.from(netCounts.keys()).filter(t => !preferredOrder.includes(t))
-      ]
-      : ['4G', '5G'];
-
-    const netValues = netCounts.size
-      ? netLabels.map(t => netCounts.get(t))
+    const allTechKeys = Array.from(techCount.keys());
+    const orderedTech = [
+      ...preferredOrder.filter(k => techCount.has(k)),
+      ...allTechKeys.filter(k => !preferredOrder.includes(k))
+    ];
+    const networkLabels = orderedTech.length ? orderedTech : ['4G', '5G'];
+    const networkValues = orderedTech.length
+      ? networkLabels.map(k => techCount.get(k))
       : [0, 0];
 
-    // ---- Interface Distribution (by interface.name) ----
-    const ifaceCount = new Map();
-    interfaceNames.forEach(n => {
-      const key = n || 'unknown';
-      ifaceCount.set(key, (ifaceCount.get(key) || 0) + 1);
-    });
-
-    const ifaceLabels = ifaceCount.size
+    // Interface arrays (fallback some defaults)
+    const interfaceLabels = ifaceCount.size
       ? Array.from(ifaceCount.keys())
       : ['eth0', 'eth1', 'modem', 'modem2'];
-
-    const ifaceValues = ifaceCount.size
-      ? ifaceLabels.map(k => ifaceCount.get(k))
+    const interfaceValues = ifaceCount.size
+      ? interfaceLabels.map(k => ifaceCount.get(k))
       : [0, 0, 0, 0];
-
-    // ========== 4) Render the three donuts using your existing helper ==========
 
     const palette1 = ['#ff7f0e', '#1f77b4', '#2ca02c', '#353c44', '#a72d1d', '#267126']; // carriers
     const palette2 = ['#2ca02c', '#1f77b4', '#353c44', '#a72d1d', '#f59e0b', '#22c55e']; // network
     const palette3 = ['#ff7f0e', '#1f77b4', '#2ca02c', '#353c44', '#a72d1d', '#22c55e', '#6366f1', '#0ea5e9']; // interfaces
 
-    function go() {
-      // 1) Carrier Distribution
-      renderDonutWithLegend({
-        elId: 'Carrier-Distribution-chart',
-        legendId: 'Carrier-Distribution-legend',
-        labels: carrierLabels,
-        values: carrierValues,
-        colors: palette1
-      });
+    // Render donuts
+    renderDonutWithLegend({
+      elId: 'Carrier-Distribution-chart',
+      legendId: 'Carrier-Distribution-legend',
+      labels: carrierLabels,
+      values: carrierValues,
+      colors: palette1
+    });
 
-      // 2) Network Distribution
-      renderDonutWithLegend({
-        elId: 'Network-Distribution-chart',
-        legendId: 'Network-Distribution-legend',
-        labels: netLabels,
-        values: netValues,
-        colors: palette2
-      });
+    renderDonutWithLegend({
+      elId: 'Network-Distribution-chart',
+      legendId: 'Network-Distribution-legend',
+      labels: networkLabels,
+      values: networkValues,
+      colors: palette2
+    });
 
-      // 3) Interface Distribution
-      renderDonutWithLegend({
-        elId: 'Interface-Distribution-chart',
-        legendId: 'Interface-Distribution-legend',
-        labels: ifaceLabels,
-        values: ifaceValues,
-        colors: palette3
-      });
-    }
+    renderDonutWithLegend({
+      elId: 'Interface-Distribution-chart',
+      legendId: 'Interface-Distribution-legend',
+      labels: interfaceLabels,
+      values: interfaceValues,
+      colors: palette3
+    });
+  }
 
-    if (document.readyState === 'complete' || document.readyState === 'interactive') {
-      go();
-    } else {
-      document.addEventListener('DOMContentLoaded', go);
-    }
-  })();
+  // Kick off donut charts when DOM is ready
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    initDistributionChartsFromApi();
+  } else {
+    document.addEventListener('DOMContentLoaded', initDistributionChartsFromApi);
+  }
 </script>
 
 {% leaflet_js %}
