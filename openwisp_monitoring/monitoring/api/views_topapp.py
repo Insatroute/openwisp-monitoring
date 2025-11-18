@@ -50,6 +50,12 @@ def global_top_apps(request):
             if app_id in ("netify.nethserver", "netify.snort", "netify.netify"):
                 continue
 
+            label = app.get("label")
+            traffic = app.get("traffic", 0)
+
+            if label:
+                app_counter[label] += traffic
+
     # Get top 10 apps
     top_10_apps = app_counter.most_common(10)
 
