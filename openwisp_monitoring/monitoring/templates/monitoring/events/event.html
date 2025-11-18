@@ -34,7 +34,10 @@
   }
 
   /* Range picker chip */
-  .range-chip-wrap { position:relative; }
+  .range-chip-wrap { position:relative;
+      margin-right: 20px;
+
+  }
   .range-chip-btn {
     border-radius:6px;
     padding:6px 10px;
@@ -191,13 +194,15 @@
     .event-card-hd { align-items:flex-start; }
     .event-updated { margin-left:0; }
   }
+
+  .event-filter{
+    display:flex;
+    margin-bottom:10px;
+    padding:10px;
+  }
 </style>
 
-<div class="event-card" id="event-card">
-  <div class="event-card-hd">
-    <div class="event-hd-left">
-      <div class="event-title">{% trans "Events" %}</div>
-
+<div class="event-filter">
       <!-- Range picker chip -->
       <div class="range-chip-wrap">
         <button type="button" class="range-chip-btn" id="range-chip-btn">
@@ -238,6 +243,16 @@
         <button type="button" class="export-btn" id="export-excel">{% trans "Export Excel" %}</button>
         <button type="button" class="export-btn" id="export-pdf">{% trans "Export PDF" %}</button>
       </div>
+</div>
+
+
+
+<div class="event-card" id="event-card">
+  <div class="event-card-hd">
+    <div class="event-hd-left">
+      <div class="event-title">{% trans "Events" %}</div>
+
+
     </div>
 
     <div class="event-updated">
@@ -270,8 +285,8 @@
         <span id="range-text"></span>
         &nbsp;{% trans "Show" %}&nbsp;
         <select id="page-size">
-          <option>10</option>
-          <option selected>25</option>
+          <option selecteds>10</option>
+          <option >25</option>
           <option>50</option>
           <option>100</option>
         </select>
@@ -397,6 +412,7 @@
     let filtered = [];
     let currentWindow = { startMs: firstStartMs, endMs: lastEndMs };
     let currentMode = '24h';  // default
+    let currentSummary = null; // <-- keep latest summary for export
 
     function computeWindowForMode(mode) {
       const nowMs = lastEndMs || Date.now();
@@ -483,8 +499,15 @@
       };
     }
 
-    function renderSummary(summary) {
-      if (!summary) { summaryEl.innerHTML = ''; return; }
+       function renderSummary(summary) {
+      currentSummary = summary;   // <-- remember for export
+
+      if (!summary) {
+        summaryEl.innerHTML = '';
+        chipLabel.textContent = '{% trans "Last 24 hours" %}';
+        return;
+      }
+
       const upPct = summary.uptime_percent !== null ? summary.uptime_percent + '%' : 'n/a';
       summaryEl.innerHTML =
         '<span><strong>{% trans "Uptime" %}:</strong> ' + esc(upPct) + '</span>' +
@@ -492,8 +515,10 @@
         '<span><strong>{% trans "Total Down" %}:</strong> ' + esc(summary.downtime_human) + '</span>' +
         '<span><strong>{% trans "Window" %}:</strong> ' +
         esc(summary.window_start) + ' → ' + esc(summary.window_end) + '</span>';
+
       chipLabel.textContent = summary.label;
     }
+
 
     function renderTable() {
       const total = filtered.length;
@@ -616,17 +641,42 @@
     customCancelBtn.addEventListener('click', function () {
       customBlock.style.display = 'none';
     });
+        function getSummaryForExport() {
+      if (currentSummary) return currentSummary;
+      // Fallback: recompute from current window
+      const res = filterAndSummarize();
+      currentSummary = res.summary;
+      return currentSummary;
+    }
 
+
+    // Export Excel (CSV)
     // Export Excel (CSV)
     exportExcelBtn.addEventListener('click', function () {
       if (!filtered.length) return;
+
+      const summary = getSummaryForExport();
+
+      const metaRows = [
+        ['Uptime', summary.uptime_percent !== null ? summary.uptime_percent + '%' : 'n/a'],
+        ['Total Up', summary.uptime_human],
+        ['Total Down', summary.downtime_human],
+        ['Window Start', summary.window_start],
+        ['Window End', summary.window_end],
+        ['',''] // blank line before table
+      ];
+
       const header = ['Start','End','Status','Duration'];
       const rows = filtered.map(r => [
         r.start, r.end, r.status, r.duration_human
       ]);
-      const csvLines = [header].concat(rows).map(cols => {
+
+      const allRows = metaRows.concat([header]).concat(rows);
+
+      const csvLines = allRows.map(cols => {
         return cols.map(c => '"' + String(c).replace(/"/g,'""') + '"').join(',');
       });
+
       const blob = new Blob([csvLines.join('\n')], {type:'text/csv;charset=utf-8;'});
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -639,9 +689,12 @@
     });
 
     // Export PDF (printable view – user can save as PDF)
+    // Export PDF (printable view – user can save as PDF)
     exportPdfBtn.addEventListener('click', function () {
       if (!filtered.length) return;
-      const win = window.open('', '_blank');
+
+      const summary = getSummaryForExport();
+
       const rowsHtml = filtered.map(r => {
         return '<tr>' +
           '<td>' + esc(r.start) + '</td>' +
@@ -650,11 +703,27 @@
           '<td>' + esc(r.duration_human) + '</td>' +
         '</tr>';
       }).join('');
+
+      const upPct = summary.uptime_percent !== null ? summary.uptime_percent + '%' : 'n/a';
+      const summaryHtml =
+        '<p><strong>Uptime:</strong> ' + esc(upPct) +
+        ' &nbsp; <strong>Total Up:</strong> ' + esc(summary.uptime_human) +
+        ' &nbsp; <strong>Total Down:</strong> ' + esc(summary.downtime_human) +
+        '<br><strong>Window:</strong> ' + esc(summary.window_start) +
+        ' → ' + esc(summary.window_end) + '</p>';
+
+      const win = window.open('', '_blank');
       win.document.write(
         '<html><head><title>Events</title>' +
-        '<style>table{border-collapse:collapse;width:100%;font-size:12px;}th,td{border:1px solid #000;padding:4px 6px;text-align:left;}</style>' +
+        '<style>' +
+        'body{font-family:system-ui,Arial,sans-serif;font-size:12px;}' +
+        'h3{margin-bottom:4px;}' +
+        'table{border-collapse:collapse;width:100%;font-size:12px;margin-top:8px;}' +
+        'th,td{border:1px solid #000;padding:4px 6px;text-align:left;}' +
+        '</style>' +
         '</head><body>' +
         '<h3>Device Events</h3>' +
+        summaryHtml +
         '<table><thead><tr><th>Start</th><th>End</th><th>Status</th><th>Duration</th></tr></thead><tbody>' +
         rowsHtml +
         '</tbody></table>' +
@@ -662,8 +731,9 @@
       );
       win.document.close();
       win.focus();
-      win.print();  // browser "Save as PDF"
+      win.print();  // user can "Save as PDF"
     });
+
 
     // Initial load: last 24h
     currentMode = '24h';
