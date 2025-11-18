@@ -357,7 +357,7 @@
         `Upload: ${fmtData(wirelessUp)}<br>Download: ${fmtData(wirelessDown)}`;
     }
 
-    /* ---------- Build / store HOURLY history for chart ---------- */
+    /* ---------- Build / store HOURLY history for chart (in MB) ---------- */
     const totals = {
       cellular: cellularUp + cellularDown,
       wired: wiredUp + wiredDown,
@@ -382,7 +382,7 @@
     const hourStartDate = getHourStart(general.local_time);
     const hourKey = hourStartDate.toISOString();
 
-    // Find or create bucket for this hour, then ADD the current totals
+    // Find or create bucket for this hour, then ADD the current totals (still in MB)
     let bucket = hourly.find(h => h.hour === hourKey);
     if (!bucket) {
       bucket = {
@@ -412,9 +412,23 @@
     }
 
     const labels = hourly.map(h => formatHourLabel(h.hour));
-    const cellularSeries = hourly.map(h => h.cellular);
-    const wiredSeries = hourly.map(h => h.wired);
-    const wirelessSeries = hourly.map(h => h.wireless);
+
+    /* ---------- Decide chart unit: MB or GB ---------- */
+    let maxMB = 0;
+    hourly.forEach(h => {
+      maxMB = Math.max(maxMB, h.cellular, h.wired, h.wireless);
+    });
+
+    let unitLabel = 'MB';
+    let unitFactor = 1; // multiply MB by this to get chart values
+    if (maxMB >= 1024) {
+      unitLabel = 'GB';
+      unitFactor = 1 / 1024; // convert MB -> GB
+    }
+
+    const cellularSeries = hourly.map(h => h.cellular * unitFactor);
+    const wiredSeries = hourly.map(h => h.wired * unitFactor);
+    const wirelessSeries = hourly.map(h => h.wireless * unitFactor);
 
     /* ---------- Data Usage Traffic chart: X axis = 1-hour buckets ---------- */
     const traces = [
@@ -424,7 +438,7 @@
         x: labels,
         y: cellularSeries,
         marker: { color: '#2ca02c' },
-        hovertemplate: 'Cellular<br>Hour: %{x}<br>Total: %{y:.2f} MB<extra></extra>'
+        hovertemplate: `Cellular<br>Hour: %{x}<br>Total: %{y:.2f} ${unitLabel}<extra></extra>`
       },
       {
         type: 'bar',
@@ -432,7 +446,7 @@
         x: labels,
         y: wiredSeries,
         marker: { color: '#ff7f0e' },
-        hovertemplate: 'Wired<br>Hour: %{x}<br>Total: %{y:.2f} MB<extra></extra>'
+        hovertemplate: `Wired<br>Hour: %{x}<br>Total: %{y:.2f} ${unitLabel}<extra></extra>`
       },
       {
         type: 'bar',
@@ -440,15 +454,17 @@
         x: labels,
         y: wirelessSeries,
         marker: { color: '#1f77b4' },
-        hovertemplate: 'Wireless<br>Hour: %{x}<br>Total: %{y:.2f} MB<extra></extra>'
+        hovertemplate: `Wireless<br>Hour: %{x}<br>Total: %{y:.2f} ${unitLabel}<extra></extra>`
       }
     ];
 
     const layout = {
       barmode: 'stack',
+      bargap: 0.7,
+      bargroupgap: 0.8,
       margin: { l: 60, r: 20, t: 10, b: 60 },
       xaxis: { title: 'Time (per hour)', automargin: true },
-      yaxis: { title: 'MB (hourly total)', rangemode: 'tozero', automargin: true },
+      yaxis: { title: `${unitLabel} (hourly total)`, rangemode: 'tozero', automargin: true },
       paper_bgcolor: 'rgba(0,0,0,0)',
       plot_bgcolor: 'rgba(0,0,0,0)',
       legend: { orientation: 'h', yanchor: 'top', y: -0.25, x: 0.5, xanchor: 'center' }
