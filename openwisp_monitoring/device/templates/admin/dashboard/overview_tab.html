@@ -135,18 +135,41 @@
     const legendRoot = document.getElementById(legendId);
     if (!el || !legendRoot) return;
 
-    const baseValues = values.slice();
-    const active = baseValues.map(v => v > 0);
+    // baseValues = real data (can be 0)
+    const baseValues = (Array.isArray(values) ? values : []).map(v => Number(v) || 0);
+
+    // which slices are "on"
+    let active = baseValues.map(v => v > 0);
+    // if everything is zero, keep first slice active so chart still shows a ring
+    if (active.every(a => !a) && active.length) {
+      active[0] = true;
+    }
 
     function totalActive() {
       return baseValues.reduce((acc, v, i) => acc + (active[i] ? v : 0), 0);
     }
 
+    // values actually sent to Plotly (we need non-zero to draw a ring)
+    function makePlotValues() {
+      const masked = baseValues.map((v, i) => (active[i] ? v : 0));
+      const hasPositive = masked.some(v => v > 0);
+      if (hasPositive) return masked;
+
+      if (!masked.length) return masked;
+
+      const clone = masked.slice();
+      // draw a fake 1-unit slice just so donut is visible
+      clone[0] = 1;
+      return clone;
+    }
+
+    const plotValues = makePlotValues();
+
     const rect = el.getBoundingClientRect();
     const data = [{
       type: 'pie',
       labels: labels,
-      values: baseValues,
+      values: plotValues,
       hole: 0.69,
       sort: false,
       direction: 'clockwise',
@@ -167,7 +190,7 @@
       plot_bgcolor: 'rgba(0,0,0,0)',
       annotations: [{
         showarrow: false,
-        text: String(totalActive() || 0),
+        text: String(totalActive() || 0),   // center will still show real total (0)
         x: 0.5, y: 0.5,
         font: { size: 13, color: '#2b2f36' }
       }]
@@ -188,16 +211,18 @@
       item.appendChild(sw);
       item.appendChild(txt);
       legendRoot.appendChild(item);
+      if (!active[i]) item.classList.add('is-off');
     });
 
     legendRoot.addEventListener('click', (e) => {
       const node = e.target.closest('.legend-item');
       if (!node) return;
       const idx = parseInt(node.dataset.index, 10);
+
       active[idx] = !active[idx];
 
-      const newVals = baseValues.map((v, i) => active[i] ? v : 0);
-      Plotly.restyle(el, { values: [newVals] });
+      const newPlotValues = makePlotValues();
+      Plotly.restyle(el, { values: [newPlotValues] });
       Plotly.relayout(el, { 'annotations[0].text': String(totalActive() || 0) });
       node.classList.toggle('is-off', !active[idx]);
     });
@@ -244,7 +269,7 @@
     const interfaces = Array.isArray(json.interfaces) ? json.interfaces : [];
     console.log('interfaces-summary data:===', interfaces);
 
-    // ====== NO DATA CASE: show all 0 in all three charts ======
+    // ====== NO DATA CASE: still show donut, but values 0 ======
     if (!interfaces.length) {
       const zeroLabels = ['No data'];
       const zeroValues = [0];
@@ -277,7 +302,7 @@
         colors: palette3
       });
 
-      return; // nothing else to do
+      return;
     }
 
     // ====== DATA CASE ======
