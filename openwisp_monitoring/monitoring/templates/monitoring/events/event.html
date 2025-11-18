@@ -14,14 +14,50 @@
   .event-dot-down { background:#ef4444; }    /* red */
   .event-dot-unknown { background:#9ca3af; } /* gray */
   
-  .event-empty {margin:16px;
+  .event-empty {
+    margin:16px;
     padding:24px;
     border:1px dashed #d1d5db;
     border-radius:8px;
     text-align:center;
     color:#6b7280;
   }
-  
+
+  /* === Pagination styles === */
+  .event-pagination {
+    display:flex;
+    align-items:center;
+    justify-content:flex-end;
+    gap:4px;
+    padding:10px 14px;
+    border-top:1px solid #e5e7eb;
+    background:#fff;
+    font-size:12px;
+  }
+  .event-page-btn {
+    border:1px solid #d1d5db;
+    border-radius:6px;
+    padding:4px 8px;
+    background:#fff;
+    cursor:pointer;
+    color:#374151;
+  }
+  .event-page-btn:hover:not(.event-page-btn-disabled):not(.event-page-btn-active) {
+    background:#f3f4f6;
+  }
+  .event-page-btn-disabled {
+    opacity:.5;
+    cursor:default;
+  }
+  .event-page-btn-active {
+    background:#111827;
+    color:#fff;
+    border-color:#111827;
+  }
+  .event-page-info {
+    margin-right:8px;
+    color:#6b7280;
+  }
 </style>
 
 <div class="event-card" id="event-card">
@@ -73,8 +109,146 @@
           {% endfor %}
         </tbody>
       </table>
+
+      {# pagination bar (JS will fill this) #}
+      <div class="event-pagination" id="event-pagination" aria-label="Events pagination"></div>
     {% else %}
       <div class="event-empty" id="event-empty">No events available</div>
     {% endif %}
   </div>
 </div>
+
+<script>
+  (function() {
+    // how many events per page (tune this as you like for 365-day data)
+    const PAGE_SIZE = 25;
+
+    document.addEventListener('DOMContentLoaded', function() {
+      const table = document.getElementById('event-table');
+      const pagination = document.getElementById('event-pagination');
+
+      if (!table || !pagination) {
+        return;
+      }
+
+      const tbody = table.querySelector('tbody');
+      const allRows = Array.from(tbody.querySelectorAll('tr'));
+
+      // no rows or only "No events" row
+      if (!allRows.length || (allRows.length === 1 && allRows[0].classList.contains('event-empty'))) {
+        return;
+      }
+
+      const totalRows = allRows.length;
+      const totalPages = Math.ceil(totalRows / PAGE_SIZE);
+
+      if (totalPages <= 1) {
+        // nothing to paginate
+        return;
+      }
+
+      let currentPage = 1;
+
+      function showPage(page) {
+        currentPage = page;
+
+        const start = (page - 1) * PAGE_SIZE;
+        const end = start + PAGE_SIZE;
+
+        allRows.forEach(function(row, idx) {
+          if (idx >= start && idx < end) {
+            row.style.display = '';
+          } else {
+            row.style.display = 'none';
+          }
+        });
+
+        renderPagination();
+      }
+
+      function createBtn(label, disabled, active, onClick) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.textContent = label;
+        btn.className = 'event-page-btn';
+
+        if (disabled) {
+          btn.classList.add('event-page-btn-disabled');
+          btn.disabled = true;
+        }
+        if (active) {
+          btn.classList.add('event-page-btn-active');
+        }
+        if (!disabled && typeof onClick === 'function') {
+          btn.addEventListener('click', onClick);
+        }
+        return btn;
+      }
+
+      function renderPagination() {
+        pagination.innerHTML = '';
+
+        const info = document.createElement('span');
+        info.className = 'event-page-info';
+        info.textContent = 'Page ' + currentPage + ' of ' + totalPages;
+        pagination.appendChild(info);
+
+        // Prev button
+        pagination.appendChild(
+          createBtn('Prev', currentPage === 1, false, function () {
+            if (currentPage > 1) {
+              showPage(currentPage - 1);
+            }
+          })
+        );
+
+        // Page number buttons (window around current page)
+        const WINDOW = 3; // show current ±3 pages
+        let startPage = Math.max(1, currentPage - WINDOW);
+        let endPage = Math.min(totalPages, currentPage + WINDOW);
+
+        if (startPage > 1) {
+          pagination.appendChild(
+            createBtn('1', false, currentPage === 1, function () { showPage(1); })
+          );
+          if (startPage > 2) {
+            const dots = document.createElement('span');
+            dots.textContent = '…';
+            dots.style.padding = '0 4px';
+            pagination.appendChild(dots);
+          }
+        }
+
+        for (let p = startPage; p <= endPage; p++) {
+          pagination.appendChild(
+            createBtn(String(p), false, p === currentPage, function () { showPage(p); })
+          );
+        }
+
+        if (endPage < totalPages) {
+          if (endPage < totalPages - 1) {
+            const dots = document.createElement('span');
+            dots.textContent = '…';
+            dots.style.padding = '0 4px';
+            pagination.appendChild(dots);
+          }
+          pagination.appendChild(
+            createBtn(String(totalPages), false, currentPage === totalPages, function () { showPage(totalPages); })
+          );
+        }
+
+        // Next button
+        pagination.appendChild(
+          createBtn('Next', currentPage === totalPages, false, function () {
+            if (currentPage < totalPages) {
+              showPage(currentPage + 1);
+            }
+          })
+        );
+      }
+
+      // init first page
+      showPage(1);
+    });
+  })();
+</script>
