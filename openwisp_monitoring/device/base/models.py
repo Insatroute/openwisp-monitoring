@@ -221,8 +221,8 @@ def get_device_availability(
     device_id, *,
     start=None,
     end=None,
-    days=365,
-    
+    days=0,
+    hours=24,
     include_uptime=True,
     max_events=20000,
     override_end_status=None,   # 'up' | 'down' | None
@@ -490,7 +490,8 @@ class AbstractDeviceData(object):
 
             availability_report = get_device_availability(
                 str(self.pk),
-                days=365,            # 365-day window in TSDB
+                days=365,    
+                hours=0,         # 365-day window in TSDB
                 max_events=20000,    # keep enough events
                 override_end_status=override,
                 # display_tz ignored; we use Django current tz
