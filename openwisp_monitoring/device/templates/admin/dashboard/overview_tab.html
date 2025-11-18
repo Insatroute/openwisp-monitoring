@@ -288,47 +288,143 @@
   const palette2 = ['#2ca02c', '#1f77b4', '#353c44', '#a72d1d', '#f59e0b', '#22c55e']; // network
   const palette3 = ['#ff7f0e', '#1f77b4', '#2ca02c', '#353c44', '#a72d1d', '#22c55e', '#6366f1', '#0ea5e9']; // interfaces
 
-  (function initDonuts() {
-    function go() {
-      const {
-        carrierLabels,
-        carrierValues,
-        networkLabels,
-        networkValues,
-        interfaceLabels,
-        interfaceValues
-      } = getDistributionsFromIfaces();
+  (function () {
+    'use strict';
 
-      // Carrier Distribution
+    // coerce "—" or empty string to null, otherwise keep string
+    function coerceStr(raw) {
+      if (raw == null) return null;
+      const s = String(raw).trim();
+      if (!s || s === '—') return null;
+      return s;
+    }
+
+    // ========== 1) Build small JS objects from device_data like your csq example ==========
+
+    // NOTE: these follow your pattern:
+    //   csq: coerceNum("{{ device_data.cellular.modem.csq|default:'—' }}"),
+    // here we do the same for operator/nettype, etc.
+
+    const modem1 = {
+      operator: coerceStr("{{ device_data.cellular.modem.operator|default:'—' }}"),
+      nettype: coerceStr("{{ device_data.cellular.modem.nettype|default:'—' }}")
+    };
+
+    const modem2 = {
+      operator: coerceStr("{{ device_data.cellular.modem2.operator|default:'—' }}"),
+      nettype: coerceStr("{{ device_data.cellular.modem2.nettype|default:'—' }}")
+    };
+
+    // ========== 2) Interface list from device_data.interfaces (names only) ==========
+
+    // We build a JSON array using Django in a JS string and parse it.
+    // No json_script, but safe and simple.
+    const interfaceNames = JSON.parse(String.raw`
+      [
+        {% for iface in device_data.interfaces %}
+          "{{ iface.name|default_if_none:''|escapejs }}"{% if not forloop.last %},{% endif %}
+        {% endfor %}
+      ]
+    `).filter(Boolean);  // remove empty strings
+
+    // ========== 3) Build distributions ==========
+
+    console.log("Modem1:====", modem1);
+    console.log("Modem2:====", modem2);
+    console.log("Interface Names:====", interfaceNames);
+
+    // ---- Carrier Distribution (by operator) ----
+    const carriersCount = new Map();
+    [modem1, modem2].forEach(m => {
+      if (!m || !m.operator) return;
+      const key = m.operator.toUpperCase();
+      carriersCount.set(key, (carriersCount.get(key) || 0) + 1);
+    });
+
+    const carrierLabels = carriersCount.size
+      ? Array.from(carriersCount.keys())
+      : ['Unknown'];
+    const carrierValues = carriersCount.size
+      ? carrierLabels.map(k => carriersCount.get(k))
+      : [0];
+
+    // ---- Network Distribution (4G / 5G using nettype) ----
+    const netCounts = new Map(); // key: '4G' / '5G' / other
+    [modem1, modem2].forEach(m => {
+      if (!m || !m.nettype) return;
+      let t = m.nettype.toUpperCase();
+      if (t.includes('LTE')) t = '4G';
+      if (t.includes('NR') || t.includes('5G')) t = '5G';
+      netCounts.set(t, (netCounts.get(t) || 0) + 1);
+    });
+
+    const preferredOrder = ['5G', '4G'];
+    const netLabels = netCounts.size
+      ? [
+        ...preferredOrder.filter(t => netCounts.has(t)),
+        ...Array.from(netCounts.keys()).filter(t => !preferredOrder.includes(t))
+      ]
+      : ['4G', '5G'];
+
+    const netValues = netCounts.size
+      ? netLabels.map(t => netCounts.get(t))
+      : [0, 0];
+
+    // ---- Interface Distribution (by interface.name) ----
+    const ifaceCount = new Map();
+    interfaceNames.forEach(n => {
+      const key = n || 'unknown';
+      ifaceCount.set(key, (ifaceCount.get(key) || 0) + 1);
+    });
+
+    const ifaceLabels = ifaceCount.size
+      ? Array.from(ifaceCount.keys())
+      : ['eth0', 'eth1', 'modem', 'modem2'];
+
+    const ifaceValues = ifaceCount.size
+      ? ifaceLabels.map(k => ifaceCount.get(k))
+      : [0, 0, 0, 0];
+
+    // ========== 4) Render the three donuts using your existing helper ==========
+
+    const palette1 = ['#ff7f0e', '#1f77b4', '#2ca02c', '#353c44', '#a72d1d', '#267126']; // carriers
+    const palette2 = ['#2ca02c', '#1f77b4', '#353c44', '#a72d1d', '#f59e0b', '#22c55e']; // network
+    const palette3 = ['#ff7f0e', '#1f77b4', '#2ca02c', '#353c44', '#a72d1d', '#22c55e', '#6366f1', '#0ea5e9']; // interfaces
+
+    function go() {
+      // 1) Carrier Distribution
       renderDonutWithLegend({
         elId: 'Carrier-Distribution-chart',
         legendId: 'Carrier-Distribution-legend',
-        labels: carrierLabels.length ? carrierLabels : ['Unknown'],
-        values: carrierValues.length ? carrierValues : [0],
+        labels: carrierLabels,
+        values: carrierValues,
         colors: palette1
       });
 
-      // Network Distribution
+      // 2) Network Distribution
       renderDonutWithLegend({
         elId: 'Network-Distribution-chart',
         legendId: 'Network-Distribution-legend',
-        labels: networkLabels.length ? networkLabels : ['4G', '5G'],
-        values: networkValues.length ? networkValues : [0, 0],
+        labels: netLabels,
+        values: netValues,
         colors: palette2
       });
 
-      // Interface Distribution
+      // 3) Interface Distribution
       renderDonutWithLegend({
         elId: 'Interface-Distribution-chart',
         legendId: 'Interface-Distribution-legend',
-        labels: interfaceLabels.length ? interfaceLabels : ['eth0', 'eth1', 'modem', 'modem2'],
-        values: interfaceValues.length ? interfaceValues : [0, 0, 0, 0],
+        labels: ifaceLabels,
+        values: ifaceValues,
         colors: palette3
       });
     }
 
-    if (document.readyState === 'complete' || document.readyState === 'interactive') go();
-    else document.addEventListener('DOMContentLoaded', go);
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+      go();
+    } else {
+      document.addEventListener('DOMContentLoaded', go);
+    }
   })();
 </script>
 
