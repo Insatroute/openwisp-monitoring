@@ -209,6 +209,7 @@ def uptime_percentages_for_common_windows(device_id):
         return end - timedelta(days=days, hours=hours)
     return {
         '24h': _uptime_pct_from_events(device_id, ago(hours=24), end),
+        
     }
 
 
@@ -220,10 +221,10 @@ def get_device_availability(
     device_id, *,
     start=None,
     end=None,
-    days=0,
-    hours=24,
+    days=365,
+    
     include_uptime=True,
-    max_events=500,
+    max_events=20000,
     override_end_status=None,   # 'up' | 'down' | None
     display_tz=None,            # ignored; we always use Django's current tz
 ):
@@ -489,7 +490,8 @@ class AbstractDeviceData(object):
 
             availability_report = get_device_availability(
                 str(self.pk),
-                hours=24,
+                days=365,            # 365-day window in TSDB
+                max_events=20000,    # keep enough events
                 override_end_status=override,
                 # display_tz ignored; we use Django current tz
             )
