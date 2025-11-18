@@ -18,32 +18,127 @@
     flex-wrap:wrap;
   }
   .event-title { font-weight:800; color:#111827; font-size:14px; }
-  .event-updated { margin-left:auto; color:#6b7280; font-size:12px; white-space:nowrap; }
 
-  .event-filters {
+  .event-hd-left {
     display:flex;
-    align-items:flex-end;
-    gap:.5rem;
+    align-items:center;
+    gap:.75rem;
     flex-wrap:wrap;
-    font-size:12px;
   }
-  .event-filters label { display:block; margin-bottom:2px; color:#6b7280; font-size:11px; }
-  .event-filters select,
-  .event-filters input[type="datetime-local"] {
+
+  .event-updated {
+    margin-left:auto;
+    color:#6b7280;
+    font-size:12px;
+    white-space:nowrap;
+  }
+
+  /* Range picker chip */
+  .range-chip-wrap { position:relative; }
+  .range-chip-btn {
+    border-radius:6px;
+    padding:6px 10px;
+    font-size:12px;
+    border:1px solid #d1d5db;
+    background:#4b5563;
+    color:#f9fafb;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  .range-chip-btn span { white-space:nowrap; }
+  .range-chip-caret {
+    border-left:4px solid transparent;
+    border-right:4px solid transparent;
+    border-top:5px solid #e5e7eb;
+    margin-top:2px;
+  }
+  .range-panel {
+    position:absolute;
+    top:110%;
+    left:0;
+    z-index:20;
+    background:#fff;
+    border-radius:8px;
+    box-shadow:0 10px 30px rgba(15,23,42,.25);
     border:1px solid #e5e7eb;
-    border-radius:6px;
-    padding:3px 6px;
-    font-size:12px;
+    min-width:180px;
+    padding:4px 0;
+    display:none;
   }
-  .event-filters button {
-    border:none;
-    border-radius:6px;
-    padding:4px 10px;
+  .range-option {
+    width:100%;
+    padding:6px 10px;
+    border:0;
+    background:#fff;
+    text-align:left;
     font-size:12px;
     cursor:pointer;
   }
-  .event-filters .btn-apply { background:#0f172a; color:#fff; }
-  .event-filters .btn-reset { background:transparent; color:#6b7280; text-decoration:underline; }
+  .range-option:hover,
+  .range-option.active {
+    background:#fee2e2;
+  }
+  .range-panel-divider {
+    height:1px;
+    background:#e5e7eb;
+    margin:4px 0;
+  }
+  .range-custom {
+    padding:8px 10px;
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+  }
+  .range-custom label {
+    display:block;
+    font-size:11px;
+    color:#6b7280;
+    margin-bottom:1px;
+  }
+  .range-custom input[type="datetime-local"] {
+    width:100%;
+    border:1px solid #e5e7eb;
+    border-radius:6px;
+    padding:3px 6px;
+    font-size:11px;
+  }
+  .range-custom-apply {
+    margin-top:4px;
+    display:flex;
+    justify-content:flex-end;
+    gap:6px;
+  }
+  .btn-xs {
+    border-radius:6px;
+    border:1px solid #d1d5db;
+    padding:3px 8px;
+    font-size:11px;
+    cursor:pointer;
+    background:#f9fafb;
+  }
+  .btn-xs-primary {
+    background:#0f172a;
+    color:#f9fafb;
+    border-color:#0f172a;
+  }
+
+  /* Export buttons */
+  .event-export-btns {
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  .export-btn {
+    border-radius:6px;
+    border:1px solid #d1d5db;
+    padding:4px 8px;
+    font-size:11px;
+    cursor:pointer;
+    background:#f9fafb;
+    color:#111827;
+  }
 
   .event-summary {
     padding:8px 14px;
@@ -73,7 +168,7 @@
     border-radius:8px;
     text-align:center;
     color:#6b7280;
-    display:none; /* hidden by default, JS will show if 0 events */
+    display:none;
   }
 
   .pager { display:flex; align-items:center; justify-content:space-between; padding:10px 14px; gap:.75rem; flex-wrap:wrap; font-size:12px; }
@@ -100,32 +195,48 @@
 
 <div class="event-card" id="event-card">
   <div class="event-card-hd">
-    <div class="event-title">{% trans "Events" %}</div>
+    <div class="event-hd-left">
+      <div class="event-title">{% trans "Events" %}</div>
 
-    <div class="event-filters">
-      <div>
-        <label for="window-select">{% trans "Window" %}</label>
-        <select id="window-select">
-          <option value="24h" selected>{% trans "Last 24 hours" %}</option>
-          <option value="7d">{% trans "Last 7 days" %}</option>
-          <option value="30d">{% trans "Last 30 days" %}</option>
-          <option value="365d">{% trans "Last 365 days" %}</option>
-          <option value="custom">{% trans "Custom" %}</option>
-        </select>
-      </div>
-      <div class="custom-range-fields">
-        <div>
-          <label for="avail-start">{% trans "From" %}</label>
-          <input type="datetime-local" id="avail-start">
+      <!-- Range picker chip -->
+      <div class="range-chip-wrap">
+        <button type="button" class="range-chip-btn" id="range-chip-btn">
+          <span id="range-chip-label">{% trans "Last 24 hours" %}</span>
+          <div class="range-chip-caret"></div>
+        </button>
+
+        <div class="range-panel" id="range-panel">
+          <button type="button" class="range-option" data-range="24h">{% trans "Last 1 Day" %}</button>
+          <button type="button" class="range-option" data-range="3d">{% trans "Last 3 Days" %}</button>
+          <button type="button" class="range-option" data-range="7d">{% trans "Last 7 Days" %}</button>
+          <button type="button" class="range-option" data-range="30d">{% trans "Last 30 Days" %}</button>
+          <button type="button" class="range-option" data-range="365d">{% trans "Last 365 Days" %}</button>
+          <div class="range-panel-divider"></div>
+          <button type="button" class="range-option" data-range="custom" id="range-custom-toggle">
+            {% trans "Custom Range" %}
+          </button>
+
+          <div class="range-custom" id="range-custom-block" style="display:none;">
+            <div>
+              <label for="range-start">{% trans "From" %}</label>
+              <input type="datetime-local" id="range-start">
+            </div>
+            <div>
+              <label for="range-end">{% trans "To" %}</label>
+              <input type="datetime-local" id="range-end">
+            </div>
+            <div class="range-custom-apply">
+              <button type="button" class="btn-xs" id="range-cancel">{% trans "Cancel" %}</button>
+              <button type="button" class="btn-xs btn-xs-primary" id="range-apply-custom">{% trans "Apply" %}</button>
+            </div>
+          </div>
         </div>
-        <div>
-          <label for="avail-end">{% trans "To" %}</label>
-          <input type="datetime-local" id="avail-end">
-        </div>
       </div>
-      <div>
-        <button type="button" class="btn-apply" id="apply-window">{% trans "Apply" %}</button>
-        <button type="button" class="btn-reset" id="reset-window">{% trans "Reset" %}</button>
+
+      <!-- Export buttons -->
+      <div class="event-export-btns">
+        <button type="button" class="export-btn" id="export-excel">{% trans "Export Excel" %}</button>
+        <button type="button" class="export-btn" id="export-pdf">{% trans "Export PDF" %}</button>
       </div>
     </div>
 
@@ -136,7 +247,7 @@
   </div>
 
   <div class="event-summary" id="event-summary">
-    <!-- JS fills uptime and window info -->
+    <!-- filled by JS -->
   </div>
 
   <div class="event-wrap" id="event-wrap">
@@ -174,7 +285,7 @@
   </div>
 </div>
 
-{# IMPORTANT: always dump JSON, even if empty #}
+{# intervals always dumped, default [] to avoid JS errors #}
 {{ device_data.availability.intervals|default:"[]"|json_script:"intervals-data" }}
 
 <script>
@@ -183,11 +294,8 @@
     if (!jsonEl) return;
 
     let rawIntervals = [];
-    try {
-      rawIntervals = JSON.parse(jsonEl.textContent || '[]');
-    } catch (e) {
-      rawIntervals = [];
-    }
+    try { rawIntervals = JSON.parse(jsonEl.textContent || '[]'); }
+    catch (e) { rawIntervals = []; }
 
     const table = document.getElementById('event-table');
     const tbody = document.getElementById('event-tbody');
@@ -199,12 +307,18 @@
     const pageBtnsWrap = document.getElementById('page-buttons');
     const summaryEl = document.getElementById('event-summary');
 
-    const windowSelect = document.getElementById('window-select');
-    const startInput = document.getElementById('avail-start');
-    const endInput = document.getElementById('avail-end');
-    const applyBtn = document.getElementById('apply-window');
-    const resetBtn = document.getElementById('reset-window');
-    const customFieldsWrap = document.querySelector('.custom-range-fields');
+    const chipBtn = document.getElementById('range-chip-btn');
+    const chipLabel = document.getElementById('range-chip-label');
+    const panel = document.getElementById('range-panel');
+    const rangeOptions = panel.querySelectorAll('.range-option');
+    const customBlock = document.getElementById('range-custom-block');
+    const rangeStartInput = document.getElementById('range-start');
+    const rangeEndInput = document.getElementById('range-end');
+    const customApplyBtn = document.getElementById('range-apply-custom');
+    const customCancelBtn = document.getElementById('range-cancel');
+
+    const exportExcelBtn = document.getElementById('export-excel');
+    const exportPdfBtn = document.getElementById('export-pdf');
 
     function esc(s) {
       return String(s).replace(/[&<>"']/g, function (m) {
@@ -212,7 +326,6 @@
       });
     }
 
-    // If truly no intervals => show empty and bail
     if (!rawIntervals.length) {
       table.style.display = 'none';
       emptyBox.style.display = 'block';
@@ -222,7 +335,7 @@
       emptyBox.style.display = 'none';
     }
 
-    // Normalise intervals and sort
+    // Normalise & sort
     const allIntervals = rawIntervals.map(r => {
       const startMs = Date.parse(String(r.start).replace(' ', 'T'));
       const endMs = Date.parse(String(r.end).replace(' ', 'T'));
@@ -269,52 +382,61 @@
              pad(d.getSeconds());
     }
 
+    function fmtRangeLabel(startMs, endMs) {
+      const d1 = new Date(startMs);
+      const d2 = new Date(endMs);
+      const month = m => d2.toLocaleString(undefined, { month: 'long' });
+      const fmt = d => d.toLocaleDateString(undefined, {
+        year:'numeric', month:'long', day:'numeric'
+      });
+      return fmt(d1) + ' – ' + fmt(d2);
+    }
+
     let page = 1;
     let pageSize = parseInt(pageSizeSel.value, 10) || 25;
     let filtered = [];
     let currentWindow = { startMs: firstStartMs, endMs: lastEndMs };
+    let currentMode = '24h';  // default
 
-    function computeWindow() {
-      const mode = windowSelect.value;
-      let startMs, endMs;
+    function computeWindowForMode(mode) {
       const nowMs = lastEndMs || Date.now();
-
+      let startMs, endMs;
       if (mode === '24h') {
-        endMs = nowMs;
-        startMs = endMs - 24 * 3600 * 1000;
+        endMs = nowMs; startMs = endMs - 24*3600*1000;
+      } else if (mode === '3d') {
+        endMs = nowMs; startMs = endMs - 3*24*3600*1000;
       } else if (mode === '7d') {
-        endMs = nowMs;
-        startMs = endMs - 7 * 24 * 3600 * 1000;
+        endMs = nowMs; startMs = endMs - 7*24*3600*1000;
       } else if (mode === '30d') {
-        endMs = nowMs;
-        startMs = endMs - 30 * 24 * 3600 * 1000;
+        endMs = nowMs; startMs = endMs - 30*24*3600*1000;
       } else if (mode === '365d') {
-        endMs = nowMs;
-        startMs = endMs - 365 * 24 * 3600 * 1000;
-      } else if (mode === 'custom') {
-        const sVal = startInput.value;
-        const eVal = endInput.value;
-        let s = sVal ? Date.parse(sVal) : NaN;
-        let e = eVal ? Date.parse(eVal) : NaN;
-
-        if (!isNaN(s) && isNaN(e)) e = nowMs;
-        if (isNaN(s) && !isNaN(e)) s = e - 24 * 3600 * 1000;
-        if (isNaN(s) || isNaN(e) || s >= e) {
-          endMs = nowMs;
-          startMs = endMs - 24 * 3600 * 1000;
-        } else {
-          startMs = s;
-          endMs = e;
-        }
+        endMs = nowMs; startMs = endMs - 365*24*3600*1000;
       } else {
-        endMs = nowMs;
-        startMs = endMs - 24 * 3600 * 1000;
+        endMs = nowMs; startMs = endMs - 24*3600*1000;
       }
 
       if (startMs < firstStartMs) startMs = firstStartMs;
       if (endMs > lastEndMs) endMs = lastEndMs;
-
       currentWindow = { startMs, endMs };
+    }
+
+    function computeWindowCustom() {
+      const nowMs = lastEndMs || Date.now();
+      let s = rangeStartInput.value ? Date.parse(rangeStartInput.value) : NaN;
+      let e = rangeEndInput.value ? Date.parse(rangeEndInput.value) : NaN;
+
+      if (!isNaN(s) && isNaN(e)) e = nowMs;
+      if (isNaN(s) && !isNaN(e)) s = e - 24*3600*1000;
+      if (isNaN(s) || isNaN(e) || s >= e) {
+        computeWindowForMode('24h');
+        currentMode = '24h';
+        return;
+      }
+      let startMs = s, endMs = e;
+      if (startMs < firstStartMs) startMs = firstStartMs;
+      if (endMs > lastEndMs) endMs = lastEndMs;
+      currentWindow = { startMs, endMs };
+      currentMode = 'custom';
     }
 
     function filterAndSummarize() {
@@ -344,9 +466,7 @@
 
       const totalSpanSec = Math.max(0, Math.round((endMs - startMs) / 1000));
       let uptimePct = null;
-      if (totalSpanSec > 0) {
-        uptimePct = (upSec / totalSpanSec) * 100;
-      }
+      if (totalSpanSec > 0) uptimePct = (upSec / totalSpanSec) * 100;
 
       return {
         rows,
@@ -357,23 +477,22 @@
           downtime_human: fmtDuration(downSec),
           uptime_percent: uptimePct !== null ? uptimePct.toFixed(2) : null,
           window_start: fmtDateTime(startMs),
-          window_end: fmtDateTime(endMs)
+          window_end: fmtDateTime(endMs),
+          label: fmtRangeLabel(startMs, endMs)
         }
       };
     }
 
     function renderSummary(summary) {
-      if (!summary) {
-        summaryEl.innerHTML = '';
-        return;
-      }
+      if (!summary) { summaryEl.innerHTML = ''; return; }
       const upPct = summary.uptime_percent !== null ? summary.uptime_percent + '%' : 'n/a';
-      summaryEl.innerHTML = ''
-        + '<span><strong>{% trans "Uptime" %}:</strong> ' + esc(upPct) + '</span>'
-        + '<span><strong>{% trans "Total Up" %}:</strong> ' + esc(summary.uptime_human) + '</span>'
-        + '<span><strong>{% trans "Total Down" %}:</strong> ' + esc(summary.downtime_human) + '</span>'
-        + '<span><strong>{% trans "Window" %}:</strong> '
-        + esc(summary.window_start) + ' → ' + esc(summary.window_end) + '</span>';
+      summaryEl.innerHTML =
+        '<span><strong>{% trans "Uptime" %}:</strong> ' + esc(upPct) + '</span>' +
+        '<span><strong>{% trans "Total Up" %}:</strong> ' + esc(summary.uptime_human) + '</span>' +
+        '<span><strong>{% trans "Total Down" %}:</strong> ' + esc(summary.downtime_human) + '</span>' +
+        '<span><strong>{% trans "Window" %}:</strong> ' +
+        esc(summary.window_start) + ' → ' + esc(summary.window_end) + '</span>';
+      chipLabel.textContent = summary.label;
     }
 
     function renderTable() {
@@ -391,13 +510,13 @@
         if (sts === 'up') dotClass = 'event-dot-up';
         else if (sts === 'down') dotClass = 'event-dot-down';
 
-        return '<tr>'
-          + '<td class="event-td event-mono">' + esc(r.start) + '</td>'
-          + '<td class="event-td event-mono">' + esc(r.end) + '</td>'
-          + '<td class="event-td"><span class="event-dot ' + dotClass + '"></span>'
-          + esc(sts.charAt(0).toUpperCase() + sts.slice(1)) + '</td>'
-          + '<td class="event-td">' + esc(r.duration_human) + '</td>'
-          + '</tr>';
+        return '<tr>' +
+          '<td class="event-td event-mono">' + esc(r.start) + '</td>' +
+          '<td class="event-td event-mono">' + esc(r.end) + '</td>' +
+          '<td class="event-td"><span class="event-dot ' + dotClass + '"></span>' +
+          esc(sts.charAt(0).toUpperCase() + sts.slice(1)) + '</td>' +
+          '<td class="event-td">' + esc(r.duration_human) + '</td>' +
+        '</tr>';
       }).join('');
 
       const left = total === 0 ? 0 : startIdx + 1;
@@ -412,15 +531,11 @@
       const maxBtns = 7;
       let start = Math.max(1, page - Math.floor(maxBtns / 2));
       let end = start + maxBtns - 1;
-      if (end > totalPages) {
-        end = totalPages;
-        start = Math.max(1, end - maxBtns + 1);
-      }
+      if (end > totalPages) { end = totalPages; start = Math.max(1, end - maxBtns + 1); }
 
       const parts = [];
-      const mkBtn = p =>
-        '<button class="page-btn' + (p === page ? ' active' : '') +
-        '" data-page="' + p + '">' + p + '</button>';
+      const mkBtn = p => '<button class="page-btn' + (p === page ? ' active' : '') +
+                         '" data-page="' + p + '">' + p + '</button>';
 
       if (start > 1) {
         parts.push(mkBtn(1));
@@ -436,65 +551,123 @@
 
     pageBtnsWrap.addEventListener('click', function (e) {
       const p = e.target && e.target.dataset && e.target.dataset.page;
-      if (p) {
-        page = parseInt(p, 10) || 1;
-        renderTable();
-      }
+      if (p) { page = parseInt(p, 10) || 1; renderTable(); }
     });
-
     prevBtn.addEventListener('click', function () {
-      if (page > 1) {
-        page--;
-        renderTable();
-      }
+      if (page > 1) { page--; renderTable(); }
     });
-
     nextBtn.addEventListener('click', function () {
       const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
-      if (page < totalPages) {
-        page++;
-        renderTable();
-      }
+      if (page < totalPages) { page++; renderTable(); }
     });
-
     pageSizeSel.addEventListener('change', function () {
       pageSize = parseInt(pageSizeSel.value, 10) || 25;
       page = 1;
       renderTable();
     });
 
-    function toggleCustomFields() {
-      if (!customFieldsWrap) return;
-      customFieldsWrap.style.display = windowSelect.value === 'custom' ? 'flex' : 'none';
-    }
-    windowSelect.addEventListener('change', toggleCustomFields);
+    // Range picker interactions
+    function openPanel() { panel.style.display = 'block'; }
+    function closePanel() { panel.style.display = 'none'; customBlock.style.display = 'none'; }
 
-    applyBtn.addEventListener('click', function () {
-      page = 1;
-      computeWindow();
-      const res = filterAndSummarize();
-      filtered = res.rows;
-      renderSummary(res.summary);
-      renderTable();
+    chipBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      panel.style.display = (panel.style.display === 'block') ? 'none' : 'block';
     });
 
-    resetBtn.addEventListener('click', function () {
-      windowSelect.value = '24h';
-      if (startInput) startInput.value = '';
-      if (endInput) endInput.value = '';
-      page = 1;
-      computeWindow();
-      const res = filterAndSummarize();
-      filtered = res.rows;
-      renderSummary(res.summary);
-      renderTable();
-      toggleCustomFields();
+    document.addEventListener('click', function (e) {
+      if (!panel.contains(e.target) && e.target !== chipBtn) {
+        closePanel();
+      }
     });
 
-    // initial load: default 24h
-    windowSelect.value = '24h';
-    toggleCustomFields();
-    computeWindow();
+    rangeOptions.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        const val = this.getAttribute('data-range');
+        rangeOptions.forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+
+        if (val === 'custom') {
+          customBlock.style.display = 'block';
+          return;
+        }
+        customBlock.style.display = 'none';
+        currentMode = val;
+        computeWindowForMode(val);
+        const res = filterAndSummarize();
+        filtered = res.rows;
+        page = 1;
+        renderSummary(res.summary);
+        renderTable();
+        closePanel();
+      });
+    });
+
+    customApplyBtn.addEventListener('click', function () {
+      computeWindowCustom();
+      const res = filterAndSummarize();
+      filtered = res.rows;
+      page = 1;
+      renderSummary(res.summary);
+      renderTable();
+      closePanel();
+    });
+
+    customCancelBtn.addEventListener('click', function () {
+      customBlock.style.display = 'none';
+    });
+
+    // Export Excel (CSV)
+    exportExcelBtn.addEventListener('click', function () {
+      if (!filtered.length) return;
+      const header = ['Start','End','Status','Duration'];
+      const rows = filtered.map(r => [
+        r.start, r.end, r.status, r.duration_human
+      ]);
+      const csvLines = [header].concat(rows).map(cols => {
+        return cols.map(c => '"' + String(c).replace(/"/g,'""') + '"').join(',');
+      });
+      const blob = new Blob([csvLines.join('\n')], {type:'text/csv;charset=utf-8;'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'device-events.csv';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
+
+    // Export PDF (printable view – user can save as PDF)
+    exportPdfBtn.addEventListener('click', function () {
+      if (!filtered.length) return;
+      const win = window.open('', '_blank');
+      const rowsHtml = filtered.map(r => {
+        return '<tr>' +
+          '<td>' + esc(r.start) + '</td>' +
+          '<td>' + esc(r.end) + '</td>' +
+          '<td>' + esc(r.status) + '</td>' +
+          '<td>' + esc(r.duration_human) + '</td>' +
+        '</tr>';
+      }).join('');
+      win.document.write(
+        '<html><head><title>Events</title>' +
+        '<style>table{border-collapse:collapse;width:100%;font-size:12px;}th,td{border:1px solid #000;padding:4px 6px;text-align:left;}</style>' +
+        '</head><body>' +
+        '<h3>Device Events</h3>' +
+        '<table><thead><tr><th>Start</th><th>End</th><th>Status</th><th>Duration</th></tr></thead><tbody>' +
+        rowsHtml +
+        '</tbody></table>' +
+        '</body></html>'
+      );
+      win.document.close();
+      win.focus();
+      win.print();  // browser "Save as PDF"
+    });
+
+    // Initial load: last 24h
+    currentMode = '24h';
+    computeWindowForMode('24h');
     const initial = filterAndSummarize();
     filtered = initial.rows;
     renderSummary(initial.summary);
