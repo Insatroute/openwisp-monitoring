@@ -1,494 +1,80 @@
-{% load i18n tz %}
-
+{# ===== Events (device_data.availability.intervals) ===== #}
 <style>
-  .event-card {
-    background:#fff;
-    border:1px solid #e5e7eb;
-    border-radius:12px;
-    box-shadow:0 8px 24px rgba(0,0,0,.06);
-    overflow:hidden;
-    margin-bottom: 1rem;
-  }
-  .event-card-hd {
-    display:flex;
-    align-items:center;
-    padding:12px 14px;
-    border-bottom:1px solid #e5e7eb;
-    gap: .75rem;
-    flex-wrap: wrap;
-  }
-  .event-title { font-weight:800; color:#111827; font-size:14px; }
-  .event-updated { margin-left:auto; color:#6b7280; font-size:12px; white-space:nowrap; }
-
-  .event-filters {
-    display:flex;
-    align-items:flex-end;
-    gap:.5rem;
-    flex-wrap:wrap;
-    font-size:12px;
-  }
-  .event-filters label { display:block; margin-bottom:2px; color:#6b7280; font-size:11px; }
-  .event-filters select,
-  .event-filters input[type="datetime-local"] {
-    border:1px solid #e5e7eb;
-    border-radius:6px;
-    padding:3px 6px;
-    font-size:12px;
-  }
-  .event-filters button {
-    border:none;
-    border-radius:6px;
-    padding:4px 10px;
-    font-size:12px;
-    cursor:pointer;
-  }
-  .event-filters .btn-apply { background:#0f172a; color:#fff; }
-  .event-filters .btn-reset { background:transparent; color:#6b7280; text-decoration:underline; }
-
-  .event-summary {
-    padding:8px 14px;
-    border-bottom:1px solid #e5e7eb;
-    font-size:12px;
-    color:#4b5563;
-    display:flex;
-    flex-wrap:wrap;
-    gap:.75rem;
-  }
-  .event-summary span strong { font-weight:600; }
-
+  .event-card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,.06); overflow:hidden; }
+  .event-card-hd { display:flex; align-items:center; padding:12px 14px; border-bottom:1px solid #e5e7eb; }
+  .event-title { font-weight:800; color:#111827; }
+  .event-updated { margin-left:auto; color:#6b7280; font-size:12px; }
   .event-wrap { overflow-x:auto; }
   .event-table { width:100%; border-collapse:separate; border-spacing:0; }
   .event-th, .event-td { padding:10px 12px; border-bottom:1px solid #e5e7eb; font-size:13px; white-space:nowrap; }
-  .event-th { text-transform:uppercase; color:#6b7280; font-weight:700; background:#fff; position:sticky; top:0; z-index:1; }
+  .event-th { text-transform:uppercase; color:#6b7280; font-weight:700; background:#fff; position:sticky; top:0; }
   .event-td { color:#111827; }
   .event-dot { width:10px; height:10px; border-radius:50%; display:inline-block; vertical-align:middle; margin-right:8px; }
-  .event-dot-up { background:#10b981; }
-  .event-dot-down { background:#ef4444; }
-  .event-dot-unknown { background:#9ca3af; }
-
-  .event-empty {
-    margin:16px;
+  .event-dot-up { background:#10b981; }      /* green */
+  .event-dot-down { background:#ef4444; }    /* red */
+  .event-dot-unknown { background:#9ca3af; } /* gray */
+  
+  .event-empty {margin:16px;
     padding:24px;
     border:1px dashed #d1d5db;
     border-radius:8px;
     text-align:center;
     color:#6b7280;
   }
-
-  .pager { display:flex; align-items:center; justify-content:space-between; padding:10px 14px; gap:.75rem; flex-wrap:wrap; font-size:12px; }
-  .pager-left { color:#475569; }
-  .pager-right { display:flex; align-items:center; gap:.25rem; }
-  .pager button, .pager .page-btn {
-    min-width:2rem;
-    height:2rem;
-    padding:0 .5rem;
-    border:1px solid #e5e7eb;
-    background:#fff;
-    border-radius:6px;
-    cursor:pointer;
-  }
-  .pager .active { background:#0f172a; color:#fff; border-color:#0f172a; }
-  .pager select { border:1px solid #e5e7eb; border-radius:6px; padding:2px 6px; }
-  .ellipsis { padding:0 .25rem; color:#64748b; }
-
-  @media (max-width: 640px) {
-    .event-card-hd { align-items:flex-start; }
-    .event-updated { margin-left:0; }
-  }
+  
 </style>
 
 <div class="event-card" id="event-card">
   <div class="event-card-hd">
-    <div class="event-title">{% trans "Events" %}</div>
-
-    <div class="event-filters">
-      <div>
-        <label for="window-select">{% trans "Window" %}</label>
-        <select id="window-select">
-          <option value="24h">{% trans "Last 24 hours" %}</option>
-          <option value="7d">{% trans "Last 7 days" %}</option>
-          <option value="30d">{% trans "Last 30 days" %}</option>
-          <option value="365d" selected>{% trans "Last 365 days" %}</option>
-          <option value="custom">{% trans "Custom" %}</option>
-        </select>
-      </div>
-      <div class="custom-range-fields">
-        <div>
-          <label for="avail-start">{% trans "From" %}</label>
-          <input type="datetime-local" id="avail-start">
-        </div>
-        <div>
-          <label for="avail-end">{% trans "To" %}</label>
-          <input type="datetime-local" id="avail-end">
-        </div>
-      </div>
-      <div>
-        <button type="button" class="btn-apply" id="apply-window">{% trans "Apply" %}</button>
-        <button type="button" class="btn-reset" id="reset-window">{% trans "Reset" %}</button>
-      </div>
-    </div>
-
+    <div class="event-title">Events</div>
     <div class="event-updated">
-      {% trans "Last Updated" %}:
+      Last Updated:
       <span>{{ device_data.general.local_time|default:"—" }}</span>
     </div>
   </div>
 
-  <div class="event-summary" id="event-summary">
-    <!-- filled by JS -->
-  </div>
-
   <div class="event-wrap" id="event-wrap">
     {% if device_data.availability.intervals and device_data.availability.intervals|length %}
-      {{ device_data.availability.intervals|json_script:"intervals-data" }}
-
       <table class="event-table" id="event-table">
         <thead>
           <tr>
-            <th class="event-th">{% trans "Start" %}</th>
-            <th class="event-th">{% trans "End" %}</th>
-            <th class="event-th">{% trans "Status" %}</th>
-            <th class="event-th">{% trans "Duration" %}</th>
+            <th class="event-th">Start</th>
+            <th class="event-th">End</th>
+            <th class="event-th">Status</th>
+            <th class="event-th">Duration</th>
           </tr>
         </thead>
-        <tbody id="event-tbody"></tbody>
+        <tbody>
+          {% for e in device_data.availability.intervals %}
+            <tr>
+              <td class="event-td event-mono">{{ e.start|default:"—" }}</td>
+              <td class="event-td event-mono">{{ e.end|default:"—" }}</td>
+              <td class="event-td">
+                {% with sts=e.status|default:"unknown" %}
+                  <span class="event-dot
+                    {% if sts|lower == 'up' %}event-dot-up
+                    {% elif sts|lower == 'down' %}event-dot-down
+                    {% else %}event-dot-unknown{% endif %}"></span>
+                  {{ e.status_label|default:sts|title }}
+                {% endwith %}
+              </td>
+              <td class="event-td">
+                {% if e.duration_human %}
+                  {{ e.duration_human }}
+                {% elif e.duration_seconds %}
+                  {{ e.duration_seconds }} s
+                {% else %}
+                  —
+                {% endif %}
+              </td>
+            </tr>
+          {% empty %}
+            <tr><td class="event-td event-empty" colspan="4">No events available</td></tr>
+          {% endfor %}
+        </tbody>
       </table>
-
-      <div class="pager">
-        <div class="pager-left">
-          <span id="range-text"></span>
-          &nbsp;{% trans "Show" %}&nbsp;
-          <select id="page-size">
-            <option>10</option>
-            <option selected>25</option>
-            <option>50</option>
-            <option>100</option>
-          </select>
-        </div>
-        <div class="pager-right">
-          <button id="prev-btn" aria-label="{% trans 'Previous' %}">‹</button>
-          <div id="page-buttons"></div>
-          <button id="next-btn" aria-label="{% trans 'Next' %}">›</button>
-        </div>
-      </div>
     {% else %}
-      <div class="event-empty" id="event-empty">{% trans "No events available" %}</div>
+      <div class="event-empty" id="event-empty">No events available</div>
     {% endif %}
   </div>
 </div>
-
-{% if device_data.availability.intervals and device_data.availability.intervals|length %}
-<script>
-  (function () {
-    const rawIntervals = JSON.parse(
-      document.getElementById('intervals-data').textContent || '[]'
-    );
-
-    if (!rawIntervals.length) return;
-
-    // Convert to internal representation with timestamps
-    const allIntervals = rawIntervals.map(r => {
-      const startMs = Date.parse(String(r.start).replace(' ', 'T'));
-      const endMs = Date.parse(String(r.end).replace(' ', 'T'));
-      return {
-        start: String(r.start),
-        end: String(r.end),
-        status: r.status || 'unknown',
-        _startMs: startMs,
-        _endMs: endMs
-      };
-    }).filter(r => !isNaN(r._startMs) && !isNaN(r._endMs));
-
-    if (!allIntervals.length) return;
-
-    // Sort by time (oldest first)
-    allIntervals.sort((a, b) => a._startMs - b._startMs);
-
-    const lastEndMs = allIntervals.reduce((acc, r) => Math.max(acc, r._endMs), 0);
-    const firstStartMs = allIntervals.reduce((acc, r) => Math.min(acc, r._startMs), lastEndMs);
-
-    // DOM elements
-    const tbody = document.getElementById('event-tbody');
-    const rangeText = document.getElementById('range-text');
-    const pageSizeSel = document.getElementById('page-size');
-    const prevBtn = document.getElementById('prev-btn');
-    const nextBtn = document.getElementById('next-btn');
-    const pageBtnsWrap = document.getElementById('page-buttons');
-    const summaryEl = document.getElementById('event-summary');
-
-    const windowSelect = document.getElementById('window-select');
-    const startInput = document.getElementById('avail-start');
-    const endInput = document.getElementById('avail-end');
-    const applyBtn = document.getElementById('apply-window');
-    const resetBtn = document.getElementById('reset-window');
-    const customFieldsWrap = document.querySelector('.custom-range-fields');
-
-    function esc(s) {
-      return String(s).replace(/[&<>"']/g, function (m) {
-        return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]);
-      });
-    }
-
-    function fmtDuration(seconds) {
-      seconds = Math.max(0, Math.round(seconds));
-      const h = Math.floor(seconds / 3600);
-      const m = Math.floor((seconds % 3600) / 60);
-      const s = seconds % 60;
-      const parts = [];
-      if (h) parts.push(h + 'h');
-      if (m) parts.push(m + 'm');
-      if (!h && !m) parts.push(s + 's');
-      return parts.join(' ') || '0s';
-    }
-
-    function fmtDateTime(ms) {
-      const d = new Date(ms);
-      const pad = n => (n < 10 ? '0' + n : '' + n);
-      return d.getFullYear() + '-' +
-             pad(d.getMonth() + 1) + '-' +
-             pad(d.getDate()) + ' ' +
-             pad(d.getHours()) + ':' +
-             pad(d.getMinutes()) + ':' +
-             pad(d.getSeconds());
-    }
-
-    let page = 1;
-    let pageSize = parseInt(pageSizeSel.value, 10) || 25;
-    let filtered = [];
-    let currentWindow = { startMs: firstStartMs, endMs: lastEndMs };
-
-    function computeWindow() {
-      const mode = windowSelect.value;
-      let startMs, endMs;
-      const nowMs = lastEndMs || Date.now();
-
-      if (mode === '24h') {
-        endMs = nowMs;
-        startMs = endMs - 24 * 3600 * 1000;
-      } else if (mode === '7d') {
-        endMs = nowMs;
-        startMs = endMs - 7 * 24 * 3600 * 1000;
-      } else if (mode === '30d') {
-        endMs = nowMs;
-        startMs = endMs - 30 * 24 * 3600 * 1000;
-      } else if (mode === '365d') {
-        endMs = nowMs;
-        startMs = endMs - 365 * 24 * 3600 * 1000;
-      } else if (mode === 'custom') {
-        const sVal = startInput.value;
-        const eVal = endInput.value;
-        let s = sVal ? Date.parse(sVal) : NaN;
-        let e = eVal ? Date.parse(eVal) : NaN;
-
-        if (!isNaN(s) && isNaN(e)) e = nowMs;
-        if (isNaN(s) && !isNaN(e)) s = e - 24 * 3600 * 1000;
-        if (isNaN(s) || isNaN(e) || s >= e) {
-          // fallback to 24h
-          endMs = nowMs;
-          startMs = endMs - 24 * 3600 * 1000;
-        } else {
-          startMs = s;
-          endMs = e;
-        }
-      } else {
-        endMs = nowMs;
-        startMs = endMs - 24 * 3600 * 1000;
-      }
-
-      // Clip to available data
-      if (startMs < firstStartMs) startMs = firstStartMs;
-      if (endMs > lastEndMs) endMs = lastEndMs;
-
-      currentWindow = { startMs, endMs };
-    }
-
-    function filterAndSummarize() {
-      const { startMs, endMs } = currentWindow;
-      const rows = [];
-      let upSec = 0;
-      let downSec = 0;
-
-      allIntervals.forEach(r => {
-        if (r._endMs <= startMs || r._startMs >= endMs) return; // no overlap
-        const ovStart = Math.max(r._startMs, startMs);
-        const ovEnd = Math.min(r._endMs, endMs);
-        const sec = Math.max(0, Math.round((ovEnd - ovStart) / 1000));
-        if (!sec) return;
-
-        if (r.status === 'up') upSec += sec;
-        else downSec += sec;
-
-        rows.push({
-          start: fmtDateTime(ovStart),
-          end: fmtDateTime(ovEnd),
-          status: r.status,
-          duration_seconds: sec,
-          duration_human: fmtDuration(sec)
-        });
-      });
-
-      const totalSpanSec = Math.max(0, Math.round((endMs - startMs) / 1000));
-      let uptimePct = null;
-      if (totalSpanSec > 0) {
-        uptimePct = (upSec / totalSpanSec) * 100;
-      }
-
-      return {
-        rows,
-        summary: {
-          uptime_seconds: upSec,
-          downtime_seconds: downSec,
-          uptime_human: fmtDuration(upSec),
-          downtime_human: fmtDuration(downSec),
-          uptime_percent: uptimePct !== null ? uptimePct.toFixed(2) : null,
-          window_start: fmtDateTime(startMs),
-          window_end: fmtDateTime(endMs)
-        }
-      };
-    }
-
-    function renderSummary(summary) {
-      if (!summary) {
-        summaryEl.innerHTML = '';
-        return;
-      }
-      const upPct = summary.uptime_percent !== null ? summary.uptime_percent + '%' : 'n/a';
-      summaryEl.innerHTML = ''
-        + '<span><strong>{% trans "Uptime" %}:</strong> ' + esc(upPct) + '</span>'
-        + '<span><strong>{% trans "Total Up" %}:</strong> ' + esc(summary.uptime_human) + '</span>'
-        + '<span><strong>{% trans "Total Down" %}:</strong> ' + esc(summary.downtime_human) + '</span>'
-        + '<span><strong>{% trans "Window" %}:</strong> '
-        + esc(summary.window_start) + ' → ' + esc(summary.window_end) + '</span>';
-    }
-
-    function renderTable() {
-      const total = filtered.length;
-      const totalPages = Math.max(1, Math.ceil(total / pageSize));
-      if (page > totalPages) page = totalPages;
-
-      const startIdx = (page - 1) * pageSize;
-      const endIdx = Math.min(startIdx + pageSize, total);
-      const rows = filtered.slice(startIdx, endIdx);
-
-      tbody.innerHTML = rows.map(r => {
-        const sts = (r.status || 'unknown').toLowerCase();
-        let dotClass = 'event-dot-unknown';
-        if (sts === 'up') dotClass = 'event-dot-up';
-        else if (sts === 'down') dotClass = 'event-dot-down';
-
-        return '<tr>'
-          + '<td class="event-td event-mono">' + esc(r.start) + '</td>'
-          + '<td class="event-td event-mono">' + esc(r.end) + '</td>'
-          + '<td class="event-td"><span class="event-dot ' + dotClass + '"></span>'
-          + esc(sts.charAt(0).toUpperCase() + sts.slice(1)) + '</td>'
-          + '<td class="event-td">' + esc(r.duration_human) + '</td>'
-          + '</tr>';
-      }).join('');
-
-      const left = total === 0 ? 0 : startIdx + 1;
-      rangeText.textContent = left + '–' + endIdx + ' {% trans "of" %} ' + total;
-
-      renderPager(totalPages);
-      prevBtn.disabled = page <= 1;
-      nextBtn.disabled = page >= totalPages;
-    }
-
-    function renderPager(totalPages) {
-      const maxBtns = 7;
-      let start = Math.max(1, page - Math.floor(maxBtns / 2));
-      let end = start + maxBtns - 1;
-      if (end > totalPages) {
-        end = totalPages;
-        start = Math.max(1, end - maxBtns + 1);
-      }
-
-      const parts = [];
-      const mkBtn = p =>
-        '<button class="page-btn' + (p === page ? ' active' : '') +
-        '" data-page="' + p + '">' + p + '</button>';
-
-      if (start > 1) {
-        parts.push(mkBtn(1));
-        if (start > 2) parts.push('<span class="ellipsis">…</span>');
-      }
-      for (let p = start; p <= end; p++) {
-        parts.push(mkBtn(p));
-      }
-      if (end < totalPages) {
-        if (end < totalPages - 1) parts.push('<span class="ellipsis">…</span>');
-        parts.push(mkBtn(totalPages));
-      }
-      pageBtnsWrap.innerHTML = parts.join('');
-    }
-
-    pageBtnsWrap.addEventListener('click', function (e) {
-      const p = e.target && e.target.dataset && e.target.dataset.page;
-      if (p) {
-        page = parseInt(p, 10) || 1;
-        renderTable();
-      }
-    });
-
-    prevBtn.addEventListener('click', function () {
-      if (page > 1) {
-        page--;
-        renderTable();
-      }
-    });
-
-    nextBtn.addEventListener('click', function () {
-      const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
-      if (page < totalPages) {
-        page++;
-        renderTable();
-      }
-    });
-
-    pageSizeSel.addEventListener('change', function () {
-      pageSize = parseInt(pageSizeSel.value, 10) || 25;
-      page = 1;
-      renderTable();
-    });
-
-    function toggleCustomFields() {
-      if (!customFieldsWrap) return;
-      customFieldsWrap.style.display = windowSelect.value === 'custom' ? 'flex' : 'none';
-    }
-
-    windowSelect.addEventListener('change', function () {
-      toggleCustomFields();
-    });
-
-    applyBtn.addEventListener('click', function () {
-      page = 1;
-      computeWindow();
-      const res = filterAndSummarize();
-      filtered = res.rows;
-      renderSummary(res.summary);
-      renderTable();
-    });
-
-    resetBtn.addEventListener('click', function () {
-      windowSelect.value = '24h';
-      if (startInput) startInput.value = '';
-      if (endInput) endInput.value = '';
-      page = 1;
-      computeWindow();
-      const res = filterAndSummarize();
-      filtered = res.rows;
-      renderSummary(res.summary);
-      renderTable();
-      toggleCustomFields();
-    });
-
-    // initial load: default to 24h window
-    windowSelect.value = '24h';
-    toggleCustomFields();
-    computeWindow();
-    const initial = filterAndSummarize();
-    filtered = initial.rows;
-    renderSummary(initial.summary);
-    renderTable();
-  })();
-</script>
-{% endif %}
