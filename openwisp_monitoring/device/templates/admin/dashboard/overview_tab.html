@@ -19,6 +19,7 @@
   {% autoescape on %}{% leaflet_json_config %}{% endautoescape %}
 </div>
 
+{{ device_data|json_script:"device-usage-data" }}
 
 <div class="map-view">
   <div id="device-map-container">
@@ -74,7 +75,7 @@
     <h4>Total Links</h4>
     <div class="stats">
       <div class="stat-item">
-         <span class="badge badge-gray home-wan-total">0</span>
+        <span class="badge badge-gray home-wan-total">0</span>
         <span class="card-label">Links</span>
       </div>
     </div>
@@ -90,7 +91,7 @@
       </div>
     </div>
   </div>
-</div
+</div>
 
 <!-- built-in OpenWISP charts -->
 <div id="plot-container"></div>
@@ -128,6 +129,18 @@
 <!-- =============================================== -->
 
 <script>
+  /* ---------- Read device_data from Django ---------- */
+  const scriptEl = document.getElementById('device-usage-data');
+  let source = {};
+  try {
+    source = scriptEl ? JSON.parse(scriptEl.textContent || '{}') : {};
+  } catch (_) {
+    source = {};
+  }
+  console.log('DJ_Source_Usage (overview):=====', source);
+  const ifaces = Array.isArray(source.interfaces) ? source.interfaces : [];
+  const general = source.general || {};
+
   /* ---------- Donut with clickable legend to hide/show slices ---------- */
   function renderDonutWithLegend(opts) {
     const { elId, legendId, labels, values, colors } = opts;
@@ -210,157 +223,115 @@
       // update legend look
       node.classList.toggle('is-off', !active[idx]);
     });
-
-    // NOTE: Removed ResizeObserver here to avoid scroll jitter.
   }
 
-  /* ================== DYNAMIC DATA FROM YOUR API ================== */
+  /* ================== BUILD DATA FROM device_data (NO API) ================== */
 
-  /* helpers used by buildAuthFetchOptions */
-  function sameOrigin(url) {
-    try { return new URL(url, location.href).origin === location.origin; }
-    catch (e) { return false; }
-  }
-  function getCookie(name) {
-    const m = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
-    return m ? m.pop() : '';
-  }
+  function getDistributionsFromDeviceData() {
+    const carriersCount = new Map();   // operator_name => count
+    const techCount = new Map();       // 4G / 5G / other => count
+    const ifaceCount = new Map();      // interface.name => count
 
-  /* your function as provided */
-  function buildAuthFetchOptions(url) {
-    const headers = { 'Accept': 'application/json' };
-    const opts = { method: 'GET', headers, credentials: window.API_TOKEN ? 'omit' : 'include', mode: 'cors' };
-    if (window.API_TOKEN) headers['Authorization'] = `Bearer ${window.API_TOKEN}`;
-    if (sameOrigin(url)) {
-      const csrftoken = getCookie('csrftoken') || getCookie('csrf');
-      if (csrftoken) headers['X-CSRFToken'] = csrftoken;
-    }
-    return opts;
-  }
+    for (const iface of ifaces) {
+      if (!iface || !iface.name) continue;
 
-  /* sample fallback payload (used if fetch fails) */
-  const APIResponse = {
-    "interfaces": [
-      {
-        "mobile": {
-          "operator_name": "Airtel",
-          "power_status": "on",
-          "operator_code": "40587",
-          "model": "EC25-AFW",
-          "signal": { "lte": { "rsrq": -10, "rsrp": -97, "snr": 22, "csq": 31, "rssi": -51 } },
-          "manufacturer": "Quectel",
-          "imei": "356789012345678",
-          "connection_status": "connected"
-        },
-        "type": "mobile",
-        "name": "modem1",
-        "up": true
-      },
-      {
-        "mobile": {
-          "operator_name": "Jio",
-          "power_status": "on",
-          "operator_code": "40584",
-          "model": "EM9191",
-          "signal": { "5g": { "snr": 18, "csq": 31, "rsrq": -12, "rsrp": -103 } },
-          "manufacturer": "Sierra",
-          "imei": "862349012345679",
-          "connection_status": "connected"
-        },
-        "type": "mobile",
-        "name": "modem2",
-        "up": true
-      }
-    ]
-  };
+      // --- Interface Distribution: per interface name ---
+      const ifaceName = (iface.name || 'Unknown').trim();
+      ifaceCount.set(ifaceName, (ifaceCount.get(ifaceName) || 0) + 1);
 
-  /* fetch + aggregate → labels/values for the two charts */
-  async function getDynamicDistributions() {
-    // device UUID from URL; fallback so the code runs even outside device page
-    const match = location.pathname.match(/[0-9a-fA-F-]{36}/);
-    const DEVICE_UUID = match ? match[0] : 'd9d5e0a3-32ba-4152-b56d-5c56f6ca983a';
-    const API_URL = `https://controller.nexapp.co.in/api/v1/monitoring/device/${DEVICE_UUID}/interfaces-summary/`;
+      // --- Only mobiles carry carrier + network tech info ---
+      if (iface.type === 'mobile' && iface.mobile) {
+        const mobile = iface.mobile;
 
-    let json;
-    try {
-      const res = await fetch(API_URL, buildAuthFetchOptions(API_URL));
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      json = await res.json();
-    } catch (e) {
-      // fall back to the provided object
-      json = APIResponse;
-    }
+        // Carrier
+        const opRaw = mobile.operator_name || 'Unknown';
+        const op = opRaw.trim() || 'Unknown';
+        carriersCount.set(op, (carriersCount.get(op) || 0) + 1);
 
-    const carriersCount = new Map();  // operator_name counts
-    const techCount = new Map();      // 4G/5G counts
-
-    const interfaces = Array.isArray(json?.interfaces) ? json.interfaces : [];
-    for (const iface of interfaces) {
-      if (iface?.type !== 'mobile' || !iface?.mobile) continue;
-
-      // --- Carrier bucket ---
-      const op = (iface.mobile.operator_name || 'Unknown').trim();
-      carriersCount.set(op, (carriersCount.get(op) || 0) + 1);
-
-      // --- Network tech bucket ---
-      const sig = iface.mobile.signal || {};
-      // key might be "lte" or "5g" (use the *first* present key)
-      const key = Object.keys(sig)[0];
-      if (key) {
-        const label = (key.toLowerCase() === 'lte') ? '4G' : (key.toLowerCase() === '5g' ? '5G' : key.toUpperCase());
-        techCount.set(label, (techCount.get(label) || 0) + 1);
+        // Network technology from signal keys
+        const sig = mobile.signal || {};
+        Object.keys(sig).forEach(key => {
+          if (!key) return;
+          const low = key.toLowerCase();
+          let label;
+          if (low === 'lte') label = '4G';
+          else if (low === '5g') label = '5G';
+          else label = key.toUpperCase();
+          techCount.set(label, (techCount.get(label) || 0) + 1);
+        });
       }
     }
 
-    // Build arrays (stable order)
+    // Carrier arrays
     const carrierLabels = Array.from(carriersCount.keys());
     const carrierValues = carrierLabels.map(k => carriersCount.get(k));
 
-    const networkOrder = ['5G', '4G', 'Ethernet', 'Wi-Fi']; // keep nice order if present
-    const networkLabels = Array.from(new Set([...networkOrder, ...techCount.keys()]))
-      .filter(k => techCount.has(k));
+    // Network arrays, keep a nice ordering if present
+    const networkPreferredOrder = ['5G', '4G', '3G'];
+    const allTechKeys = Array.from(techCount.keys());
+    const orderedTech = [
+      ...networkPreferredOrder.filter(k => techCount.has(k)),
+      ...allTechKeys.filter(k => !networkPreferredOrder.includes(k))
+    ];
+    const networkLabels = orderedTech;
     const networkValues = networkLabels.map(k => techCount.get(k));
 
-    return { carrierLabels, carrierValues, networkLabels, networkValues };
+    // Interface arrays
+    const interfaceLabels = Array.from(ifaceCount.keys());
+    const interfaceValues = interfaceLabels.map(k => ifaceCount.get(k));
+
+    return {
+      carrierLabels,
+      carrierValues,
+      networkLabels,
+      networkValues,
+      interfaceLabels,
+      interfaceValues
+    };
   }
 
-  /* ================== INIT (mix dynamic + existing third chart) ================== */
+  /* ================== INIT (use device_data) ================== */
 
   const palette1 = ['#ff7f0e', '#1f77b4', '#2ca02c', '#353c44', '#a72d1d', '#267126']; // carriers
   const palette2 = ['#2ca02c', '#1f77b4', '#353c44', '#a72d1d', '#f59e0b', '#22c55e']; // network
+  const palette3 = ['#ff7f0e', '#1f77b4', '#2ca02c', '#353c44', '#a72d1d', '#22c55e', '#6366f1', '#0ea5e9']; // interfaces
 
   (function initDonuts() {
-    async function go() {
-      const { carrierLabels, carrierValues, networkLabels, networkValues } = await getDynamicDistributions();
+    function go() {
+      const {
+        carrierLabels,
+        carrierValues,
+        networkLabels,
+        networkValues,
+        interfaceLabels,
+        interfaceValues
+      } = getDistributionsFromDeviceData();
 
-      // 1) Carrier Distribution (dynamic)
+      // 1) Carrier Distribution
       renderDonutWithLegend({
         elId: 'Carrier-Distribution-chart',
         legendId: 'Carrier-Distribution-legend',
-        labels: carrierLabels.length ? carrierLabels : ['Airtel', 'Jio'],
-        values: carrierValues.length ? carrierValues : [1, 1],
-        colors: palette1,
-        centerLabel: 'Carrier Distribution'
+        labels: carrierLabels.length ? carrierLabels : ['Unknown'],
+        values: carrierValues.length ? carrierValues : [0],
+        colors: palette1
       });
 
-      // 2) Network Distribution (dynamic; lte -> 4G, 5g -> 5G)
+      // 2) Network Distribution
       renderDonutWithLegend({
         elId: 'Network-Distribution-chart',
         legendId: 'Network-Distribution-legend',
-        labels: networkLabels.length ? networkLabels : ['5G', '4G'],
-        values: networkValues.length ? networkValues : [1, 1],
+        labels: networkLabels.length ? networkLabels : ['4G', '5G'],
+        values: networkValues.length ? networkValues : [0, 0],
         colors: palette2
       });
 
-      // 3) Interface Distribution (leave as-is / static, or wire later)
-      const interfaceLabels = ['wan1', 'wan2', 'cellular1', 'cellular2'];
-      const interfaceValues = [5, 2, 1, 0];
+      // 3) Interface Distribution
       renderDonutWithLegend({
         elId: 'Interface-Distribution-chart',
         legendId: 'Interface-Distribution-legend',
-        labels: interfaceLabels,
-        values: interfaceValues,
-        colors: ['#ff7f0e', '#1f77b4', '#2ca02c', '#353c44']
+        labels: interfaceLabels.length ? interfaceLabels : ['eth0', 'eth1', 'modem', 'modem2'],
+        values: interfaceValues.length ? interfaceValues : [0, 0, 0, 0],
+        colors: palette3
       });
     }
 
@@ -479,28 +450,23 @@
     elems.pending.innerText = result.pending;
   }
 
-  // initial + polling
-  // fetchDeviceData();
-  // fetchSpokeData();
-  // setInterval(fetchDeviceData, 30000);
-  // setInterval(fetchSpokeData, 30000);
-
   // Initial render + refresh intervals WHEN PAGE LOADS
   document.addEventListener('DOMContentLoaded', () => {
     fetchDeviceData();
     fetchSpokeData();
 
     setInterval(fetchDeviceData, 30000);      // 30s
-    setInterval(fetchSpokeData, 30000);   // 30s
+    setInterval(fetchSpokeData, 30000);      // 30s
   });
 </script>
 
 {% leaflet_css %}
 
 <style>
-  .leaflet-bottom{
-      display:none !important;
+  .leaflet-bottom {
+    display: none !important;
   }
+
   .js-plotly-plot.currently-active-wifi-sessions {
     display: none !important;
   }
