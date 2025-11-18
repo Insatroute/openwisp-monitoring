@@ -38,11 +38,17 @@ def global_top_apps(request):
             .get("dpi_summery_v2", {})
             .get("applications", [])
         )
+        # for app in top_apps:
+        #     app_id = app.get("id", "") or ""
+            
+        #     # 🔥 Skip anything starting with "netify"
+        #     if app_id.startswith("netify"):
+        #         continue
         for app in top_apps:
-            label = app.get("label")
-            traffic = app.get("traffic", 0)
-            if label:
-                app_counter[label] += traffic
+            app_id = app.get("id", "") or ""
+            
+            if app_id in ("netify.nethserver", "netify.snort", "netify.netify"):
+                continue
 
     # Get top 10 apps
     top_10_apps = app_counter.most_common(10)
