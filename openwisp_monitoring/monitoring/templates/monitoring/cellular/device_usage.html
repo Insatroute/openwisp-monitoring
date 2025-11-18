@@ -209,7 +209,7 @@
   <!-- Chart -->
   <div class="chart-container">
     <div class="chart-title-row">
-      <h3 class="chart-title">General Traffic</h3>
+      <h3 class="chart-title">Data Usage Traffic</h3>
     </div>
     <div id="trafficCharts"></div>
   </div>
@@ -225,11 +225,20 @@
     try { source = scriptEl ? JSON.parse(scriptEl.textContent || '{}') : {}; } catch (_) { source = {}; }
     console.log('DJ_Source_Usage: ========', source);
     const ifaces = Array.isArray(source.interfaces) ? source.interfaces : [];
+    const general = source.general || {};
 
     /* ---------- Helpers ---------- */
     const MB = 1024 * 1024;
     const toMB = v => (Number(v) || 0) / MB;
-    const fmtMB = n => `${(Number(n) || 0).toFixed(2)} MB`;
+
+    // Format as MB or GB depending on size
+    function fmtData(mb) {
+      const v = Number(mb) || 0;
+      if (v >= 1024) {
+        return (v / 1024).toFixed(2) + ' GB';
+      }
+      return v.toFixed(2) + ' MB';
+    }
 
     // Accept both shapes:
     // 1) statistics.rx_bytes / tx_bytes
@@ -249,6 +258,14 @@
 
     const get = (name) => ifaces.find(i => i && i.name === name);
 
+    function formatTimeLabel(iso) {
+      if (!iso) return new Date().toLocaleTimeString();
+      const d = new Date(iso);
+      if (isNaN(d.getTime())) return iso;
+      const pad = n => n.toString().padStart(2, '0');
+      return pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+    }
+
     /* ---------- Compute sections ---------- */
     // Cellular: SIM1 = "modem", SIM2 = "modem2"
     const sim1 = readStatsMB(get('modem'));
@@ -263,82 +280,143 @@
     const wiredUp = eth0.txMB + eth1.txMB;
     const wiredDown = eth0.rxMB + eth1.rxMB;
 
-    /* ---------- Fill cards ---------- */
+    // Wireless placeholder values (in MB already)
+    const wirelessUp = 35.0;
+    const wirelessDown = 5.0;
+
+    /* ---------- Fill cards (with MB/GB) ---------- */
     const lastUpdated = document.getElementById('lastUpdated');
-    if (lastUpdated) lastUpdated.textContent = `(Updated: ${new Date().toLocaleTimeString()})`;
+    if (lastUpdated) {
+      const label = general.local_time ? formatTimeLabel(general.local_time) : new Date().toLocaleTimeString();
+      lastUpdated.textContent = `(Updated: ${label})`;
+    }
 
     const sim1Card = document.getElementById('modem1-card');
     if (sim1Card) {
-      sim1Card.querySelector('.interface-value').textContent = fmtMB(sim1.totalMB);
+      sim1Card.querySelector('.interface-value').textContent = fmtData(sim1.totalMB);
       sim1Card.querySelector('.interface-stats').innerHTML =
-        `Upload: ${fmtMB(sim1.txMB)}<br>Download: ${fmtMB(sim1.rxMB)}`;
+        `Upload: ${fmtData(sim1.txMB)}<br>Download: ${fmtData(sim1.rxMB)}`;
     }
 
     const sim2Card = document.getElementById('modem2-card');
     if (sim2Card) {
-      sim2Card.querySelector('.interface-value').textContent = fmtMB(sim2.totalMB);
+      sim2Card.querySelector('.interface-value').textContent = fmtData(sim2.totalMB);
       sim2Card.querySelector('.interface-stats').innerHTML =
-        `Upload: ${fmtMB(sim2.txMB)}<br>Download: ${fmtMB(sim2.rxMB)}`;
+        `Upload: ${fmtData(sim2.txMB)}<br>Download: ${fmtData(sim2.rxMB)}`;
     }
 
     const cellularSummary = document.getElementById('cellular-total-summary');
     if (cellularSummary) {
       const total = cellularUp + cellularDown;
-      cellularSummary.querySelector('.total-value').textContent = fmtMB(total);
+      cellularSummary.querySelector('.total-value').textContent = fmtData(total);
       cellularSummary.querySelector('.total-stats').innerHTML =
-        `Upload: ${fmtMB(cellularUp)}<br>Download: ${fmtMB(cellularDown)}`;
+        `Upload: ${fmtData(cellularUp)}<br>Download: ${fmtData(cellularDown)}`;
     }
 
     const eth0Card = document.getElementById('eth0-card');
     if (eth0Card) {
-      eth0Card.querySelector('.interface-value').textContent = fmtMB(eth0.totalMB);
+      eth0Card.querySelector('.interface-value').textContent = fmtData(eth0.totalMB);
       eth0Card.querySelector('.interface-stats').innerHTML =
-        `Upload: ${fmtMB(eth0.txMB)}<br>Download: ${fmtMB(eth0.rxMB)}`;
+        `Upload: ${fmtData(eth0.txMB)}<br>Download: ${fmtData(eth0.rxMB)}`;
     }
 
     const eth1Card = document.getElementById('eth1-card');
     if (eth1Card) {
-      eth1Card.querySelector('.interface-value').textContent = fmtMB(eth1.totalMB);
+      eth1Card.querySelector('.interface-value').textContent = fmtData(eth1.totalMB);
       eth1Card.querySelector('.interface-stats').innerHTML =
-        `Upload: ${fmtMB(eth1.txMB)}<br>Download: ${fmtMB(eth1.rxMB)}`;
+        `Upload: ${fmtData(eth1.txMB)}<br>Download: ${fmtData(eth1.rxMB)}`;
     }
 
     const wiredSummary = document.getElementById('wired-total-summary');
     if (wiredSummary) {
       const total = wiredUp + wiredDown;
-      wiredSummary.querySelector('.total-value').textContent = fmtMB(total);
+      wiredSummary.querySelector('.total-value').textContent = fmtData(total);
       wiredSummary.querySelector('.total-stats').innerHTML =
-        `Upload: ${fmtMB(wiredUp)}<br>Download: ${fmtMB(wiredDown)}`;
+        `Upload: ${fmtData(wiredUp)}<br>Download: ${fmtData(wiredDown)}`;
     }
 
-    /* ---------- General Traffic chart (single stacked bar) ---------- */
-    const wirelessUp = 35.0;   // placeholder until you wire real values
-    const wirelessDown = 5.0;  // placeholder
+    const wirelessSummary = document.getElementById('wireless-total-summary');
+    if (wirelessSummary) {
+      const totalWireless = wirelessUp + wirelessDown;
+      wirelessSummary.querySelector('.total-value').textContent = fmtData(totalWireless);
+      wirelessSummary.querySelector('.total-stats').innerHTML =
+        `Upload: ${fmtData(wirelessUp)}<br>Download: ${fmtData(wirelessDown)}`;
+    }
+
+    /* ---------- Build / store history for chart ---------- */
     const totals = {
       cellular: cellularUp + cellularDown,
       wired: wiredUp + wiredDown,
       wireless: wirelessUp + wirelessDown
     };
 
+    const serial = general.serialnumber || 'default';
+    const HISTORY_KEY = 'device_usage_history_' + serial;
+
+    let history = [];
+    try {
+      history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+      if (!Array.isArray(history)) history = [];
+    } catch (e) {
+      history = [];
+    }
+
+    const timeLabel = formatTimeLabel(general.local_time);
+    history.push({
+      t: timeLabel,
+      cellular: totals.cellular,
+      wired: totals.wired,
+      wireless: totals.wireless
+    });
+
+    // keep last 50 points only
+    if (history.length > 50) {
+      history = history.slice(history.length - 50);
+    }
+
+    try {
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+    } catch (e) {
+      console.warn('Unable to save usage history:', e);
+    }
+
+    const labels = history.map(h => h.t);
+    const cellularSeries = history.map(h => h.cellular);
+    const wiredSeries = history.map(h => h.wired);
+    const wirelessSeries = history.map(h => h.wireless);
+
+    /* ---------- General Traffic chart: X axis = time ---------- */
     const traces = [
       {
-        type: 'bar', name: 'Cellular', x: ['Total'], y: [totals.cellular], marker: { color: '#2ca02c' },
-        hovertemplate: 'Cellular<br>Total: %{y:.2f} MB<extra></extra>'
+        type: 'bar',
+        name: 'Cellular',
+        x: labels,
+        y: cellularSeries,
+        marker: { color: '#2ca02c' },
+        hovertemplate: 'Cellular<br>Time: %{x}<br>Total: %{y:.2f} MB<extra></extra>'
       },
       {
-        type: 'bar', name: 'Wired', x: ['Total'], y: [totals.wired], marker: { color: '#ff7f0e' },
-        hovertemplate: 'Wired<br>Total: %{y:.2f} MB<extra></extra>'
+        type: 'bar',
+        name: 'Wired',
+        x: labels,
+        y: wiredSeries,
+        marker: { color: '#ff7f0e' },
+        hovertemplate: 'Wired<br>Time: %{x}<br>Total: %{y:.2f} MB<extra></extra>'
       },
       {
-        type: 'bar', name: 'Wireless', x: ['Total'], y: [totals.wireless], marker: { color: '#1f77b4' },
-        hovertemplate: 'Wireless<br>Total: %{y:.2f} MB<extra></extra>'
+        type: 'bar',
+        name: 'Wireless',
+        x: labels,
+        y: wirelessSeries,
+        marker: { color: '#1f77b4' },
+        hovertemplate: 'Wireless<br>Time: %{x}<br>Total: %{y:.2f} MB<extra></extra>'
       }
     ];
 
     const layout = {
       barmode: 'stack',
       margin: { l: 60, r: 20, t: 10, b: 60 },
-      xaxis: { title: 'Usage', automargin: true },
+      xaxis: { title: 'Time', automargin: true },
       yaxis: { title: 'MB', rangemode: 'tozero', automargin: true },
       paper_bgcolor: 'rgba(0,0,0,0)',
       plot_bgcolor: 'rgba(0,0,0,0)',
