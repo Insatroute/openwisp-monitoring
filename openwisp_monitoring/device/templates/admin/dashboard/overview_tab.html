@@ -135,14 +135,13 @@
     const legendRoot = document.getElementById(legendId);
     if (!el || !legendRoot) return;
 
-    const baseValues = values.slice();                // keep originals
-    const active = baseValues.map(v => v > 0);        // visibility mask
+    const baseValues = values.slice();
+    const active = baseValues.map(v => v > 0);
 
     function totalActive() {
       return baseValues.reduce((acc, v, i) => acc + (active[i] ? v : 0), 0);
     }
 
-    // initial plot
     const rect = el.getBoundingClientRect();
     const data = [{
       type: 'pie',
@@ -176,7 +175,6 @@
     if (typeof Plotly === 'undefined') return;
     Plotly.newPlot(el, data, layout, { responsive: true, displayModeBar: false });
 
-    // build legend
     legendRoot.innerHTML = '';
     labels.forEach((label, i) => {
       const item = document.createElement('div');
@@ -192,7 +190,6 @@
       legendRoot.appendChild(item);
     });
 
-    // legend click -> toggle slice
     legendRoot.addEventListener('click', (e) => {
       const node = e.target.closest('.legend-item');
       if (!node) return;
@@ -209,7 +206,6 @@
   /* ================== FETCH INTERFACES-SUMMARY + BUILD CHART DATA ================== */
 
   async function fetchInterfacesSummary() {
-    // get device UUID from URL
     const path = window.location.pathname;
     const match = path.match(/[0-9a-fA-F-]{36}/);
     const DEVICE_UUID = match ? match[0] : 'b5224a8d-ee4c-44a3-a7b0-5f30fac484b9';
@@ -228,6 +224,7 @@
     if (token) headers['Authorization'] = `Token ${token}`;
 
     const resp = await fetch(url, { headers });
+    console.log('interfaces-summary response:===', resp);
     if (!resp.ok) {
       throw new Error(`interfaces-summary HTTP ${resp.status}`);
     }
@@ -240,30 +237,64 @@
       json = await fetchInterfacesSummary();
     } catch (e) {
       console.error('Error fetching interfaces-summary:', e);
-      // fall back to empty charts
       json = {};
     }
 
     const interfaces = Array.isArray(json.interfaces) ? json.interfaces : [];
 
-    const carriersCount = new Map();   // operator_name => count
-    const techCount = new Map();       // 4G / 5G / other => count
-    const ifaceCount = new Map();      // interface.name => count
+    // ====== NO DATA CASE: show all 0 in all three charts ======
+    if (!interfaces.length) {
+      const zeroLabels = ['No data'];
+      const zeroValues = [0];
+
+      const palette1 = ['#ff7f0e'];
+      const palette2 = ['#2ca02c'];
+      const palette3 = ['#1f77b4'];
+
+      renderDonutWithLegend({
+        elId: 'Carrier-Distribution-chart',
+        legendId: 'Carrier-Distribution-legend',
+        labels: zeroLabels,
+        values: zeroValues,
+        colors: palette1
+      });
+
+      renderDonutWithLegend({
+        elId: 'Network-Distribution-chart',
+        legendId: 'Network-Distribution-legend',
+        labels: zeroLabels,
+        values: zeroValues,
+        colors: palette2
+      });
+
+      renderDonutWithLegend({
+        elId: 'Interface-Distribution-chart',
+        legendId: 'Interface-Distribution-legend',
+        labels: zeroLabels,
+        values: zeroValues,
+        colors: palette3
+      });
+
+      return; // nothing else to do
+    }
+
+    // ====== DATA CASE ======
+    const carriersCount = new Map();
+    const techCount = new Map();
+    const ifaceCount = new Map();
 
     for (const iface of interfaces) {
       if (!iface) continue;
 
-      // Interface Distribution: per interface name
       const ifaceName = (iface.name || iface.type || 'Unknown').trim();
       ifaceCount.set(ifaceName, (ifaceCount.get(ifaceName) || 0) + 1);
 
-      // Carrier + Network: only for entries that have nested "mobile"
       if (iface.type === 'mobile' && iface.mobile) {
         const op = (iface.mobile.operator_name || 'Unknown').trim() || 'Unknown';
         carriersCount.set(op, (carriersCount.get(op) || 0) + 1);
 
         const sig = iface.mobile.signal || {};
-        const sigKey = Object.keys(sig)[0]; // e.g. "lte" or "5g"
+        const sigKey = Object.keys(sig)[0];
         if (sigKey) {
           let label;
           const low = sigKey.toLowerCase();
@@ -279,39 +310,35 @@
       }
     }
 
-    // Carrier arrays (fallback if no data)
     const carrierLabels = carriersCount.size
       ? Array.from(carriersCount.keys())
-      : ['Unknown'];
+      : ['No data'];
     const carrierValues = carriersCount.size
       ? carrierLabels.map(k => carriersCount.get(k))
       : [0];
 
-    // Network arrays in preferred order 5G, 4G, then others
     const preferredOrder = ['5G', '4G'];
     const allTechKeys = Array.from(techCount.keys());
     const orderedTech = [
       ...preferredOrder.filter(k => techCount.has(k)),
       ...allTechKeys.filter(k => !preferredOrder.includes(k))
     ];
-    const networkLabels = orderedTech.length ? orderedTech : ['4G', '5G'];
+    const networkLabels = orderedTech.length ? orderedTech : ['No data'];
     const networkValues = orderedTech.length
       ? networkLabels.map(k => techCount.get(k))
-      : [0, 0];
+      : [0];
 
-    // Interface arrays (fallback some defaults)
     const interfaceLabels = ifaceCount.size
       ? Array.from(ifaceCount.keys())
-      : ['eth0', 'eth1', 'modem', 'modem2'];
+      : ['No data'];
     const interfaceValues = ifaceCount.size
       ? interfaceLabels.map(k => ifaceCount.get(k))
-      : [0, 0, 0, 0];
+      : [0];
 
-    const palette1 = ['#ff7f0e', '#1f77b4', '#2ca02c', '#353c44', '#a72d1d', '#267126']; // carriers
-    const palette2 = ['#2ca02c', '#1f77b4', '#353c44', '#a72d1d', '#f59e0b', '#22c55e']; // network
-    const palette3 = ['#ff7f0e', '#1f77b4', '#2ca02c', '#353c44', '#a72d1d', '#22c55e', '#6366f1', '#0ea5e9']; // interfaces
+    const palette1 = ['#ff7f0e', '#1f77b4', '#2ca02c', '#353c44', '#a72d1d', '#267126'];
+    const palette2 = ['#2ca02c', '#1f77b4', '#353c44', '#a72d1d', '#f59e0b', '#22c55e'];
+    const palette3 = ['#ff7f0e', '#1f77b4', '#2ca02c', '#353c44', '#a72d1d', '#22c55e', '#6366f1', '#0ea5e9'];
 
-    // Render donuts
     renderDonutWithLegend({
       elId: 'Carrier-Distribution-chart',
       legendId: 'Carrier-Distribution-legend',
@@ -337,7 +364,6 @@
     });
   }
 
-  // Kick off donut charts when DOM is ready
   if (document.readyState === 'complete' || document.readyState === 'interactive') {
     initDistributionChartsFromApi();
   } else {
@@ -416,7 +442,7 @@
       console.error('Token fetch failed', e);
     }
     if (!token) {
-      Object.values(elems).forEach(el => el.innerText = 'Auth error');
+      Object.values(elems).forEach(el => el.innerText = 'Auth error')
       return;
     }
 
