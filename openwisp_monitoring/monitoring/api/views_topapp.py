@@ -234,7 +234,10 @@ def wan_uplinks_all_devices(request):
 
                 "interface_ip": ipv4_addr,
                 "interface_mask": ipv4_mask,
-
+                
+                "throughput_tx_bytes": ping.get("throughput", {}).get("tx_bytes_per_s"),
+                "throughput_rx_bytes": ping.get("throughput", {}).get("rx_bytes_per_s"),
+                
                 "ping_dest": ping.get("dest_ip"),
                 "ping_latency_ms": ping.get("latency_ms"),
                 "ping_packet_loss": ping.get("packet_loss"),
