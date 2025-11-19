@@ -231,13 +231,25 @@ if (alertsCanvas && alertsNoteEl) {
   alertsNoteEl.textContent = `First seen: ${securityData.alerts_first_seen}`;
 }
 
+  const malwareCanvas = document.getElementById("chartMalwareByHour");
+if (securityData.malware_by_hour.some(v => v > 0)) {
   new Chart(
-    document.getElementById("chartMalwareByHour"),
+    malwareCanvas,
     barCfg(hours, securityData.malware_by_hour, "Malware / hour", "#ef4444")
   );
+} else {
+  malwareCanvas.outerHTML = "<div style='padding:20px;color:#6b7280;text-align:center;'>No malware data available</div>";
+}
 
+
+  const attackCanvas = document.getElementById("chartAttackByHour");
+if (securityData.attack_by_hour.some(v => v > 0)) {
   new Chart(
-    document.getElementById("chartAttackByHour"),
+    attackCanvas,
     barCfg(hours, securityData.attack_by_hour, "Attacks / hour", "#2563eb")
   );
+} else {
+  attackCanvas.outerHTML = "<div style='padding:20px;color:#6b7280;text-align:center;'>No brute-force attack data available</div>";
+}
+
 </script>
