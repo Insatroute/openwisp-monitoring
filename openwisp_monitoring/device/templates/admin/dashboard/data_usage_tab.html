@@ -345,6 +345,9 @@
 
 <script>
     window.OW_HIDE_CHARTS = true;
+
+    console.log('Data usage tab script loaded, OW_HIDE_CHARTS set to true.=====', window.OW_HIDE_CHARTS);
+
     async function fetchAndDisplaySummary() {
         try {
             const resp = await fetch("https://controller.nexapp.co.in/api/v1/monitoring/data-usage/", {
