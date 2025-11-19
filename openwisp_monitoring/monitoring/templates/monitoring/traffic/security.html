@@ -216,11 +216,20 @@
   new Chart(document.getElementById("donutAttacks"), donutCfg(securityData.attack_count, 20, "#2563eb"));
   document.getElementById("noteAttacks").textContent = `First seen: ${securityData.attack_first_seen}`;
 
-  new Chart(document.getElementById("donutIPs"), donutCfg(securityData.suspicious_ips, 20, "#f59e0b"));
-  document.getElementById("noteIPs").textContent = `First seen: ${securityData.suspicious_first_seen}`;
+ new Chart(
+  document.getElementById("donutIPs"),
+  donutCfg(securityData.suspicious_ips, 20, "#f59e0b")
+);
+document.getElementById("noteIPs").textContent =
+  `First seen: ${securityData.suspicious_first_seen}`;
 
-  new Chart(document.getElementById("donutAlerts"), donutCfg(securityData.open_alerts, 20, "#10b981"));
-  document.getElementById("noteAlerts").textContent = `First seen: ${securityData.alerts_first_seen}`;
+// Only draw Alerts donut if the elements exist (they are commented out in HTML)
+const alertsCanvas = document.getElementById("donutAlerts");
+const alertsNoteEl = document.getElementById("noteAlerts");
+if (alertsCanvas && alertsNoteEl) {
+  new Chart(alertsCanvas, donutCfg(securityData.open_alerts, 20, "#10b981"));
+  alertsNoteEl.textContent = `First seen: ${securityData.alerts_first_seen}`;
+}
 
   new Chart(
     document.getElementById("chartMalwareByHour"),
