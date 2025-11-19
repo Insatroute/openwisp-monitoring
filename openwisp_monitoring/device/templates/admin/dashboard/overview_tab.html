@@ -228,7 +228,7 @@
     });
   }
 
-  /* ================== FETCH INTERFACES-SUMMARY + BUILD CHART DATA ================== */
+  /* ================== FETCH INTERFACES-SUMMARY (FOR CARRIER/NETWORK) ================== */
 
   async function fetchInterfacesSummary() {
     const path = window.location.pathname;
@@ -256,65 +256,66 @@
     return resp.json();
   }
 
-  async function initDistributionChartsFromApi() {
-    let json;
+  /* ================== FETCH WAN UPLINKS (FOR INTERFACE DISTRIBUTION) ================== */
+
+  async function fetchWanUplinks() {
+    const base = window.API_BASE_URL || 'https://controller.nexapp.co.in';
+    const url = `${base}/api/v1/monitoring/wan-uplinks/`;
+
+    let token = null;
     try {
-      json = await fetchInterfacesSummary();
-      console.log('Fetched interfaces-summary:====', json);
+      token = await fetchAuthToken();
+    } catch (e) {
+      console.warn('fetchAuthToken error for wan-uplinks:', e);
+    }
+
+    const headers = { 'Accept': 'application/json' };
+    if (token) headers['Authorization'] = `Token ${token}`;
+
+    const resp = await fetch(url, { headers });
+    console.log('wan-uplinks response:===', resp);
+    if (!resp.ok) {
+      throw new Error(`wan-uplinks HTTP ${resp.status}`);
+    }
+    return resp.json();
+  }
+
+  /* ================== INIT CHARTS: CARRIER + NETWORK + INTERFACE ================== */
+
+  async function initDistributionChartsFromApi() {
+    let ifSummary = {};
+    let wanData = {};
+
+    // get both APIs (independently, each can fail)
+    try {
+      ifSummary = await fetchInterfacesSummary();
+      console.log('Fetched interfaces-summary:====', ifSummary);
     } catch (e) {
       console.error('Error fetching interfaces-summary:', e);
-      json = {};
+      ifSummary = {};
     }
 
-    const interfaces = Array.isArray(json.interfaces) ? json.interfaces : [];
+    try {
+      wanData = await fetchWanUplinks();
+      console.log('Fetched wan-uplinks:====', wanData);
+    } catch (e) {
+      console.error('Error fetching wan-uplinks:', e);
+      wanData = {};
+    }
+
+    const interfaces = Array.isArray(ifSummary.interfaces) ? ifSummary.interfaces : [];
+    const wanRows = Array.isArray(wanData.rows) ? wanData.rows : [];
+
     console.log('interfaces-summary data:===', interfaces);
+    console.log('wan-uplinks rows:===', wanRows);
 
-    // ====== NO DATA CASE: still show donut, but values 0 ======
-    if (!interfaces.length) {
-      const zeroLabels = ['No data'];
-      const zeroValues = [0];
+    /* ===== CARRIER + NETWORK from interfaces-summary ===== */
 
-      const palette1 = ['#ff7f0e'];
-      const palette2 = ['#2ca02c'];
-      const palette3 = ['#1f77b4'];
-
-      renderDonutWithLegend({
-        elId: 'Carrier-Distribution-chart',
-        legendId: 'Carrier-Distribution-legend',
-        labels: zeroLabels,
-        values: zeroValues,
-        colors: palette1
-      });
-
-      renderDonutWithLegend({
-        elId: 'Network-Distribution-chart',
-        legendId: 'Network-Distribution-legend',
-        labels: zeroLabels,
-        values: zeroValues,
-        colors: palette2
-      });
-
-      renderDonutWithLegend({
-        elId: 'Interface-Distribution-chart',
-        legendId: 'Interface-Distribution-legend',
-        labels: zeroLabels,
-        values: zeroValues,
-        colors: palette3
-      });
-
-      return;
-    }
-
-    // ====== DATA CASE ======
     const carriersCount = new Map();
     const techCount = new Map();
-    const ifaceCount = new Map();
 
     for (const iface of interfaces) {
       if (!iface) continue;
-
-      const ifaceName = (iface.name || iface.type || 'Unknown').trim();
-      ifaceCount.set(ifaceName, (ifaceCount.get(ifaceName) || 0) + 1);
 
       if (iface.type === 'mobile' && iface.mobile) {
         const op = (iface.mobile.operator_name || 'Unknown').trim() || 'Unknown';
@@ -355,6 +356,17 @@
       ? networkLabels.map(k => techCount.get(k))
       : [0];
 
+    /* ===== INTERFACE DISTRIBUTION from WAN UPLINKS rows (interface_name) ===== */
+
+    const ifaceCount = new Map();
+
+    wanRows.forEach(row => {
+      if (!row || !row.interface_name) return;
+      const name = String(row.interface_name).trim();   // e.g. "eth1", "eth2"
+      if (!name) return;
+      ifaceCount.set(name, (ifaceCount.get(name) || 0) + 1);
+    });
+
     const interfaceLabels = ifaceCount.size
       ? Array.from(ifaceCount.keys())
       : ['No data'];
@@ -362,10 +374,12 @@
       ? interfaceLabels.map(k => ifaceCount.get(k))
       : [0];
 
-    const palette1 = ['#ff7f0e', '#1f77b4', '#2ca02c', '#353c44', '#a72d1d', '#267126'];
-    const palette2 = ['#2ca02c', '#1f77b4', '#353c44', '#a72d1d', '#f59e0b', '#22c55e'];
-    const palette3 = ['#ff7f0e', '#1f77b4', '#2ca02c', '#353c44', '#a72d1d', '#22c55e', '#6366f1', '#0ea5e9'];
+    // Palettes
+    const palette1 = ['#ff7f0e', '#1f77b4', '#2ca02c', '#353c44', '#a72d1d', '#267126']; // carriers
+    const palette2 = ['#2ca02c', '#1f77b4', '#353c44', '#a72d1d', '#f59e0b', '#22c55e']; // network
+    const palette3 = ['#ff7f0e', '#1f77b4', '#2ca02c', '#353c44', '#a72d1d', '#22c55e', '#6366f1', '#0ea5e9']; // interface
 
+    // Carrier Distribution
     renderDonutWithLegend({
       elId: 'Carrier-Distribution-chart',
       legendId: 'Carrier-Distribution-legend',
@@ -374,6 +388,7 @@
       colors: palette1
     });
 
+    // Network Distribution
     renderDonutWithLegend({
       elId: 'Network-Distribution-chart',
       legendId: 'Network-Distribution-legend',
@@ -382,6 +397,7 @@
       colors: palette2
     });
 
+    // Interface Distribution (WAN uplinks, interface_name like "eth1")
     renderDonutWithLegend({
       elId: 'Interface-Distribution-chart',
       legendId: 'Interface-Distribution-legend',
