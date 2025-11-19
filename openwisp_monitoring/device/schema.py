@@ -263,7 +263,7 @@ schema = {
                         "type": "object",
                         "additionalProperties": True,
                         "required": [
-                            "imei",
+                            # "imei",
                             "operator_code",
                             "operator_name",
                             "connection_status",
