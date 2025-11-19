@@ -1,6 +1,6 @@
 
-{% if device_data.retimemonitor.security %}
-{{ device_data.retimemonitor.security|json_script:"sec-data" }}
+{% if device_data.realtimemonitor.security %}
+{{ device_data.realtimemonitor.security|json_script:"sec-data" }}
 {% else %}
 <script type="application/json" id="sec-data">{}</script>
 {% endif %}
