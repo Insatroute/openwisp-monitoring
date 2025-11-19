@@ -753,6 +753,14 @@
                 }
             }
 
+            // ====== SHARE WAN DATA GLOBALLY FOR OTHER TABS (e.g. Overview) ======
+            try {
+                window.WAN_UPLINK_DATA = json;
+                window.dispatchEvent(new CustomEvent('wanUplinkDataLoaded', { detail: json }));
+            } catch (err) {
+                console.warn('Unable to broadcast WAN_UPLINK_DATA:', err);
+            }
+
             allRows = Array.isArray(json.rows) ? json.rows : [];
             renderSummaryFromApi(json.summary || null);
             renderPage(1);
