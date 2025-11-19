@@ -1,7 +1,6 @@
 {# wan_uplink.html - WAN Uplink tab: single summary card + table #}
 
 <style>
-
     /* ======= SUMMARY CARD (LIKE DATA USAGE SUMMARY) ======= */
     .wan-summary-wrap {
         /* max-width: 1200px; */
@@ -499,7 +498,8 @@
         const tbody = document.getElementById('home-wan-tbody');
         if (!tbody) return;
 
-
+        window.OW_HIDE_CHARTS = true;
+        
         const totalEls = document.querySelectorAll('.home-wan-total');
         const connectedEls = document.querySelectorAll('.home-wan-connected');
 

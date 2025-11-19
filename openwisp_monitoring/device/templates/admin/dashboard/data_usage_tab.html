@@ -342,7 +342,9 @@
         setInterval(fetchAndDisplayTopDevicesChart, 30000);   // 30s
     });
 </script>
+
 <script>
+    window.OW_HIDE_CHARTS = true;
     async function fetchAndDisplaySummary() {
         try {
             const resp = await fetch("https://controller.nexapp.co.in/api/v1/monitoring/data-usage/", {
@@ -390,7 +392,6 @@
         setInterval(fetchAndDisplaySummary, 30000);
     });
 </script>
-
 
 <style>
     .home-datausage-wrap {
