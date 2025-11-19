@@ -272,12 +272,13 @@ schema = {
                             "model",
                         ],
                         "properties": {
-                            "imei": {
-                                "type": "string",
-                                "minLength": 15,
-                                "maxLength": 17,
-                                "pattern": "^[0-9]*$",
-                            },
+                            # "imei": {
+                            #     "type": "string",
+                            #     "minLength": 15,
+                            #     "maxLength": 17,
+                            #     "pattern": "^[0-9]*$",
+                            # },
+                            "imei": {"type": "string"},
                             "operator_name": {"type": "string"},
                             "operator_code": {
                                 "type": "string",
