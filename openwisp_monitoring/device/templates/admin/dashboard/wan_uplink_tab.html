@@ -219,6 +219,11 @@
         white-space: nowrap;
     }
 
+    /* "No data" row */
+    .home-wan-empty-row td {
+        text-align: center;
+    }
+
     @media (max-width: 900px) {
         .home-wan-table thead {
             font-size: 11px;
@@ -407,78 +412,9 @@
             {% endif %}
 
             {% empty %}
-            {# STATIC FALLBACK WHEN NO device_data #}
-            <tr data-status="connected" data-uplink="WAN1">
-                <td class="home-wan-status-cell">
-                    <span class="home-wan-status-dot home-wan-status-connected"></span>
-                    Connected
-                </td>
-                <td class="home-wan-nowrap">Core-Router-01</td>
-                <td class="home-wan-nowrap">SN-114GSQ2209N23015</td>
-                <td class="home-wan-nowrap">NX-6005</td>
-                <td class="home-wan-nowrap">Head Office</td>
-                <td class="home-wan-nowrap">Primary Path</td>
-                <td class="home-wan-nowrap"><a class="home-wan-linkish">WAN1</a></td>
-                <td class="home-wan-nowrap">4 weeks 1 day 20 hours</td>
-                <td>
-                    <div>203.0.113.10/24 <span class="home-wan-muted">(IPV4)</span></div>
-                </td>
-                <td class="home-wan-nowrap">8.8.8.8</td>
-                <td class="home-wan-throughput">
-                    <span class="home-wan-kp home-wan-kp-up"><i></i>3.62 GB</span>
-                    <span class="home-wan-kp home-wan-kp-down"><i></i>2.83 GB</span>
-                </td>
-                <td class="home-wan-nowrap">15 ms</td>
-                <td class="home-wan-nowrap">0.6 ms</td>
-                <td class="home-wan-nowrap">0.0%</td>
-            </tr>
-
-            <tr data-status="connected" data-uplink="WAN2">
-                <td class="home-wan-status-cell">
-                    <span class="home-wan-status-dot home-wan-status-connected"></span>
-                    Connected
-                </td>
-                <td class="home-wan-nowrap">Core-Router-01</td>
-                <td class="home-wan-nowrap">SN-114GSQ2209N23015</td>
-                <td class="home-wan-nowrap">NX-6005</td>
-                <td class="home-wan-nowrap">Branch Office</td>
-                <td class="home-wan-nowrap">Secondary Path</td>
-                <td class="home-wan-nowrap"><a class="home-wan-linkish">WAN2</a></td>
-                <td class="home-wan-nowrap">1 month 5 days 23 hours</td>
-                <td>
-                    <div>198.51.100.24/24 <span class="home-wan-muted">(IPV4)</span></div>
-                </td>
-                <td class="home-wan-nowrap">1.1.1.1</td>
-                <td class="home-wan-throughput">
-                    <span class="home-wan-kp home-wan-kp-up"><i></i>4.88 GB</span>
-                    <span class="home-wan-kp home-wan-kp-down"><i></i>3.74 GB</span>
-                </td>
-                <td class="home-wan-nowrap">18 ms</td>
-                <td class="home-wan-nowrap">0.8 ms</td>
-                <td class="home-wan-nowrap">0.1%</td>
-            </tr>
-
-            <tr data-status="disconnected" data-uplink="WAN3">
-                <td class="home-wan-status-cell">
-                    <span class="home-wan-status-dot home-wan-status-disconnected"></span>
-                    Disconnected
-                </td>
-                <td class="home-wan-nowrap">Core-Router-01</td>
-                <td class="home-wan-nowrap">SN-114GSQ2209N23015</td>
-                <td class="home-wan-nowrap">NX-6005</td>
-                <td class="home-wan-nowrap">DR Site</td>
-                <td class="home-wan-nowrap">Backup Path</td>
-                <td class="home-wan-nowrap"><a class="home-wan-linkish">WAN3</a></td>
-                <td class="home-wan-nowrap">—</td>
-                <td><span class="home-wan-muted">—</span></td>
-                <td class="home-wan-nowrap">8.8.4.4</td>
-                <td class="home-wan-throughput">
-                    <span class="home-wan-kp home-wan-kp-up"><i></i>0 B</span>
-                    <span class="home-wan-kp home-wan-kp-down"><i></i>0 B</span>
-                </td>
-                <td class="home-wan-nowrap">—</td>
-                <td class="home-wan-nowrap">—</td>
-                <td class="home-wan-nowrap">—</td>
+            {# When there is no device_data.interfaces at all, show a single "no data" row #}
+            <tr class="home-wan-empty-row" data-empty="1">
+                <td colspan="14" class="home-wan-nowrap home-wan-muted">No WAN uplink data found</td>
             </tr>
             {% endfor %}
 
@@ -588,6 +524,10 @@
             let total = 0, connected = 0, abnormal = 0, disconnected = 0, disabled = 0;
 
             rows.forEach(row => {
+                // skip the "no data" row
+                if (row.dataset.empty === '1') {
+                    return;
+                }
                 total++;
                 const st = (row.dataset.status || '').toLowerCase();
                 if (st === 'connected') connected++;
@@ -617,7 +557,7 @@
             let pathLabel = row.path_label || '';
             if (!pathLabel) {
                 if (row.uplink_type === 'mobile' || row.uplink_type === 'cellular') pathLabel = 'Cellular Path';
-                else if (row.uplink_type === 'ethernet') pathLabel = 'Wired Path';
+                else if (row.uplink_type === 'ethernet') pathLabel = '-';
             }
             if (!pathLabel) pathLabel = '—';
 
@@ -679,6 +619,19 @@
 
         function renderPage(page) {
             if (!tbody) return;
+
+            // If there is no data at all from API, show a single "no data" row
+            if (!allRows.length) {
+                tbody.innerHTML = `
+                    <tr class="home-wan-empty-row" data-empty="1">
+                        <td colspan="14" class="home-wan-nowrap home-wan-muted">No WAN uplink data found</td>
+                    </tr>
+                `;
+                if (paginationEl) {
+                    paginationEl.style.display = 'none';
+                }
+                return;
+            }
 
             totalPages = Math.max(1, Math.ceil(allRows.length / PAGE_SIZE));
 
