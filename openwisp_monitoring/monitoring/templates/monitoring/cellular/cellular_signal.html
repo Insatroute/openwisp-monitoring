@@ -407,7 +407,10 @@
             line: { color: '#1f77b4', width: 3 },
             marker: { size: 7 }
           }
-        ], baseLayout('CSQ', [0, 40], 5));
+        ], baseLayout('CSQ', [0, 40], 5), {
+          displayModeBar: false,
+          displaylogo: false
+        });
 
         Plotly.newPlot('cellular_signal_div_rsrp', [
           {
@@ -428,7 +431,10 @@
             line: { color: '#1f77b4' },
             marker: { size: 6 }
           }
-        ], baseLayout('RSRP (dBm)', [-140, -44], 20));
+        ], baseLayout('RSRP (dBm)', [-140, -44], 20), {
+          displayModeBar: false,
+          displaylogo: false
+        });
 
         Plotly.newPlot('cellular_signal_div_rsrq', [
           {
@@ -449,7 +455,10 @@
             line: { color: '#1f77b4' },
             marker: { size: 6 }
           }
-        ], baseLayout('RSRQ (dB)', [-20, -3], 2));
+        ], baseLayout('RSRQ (dB)', [-20, -3], 2), {
+          displayModeBar: false,
+          displaylogo: false
+        });
 
         Plotly.newPlot('cellular_signal_div_rssi', [
           {
@@ -470,7 +479,10 @@
             line: { color: '#1f77b4' },
             marker: { size: 6 }
           }
-        ], baseLayout('RSSI (dBm)', [-120, -40], 10));
+        ], baseLayout('RSSI (dBm)', [-120, -40], 10), {
+          displayModeBar: false,
+          displaylogo: false
+        });
 
         Plotly.newPlot('cellular_signal_div_snr', [
           {
@@ -491,7 +503,10 @@
             line: { color: '#1f77b4' },
             marker: { size: 6 }
           }
-        ], baseLayout('SNR (dB)', [-5, 35], 5));
+        ], baseLayout('SNR (dB)', [-5, 35], 5), {
+          displayModeBar: false,
+          displaylogo: false
+        });
       }
 
       /* ====== 6. Initial load ====== */
