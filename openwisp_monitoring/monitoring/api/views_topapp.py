@@ -303,3 +303,55 @@ def data_usage_all_devices(request):
                      summary[key]["received"])
 
     return Response(summary)
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def mobile_distribution_all_devices(request):
+    devices = Device.objects.all()
+
+    carrier_counter = Counter()
+    network_counter = Counter()
+    total_modems = 0
+
+    for device in devices:
+        try:
+            data = fetch_device_data(device)
+        except Exception:
+            continue
+
+        interfaces = data.get("interfaces", [])
+
+        for iface in interfaces:
+            if iface.get("type") != "mobile":
+                continue
+
+            mobile = iface.get("mobile", {})
+            total_modems += 1
+
+            # Carrier name
+            operator = mobile.get("operator_name") or "Unknown"
+            carrier_counter[operator] += 1
+
+            # Network type detection
+            signal = mobile.get("signal") or {}
+            if "5g" in signal:
+                network_counter["5G"] += 1
+            elif "lte" in signal:
+                network_counter["4G"] += 1
+            elif "3g" in signal:
+                network_counter["3G"] += 1
+            else:
+                network_counter["Unknown"] += 1
+
+    return Response({
+        "carrier": {
+            "labels": list(carrier_counter.keys()),
+            "data": list(carrier_counter.values())
+        },
+        "network": {
+            "labels": list(network_counter.keys()),
+            "data": list(network_counter.values())
+        },
+        "total_modems": total_modems
+    })
+
