@@ -493,6 +493,11 @@
         });
       });
 
+
+        // 🔽 sort so latest interval appears first
+      rows.sort((a, b) => b._startMs - a._startMs);
+      rows.forEach(r => { delete r._startMs; });
+
       const totalSpanSec = Math.max(0, Math.round((endMs - startMs) / 1000));
       let uptimePct = null;
       if (totalSpanSec > 0) uptimePct = (upSec / totalSpanSec) * 100;
