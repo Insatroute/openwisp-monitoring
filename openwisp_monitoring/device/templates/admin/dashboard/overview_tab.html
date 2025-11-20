@@ -259,7 +259,7 @@
     });
   }
 
-  /* ================== FETCH INTERFACES-SUMMARY (CARRIER + NETWORK) ================== */
+  /* ================== FETCH INTERFACES-SUMMARY (kept, used for fallback only) ================== */
 
   async function fetchInterfacesSummary() {
     const path = window.location.pathname;
@@ -283,6 +283,30 @@
     console.log('interfaces-summary response:===', resp);
     if (!resp.ok) {
       throw new Error(`interfaces-summary HTTP ${resp.status}`);
+    }
+    return resp.json();
+  }
+
+  /* ================== NEW: FETCH MOBILE-DISTRIBUTION FOR CARRIER + NETWORK ================== */
+
+  async function fetchMobileDistribution() {
+    const base = window.API_BASE_URL || 'https://controller.nexapp.co.in';
+    const url = `${base}/api/v1/monitoring/mobile-distribution/`;
+
+    let token = null;
+    try {
+      token = await fetchAuthToken();
+    } catch (e) {
+      console.warn('fetchAuthToken error for mobile-distribution:', e);
+    }
+
+    const headers = { 'Accept': 'application/json' };
+    if (token) headers['Authorization'] = `Token ${token}`;
+
+    const resp = await fetch(url, { headers });
+    console.log('mobile-distribution response:===', resp);
+    if (!resp.ok) {
+      throw new Error(`mobile-distribution HTTP ${resp.status}`);
     }
     return resp.json();
   }
@@ -322,7 +346,9 @@
 
   async function initDistributionChartsFromApi() {
     let ifSummary = {};
+    let mobileDist = {};
 
+    // fetch both in parallel, but handle errors independently
     try {
       ifSummary = await fetchInterfacesSummary();
       console.log('Fetched interfaces-summary:====', ifSummary);
@@ -331,10 +357,18 @@
       ifSummary = {};
     }
 
+    try {
+      mobileDist = await fetchMobileDistribution();
+      console.log('Fetched mobile-distribution:====', mobileDist);
+    } catch (e) {
+      console.error('Error fetching mobile-distribution:', e);
+      mobileDist = {};
+    }
+
     const interfaces = Array.isArray(ifSummary.interfaces) ? ifSummary.interfaces : [];
     console.log('interfaces-summary data:===', interfaces);
 
-    // ----- Carrier + Network from interfaces-summary -----
+    // ----- BASE: compute from interfaces-summary (fallback) -----
     const carriersCount = new Map();
     const techCount = new Map();
 
@@ -362,10 +396,11 @@
       }
     }
 
-    const carrierLabels = carriersCount.size
+    // Fallback values from interfaces-summary
+    let carrierLabels = carriersCount.size
       ? Array.from(carriersCount.keys())
       : ['No data'];
-    const carrierValues = carriersCount.size
+    let carrierValues = carriersCount.size
       ? carrierLabels.map(k => carriersCount.get(k))
       : [0];
 
@@ -375,10 +410,43 @@
       ...preferredOrder.filter(k => techCount.has(k)),
       ...allTechKeys.filter(k => !preferredOrder.includes(k))
     ];
-    const networkLabels = orderedTech.length ? orderedTech : ['No data'];
-    const networkValues = orderedTech.length
+    let networkLabels = orderedTech.length ? orderedTech : ['No data'];
+    let networkValues = orderedTech.length
       ? networkLabels.map(k => techCount.get(k))
       : [0];
+
+    // ----- OVERRIDE WITH mobile-distribution IF AVAILABLE -----
+    if (
+      mobileDist &&
+      mobileDist.carrier &&
+      Array.isArray(mobileDist.carrier.labels) &&
+      Array.isArray(mobileDist.carrier.data) &&
+      mobileDist.carrier.labels.length
+    ) {
+      carrierLabels = mobileDist.carrier.labels.length
+        ? mobileDist.carrier.labels
+        : ['No data'];
+
+      carrierValues = mobileDist.carrier.data.length
+        ? mobileDist.carrier.data
+        : new Array(mobileDist.carrier.labels.length || 1).fill(0);
+    }
+
+    if (
+      mobileDist &&
+      mobileDist.network &&
+      Array.isArray(mobileDist.network.labels) &&
+      Array.isArray(mobileDist.network.data) &&
+      mobileDist.network.labels.length
+    ) {
+      networkLabels = mobileDist.network.labels.length
+        ? mobileDist.network.labels
+        : ['No data'];
+
+      networkValues = mobileDist.network.data.length
+        ? mobileDist.network.data
+        : new Array(mobileDist.network.labels.length || 1).fill(0);
+    }
 
     const palette1 = ['#ff7f0e', '#1f77b4', '#2ca02c', '#353c44', '#a72d1d', '#267126'];
     const palette2 = ['#2ca02c', '#1f77b4', '#353c44', '#a72d1d', '#f59e0b', '#22c55e'];
