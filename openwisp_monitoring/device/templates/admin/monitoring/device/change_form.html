@@ -2,7 +2,7 @@
 {% load i18n static %}
 {% block after_field_sets %}
 
- {% if not add or device_data.cellular %}
+ {% if not add and device_data.cellular %}
   <div class="inline-group" id="ow-cellular">
   <fieldset class="module">
      <h2>{% trans 'Cellular' %}</h2>
@@ -41,25 +41,26 @@
       <!-- PANELS -->
       <div id="traffic-tab-system" class="traffic-tab-panel ">
         <div class="traffic-sub-tabs">
+          {% if device_data.device_type != '4g_5g_router' %}
           <button type="button" data-target="traffic-traffic" class="active">Traffic</button>
-          <button type="button" data-target="traffic-real-time-traffic">Real Time Traffic</button>
           <button type="button" data-target="traffic-security">Security</button>
+          {% endif %}
+          <button type="button" data-target="traffic-real-time-traffic">Real Time Traffic</button>
           <button type="button" data-target="traffic-wan-uplinks">Wan Uplinks</button>
 
         </div>
 
         <div class="traffic-sub-contents">
+          {% if device_data.device_type != '4g_5g_router' %}
           <div id="traffic-traffic" class="traffic-sub-content active">
             {% include 'monitoring/traffic/traffic.html' %}
           </div>
+          <div id="traffic-security" class="traffic-sub-content">
+            {% include 'monitoring/traffic/security.html' %}
+          </div>
+          {% endif %}
           <div id="traffic-real-time-traffic" class="traffic-sub-content">
             {% include 'monitoring/traffic/real_time_traffic.html' %}
-          </div>
-          <div id="traffic-security" class="traffic-sub-content">
-            {% include 'monitoring/traffic/security.html' %}
-          </div>
-          <div id="traffic-security" class="traffic-sub-content">
-            {% include 'monitoring/traffic/security.html' %}
           </div>
           <div id="traffic-wan-uplinks" class="traffic-sub-content">
             {% include 'monitoring/traffic/wan_uplinks.html' %}
