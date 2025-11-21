@@ -3,8 +3,6 @@
 <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
 
 <style>
-
-
   #apiError {
     display: none;
     color: #b91c1c;
@@ -146,8 +144,8 @@
     /* you can keep max-width or remove it, up to you */
     /* max-width: 1200px; */
     margin: 20px auto;
-    padding: 0 16px;
-    box-sizing: border-box;
+    /* padding: 0 16px;
+    box-sizing: border-box; */
   }
 
   /* The card that holds the chart should always take full width */
@@ -155,14 +153,25 @@
     width: 100%;
   }
 
-  /* Outer div that Plotly uses */
+  /* === REPLACE your old #trafficCharts block with this === */
   #trafficCharts {
     width: 100%;
     max-width: 100%;
-    margin: 0 auto;
-    /* responsive height: not tiny on big screens, not huge on small ones */
-    min-height: 260px;
-    height: clamp(260px, 40vh, 400px);
+    /* let it use full width of the card */
+    margin: 0;
+    /* no extra centering margins */
+    height: 420px;
+    /* a bit taller so legend never gets cut */
+    box-sizing: border-box;
+  }
+
+  /* Make sure Plotly’s SVG always stretches to the div width */
+  #trafficCharts .svg-container {
+    width: 100% !important;
+  }
+
+  #trafficCharts .main-svg {
+    width: 100% !important;
   }
 
   /* Force Plotly canvas/SVG to fill #trafficCharts */
