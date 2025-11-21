@@ -181,13 +181,41 @@ class DashboardTimeseriesView(ProtectedAPIMixin, MonitoringApiViewMixin, APIView
             return []
         return orgs
 
+    # def get(self, request, *args, **kwargs):
+    #     response = super().get(request, *args, **kwargs)
+    #     if not request.GET.get("csv"):
+    #         user_managed_orgs = self._get_user_managed_orgs(request)
+    #         if user_managed_orgs:
+    #             response.data["organizations"] = user_managed_orgs
+    #     return response
+
     def get(self, request, *args, **kwargs):
+        """
+        Normalize timezone before delegating to MonitoringApiViewMixin.get(),
+        so InfluxDB never sees invalid timezones like Asia/Calcutta.
+        """
+        tz = request.query_params.get("timezone")
+        if tz:
+            TZ_ALIAS = {
+                "Asia/Calcutta": "Asia/Kolkata",
+                "asia/Calcutta": "Asia/Kolkata",
+                "Asia/kolkata": "Asia/Kolkata",
+            }
+            new_tz = TZ_ALIAS.get(tz, tz)
+            if new_tz != tz:
+                # DRF Request wraps Django's HttpRequest in ._request
+                mutable = request._request.GET.copy()
+                mutable["timezone"] = new_tz
+                request._request.GET = mutable
+
+        # now call original logic
         response = super().get(request, *args, **kwargs)
         if not request.GET.get("csv"):
             user_managed_orgs = self._get_user_managed_orgs(request)
             if user_managed_orgs:
                 response.data["organizations"] = user_managed_orgs
         return response
+
 
 
 dashboard_timeseries = DashboardTimeseriesView.as_view()
