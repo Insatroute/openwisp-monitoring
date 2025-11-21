@@ -54,16 +54,27 @@ class MonitoringApiViewMixin:
         time = request.query_params.get("time", Chart.DEFAULT_TIME)
         start_date = request.query_params.get("start", None)
         end_date = request.query_params.get("end", None)
+
         # try to read timezone
-        timezone = request.query_params.get("timezone", settings.TIME_ZONE)
+        tz_name = request.query_params.get("timezone", settings.TIME_ZONE)
+
+        # 🔧 map old / invalid names to valid IANA tz names
+        TZ_ALIAS = {
+            "Asia/Calcutta": "Asia/Kolkata",
+            "asia/Calcutta": "Asia/Kolkata",
+            "Asia/kolkata": "Asia/Kolkata",
+        }
+        tz_name = TZ_ALIAS.get(tz_name, tz_name)
+
         try:
-            tz(timezone)
+            tz(tz_name)
         except UnknownTimeZoneError:
-            raise ValidationError("Unkown Time Zone")
+            raise ValidationError("Unknown Time Zone")
+
         # if custom dates are provided then validate custom dates
         if start_date and end_date:
             start_datetime, end_datetime = self._validate_custom_date(
-                start_date, end_date, timezone
+                start_date, end_date, tz_name
             )
             # if valid custom dates then calculate custom days
             time = "1d"
@@ -74,7 +85,7 @@ class MonitoringApiViewMixin:
             raise ValidationError("Time range not supported")
         charts = self._get_charts(request, *args, **kwargs)
         # prepare response data
-        data = self._get_charts_data(charts, time, timezone, start_date, end_date)
+        data = self._get_charts_data(charts, time, tz_name, start_date, end_date)
         # csv export has a different response
         if request.query_params.get("csv"):
             response = HttpResponse(self._get_csv(data), content_type="text/csv")
