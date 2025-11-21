@@ -243,8 +243,8 @@
 
           <td class="wp-nowrap">
             <span class="wp-kp-arrows">
-              <span class="wp-kp-up"><i></i>{{ iface.ping.throughput.tx_bytes_per_s|default:0|filesizeformat }}</span>
-              <span class="wp-kp-down"><i></i>{{ iface.ping.throughput.rx_bytes_per_s|default:0|filesizeformat }}</span>
+              <span class="wp-kp-up"><i></i>{{ iface.ping.throughput.tx_bytes|default:0|filesizeformat }}</span>
+              <span class="wp-kp-down"><i></i>{{ iface.ping.throughput.rx_bytes|default:0|filesizeformat }}</span>
             </span>
           </td>
 
