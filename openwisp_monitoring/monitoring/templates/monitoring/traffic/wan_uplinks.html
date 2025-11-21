@@ -172,7 +172,7 @@
         <th>Status</th>
         <th>Path Label</th>
         <th>Uplink</th>
-        <th>Uptime</th>
+        {% comment %} <th>Uptime</th> {% endcomment %}
         <th>Interface IP/Mask</th>
         <th>Ping Destination</th>
         <th>Throughput</th>
@@ -224,7 +224,7 @@
             {% endif %}
           </td>
 
-          <td class="wp-nowrap">-</td>
+          {% comment %} <td class="wp-nowrap">{{ iface.uptime|default:"-" }}</td> {% endcomment %}
 
           <td>
             {% if iface.addresses %}
