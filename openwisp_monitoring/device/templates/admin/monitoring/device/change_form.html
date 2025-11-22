@@ -42,10 +42,10 @@
       <div id="traffic-tab-system" class="traffic-tab-panel ">
         <div class="traffic-sub-tabs">
           {% if device_data.device_type != '4g_5g_router' %}
-          <button type="button" data-target="traffic-traffic" class="active">Traffic</button>
+          <button type="button" data-target="traffic-traffic" class="active">Traffic Summary</button>
           {% endif %}
-          <button type="button" data-target="traffic-real-time-traffic">Real Time Traffic</button>
-          <button type="button" data-target="traffic-wan-uplinks">Wan Uplinks</button>
+          <button type="button" data-target="traffic-real-time-traffic">Real-Time Traffic</button>
+          <button type="button" data-target="traffic-wan-uplinks">WAN Uplinks</button>
           {% if device_data.device_type != '4g_5g_router' %}
           <button type="button" data-target="traffic-security">Security</button>
           {% endif %}
