@@ -88,25 +88,25 @@
     <table class="disk">
       <thead>
         <tr>
-          <th class="filesystem">{% trans 'Filesystem' %}</th>
+          {% comment %} <th class="filesystem">{% trans 'Filesystem' %}</th> {% endcomment %}
           <th class="used_bytes">{% trans 'Used space' %}</th>
           <th class="available_bytes">{% trans 'Available space' %}</th>
           <th class="size_bytes">{% trans 'Total space' %}</th>
           <th class="used_percent">{% trans 'Percent Used' %}</th>
-          <th class="mount_point">{% trans 'Mounted on' %}</th>
+          {% comment %} <th class="mount_point">{% trans 'Mounted on' %}</th> {% endcomment %}
         </tr>
       </thead>
       <tbody>
         {% for disk in device_data.resources.disk %}
         <tr>
-          <td class="filesystem">{{ disk.filesystem }}</td>
+          {% comment %} <td class="filesystem">{{ disk.filesystem }}</td> {% endcomment %}
           <td class="used_bytes">{{ disk.used_bytes|filesizeformat }}</td>
           <td class="available_bytes">
             {{ disk.available_bytes|filesizeformat }}
           </td>
           <td class="size_bytes">{{ disk.size_bytes|filesizeformat }}</td>
           <td class="used_percent">{{ disk.used_percent }}%</td>
-          <td class="mount_point">{{ disk.mount_point }}</td>
+          {% comment %} <td class="mount_point">{{ disk.mount_point }}</td> {% endcomment %}
         </tr>
         {% endfor %}
       </tbody>
