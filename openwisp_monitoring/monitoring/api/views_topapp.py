@@ -307,16 +307,27 @@ def data_usage_all_devices(request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def mobile_distribution_all_devices(request):
-    devices = Device.objects.all()
+    # 1) Start from all devices
+    devices_qs = Device.objects.all()
+
+    # 2) Limit by organization for normal users
+    if not request.user.is_superuser:
+        # If your user can belong to multiple orgs (common in OpenWISP):
+        user_orgs = request.user.organizations.all()
+        devices_qs = devices_qs.filter(organization__in=user_orgs)
+
+        # If in your project a user has exactly one org, use this instead:
+        # devices_qs = devices_qs.filter(organization=request.user.organization)
 
     carrier_counter = Counter()
     network_counter = Counter()
     total_modems = 0
 
-    for device in devices:
+    for device in devices_qs:
         try:
             data = fetch_device_data(device)
         except Exception:
+            # skip devices we cannot fetch data for
             continue
 
         interfaces = data.get("interfaces", [])
@@ -354,4 +365,3 @@ def mobile_distribution_all_devices(request):
         },
         "total_modems": total_modems
     })
-
