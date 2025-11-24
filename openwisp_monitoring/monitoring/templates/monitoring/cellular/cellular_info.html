@@ -257,7 +257,8 @@
         <div class="kv-grid">
           <div class="kv-card">
             <div class="kv-label">Uptime</div>
-            <div class="kv-value" id="uptime-value">{{ sim.up_time|default:"—" }}</div>
+            {# use data-seconds for SIM 1 also, and let JS format it #}
+            <div class="kv-value" id="uptime-value-sim1" data-seconds="{{ sim.up_time|default:0 }}"></div>
           </div>
         </div>
       </div>
@@ -384,7 +385,7 @@
         <div class="kv-grid">
           <div class="kv-card">
             <div class="kv-label">Uptime</div>
-            <div class="kv-value" id="uptime-value" data-seconds="{{ sim.up_time|default:0 }}"></div>
+            <div class="kv-value" id="uptime-value-sim2" data-seconds="{{ sim.up_time|default:0 }}"></div>
           </div>
         </div>
       </div>
@@ -400,7 +401,8 @@
 
 <script>
   function formatSeconds(sec) {
-    sec = parseInt(sec);
+    sec = parseInt(sec, 10);
+    if (isNaN(sec) || sec < 0) return "—";
 
     let hours = Math.floor(sec / 3600);
     let minutes = Math.floor((sec % 3600) / 60);
@@ -415,9 +417,11 @@
   }
 
   document.addEventListener("DOMContentLoaded", function () {
-    let el = document.getElementById("uptime-value");
-    let seconds = el.getAttribute("data-seconds");
-    el.innerText = formatSeconds(seconds);
+    // Format all uptime fields that have data-seconds attribute
+    document.querySelectorAll(".kv-value[data-seconds]").forEach(function (el) {
+      const seconds = el.getAttribute("data-seconds");
+      el.innerText = formatSeconds(seconds);
+    });
   });
 
   (function () {
