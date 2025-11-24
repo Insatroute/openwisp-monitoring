@@ -247,6 +247,60 @@
         });
     }
 
+    </script>
+
+<script>
+    window.OW_HIDE_CHARTS = true;
+
+    console.log('Data usage tab script loaded, OW_HIDE_CHARTS set to true.=====', window.OW_HIDE_CHARTS);
+
+    async function fetchAndDisplaySummary() {
+        try {
+            const resp = await fetch("https://controller.nexapp.co.in/api/v1/monitoring/data-usage/", {
+                headers: { accept: "application/json" }
+            });
+
+            if (!resp.ok) throw new Error("HTTP " + resp.status);
+
+            const data = await resp.json();
+
+            // Convert bytes → GB
+            const toGB = (bytes) => +(bytes / (1024 * 1024 * 1024)).toFixed(2);
+
+            /* ===== TOTAL ===== */
+            const totalSentGB = toGB(data.total.sent);
+            const totalRecvGB = toGB(data.total.received);
+            const totalGB = toGB(data.total.total);
+
+            document.getElementById("home-datausage-total-value").innerText = totalGB;
+            document.getElementById("home-datausage-total-sent").innerText = totalSentGB + " GB";
+            document.getElementById("home-datausage-total-recv").innerText = totalRecvGB + " GB";
+
+            /* ===== CELLULAR ===== */
+            document.getElementById("home-datausage-cellular-value").innerText = toGB(data.cellular.total);
+            document.getElementById("home-datausage-cellular-sent").innerText = toGB(data.cellular.sent) + " GB";
+            document.getElementById("home-datausage-cellular-recv").innerText = toGB(data.cellular.received) + " GB";
+
+            /* ===== WIRED ===== */
+            document.getElementById("home-datausage-wired-value").innerText = toGB(data.wired.total);
+            document.getElementById("home-datausage-wired-sent").innerText = toGB(data.wired.sent) + " GB";
+            document.getElementById("home-datausage-wired-recv").innerText = toGB(data.wired.received) + " GB";
+
+            /* ===== WIRELESS ===== */
+            document.getElementById("home-datausage-wireless-value").innerText = toGB(data.wireless.total);
+            document.getElementById("home-datausage-wireless-sent").innerText = toGB(data.wireless.sent) + " GB";
+            document.getElementById("home-datausage-wireless-recv").innerText = toGB(data.wireless.received) + " GB";
+
+        } catch (e) {
+            console.error("Summary load error:", e);
+        }
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+        fetchAndDisplaySummary();
+        setInterval(fetchAndDisplaySummary, 30000);
+    });
+
     /* ================== FETCH INTERFACES-SUMMARY (unchanged, kept for fallback) ================== */
 
     async function fetchInterfacesSummaryForDataUsage() {
