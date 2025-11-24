@@ -201,6 +201,13 @@
 
     const plotValues = makePlotValues();
 
+    // If only one label and it is "No data", force grey color
+    const isNoData =
+      labels.length === 1 &&
+      (labels[0].toLowerCase() === "no data" || values[0] === 0);
+
+    const finalColors = isNoData ? ["#808080"] : (colors || []);
+
     const rect = el.getBoundingClientRect();
     const data = [{
       type: 'pie',
@@ -209,13 +216,13 @@
       hole: 0.69,
       sort: false,
       direction: 'clockwise',
-      texttemplate: '%{value} (%{percent})',
+      texttemplate: '',
       textposition: 'inside',
       insidetextorientation: 'auto',
       textfont: { size: 9, color: '#ffffff' },
       textinfo: 'none',
-      hoverinfo: 'label+value+percent',
-      marker: { colors: colors || [] }
+      hoverinfo: 'label',
+      marker: { colors: finalColors }
     }];
     const layout = {
       height: Math.max(140, Math.floor(rect.height || 150)),
@@ -258,7 +265,12 @@
       item.dataset.index = i;
       const sw = document.createElement('span');
       sw.className = 'legend-swatch';
-      sw.style.background = (colors && colors[i]) ? colors[i] : '#353c44';
+      // use same color as chart; when no data, this is #808080
+      const colorForThis =
+        isNoData
+          ? '#808080'
+          : (finalColors[i] || '#353c44');
+      sw.style.background = colorForThis;
       const txt = document.createElement('span');
       txt.textContent = label;
       item.appendChild(sw);
