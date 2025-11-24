@@ -621,4 +621,16 @@
     });
   })();
 </script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('.traffic-sub-tabs').forEach(function (tabsWrap) {
+    let active = tabsWrap.querySelector('button.active');
+    if (!active) {
+      const first = tabsWrap.querySelector('button');
+      if (first) first.classList.add('active');
+    }
+  });
+});
+</script>
+
 {% endif %} {% endblock %}
