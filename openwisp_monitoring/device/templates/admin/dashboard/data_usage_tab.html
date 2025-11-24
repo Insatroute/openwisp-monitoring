@@ -124,6 +124,7 @@
                 </h4>
                 <div class="ow-mini-inner datausage-mini-inner">
                     <div id="DataUsage-Carrier-Distribution-chart" class="ow-mini-plot datausage-mini-plot">
+                        <!-- canvas will be injected via JS -->
                     </div>
                 </div>
                 <div class="ow-mini-legend datausage-mini-legend" id="DataUsage-Carrier-Distribution-legend">
@@ -136,6 +137,7 @@
                 </h4>
                 <div class="ow-mini-inner datausage-mini-inner">
                     <div id="DataUsage-Network-Distribution-chart" class="ow-mini-plot datausage-mini-plot">
+                        <!-- canvas will be injected via JS -->
                     </div>
                 </div>
                 <div class="ow-mini-legend datausage-mini-legend" id="DataUsage-Network-Distribution-legend">
@@ -149,110 +151,103 @@
 </div>
 
 <script>
-    /* ---------- Donut with clickable legend (same helper, unchanged) ---------- */
-    function renderDonutWithLegend(opts) {
-        const { elId, legendId, labels, values, colors, redirectUrl } = opts;
+    /* ---------- Helper: create canvas inside the existing divs ---------- */
+    function ensureCanvasInside(containerId, canvasId) {
+        const container = document.getElementById(containerId);
+        if (!container) return null;
 
-        const el = document.getElementById(elId);
-        const legendRoot = document.getElementById(legendId);
-        if (!el || !legendRoot) return;
+        let canvas = container.querySelector('canvas');
+        if (!canvas) {
+            canvas = document.createElement('canvas');
+            canvas.id = canvasId;
+            container.innerHTML = '';
+            container.appendChild(canvas);
+        }
+        return canvas;
+    }
 
-        const baseValues = (Array.isArray(values) ? values : []).map(v => Number(v) || 0);
+    /* ---------- Helper: render horizontal bar chart (like Top Applications) ---------- */
+    function renderGroupBarChart({ containerId, canvasId, labels, values, sortDirection }) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
 
-        let active = baseValues.map(v => v > 0);
-        if (active.every(a => !a) && active.length) {
-            active[0] = true;
+        if (!Array.isArray(labels) || !labels.length || !Array.isArray(values) || !values.length) {
+            container.innerHTML = '<div class="home-datausage-loading-text">No Data</div>';
+            return;
         }
 
-        function totalActive() {
-            return baseValues.reduce((acc, v, i) => acc + (active[i] ? v : 0), 0);
-        }
+        const rows = labels.map((label, i) => ({
+            label: String(label ?? ''),
+            value: Number(values[i]) || 0
+        }));
 
-        function makePlotValues() {
-            const masked = baseValues.map((v, i) => (active[i] ? v : 0));
-            const hasPositive = masked.some(v => v > 0);
-            if (hasPositive) return masked;
+        // sortDirection: 'desc' → highest to lowest, 'asc' → lowest to highest
+        rows.sort((a, b) => sortDirection === 'asc' ? a.value - b.value : b.value - a.value);
 
-            if (!masked.length) return masked;
+        const sortedLabels = rows.map(r => r.label);
+        const sortedValues = rows.map(r => r.value);
 
-            const clone = masked.slice();
-            clone[0] = 1;
-            return clone;
-        }
+        const canvas = ensureCanvasInside(containerId, canvasId);
+        if (!canvas) return;
 
-        const plotValues = makePlotValues();
+        const existing = Chart.getChart(canvasId);
+        if (existing) existing.destroy();
 
-        const rect = el.getBoundingClientRect();
-        const data = [{
-            type: 'pie',
-            labels: labels,
-            values: plotValues,
-            hole: 0.69,
-            sort: false,
-            direction: 'clockwise',
-            texttemplate: '%{value} (%{percent})',
-            textposition: 'inside',
-            insidetextorientation: 'auto',
-            textfont: { size: 9, color: '#ffffff' },
-            textinfo: 'none',
-            hoverinfo: 'label+value+percent',
-            marker: { colors: colors || [] }
-        }];
-        const layout = {
-            height: Math.max(140, Math.floor(rect.height || 150)),
-            width: rect.width || el.clientWidth || 200,
-            margin: { l: 6, r: 6, t: 6, b: 6 },
-            showlegend: false,
-            paper_bgcolor: 'rgba(0,0,0,0)',
-            plot_bgcolor: 'rgba(0,0,0,0)',
-            annotations: [{
-                showarrow: false,
-                text: String(totalActive() || 0),
-                x: 0.5, y: 0.5,
-                font: { size: 13, color: '#2b2f36' }
-            }]
-        };
-        if (typeof Plotly === 'undefined') return;
+        const ctx = canvas.getContext('2d');
 
-        Plotly.newPlot(el, data, layout, { responsive: true, displayModeBar: false });
-
-        if (redirectUrl) {
-            el.on('plotly_click', function () {
-                window.location.href = redirectUrl;
-            });
-        }
-
-        legendRoot.innerHTML = '';
-        labels.forEach((label, i) => {
-            const item = document.createElement('div');
-            item.className = 'legend-item';
-            item.dataset.index = i;
-            const sw = document.createElement('span');
-            sw.className = 'legend-swatch';
-            sw.style.background = (colors && colors[i]) ? colors[i] : '#353c44';
-            const txt = document.createElement('span');
-            txt.textContent = label;
-            item.appendChild(sw);
-            item.appendChild(txt);
-            legendRoot.appendChild(item);
-            if (!active[i]) item.classList.add('is-off');
-        });
-
-        legendRoot.addEventListener('click', (e) => {
-            const node = e.target.closest('.legend-item');
-            if (!node) return;
-            const idx = parseInt(node.dataset.index, 10);
-
-            active[idx] = !active[idx];
-
-            const newPlotValues = makePlotValues();
-            Plotly.restyle(el, { values: [newPlotValues] });
-            Plotly.relayout(el, { 'annotations[0].text': String(totalActive() || 0) });
-            node.classList.toggle('is-off', !active[idx]);
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: sortedLabels,
+                datasets: [{
+                    data: sortedValues,
+                    backgroundColor: '#00acea',
+                    borderRadius: 10,
+                    barPercentage: 0.5,
+                    categoryPercentage: 0.5,
+                    barThickness: 8,
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                layout: { padding: { right: 60 } },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        grid: { display: false },
+                        ticks: {
+                            callback: (v) => `${v} GB`
+                        }
+                    },
+                    y: {
+                        grid: { display: false },
+                        ticks: {
+                            font: { size: 12, weight: '500' }
+                        }
+                    }
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: (ctx) => ` ${ctx.parsed.x.toFixed(2)} GB`
+                        }
+                    },
+                    datalabels: {
+                        anchor: 'end',
+                        align: 'end',
+                        offset: 6,
+                        formatter: (v) => `${v.toFixed(2)} GB`,
+                        font: { weight: '500', size: 10 }
+                    }
+                },
+                responsive: true,
+                maintainAspectRatio: false
+            }
         });
     }
 
-    /* ================== FETCH INTERFACES-SUMMARY (same, reused) ================== */
+    /* ================== FETCH INTERFACES-SUMMARY (unchanged, kept for fallback) ================== */
 
     async function fetchInterfacesSummaryForDataUsage() {
         const path = window.location.pathname;
@@ -280,7 +275,7 @@
         return resp.json();
     }
 
-    /* ================== NEW: FETCH MOBILE-DISTRIBUTION FOR DATA USAGE ================== */
+    /* ================== FETCH MOBILE-DISTRIBUTION FOR DATA USAGE ================== */
 
     async function fetchMobileDistributionForDataUsage() {
         const base = window.API_BASE_URL || 'https://controller.nexapp.co.in';
@@ -304,18 +299,17 @@
         return resp.json();
     }
 
-    /* ================== INIT DATA USAGE CARRIER / NETWORK DONUTS ================== */
+    /* ================== INIT DATA USAGE GROUP BAR CHARTS ================== */
 
     async function initDataUsageDistributionChartsFromApi() {
-        let ifSummary = {};
         let mobileDist = {};
 
+        // we keep interfaces-summary fetch in case you want to reuse it later
         try {
-            ifSummary = await fetchInterfacesSummaryForDataUsage();
+            const ifSummary = await fetchInterfacesSummaryForDataUsage();
             console.log('DataUsage: interfaces-summary:====', ifSummary);
         } catch (e) {
             console.error('DataUsage: Error fetching interfaces-summary:', e);
-            ifSummary = {};
         }
 
         try {
@@ -326,47 +320,9 @@
             mobileDist = {};
         }
 
-        const interfaces = Array.isArray(ifSummary.interfaces) ? ifSummary.interfaces : [];
-        const carriersCount = new Map();
-        const techCount = new Map();
-
-        for (const iface of interfaces) {
-            if (!iface) continue;
-
-            if (iface.type === 'mobile' && iface.mobile) {
-                const op = (iface.mobile.operator_name || 'Unknown').trim() || 'Unknown';
-                carriersCount.set(op, (carriersCount.get(op) || 0) + 1);
-
-                const sig = iface.mobile.signal || {};
-                const sigKey = Object.keys(sig)[0];
-                if (sigKey) {
-                    let label;
-                    const low = sigKey.toLowerCase();
-                    if (low === 'lte') label = '4G';
-                    else if (low === '5g') label = '5G';
-                    else label = sigKey.toUpperCase();
-                    techCount.set(label, (techCount.get(label) || 0) + 1);
-                }
-            }
-        }
-
-        let carrierLabels = carriersCount.size
-            ? Array.from(carriersCount.keys())
-            : ['No data'];
-        let carrierValues = carriersCount.size
-            ? carrierLabels.map(k => carriersCount.get(k))
-            : [0];
-
-        const preferredOrder = ['5G', '4G'];
-        const allTechKeys = Array.from(techCount.keys());
-        const orderedTech = [
-            ...preferredOrder.filter(k => techCount.has(k)),
-            ...allTechKeys.filter(k => !preferredOrder.includes(k))
-        ];
-        let networkLabels = orderedTech.length ? orderedTech : ['No data'];
-        let networkValues = orderedTech.length
-            ? networkLabels.map(k => techCount.get(k))
-            : [0];
+        /* ----- Top Group (carrier) – highest → lowest ----- */
+        let carrierLabels = [];
+        let carrierValues = [];
 
         if (
             mobileDist &&
@@ -375,14 +331,13 @@
             Array.isArray(mobileDist.carrier.data) &&
             mobileDist.carrier.labels.length
         ) {
-            carrierLabels = mobileDist.carrier.labels.length
-                ? mobileDist.carrier.labels
-                : ['No data'];
-
-            carrierValues = mobileDist.carrier.data.length
-                ? mobileDist.carrier.data
-                : new Array(mobileDist.carrier.labels.length || 1).fill(0);
+            carrierLabels = mobileDist.carrier.labels;
+            carrierValues = mobileDist.carrier.data;
         }
+
+        /* ----- Least Group (network) – lowest → highest ----- */
+        let networkLabels = [];
+        let networkValues = [];
 
         if (
             mobileDist &&
@@ -391,38 +346,25 @@
             Array.isArray(mobileDist.network.data) &&
             mobileDist.network.labels.length
         ) {
-            networkLabels = mobileDist.network.labels.length
-                ? mobileDist.network.labels
-                : ['No data'];
-
-            networkValues = mobileDist.network.data.length
-                ? mobileDist.network.data
-                : new Array(mobileDist.network.labels.length || 1).fill(0);
+            networkLabels = mobileDist.network.labels;
+            networkValues = mobileDist.network.data;
         }
 
-        /* ===== STATIC DATA FOR DISPLAY (YOU REQUESTED DIFFERENT COLORS) ===== */
-        carrierLabels = ["Airtel", "Jio", "Vi"];
-        carrierValues = [12, 8, 5];
-        const palette1 = ["#1f77b4", "#ff7f0e", "#2ca02c"];
-
-        networkLabels = ["4G", "5G", "3G"];
-        networkValues = [20, 9, 4];
-        const palette2 = ["#2ca02c", "#6366f1", "#f43f5e"];
-
-        renderDonutWithLegend({
-            elId: 'DataUsage-Carrier-Distribution-chart',
-            legendId: 'DataUsage-Carrier-Distribution-legend',
+        // Render bar charts
+        renderGroupBarChart({
+            containerId: 'DataUsage-Carrier-Distribution-chart',
+            canvasId: 'datausageTopGroupChart',
             labels: carrierLabels,
             values: carrierValues,
-            colors: palette1,
+            sortDirection: 'desc'  // highest → lowest
         });
 
-        renderDonutWithLegend({
-            elId: 'DataUsage-Network-Distribution-chart',
-            legendId: 'DataUsage-Network-Distribution-legend',
+        renderGroupBarChart({
+            containerId: 'DataUsage-Network-Distribution-chart',
+            canvasId: 'datausageLeastGroupChart',
             labels: networkLabels,
             values: networkValues,
-            colors: palette2,
+            sortDirection: 'asc'   // lowest → highest
         });
     }
 
@@ -432,7 +374,7 @@
         document.addEventListener('DOMContentLoaded', initDataUsageDistributionChartsFromApi);
     }
 
-    // ensure donuts resize correctly on zoom / orientation / device change
+    // old Plotly resize hook left in place but it does nothing now (Plotly undefined)
     window.addEventListener('resize', function () {
         if (typeof Plotly === 'undefined') return;
         [
@@ -632,7 +574,6 @@
                         x: {
                             beginAtZero: true,
                             grid: { display: false },
-                            //title: { display: true, text: 'Total (GB)', font: { size: 10, weight: '500' } },
                             ticks: {
                                 callback: (v) => `${v} GB`
                             }
@@ -787,7 +728,6 @@
         gap: 10px;
     }
 
-    /* legend-item & legend-swatch can stay shared with overview */
     .legend-item {
         display: inline-flex;
         align-items: center;
