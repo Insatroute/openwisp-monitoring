@@ -21,32 +21,50 @@ def get_api_token(user):
     token, created = Token.objects.get_or_create(user=user)
     return token.key
 
+def get_org_devices(user):
+    """
+    Return devices limited to the organizations the user belongs to.
+    Superuser sees all devices.
+    """
+    qs = Device.objects.all()
+
+    if user.is_superuser:
+        return qs
+
+    # if user has many-to-many organizations relation
+    user_orgs = user.organizations.all()
+    return qs.filter(organization__in=user_orgs)
+
+
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def global_top_apps(request):
     """
-    API endpoint to return top 10 applications across all devices.
+    API endpoint to return top 10 applications across allowed devices.
     """
     app_counter = Counter()
 
-    # Aggregate app traffic across all devices
-    for device_data in DeviceData.objects.all():
+    # 1) Filter devices based on organization access
+    allowed_devices = get_org_devices(request.user)
+
+    # 2) Filter DeviceData based on allowed devices
+    device_data_qs = DeviceData.objects.filter(device__in=allowed_devices)
+
+    # 3) Aggregate application traffic
+    for device_data in device_data_qs:
         data = device_data.data_user_friendly or {}
+
         top_apps = (
             data.get("realtimemonitor", {})
             .get("traffic", {})
             .get("dpi_summery_v2", {})
             .get("applications", [])
         )
-        # for app in top_apps:
-        #     app_id = app.get("id", "") or ""
-            
-        #     # 🔥 Skip anything starting with "netify"
-        #     if app_id.startswith("netify"):
-        #         continue
+
         for app in top_apps:
             app_id = app.get("id", "") or ""
-            
+
+            # Skip specific netify apps
             if app_id in ("netify.nethserver", "netify.snort", "netify.netify"):
                 continue
 
@@ -56,11 +74,12 @@ def global_top_apps(request):
             if label:
                 app_counter[label] += traffic
 
-    # Get top 10 apps
+    # 4) Extract top 10 applications
     top_10_apps = app_counter.most_common(10)
 
     top_10_apps_list = [
-        {"label": label.capitalize(), "traffic": traffic} for label, traffic in top_10_apps
+        {"label": label.capitalize(), "traffic": traffic}
+        for label, traffic in top_10_apps
     ]
 
     return Response({"top_10_apps": top_10_apps_list})
@@ -168,7 +187,7 @@ def _link_status(iface: dict) -> str:
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def wan_uplinks_all_devices(request):
-    devices = Device.objects.all()
+    devices = get_org_devices(request.user)
 
     summary = {
         "total": 0,
@@ -191,24 +210,21 @@ def wan_uplinks_all_devices(request):
 
         interfaces = data.get("interfaces", []) or []
 
-        dl = DeviceLocation.objects.filter(content_object_id=device.id).select_related("location").first()
+        dl = (
+            DeviceLocation.objects
+            .filter(content_object_id=device.id)
+            .select_related("location")
+            .first()
+        )
         location_name = dl.location.name if dl and dl.location else "-"
 
-
         for iface in interfaces:
-
-            # -----------------------
-            # ONLY WAN FILTER HERE ✔
-            # -----------------------
-            # if not (iface.get("is_wan") is True or iface.get("role") == "wan"):
-            #     continue
-            #ONLY ethernet WAN interfaces
+            # ONLY ethernet WAN interfaces
             if not (
                 iface.get("type") == "ethernet"
                 and iface.get("is_wan") is True
             ):
                 continue
-
 
             # determine link status
             status = _link_status(iface)
@@ -230,14 +246,12 @@ def wan_uplinks_all_devices(request):
                 "interface_name": iface.get("name"),
                 "uplink_type": iface.get("type"),
 
-                # "uptime": _human_uptime(uptime_sec),
-
                 "interface_ip": ipv4_addr,
                 "interface_mask": ipv4_mask,
-                
+
                 "throughput_tx_bytes": ping.get("throughput", {}).get("tx_bytes"),
                 "throughput_rx_bytes": ping.get("throughput", {}).get("rx_bytes"),
-                
+
                 "ping_dest": ping.get("dest_ip"),
                 "ping_latency_ms": ping.get("latency_ms"),
                 "ping_packet_loss": ping.get("packet_loss"),
@@ -251,10 +265,12 @@ def wan_uplinks_all_devices(request):
         "rows": rows,
     })
 
+
 def _add_traffic(bucket, tx_bytes, rx_bytes):
     bucket["sent"] += tx_bytes or 0
     bucket["received"] += rx_bytes or 0
     bucket["total"] = bucket["sent"] + bucket["received"]
+
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
@@ -267,7 +283,7 @@ def data_usage_all_devices(request):
         "wireless": {"sent": 0, "received": 0, "total": 0},
     }
 
-    devices = Device.objects.all()
+    devices = get_org_devices(request.user)
 
     for device in devices:
         try:
@@ -282,9 +298,8 @@ def data_usage_all_devices(request):
             tx = stats.get("tx_bytes") or 0
             rx = stats.get("rx_bytes") or 0
 
-
             iface_type = iface.get("type")
-            
+
             # decide which bucket this interface belongs to
             if iface_type == "mobile":
                 _add_traffic(summary["cellular"], tx, rx)
@@ -296,28 +311,20 @@ def data_usage_all_devices(request):
                 # ignore bridges, tunnels, etc. for category tiles
                 continue
 
-       # now compute TOTAL = sum of categories (no extra hidden bytes)
+    # now compute TOTAL = sum of categories (no extra hidden bytes)
     for key in ("cellular", "wired", "wireless"):
-        _add_traffic(summary["total"],
-                     summary[key]["sent"],
-                     summary[key]["received"])
+        _add_traffic(
+            summary["total"],
+            summary[key]["sent"],
+            summary[key]["received"],
+        )
 
     return Response(summary)
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def mobile_distribution_all_devices(request):
-    # 1) Start from all devices
-    devices_qs = Device.objects.all()
-
-    # 2) Limit by organization for normal users
-    if not request.user.is_superuser:
-        # If your user can belong to multiple orgs (common in OpenWISP):
-        user_orgs = request.user.organizations.all()
-        devices_qs = devices_qs.filter(organization__in=user_orgs)
-
-        # If in your project a user has exactly one org, use this instead:
-        # devices_qs = devices_qs.filter(organization=request.user.organization)
+    devices_qs = get_org_devices(request.user)
 
     carrier_counter = Counter()
     network_counter = Counter()
@@ -330,13 +337,13 @@ def mobile_distribution_all_devices(request):
             # skip devices we cannot fetch data for
             continue
 
-        interfaces = data.get("interfaces", [])
+        interfaces = data.get("interfaces", []) or []
 
         for iface in interfaces:
             if iface.get("type") != "mobile":
                 continue
 
-            mobile = iface.get("mobile", {})
+            mobile = iface.get("mobile", {}) or {}
             total_modems += 1
 
             # Carrier name
