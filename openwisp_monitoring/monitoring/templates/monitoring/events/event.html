@@ -764,3 +764,24 @@
     renderTable();
   })();
 </script>
+<script>
+(function () {
+  function toggleSubmitRow() {
+    var submitRow = document.querySelector('.submit-row');
+    if (!submitRow) return;
+
+    // Adjust this hash/id to whatever your events tab uses
+    var activeHash = window.location.hash || '#ow-overview';
+
+    if (activeHash === '#ow-events') {
+      submitRow.style.display = 'none';
+    } else {
+      submitRow.style.display = '';
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', toggleSubmitRow);
+  window.addEventListener('hashchange', toggleSubmitRow);
+})();
+</script>
+
