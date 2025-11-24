@@ -538,44 +538,95 @@
     // add real token logic here if needed
   }
 
-  async function fetchDeviceData() {
+  /* ========= NEW: fetch all device pages for correct counts ========= */
+  async function fetchAllDevicesPaginated() {
     const token = await fetchAuthToken();
     if (!token) {
-      document.getElementById('total-devices').innerText = 'Auth error';
-      document.getElementById('monitoring-ok').innerText = 'Auth error';
-      document.getElementById('monitoring-critical').innerText = 'Auth error';
+      throw new Error('No auth token');
+    }
+
+    const base = window.API_BASE_URL || '';
+    let url = `${base}/api/v1/monitoring/device/`;
+    const headers = {
+      'Accept': 'application/json',
+      'Authorization': `Token ${token}`
+    };
+
+    let allResults = [];
+    let totalCount = 0;
+    let safetyCounter = 0;
+
+    while (url && safetyCounter < 50) {
+      const resp = await fetch(url, { headers });
+      if (!resp.ok) {
+        throw new Error(`device list HTTP ${resp.status}`);
+      }
+
+      const data = await resp.json();
+
+      if (typeof data.count === 'number') {
+        totalCount = data.count;
+      }
+
+      if (Array.isArray(data.results)) {
+        allResults = allResults.concat(data.results);
+      }
+
+      let nextUrl = data.next;
+      if (!nextUrl) {
+        url = null;
+      } else {
+        if (nextUrl.startsWith('http')) {
+          url = nextUrl;
+        } else {
+          // handle relative path like "/api/v1/monitoring/device/?page=2"
+          url = base + nextUrl;
+        }
+      }
+
+      safetyCounter++;
+    }
+
+    return { totalCount, results: allResults };
+  }
+
+  /* ========= UPDATED: use all pages (not only page 1) ========= */
+  async function fetchDeviceData() {
+    const totalEl = document.getElementById('total-devices');
+    const okEl = document.getElementById('monitoring-ok');
+    const critEl = document.getElementById('monitoring-critical');
+
+    if (!totalEl || !okEl || !critEl) {
+      console.error('Device counter elements not found in DOM');
       return;
     }
 
     try {
-      const response = await fetch(`${window.API_BASE_URL}/api/v1/monitoring/device`, {
-        headers: {
-          'Accept': 'application/json',
-          'Authorization': `Token ${token}`
-        }
-      });
-      const data = await response.json();
+      const { totalCount, results } = await fetchAllDevicesPaginated();
 
-      const totalDevices = data.count ?? (Array.isArray(data.results) ? data.results.length : 0);
-      document.getElementById('total-devices').innerText = totalDevices;
+      const devices = Array.isArray(results) ? results : [];
+      const totalDevices = typeof totalCount === 'number'
+        ? totalCount
+        : devices.length;
 
       let okStatusCount = 0;
       let criticalStatusCount = 0;
-      const devices = data.results || [];
+
       devices.forEach(device => {
-        const status = device.monitoring?.status;
+        const status = device && device.monitoring && device.monitoring.status;
         if (status === 'ok') okStatusCount++;
         else if (status === 'critical') criticalStatusCount++;
       });
 
-      document.getElementById('monitoring-ok').innerText = okStatusCount;
-      document.getElementById('monitoring-critical').innerText = criticalStatusCount;
+      totalEl.innerText = totalDevices;
+      okEl.innerText = okStatusCount;
+      critEl.innerText = criticalStatusCount;
 
     } catch (error) {
-      console.error('Error fetching device data:', error);
-      document.getElementById('total-devices').innerText = '0';
-      document.getElementById('monitoring-ok').innerText = '0';
-      document.getElementById('monitoring-critical').innerText = '0';
+      console.error('Error fetching device data (all pages):', error);
+      totalEl.innerText = '0';
+      okEl.innerText = '0';
+      critEl.innerText = '0';
     }
   }
 
