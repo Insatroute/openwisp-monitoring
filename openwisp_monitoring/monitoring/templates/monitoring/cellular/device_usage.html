@@ -196,12 +196,12 @@
       </div>
     </div>
 
-    <!-- Wireless (placeholder until you have real values) -->
+    <!-- Wireless (placeholder until JS fills real values) -->
     <div class="usage-section">
       <div class="section-title">Wireless</div>
       <div class="total-summary" id="wireless-total-summary">
-        <div class="total-value">40.00 MB</div>
-        <div class="total-stats">Upload: 35.00 MB<br>Download: 5.00 MB</div>
+        <div class="total-value">—</div>
+        <div class="total-stats">Upload: —<br>Download: —</div>
       </div>
     </div>
   </div>
@@ -287,13 +287,24 @@
     const eth0 = readStatsMB(get('eth0'));
     const eth1 = readStatsMB(get('eth1'));
 
+    // NEW: aggregate all wireless interfaces (type === "wireless")
+    const wirelessIfaces = ifaces.filter(i => i && i.type === 'wireless');
+    let wirelessRxMB = 0, wirelessTxMB = 0, wirelessTotalMB = 0;
+    wirelessIfaces.forEach(iface => {
+      const s = readStatsMB(iface);
+      wirelessRxMB += s.rxMB;
+      wirelessTxMB += s.txMB;
+      wirelessTotalMB += s.totalMB;
+    });
+
     const cellularUp = sim1.txMB + sim2.txMB;
     const cellularDown = sim1.rxMB + sim2.rxMB;
     const wiredUp = eth0.txMB + eth1.txMB;
     const wiredDown = eth0.rxMB + eth1.rxMB;
 
-    const wirelessUp = 35.0;
-    const wirelessDown = 5.0;
+    // NEW: wireless upload/download from real wireless interfaces
+    const wirelessUp = wirelessTxMB;
+    const wirelessDown = wirelessRxMB;
 
     const lastUpdated = document.getElementById('lastUpdated');
     if (lastUpdated) {
