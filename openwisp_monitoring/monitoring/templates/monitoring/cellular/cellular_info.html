@@ -1,31 +1,128 @@
 {# ========= CELLULAR (SIM 1 / SIM 2) PANEL ========= #}
 
 <style>
-  .panel { background:#fff; border-radius:14px; border: 1px solid #eee; box-shadow: 0 6px 20px rgba(0, 0, 0, .06); margin:16px 0; overflow:hidden; padding-bottom:16px;}
-  .panel-tabs { display:flex; gap:24px; padding:8px 0 0 0; align-items:flex-end; }
-  .panel-tabs .tab { cursor:pointer; font-weight:700; font-size:14px; padding:10px 8px; color:#111827; opacity:.7; border-bottom:2px solid transparent; }
-  .panel-tabs .tab.active { opacity:1; border-bottom-color:#1f2937; }
-  .panel-updated { margin-left:auto; font-size:12px; color:#6b7280; padding:0 8px 0 0; }
-  .section { margin:12px 16px 0; border:1px solid #eee; border-radius:8px; overflow:hidden;}
-  .section-hd { background:#f3f4f6; padding:10px 12px; font-weight:700; color:#1f2937; border-bottom:1px solid #eee;}
-  .section-bd { padding:14px; }
-  .kv-grid { display:grid; gap:12px; grid-template-columns:repeat(1,minmax(0,1fr)); }
-  @media (min-width:768px){ .kv-grid{ grid-template-columns:repeat(2,1fr);} }
-  @media (min-width:1024px){ .kv-grid{ grid-template-columns:repeat(3,1fr);} }
-  .kv-card { background:#f0f0f094; border:1px solid #e8ebef; border-radius:10px; padding:12px 14px;}
-  .kv-label { font-size:12px; color:#6b7280; margin-bottom:6px;}
-  .kv-value { font-weight:800; color:#0f172a; word-break:break-word;}
-  .muted { color:#9ca3af; }
-  .hidden { display:none; }
-  .panel-head { display:flex; align-items:center; padding:0px 16px 0; }
-  .hr { height:1px; background:#e5e7eb; margin:8px 0 0; }
+  .panel {
+    background: #fff;
+    border-radius: 14px;
+    border: 1px solid #eee;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, .06);
+    margin: 16px 0;
+    overflow: hidden;
+    padding-bottom: 16px;
+  }
+
+  .panel-tabs {
+    display: flex;
+    gap: 24px;
+    padding: 8px 0 0 0;
+    align-items: flex-end;
+  }
+
+  .panel-tabs .tab {
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 14px;
+    padding: 10px 8px;
+    color: #111827;
+    opacity: .7;
+    border-bottom: 2px solid transparent;
+  }
+
+  .panel-tabs .tab.active {
+    opacity: 1;
+    border-bottom-color: #1f2937;
+  }
+
+  .panel-updated {
+    margin-left: auto;
+    font-size: 12px;
+    color: #6b7280;
+    padding: 0 8px 0 0;
+  }
+
+  .section {
+    margin: 12px 16px 0;
+    border: 1px solid #eee;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .section-hd {
+    background: #f3f4f6;
+    padding: 10px 12px;
+    font-weight: 700;
+    color: #1f2937;
+    border-bottom: 1px solid #eee;
+  }
+
+  .section-bd {
+    padding: 14px;
+  }
+
+  .kv-grid {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+  }
+
+  @media (min-width:768px) {
+    .kv-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (min-width:1024px) {
+    .kv-grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  .kv-card {
+    background: #f0f0f094;
+    border: 1px solid #e8ebef;
+    border-radius: 10px;
+    padding: 12px 14px;
+  }
+
+  .kv-label {
+    font-size: 12px;
+    color: #6b7280;
+    margin-bottom: 6px;
+  }
+
+  .kv-value {
+    font-weight: 800;
+    color: #0f172a;
+    word-break: break-word;
+  }
+
+  .muted {
+    color: #9ca3af;
+  }
+
+  .hidden {
+    display: none;
+  }
+
+  .panel-head {
+    display: flex;
+    align-items: center;
+    padding: 0px 16px 0;
+  }
+
+  .hr {
+    height: 1px;
+    background: #e5e7eb;
+    margin: 8px 0 0;
+  }
+
   .empty-state {
-    margin:16px;
-    padding:16px;
-    border:1px dashed #d1d5db;
-    border-radius:8px;
-    text-align:center;
-    color:#6b7280;
+    margin: 16px;
+    padding: 16px;
+    border: 1px dashed #d1d5db;
+    border-radius: 8px;
+    text-align: center;
+    color: #6b7280;
   }
 </style>
 
@@ -47,79 +144,124 @@
   {% with sim=device_data.cellular.modem %}
   <div id="sim1">
     {% if sim.modem_status == "disconnected" %}
-      <div class="empty-state">SIM 1 not inserted</div>
+    <div class="empty-state">SIM 1 not inserted</div>
     {% else %}
 
-      <div class="section">
-        <div class="section-hd">Identification</div>
-        <div class="section-bd">
-          <div class="kv-grid">
-            <div class="kv-card">
-              <div class="kv-label">Module Model</div>
-              <div class="kv-value">{{ sim.module_model|default:"—" }}</div>
-            </div>
-            <div class="kv-card">
-              <div class="kv-label">IMEI</div>
-              <div class="kv-value">{{ sim.imei|default:"—" }}</div>
-            </div>
-            <div class="kv-card">
-              <div class="kv-label">IMSI</div>
-              <div class="kv-value">{{ sim.sim_imsi|default:"—" }}</div>
-            </div>
-            <div class="kv-card">
-              <div class="kv-label">ICCID</div>
-              <div class="kv-value">{{ sim.sim_iccid|default:"—" }}</div>
-            </div>
-            <div class="kv-card">
-              <div class="kv-label">SIM Status</div>
-              <div class="kv-value">{{ sim.sim_status|default:"—" }}</div>
-            </div>
-            <div class="kv-card">
-              <div class="kv-label">Module Version</div>
-              <div class="kv-value">{{ sim.module_version|default:"—" }}</div>
-            </div>
+    <div class="section">
+      <div class="section-hd">Identification</div>
+      <div class="section-bd">
+        <div class="kv-grid">
+          <div class="kv-card">
+            <div class="kv-label">Module Model</div>
+            <div class="kv-value">{{ sim.module_model|default:"—" }}</div>
+          </div>
+          <div class="kv-card">
+            <div class="kv-label">IMEI</div>
+            <div class="kv-value">{{ sim.imei|default:"—" }}</div>
+          </div>
+          <div class="kv-card">
+            <div class="kv-label">IMSI</div>
+            <div class="kv-value">{{ sim.sim_imsi|default:"—" }}</div>
+          </div>
+          <div class="kv-card">
+            <div class="kv-label">ICCID</div>
+            <div class="kv-value">{{ sim.sim_iccid|default:"—" }}</div>
+          </div>
+          <div class="kv-card">
+            <div class="kv-label">SIM Status</div>
+            <div class="kv-value">{{ sim.sim_status|default:"—" }}</div>
+          </div>
+          <div class="kv-card">
+            <div class="kv-label">Module Version</div>
+            <div class="kv-value">{{ sim.module_version|default:"—" }}</div>
           </div>
         </div>
       </div>
+    </div>
 
-      <div class="section">
-        <div class="section-hd">Network Information</div>
-        <div class="section-bd">
-          <div class="kv-grid">
-            <div class="kv-card"><div class="kv-label">Operator</div><div class="kv-value">{{ sim.operator|default:"—" }}</div></div>
-            <div class="kv-card"><div class="kv-label">Mobile Number</div><div class="kv-value">{{ sim.mobile_number|default:"—" }}</div></div>
-            <div class="kv-card"><div class="kv-label">Network Type</div><div class="kv-value">{{ sim.network_type|default:"—" }}</div></div>
-            <div class="kv-card"><div class="kv-label">Network Band</div><div class="kv-value">{{ sim.band|default:"—" }}</div></div>
-            <div class="kv-card"><div class="kv-label">Cell ID (CI)</div><div class="kv-value">{{ sim.cell_id|default:"—" }}</div></div>
-            <div class="kv-card"><div class="kv-label">LAC</div><div class="kv-value">{{ sim.lac|default:"—" }}</div></div>
-            <div class="kv-card"><div class="kv-label">IP Address</div><div class="kv-value">{{ sim.ip_address|default:"—" }}</div></div>
-            <div class="kv-card"><div class="kv-label">DNS</div><div class="kv-value">{{ sim.dns|default:"—" }}</div></div>
-            <div class="kv-card"><div class="kv-label">Protocol</div><div class="kv-value">{{ sim.proto|default:"—" }}</div></div>
+    <div class="section">
+      <div class="section-hd">Network Information</div>
+      <div class="section-bd">
+        <div class="kv-grid">
+          <div class="kv-card">
+            <div class="kv-label">Operator</div>
+            <div class="kv-value">{{ sim.operator|default:"—" }}</div>
+          </div>
+          <div class="kv-card">
+            <div class="kv-label">Mobile Number</div>
+            <div class="kv-value">{{ sim.mobile_number|default:"—" }}</div>
+          </div>
+          <div class="kv-card">
+            <div class="kv-label">Network Type</div>
+            <div class="kv-value">{{ sim.network_type|default:"—" }}</div>
+          </div>
+          <div class="kv-card">
+            <div class="kv-label">Network Band</div>
+            <div class="kv-value">{{ sim.band|default:"—" }}</div>
+          </div>
+          <div class="kv-card">
+            <div class="kv-label">Cell ID (CI)</div>
+            <div class="kv-value">{{ sim.cell_id|default:"—" }}</div>
+          </div>
+          <div class="kv-card">
+            <div class="kv-label">LAC</div>
+            <div class="kv-value">{{ sim.lac|default:"—" }}</div>
+          </div>
+          <div class="kv-card">
+            <div class="kv-label">IP Address</div>
+            <div class="kv-value">{{ sim.ip_address|default:"—" }}</div>
+          </div>
+          <div class="kv-card">
+            <div class="kv-label">DNS</div>
+            <div class="kv-value">{{ sim.dns|default:"—" }}</div>
+          </div>
+          <div class="kv-card">
+            <div class="kv-label">Protocol</div>
+            <div class="kv-value">{{ sim.proto|default:"—" }}</div>
           </div>
         </div>
       </div>
+    </div>
 
-      <div class="section">
-        <div class="section-hd">Signal Metrics</div>
-        <div class="section-bd">
-          <div class="kv-grid">
-            <div class="kv-card"><div class="kv-label">RSRP</div><div class="kv-value">{{ sim.rsrp|default:"—" }}</div></div>
-            <div class="kv-card"><div class="kv-label">RSRQ</div><div class="kv-value">{{ sim.rsrq|default:"—" }}</div></div>
-            <div class="kv-card"><div class="kv-label">SINR</div><div class="kv-value">{{ sim.sinr|default:"—" }}</div></div>
-            <div class="kv-card"><div class="kv-label">Signal (CSQ)</div><div class="kv-value">{{ sim.signal|default:"—" }}</div></div>
-            <div class="kv-card"><div class="kv-label">Modem Status</div><div class="kv-value">{{ sim.modem_status|default:"—" }}</div></div>
+    <div class="section">
+      <div class="section-hd">Signal Metrics</div>
+      <div class="section-bd">
+        <div class="kv-grid">
+          <div class="kv-card">
+            <div class="kv-label">RSRP</div>
+            <div class="kv-value">{{ sim.rsrp|default:"—" }}</div>
+          </div>
+          <div class="kv-card">
+            <div class="kv-label">RSRQ</div>
+            <div class="kv-value">{{ sim.rsrq|default:"—" }}</div>
+          </div>
+          <div class="kv-card">
+            <div class="kv-label">SINR</div>
+            <div class="kv-value">{{ sim.sinr|default:"—" }}</div>
+          </div>
+          <div class="kv-card">
+            <div class="kv-label">Signal (CSQ)</div>
+            <div class="kv-value">{{ sim.signal|default:"—" }}</div>
+          </div>
+          <div class="kv-card">
+            <div class="kv-label">Modem Status</div>
+            <div class="kv-value">{{ sim.modem_status|default:"—" }}</div>
           </div>
         </div>
       </div>
+    </div>
 
-      <div class="section">
-        <div class="section-hd">Device Runtime</div>
-        <div class="section-bd">
-          <div class="kv-grid">
-            <div class="kv-card"><div class="kv-label">Uptime</div><div class="kv-value">{{ sim.up_time|default:"—" }}</div></div>
+    <div class="section">
+      <div class="section-hd">Device Runtime</div>
+      <div class="section-bd">
+        <div class="kv-grid">
+          <div class="kv-card">
+            <div class="kv-label">Uptime</div>
+            <div class="kv-value">{{ sim.up_time|default:"—" }}</div>
           </div>
         </div>
       </div>
+    </div>
 
     {% endif %}
   </div>
@@ -129,72 +271,156 @@
   {% with sim=device_data.cellular.modem2 %}
   <div id="sim2" class="hidden">
     {% if sim.modem_status == "disconnected" %}
-      <div class="empty-state">SIM 2 not inserted</div>
+    <div class="empty-state">SIM 2 not inserted</div>
     {% else %}
 
-      <div class="section">
-        <div class="section-hd">Identification</div>
-        <div class="section-bd">
-          <div class="kv-grid">
-            <div class="kv-card"><div class="kv-label">Module Model</div><div class="kv-value">{{ sim.module_model|default:"—" }}</div></div>
-            <div class="kv-card"><div class="kv-label">IMEI</div><div class="kv-value">{{ sim.imei|default:"—" }}</div></div>
-            <div class="kv-card"><div class="kv-label">IMSI</div><div class="kv-value">{{ sim.sim_imsi|default:"—" }}</div></div>
-            <div class="kv-card"><div class="kv-label">ICCID</div><div class="kv-value">{{ sim.sim_iccid|default:"—" }}</div></div>
-            <div class="kv-card"><div class="kv-label">SIM Status</div><div class="kv-value">{{ sim.sim_status|default:"—" }}</div></div>
-            <div class="kv-card"><div class="kv-label">Module Version</div><div class="kv-value">{{ sim.module_version|default:"—" }}</div></div>
+    <div class="section">
+      <div class="section-hd">Identification</div>
+      <div class="section-bd">
+        <div class="kv-grid">
+          <div class="kv-card">
+            <div class="kv-label">Module Model</div>
+            <div class="kv-value">{{ sim.module_model|default:"—" }}</div>
+          </div>
+          <div class="kv-card">
+            <div class="kv-label">IMEI</div>
+            <div class="kv-value">{{ sim.imei|default:"—" }}</div>
+          </div>
+          <div class="kv-card">
+            <div class="kv-label">IMSI</div>
+            <div class="kv-value">{{ sim.sim_imsi|default:"—" }}</div>
+          </div>
+          <div class="kv-card">
+            <div class="kv-label">ICCID</div>
+            <div class="kv-value">{{ sim.sim_iccid|default:"—" }}</div>
+          </div>
+          <div class="kv-card">
+            <div class="kv-label">SIM Status</div>
+            <div class="kv-value">{{ sim.sim_status|default:"—" }}</div>
+          </div>
+          <div class="kv-card">
+            <div class="kv-label">Module Version</div>
+            <div class="kv-value">{{ sim.module_version|default:"—" }}</div>
           </div>
         </div>
       </div>
+    </div>
 
-      <div class="section">
-        <div class="section-hd">Network Information</div>
-        <div class="section-bd">
-          <div class="kv-grid">
-            <div class="kv-card"><div class="kv-label">Operator</div><div class="kv-value">{{ sim.operator|default:"—" }}</div></div>
-            <div class="kv-card"><div class="kv-label">Mobile Number</div><div class="kv-value">{{ sim.mobile_number|default:"—" }}</div></div>
-            <div class="kv-card"><div class="kv-label">Network Type</div><div class="kv-value">{{ sim.network_type|default:"—" }}</div></div>
-            <div class="kv-card"><div class="kv-label">Network Band</div><div class="kv-value">{{ sim.band|default:"—" }}</div></div>
-            <div class="kv-card"><div class="kv-label">Cell ID (CI)</div><div class="kv-value">{{ sim.cell_id|default:"—" }}</div></div>
-            <div class="kv-card"><div class="kv-label">LAC</div><div class="kv-value">{{ sim.lac|default:"—" }}</div></div>
-            <div class="kv-card"><div class="kv-label">IP Address</div><div class="kv-value">{{ sim.ip_address|default:"—" }}</div></div>
-            <div class="kv-card"><div class="kv-label">DNS</div><div class="kv-value">{{ sim.dns|default:"—" }}</div></div>
-            <div class="kv-card"><div class="kv-label">Protocol</div><div class="kv-value">{{ sim.proto|default:"—" }}</div></div>
+    <div class="section">
+      <div class="section-hd">Network Information</div>
+      <div class="section-bd">
+        <div class="kv-grid">
+          <div class="kv-card">
+            <div class="kv-label">Operator</div>
+            <div class="kv-value">{{ sim.operator|default:"—" }}</div>
+          </div>
+          <div class="kv-card">
+            <div class="kv-label">Mobile Number</div>
+            <div class="kv-value">{{ sim.mobile_number|default:"—" }}</div>
+          </div>
+          <div class="kv-card">
+            <div class="kv-label">Network Type</div>
+            <div class="kv-value">{{ sim.network_type|default:"—" }}</div>
+          </div>
+          <div class="kv-card">
+            <div class="kv-label">Network Band</div>
+            <div class="kv-value">{{ sim.band|default:"—" }}</div>
+          </div>
+          <div class="kv-card">
+            <div class="kv-label">Cell ID (CI)</div>
+            <div class="kv-value">{{ sim.cell_id|default:"—" }}</div>
+          </div>
+          <div class="kv-card">
+            <div class="kv-label">LAC</div>
+            <div class="kv-value">{{ sim.lac|default:"—" }}</div>
+          </div>
+          <div class="kv-card">
+            <div class="kv-label">IP Address</div>
+            <div class="kv-value">{{ sim.ip_address|default:"—" }}</div>
+          </div>
+          <div class="kv-card">
+            <div class="kv-label">DNS</div>
+            <div class="kv-value">{{ sim.dns|default:"—" }}</div>
+          </div>
+          <div class="kv-card">
+            <div class="kv-label">Protocol</div>
+            <div class="kv-value">{{ sim.proto|default:"—" }}</div>
           </div>
         </div>
       </div>
+    </div>
 
-      <div class="section">
-        <div class="section-hd">Signal Metrics</div>
-        <div class="section-bd">
-          <div class="kv-grid">
-            <div class="kv-card"><div class="kv-label">RSRP</div><div class="kv-value">{{ sim.rsrp|default:"—" }}</div></div>
-            <div class="kv-card"><div class="kv-label">RSRQ</div><div class="kv-value">{{ sim.rsrq|default:"—" }}</div></div>
-            <div class="kv-card"><div class="kv-label">SINR</div><div class="kv-value">{{ sim.sinr|default:"—" }}</div></div>
-            <div class="kv-card"><div class="kv-label">Signal (CSQ)</div><div class="kv-value">{{ sim.signal|default:"—" }}</div></div>
-            <div class="kv-card"><div class="kv-label">Modem Status</div><div class="kv-value">{{ sim.modem_status|default:"—" }}</div></div>
+    <div class="section">
+      <div class="section-hd">Signal Metrics</div>
+      <div class="section-bd">
+        <div class="kv-grid">
+          <div class="kv-card">
+            <div class="kv-label">RSRP</div>
+            <div class="kv-value">{{ sim.rsrp|default:"—" }}</div>
+          </div>
+          <div class="kv-card">
+            <div class="kv-label">RSRQ</div>
+            <div class="kv-value">{{ sim.rsrq|default:"—" }}</div>
+          </div>
+          <div class="kv-card">
+            <div class="kv-label">SINR</div>
+            <div class="kv-value">{{ sim.sinr|default:"—" }}</div>
+          </div>
+          <div class="kv-card">
+            <div class="kv-label">Signal (CSQ)</div>
+            <div class="kv-value">{{ sim.signal|default:"—" }}</div>
+          </div>
+          <div class="kv-card">
+            <div class="kv-label">Modem Status</div>
+            <div class="kv-value">{{ sim.modem_status|default:"—" }}</div>
           </div>
         </div>
       </div>
+    </div>
 
-      <div class="section">
-        <div class="section-hd">Device Runtime</div>
-        <div class="section-bd">
-          <div class="kv-grid">
-            <div class="kv-card"><div class="kv-label">Uptime</div><div class="kv-value">{{ sim.up_time|default:"—" }}</div></div>
+    <div class="section">
+      <div class="section-hd">Device Runtime</div>
+      <div class="section-bd">
+        <div class="kv-grid">
+          <div class="kv-card">
+            <div class="kv-label">Uptime</div>
+            <div class="kv-value" id="uptime-value" data-seconds="{{ sim.up_time|default:0 }}"></div>
           </div>
         </div>
       </div>
+    </div>
 
     {% endif %}
   </div>
   {% endwith %}
 </div>
 {% else %}
-  <div class="empty-state">No Cellular data available</div>
+<div class="empty-state">No Cellular data available</div>
 {% endif %}
 
 <script>
-  (function(){
+  function formatSeconds(sec) {
+    sec = parseInt(sec);
+
+    let hours = Math.floor(sec / 3600);
+    let minutes = Math.floor((sec % 3600) / 60);
+    let seconds = sec % 60;
+
+    let parts = [];
+    if (hours > 0) parts.push(hours + "h");
+    if (minutes > 0) parts.push(minutes + "m");
+    if (seconds > 0) parts.push(seconds + "s");
+
+    return parts.length ? parts.join(" ") : "0s";
+  }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    let el = document.getElementById("uptime-value");
+    let seconds = el.getAttribute("data-seconds");
+    el.innerText = formatSeconds(seconds);
+  });
+
+  (function () {
     const tabs = document.querySelectorAll('.panel .tab');
     tabs.forEach(t => t.addEventListener('click', () => {
       tabs.forEach(tt => tt.classList.remove('active'));
