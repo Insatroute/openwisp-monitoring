@@ -4,8 +4,29 @@ from django.conf import settings
 from django.core.cache import cache
 from django.views.decorators.cache import never_cache
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+
+
+
+def _get_devices_for_user(Device, user, org_param: str, all_orgs: bool):
+    """
+    Return a queryset of Device filtered:
+    - by user's organizations (unless superuser)
+    - by org_param when not ALL
+    """
+    qs = Device.objects.all()
+
+    if not user.is_superuser:
+        # User can belong to multiple orgs
+        user_orgs = user.organizations.all()
+        qs = qs.filter(organization__in=user_orgs)
+
+    # Apply org_param filter if not ALL
+    if not all_orgs:
+        qs = qs.filter(organization__slug=org_param)
+
+    return qs
 
 # =========================
 # Settings (with safe defaults)
@@ -196,11 +217,8 @@ def _query_total(selector: str, ifnames: Optional[List[str]],
     cli = _influx_v1_client()
     return _query_total_v1(cli, selector, ifnames, time_arg, start, end)
 
-# =========================
-# Public API view
-# =========================
 @api_view(["GET"])
-@permission_classes([AllowAny])  # no auth, as requested
+@permission_classes([IsAuthenticated])  # changed from AllowAny
 @never_cache
 def top_devices_simple(request):
     """
@@ -210,15 +228,9 @@ def top_devices_simple(request):
         [&include_org=1]        -> include organization slug in each item
         [&start=YYYY-MM-DD HH:MM:SS&end=YYYY-MM-DD HH:MM:SS]  -> override time window
 
-    Returns:
-    {
-      "org": "ALL" | "<slug>",
-      "window": {"time": "30d", "start": null, "end": null},
-      "limit": 5 | "all",
-      "interface_scope": "eth1,pppoe-wan" | "ALL",
-      "top": [ {device_id, name, [organization], total_bytes, total_gb}, ... ],
-      "devices": [ ... ]  # only if include_all=1
-    }
+    Visibility:
+      - Superuser: can request ALL or any org slug
+      - Normal user: restricted to their own orgs (ALL = all their orgs)
     """
     org_param = (request.GET.get("org") or request.GET.get("organization_slug") or "").strip()
     if not org_param:
@@ -247,8 +259,18 @@ def top_devices_simple(request):
     # ifnames
     ifnames = [x.strip() for x in (request.GET.get("wan_ifs") or "").split(",") if x.strip()] or None
 
-    # cache key
-    ck = f"td:ALL:{all_orgs}:org={org_param}:t={time_arg}:s={start}:e={end}:ifs={','.join(ifnames) if ifnames else 'ALL'}:lim={limit_label}:incall={int(include_all)}:incorg={int(include_org)}"
+    # user-aware cache key (superuser can share, normal users isolated)
+    if request.user.is_superuser:
+        user_key = "su"
+    else:
+        user_key = f"user:{request.user.pk}"
+
+    ck = (
+        f"td:{user_key}:ALL:{all_orgs}:org={org_param}:"
+        f"t={time_arg}:s={start}:e={end}:"
+        f"ifs={','.join(ifnames) if ifnames else 'ALL'}:"
+        f"lim={limit_label}:incall={int(include_all)}:incorg={int(include_org)}"
+    )
     cached = cache.get(ck)
     if cached:
         return Response(cached)
@@ -257,9 +279,10 @@ def top_devices_simple(request):
     if Device is None:
         return Response({"detail": "Cannot import OpenWISP Device model."}, status=500)
 
-    # query device list
+    # query device list with org + user restrictions
     try:
-        qs = Device.objects.all() if all_orgs else Device.objects.filter(organization__slug=org_param)
+        qs = _get_devices_for_user(Device, request.user, org_param, all_orgs)
+
         fields = ["id", "name"]
         if include_org or all_orgs:
             fields.append("organization__slug")
@@ -267,7 +290,7 @@ def top_devices_simple(request):
     except Exception as e:
         return Response({"detail": f"Error reading devices: {e}"}, status=500)
 
-    # sum totals per device
+    # sum totals per device from Influx
     results: List[Dict[str, Any]] = []
     for d in devices:
         dev_id = str(d["id"])
@@ -295,9 +318,12 @@ def top_devices_simple(request):
         "interface_scope": ",".join(ifnames) if ifnames else "ALL",
         "count_devices": len(results),
         "top": results[:limit],
-        "note": f'Read from InfluxDB {"v2" if INF_V2 else "v1"} '
-                f'({INF_DB if not INF_V2 else INF_V2_BUCKET}; measurement="{MEASUREMENT}"; fields="{"+".join(FIELDS)}"). '
-                f'Use wan_ifs to avoid bridge double-counting.',
+        "note": (
+            f'Read from InfluxDB {"v2" if INF_V2 else "v1"} '
+            f'({INF_DB if not INF_V2 else INF_V2_BUCKET}; '
+            f'measurement="{MEASUREMENT}"; fields="{"+".join(FIELDS)}"). '
+            f'Use wan_ifs to avoid bridge double-counting.'
+        ),
     }
     if include_all:
         payload["devices"] = results

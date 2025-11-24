@@ -35,22 +35,33 @@ def get_org_devices(user):
     user_orgs = user.organizations.all()
     return qs.filter(organization__in=user_orgs)
 
+def get_org_device_data(user):
+    """
+    Returns DeviceData limited by organization via related Device.
+    Superuser gets all DeviceData.
+    """
+    qs = DeviceData.objects.all()
+
+    if user.is_superuser:
+        return qs
+
+    user_orgs = user.organizations.all()
+    # IMPORTANT: adjust `device__organization` if your FK name differs
+    return qs.filter(device__organization__in=user_orgs)
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def global_top_apps(request):
     """
     API endpoint to return top 10 applications across allowed devices.
+    Superuser: all devices
+    Normal user: only devices in their organizations
     """
     app_counter = Counter()
 
-    # 1) Filter devices based on organization access
-    allowed_devices = get_org_devices(request.user)
+    # Use org-aware DeviceData
+    device_data_qs = get_org_device_data(request.user)
 
-    # 2) Filter DeviceData based on allowed devices
-    device_data_qs = DeviceData.objects.filter(device__in=allowed_devices)
-
-    # 3) Aggregate application traffic
     for device_data in device_data_qs:
         data = device_data.data_user_friendly or {}
 
@@ -74,7 +85,6 @@ def global_top_apps(request):
             if label:
                 app_counter[label] += traffic
 
-    # 4) Extract top 10 applications
     top_10_apps = app_counter.most_common(10)
 
     top_10_apps_list = [
@@ -83,7 +93,6 @@ def global_top_apps(request):
     ]
 
     return Response({"top_10_apps": top_10_apps_list})
-
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
