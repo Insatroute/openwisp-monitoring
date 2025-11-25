@@ -155,7 +155,7 @@ class WanUplinksAllDevicesView(
     Org filtering is on Device.organization (default organization_field).
     """
 
-    queryset = Device.objects.all()
+    queryset = DeviceData.objects.all()
     organization_field = "organization"
     permission_classes = (IsOrganizationMember, DjangoModelPermissions)
     # organization_field defaults to "organization" via OrgLookup
@@ -239,7 +239,7 @@ class DataUsageAllDevicesView(
     split by cellular / wired / wireless.
     """
 
-    queryset = Device.objects.all()
+    queryset = DeviceData.objects.all()
     organization_field = "organization"
     permission_classes = (IsOrganizationMember, DjangoModelPermissions)
     # org filter on Device.organization
@@ -296,7 +296,7 @@ class MobileDistributionAllDevicesView(
     on devices in the user's organizations.
     """
 
-    queryset = Device.objects.all()
+    queryset = DeviceData.objects.all()
     organization_field = "organization"
     permission_classes = (IsOrganizationMember, DjangoModelPermissions)
     # org filter on Device.organization
