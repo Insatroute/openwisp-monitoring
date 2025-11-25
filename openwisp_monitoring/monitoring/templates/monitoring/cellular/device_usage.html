@@ -195,15 +195,6 @@
         </div>
       </div>
     </div>
-
-    <!-- Wireless (placeholder until JS fills real values) -->
-    <div class="usage-section">
-      <div class="section-title">Wireless</div>
-      <div class="total-summary" id="wireless-total-summary">
-        <div class="total-value">—</div>
-        <div class="total-stats">Upload: —<br>Download: —</div>
-      </div>
-    </div>
   </div>
 
   <!-- Chart -->
@@ -284,27 +275,27 @@
     const sim1 = readStatsMB(get('modem'));
     const sim2 = readStatsMB(get('modem2'));
 
+    // WAN / wired: only interfaces with role: 'wan' and is_wan: true
+    const wanIfaces = ifaces.filter(i =>
+      i &&
+      i.type === 'ethernet' &&
+      i.role === 'wan' &&
+      i.is_wan === true
+    );
+
+    let wiredUp = 0, wiredDown = 0;
+    wanIfaces.forEach(iface => {
+      const s = readStatsMB(iface);
+      wiredUp += s.txMB;
+      wiredDown += s.rxMB;
+    });
+
+    // still show eth0 / eth1 cards explicitly
     const eth0 = readStatsMB(get('eth0'));
     const eth1 = readStatsMB(get('eth1'));
 
-    // NEW: aggregate all wireless interfaces (type === "wireless")
-    const wirelessIfaces = ifaces.filter(i => i && i.type === 'wireless');
-    let wirelessRxMB = 0, wirelessTxMB = 0, wirelessTotalMB = 0;
-    wirelessIfaces.forEach(iface => {
-      const s = readStatsMB(iface);
-      wirelessRxMB += s.rxMB;
-      wirelessTxMB += s.txMB;
-      wirelessTotalMB += s.totalMB;
-    });
-
     const cellularUp = sim1.txMB + sim2.txMB;
     const cellularDown = sim1.rxMB + sim2.rxMB;
-    const wiredUp = eth0.txMB + eth1.txMB;
-    const wiredDown = eth0.rxMB + eth1.rxMB;
-
-    // NEW: wireless upload/download from real wireless interfaces
-    const wirelessUp = wirelessTxMB;
-    const wirelessDown = wirelessRxMB;
 
     const lastUpdated = document.getElementById('lastUpdated');
     if (lastUpdated) {
@@ -356,19 +347,10 @@
         `Upload: ${fmtData(wiredUp)}<br>Download: ${fmtData(wiredDown)}`;
     }
 
-    const wirelessSummary = document.getElementById('wireless-total-summary');
-    if (wirelessSummary) {
-      const totalWireless = wirelessUp + wirelessDown;
-      wirelessSummary.querySelector('.total-value').textContent = fmtData(totalWireless);
-      wirelessSummary.querySelector('.total-stats').innerHTML =
-        `Upload: ${fmtData(wirelessUp)}<br>Download: ${fmtData(wirelessDown)}`;
-    }
-
     /* ---------- Build / store HOURLY history for chart (in MB) ---------- */
     const totals = {
       cellular: cellularUp + cellularDown,
-      wired: wiredUp + wiredDown,
-      wireless: wirelessUp + wirelessDown
+      wired: wiredUp + wiredDown
     };
 
     const serial = general.serialnumber || 'default';
@@ -393,14 +375,12 @@
       bucket = {
         hour: hourKey,
         cellular: 0,
-        wired: 0,
-        wireless: 0
+        wired: 0
       };
       hourly.push(bucket);
     }
     bucket.cellular += totals.cellular;
     bucket.wired += totals.wired;
-    bucket.wireless += totals.wireless;
 
     hourly.sort((a, b) => new Date(a.hour) - new Date(b.hour));
 
@@ -418,7 +398,7 @@
 
     let maxMB = 0;
     hourly.forEach(h => {
-      maxMB = Math.max(maxMB, h.cellular, h.wired, h.wireless);
+      maxMB = Math.max(maxMB, h.cellular, h.wired);
     });
 
     let unitLabel = 'MB';
@@ -430,7 +410,6 @@
 
     const cellularSeries = hourly.map(h => h.cellular * unitFactor);
     const wiredSeries = hourly.map(h => h.wired * unitFactor);
-    const wirelessSeries = hourly.map(h => h.wireless * unitFactor);
 
     const traces = [
       {
@@ -448,14 +427,6 @@
         y: wiredSeries,
         marker: { color: '#ff7f0e' },
         hovertemplate: `Wired<br>Hour: %{x}<br>Total: %{y:.2f} ${unitLabel}<extra></extra>`
-      },
-      {
-        type: 'bar',
-        name: 'Wireless',
-        x: labels,
-        y: wirelessSeries,
-        marker: { color: '#1f77b4' },
-        hovertemplate: `Wireless<br>Hour: %{x}<br>Total: %{y:.2f} ${unitLabel}<extra></extra>`
       }
     ];
 
@@ -481,7 +452,7 @@
       displayModeBar: false
     });
 
-    /* ===== NEW: force Plotly to use the full card width ===== */
+    /* ===== force Plotly to use the full card width ===== */
     function resizeTrafficChart() {
       if (!trafficChartsEl) return;
       Plotly.Plots.resize(trafficChartsEl);
