@@ -44,7 +44,7 @@
           {% if device_data.device_type != '4g_5g_router' %}
           <button type="button" data-target="traffic-traffic" class="active">Traffic Summary</button>
           {% endif %}
-          <button type="button" data-target="traffic-real-time-traffic">Real-Time Traffic</button>
+          <button type="button" data-target="traffic-real-time-traffic" class="{% if device_data.device_type == '4g_5g_router' %}active{% endif %}">Real-Time Traffic</button>
           <button type="button" data-target="traffic-wan-uplinks">WAN Uplinks</button>
           {% if device_data.device_type != '4g_5g_router' %}
           <button type="button" data-target="traffic-security">Security</button>
@@ -58,7 +58,7 @@
             {% include 'monitoring/traffic/traffic.html' %}
           </div>
           {% endif %}
-          <div id="traffic-real-time-traffic" class="traffic-sub-content">
+          <div id="traffic-real-time-traffic" class="traffic-sub-content traffic-sub-content {% if device_data.device_type == '4g_5g_router' %}active{% endif %}">
             {% include 'monitoring/traffic/real_time_traffic.html' %}
           </div>
           <div id="traffic-wan-uplinks" class="traffic-sub-content">
