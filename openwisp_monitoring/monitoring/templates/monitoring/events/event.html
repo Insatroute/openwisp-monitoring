@@ -1,6 +1,48 @@
 {% load i18n tz %}
 
 <style>
+    .event-title-wrap{
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+
+  .event-info {
+    position:relative;
+    width:16px;
+    height:16px;
+    border-radius:50%;
+    border:1px solid #9ca3af;
+    font-size:11px;
+    line-height:14px;
+    text-align:center;
+    cursor:default;
+    color:#4b5563;
+    background:#f9fafb;
+  }
+
+  .event-info-tooltip {
+    position:absolute;
+    top:50%;
+    left:120%;
+    transform:translateY(-50%);
+    background:#24415d;
+    color:#f9fafb;
+    padding:6px 8px;
+    border-radius:4px;
+    font-size:11px;
+    white-space:nowrap;
+    box-shadow:0 6px 18px rgba(0,0,0,.25);
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .15s ease;
+    z-index:30;
+  }
+
+  .event-info:hover .event-info-tooltip {
+    opacity:1;
+  }
+
   .event-card {
     background:#fff;
     border:1px solid #e5e7eb;
@@ -34,14 +76,13 @@
   }
 
   /* Range picker chip */
-  .range-chip-wrap { position:relative;
-      margin-right: 20px;
-
+  .range-chip-wrap {
+    position:relative;
+    margin-right: 20px;
   }
   .range-chip-btn {
-       padding: 5px 10px;
+    padding: 5px 10px;
     border-radius: 4px;
-    /* padding: 6px 10px; */
     font-size: 14px;
     border: 1px solid #d1d5db;
     background: #24415d;
@@ -135,16 +176,8 @@
     gap:6px;
   }
   .export-btn {
-    {% comment %} border-radius:6px;
-    border:1px solid #d1d5db;
-    padding:4px 8px;
-    font-size:11px;
-    cursor:pointer;
-    background:#f9fafb;
-    color:#111827; {% endcomment %}
-        padding: 5px 10px;
+    padding: 5px 10px;
     border-radius: 4px;
-    /* padding: 6px 10px; */
     font-size: 14px;
     border: 1px solid #d1d5db;
     background: #24415d;
@@ -217,56 +250,69 @@
 </style>
 
 <div class="event-filter">
-      <!-- Range picker chip -->
-      <div class="range-chip-wrap">
-        <button type="button" class="range-chip-btn" id="range-chip-btn">
-          <span id="range-chip-label">{% trans "Last 24 hours" %}</span>
-          <div class="range-chip-caret"></div>
-        </button>
+  <!-- Range picker chip -->
+  <div class="range-chip-wrap">
+    <button type="button" class="range-chip-btn" id="range-chip-btn">
+      <!-- default label = since registration -->
+      <span id="range-chip-label">{% trans "Since registration" %}</span>
+      <div class="range-chip-caret"></div>
+    </button>
 
-        <div class="range-panel" id="range-panel">
-          <button type="button" class="range-option" data-range="24h">{% trans "Last 1 Day" %}</button>
-          <button type="button" class="range-option" data-range="3d">{% trans "Last 3 Days" %}</button>
-          <button type="button" class="range-option" data-range="7d">{% trans "Last 7 Days" %}</button>
-          <button type="button" class="range-option" data-range="30d">{% trans "Last 30 Days" %}</button>
-          <button type="button" class="range-option" data-range="365d">{% trans "Last 365 Days" %}</button>
-          <div class="range-panel-divider"></div>
-          <button type="button" class="range-option" data-range="custom" id="range-custom-toggle">
-            {% trans "Custom Range" %}
-          </button>
+    <div class="range-panel" id="range-panel">
+      <!-- lifetime option (default / active) -->
+      <button type="button" class="range-option active" data-range="all">
+        {% trans "Since registration" %}
+      </button>
 
-          <div class="range-custom" id="range-custom-block" style="display:none;">
-            <div>
-              <label for="range-start">{% trans "From" %}</label>
-              <input type="datetime-local" id="range-start">
-            </div>
-            <div>
-              <label for="range-end">{% trans "To" %}</label>
-              <input type="datetime-local" id="range-end">
-            </div>
-            <div class="range-custom-apply">
-              <button type="button" class="btn-xs" id="range-cancel">{% trans "Cancel" %}</button>
-              <button type="button" class="btn-xs btn-xs-primary" id="range-apply-custom">{% trans "Apply" %}</button>
-            </div>
-          </div>
+      <div class="range-panel-divider"></div>
+
+      <button type="button" class="range-option" data-range="24h">{% trans "Last 1 Day" %}</button>
+      <button type="button" class="range-option" data-range="3d">{% trans "Last 3 Days" %}</button>
+      <button type="button" class="range-option" data-range="7d">{% trans "Last 7 Days" %}</button>
+      <button type="button" class="range-option" data-range="30d">{% trans "Last 30 Days" %}</button>
+      <button type="button" class="range-option" data-range="365d">{% trans "Last 365 Days" %}</button>
+
+      <div class="range-panel-divider"></div>
+
+      <button type="button" class="range-option" data-range="custom" id="range-custom-toggle">
+        {% trans "Custom Range" %}
+      </button>
+
+      <div class="range-custom" id="range-custom-block" style="display:none;">
+        <div>
+          <label for="range-start">{% trans "From" %}</label>
+          <input type="datetime-local" id="range-start">
+        </div>
+        <div>
+          <label for="range-end">{% trans "To" %}</label>
+          <input type="datetime-local" id="range-end">
+        </div>
+        <div class="range-custom-apply">
+          <button type="button" class="btn-xs" id="range-cancel">{% trans "Cancel" %}</button>
+          <button type="button" class="btn-xs btn-xs-primary" id="range-apply-custom">{% trans "Apply" %}</button>
         </div>
       </div>
+    </div>
+  </div>
 
-      <!-- Export buttons -->
-      <div class="event-export-btns">
-        <button type="button" class="export-btn" id="export-excel">{% trans "Export Excel" %}</button>
-        <button type="button" class="export-btn" id="export-pdf">{% trans "Export PDF" %}</button>
-      </div>
+  <!-- Export buttons -->
+  <div class="event-export-btns">
+    <button type="button" class="export-btn" id="export-excel">{% trans "Export Excel" %}</button>
+    <button type="button" class="export-btn" id="export-pdf">{% trans "Export PDF" %}</button>
+  </div>
 </div>
-
-
 
 <div class="event-card" id="event-card">
   <div class="event-card-hd">
     <div class="event-hd-left">
       <div class="event-title">{% trans "Events" %}</div>
-
-
+      <div class="event-info" aria-label="Events info">
+          i
+          <div class="event-info-tooltip">
+            Logs capturing the real-time connection behavior
+            between the SD-WAN controller and CPE.
+          </div>
+        </div>
     </div>
 
     <div class="event-updated">
@@ -300,7 +346,7 @@
         &nbsp;{% trans "Show" %}&nbsp;
         <select id="page-size">
           <option selecteds>10</option>
-          <option >25</option>
+          <option>25</option>
           <option>50</option>
           <option>100</option>
         </select>
@@ -388,6 +434,20 @@
     const lastEndMs = allIntervals.reduce((acc, r) => Math.max(acc, r._endMs), 0);
     const firstStartMs = allIntervals.reduce((acc, r) => Math.min(acc, r._startMs), lastEndMs);
 
+    // NEW: find first time device was UP
+    let firstUpStartMs = null;
+    allIntervals.forEach(r => {
+      const st = (r.status || '').toLowerCase();
+      if (st === 'up') {
+        if (firstUpStartMs === null || r._startMs < firstUpStartMs) {
+          firstUpStartMs = r._startMs;
+        }
+      }
+    });
+
+    // "device registration" = first UP, fallback to firstStartMs if never up
+    const deviceBirthMs = firstUpStartMs !== null ? firstUpStartMs : firstStartMs;
+
     function fmtDuration(seconds) {
       seconds = Math.max(0, Math.round(seconds));
       const h = Math.floor(seconds / 3600);
@@ -414,7 +474,6 @@
     function fmtRangeLabel(startMs, endMs) {
       const d1 = new Date(startMs);
       const d2 = new Date(endMs);
-      const month = m => d2.toLocaleString(undefined, { month: 'long' });
       const fmt = d => d.toLocaleDateString(undefined, {
         year:'numeric', month:'long', day:'numeric'
       });
@@ -424,29 +483,41 @@
     let page = 1;
     let pageSize = parseInt(pageSizeSel.value, 10) || 25;
     let filtered = [];
-    let currentWindow = { startMs: firstStartMs, endMs: lastEndMs };
-    let currentMode = '24h';  // default
-    let currentSummary = null; // <-- keep latest summary for export
+    let currentWindow = { startMs: deviceBirthMs, endMs: lastEndMs };
+    // DEFAULT = since "registration" (first UP)
+    let currentMode = 'all';
+    let currentSummary = null; // keep latest summary for export
 
     function computeWindowForMode(mode) {
-      const nowMs = lastEndMs || Date.now();
       let startMs, endMs;
-      if (mode === '24h') {
-        endMs = nowMs; startMs = endMs - 24*3600*1000;
-      } else if (mode === '3d') {
-        endMs = nowMs; startMs = endMs - 3*24*3600*1000;
-      } else if (mode === '7d') {
-        endMs = nowMs; startMs = endMs - 7*24*3600*1000;
-      } else if (mode === '30d') {
-        endMs = nowMs; startMs = endMs - 30*24*3600*1000;
-      } else if (mode === '365d') {
-        endMs = nowMs; startMs = endMs - 365*24*3600*1000;
+
+      if (mode === 'all') {
+        // From first UP (registration) to last event
+        startMs = deviceBirthMs;
+        endMs = lastEndMs || Date.now();
       } else {
-        endMs = nowMs; startMs = endMs - 24*3600*1000;
+        const nowMs = lastEndMs || Date.now();
+
+        if (mode === '24h') {
+          endMs = nowMs; startMs = endMs - 24*3600*1000;
+        } else if (mode === '3d') {
+          endMs = nowMs; startMs = endMs - 3*24*3600*1000;
+        } else if (mode === '7d') {
+          endMs = nowMs; startMs = endMs - 7*24*3600*1000;
+        } else if (mode === '30d') {
+          endMs = nowMs; startMs = endMs - 30*24*3600*1000;
+        } else if (mode === '365d') {
+          endMs = nowMs; startMs = endMs - 365*24*3600*1000;
+        } else {
+          // fallback = 24h
+          endMs = nowMs; startMs = endMs - 24*3600*1000;
+        }
+
+        // clamp to [deviceBirthMs, lastEndMs]
+        if (startMs < deviceBirthMs) startMs = deviceBirthMs;
+        if (endMs > lastEndMs) endMs = lastEndMs;
       }
 
-      if (startMs < firstStartMs) startMs = firstStartMs;
-      if (endMs > lastEndMs) endMs = lastEndMs;
       currentWindow = { startMs, endMs };
     }
 
@@ -458,12 +529,12 @@
       if (!isNaN(s) && isNaN(e)) e = nowMs;
       if (isNaN(s) && !isNaN(e)) s = e - 24*3600*1000;
       if (isNaN(s) || isNaN(e) || s >= e) {
-        computeWindowForMode('24h');
-        currentMode = '24h';
+        computeWindowForMode('all');
+        currentMode = 'all';
         return;
       }
       let startMs = s, endMs = e;
-      if (startMs < firstStartMs) startMs = firstStartMs;
+      if (startMs < deviceBirthMs) startMs = deviceBirthMs;
       if (endMs > lastEndMs) endMs = lastEndMs;
       currentWindow = { startMs, endMs };
       currentMode = 'custom';
@@ -482,7 +553,7 @@
         const sec = Math.max(0, Math.round((ovEnd - ovStart) / 1000));
         if (!sec) return;
 
-        if (r.status === 'up') upSec += sec;
+        if ((r.status || '').toLowerCase() === 'up') upSec += sec;
         else downSec += sec;
 
         rows.push({
@@ -495,8 +566,7 @@
         });
       });
 
-
-        // 🔽 sort so latest interval appears first
+      // sort so latest interval appears first
       rows.sort((a, b) => b._startMs - a._startMs);
       rows.forEach(r => { delete r._startMs; });
 
@@ -519,12 +589,12 @@
       };
     }
 
-       function renderSummary(summary) {
-      currentSummary = summary;   // <-- remember for export
+    function renderSummary(summary) {
+      currentSummary = summary;   // remember for export
 
       if (!summary) {
         summaryEl.innerHTML = '';
-        chipLabel.textContent = '{% trans "Last 24 hours" %}';
+        chipLabel.textContent = '{% trans "Since registration" %}';
         return;
       }
 
@@ -538,7 +608,6 @@
 
       chipLabel.textContent = summary.label;
     }
-
 
     function renderTable() {
       const total = filtered.length;
@@ -612,7 +681,6 @@
     });
 
     // Range picker interactions
-    function openPanel() { panel.style.display = 'block'; }
     function closePanel() { panel.style.display = 'none'; customBlock.style.display = 'none'; }
 
     chipBtn.addEventListener('click', function (e) {
@@ -661,7 +729,8 @@
     customCancelBtn.addEventListener('click', function () {
       customBlock.style.display = 'none';
     });
-        function getSummaryForExport() {
+
+    function getSummaryForExport() {
       if (currentSummary) return currentSummary;
       // Fallback: recompute from current window
       const res = filterAndSummarize();
@@ -669,8 +738,6 @@
       return currentSummary;
     }
 
-
-    // Export Excel (CSV)
     // Export Excel (CSV)
     exportExcelBtn.addEventListener('click', function () {
       if (!filtered.length) return;
@@ -708,8 +775,7 @@
       URL.revokeObjectURL(url);
     });
 
-    // Export PDF (printable view – user can save as PDF)
-    // Export PDF (printable view – user can save as PDF)
+    // Export PDF (print view – user can save as PDF)
     exportPdfBtn.addEventListener('click', function () {
       if (!filtered.length) return;
 
@@ -754,16 +820,16 @@
       win.print();  // user can "Save as PDF"
     });
 
-
-    // Initial load: last 24h
-    currentMode = '24h';
-    computeWindowForMode('24h');
+    // Initial load: SINCE "REGISTRATION" (first UP)
+    currentMode = 'all';
+    computeWindowForMode('all');
     const initial = filterAndSummarize();
     filtered = initial.rows;
     renderSummary(initial.summary);
     renderTable();
   })();
 </script>
+
 <script>
 (function () {
   function toggleSubmitRow() {
@@ -784,4 +850,3 @@
   window.addEventListener('hashchange', toggleSubmitRow);
 })();
 </script>
-
