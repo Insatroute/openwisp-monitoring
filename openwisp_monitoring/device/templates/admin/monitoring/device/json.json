@@ -1,0 +1,1817 @@
+{
+  "type": "DeviceMonitoring",
+  "general": {
+    "serialnumber": "",
+    "local_time": 1763794356,
+    "uptime": 85095,
+    "hostname": "router164"
+  },
+  "interfaces": [
+    {
+      "bridge_members": [
+        "eth0",
+        "eth1",
+        "eth2",
+        "eth3",
+        "eth4"
+      ],
+      "type": "bridge",
+      "name": "br0",
+      "mtu": 1500,
+      "addresses": [
+        {
+          "family": "ipv4",
+          "mask": 24,
+          "address": "192.168.2.164"
+        },
+        {
+          "family": "ipv6",
+          "mask": 64,
+          "address": "2001:d0b0:3000:3001::1"
+        },
+        {
+          "family": "ipv6",
+          "mask": 64,
+          "address": "fe80::44e3:c5ff:fe7a:edfd"
+        }
+      ],
+      "statistics": {
+        "rx_errors": 0,
+        "rx_dropped": 1,
+        "tx_bytes": 5495475,
+        "rx_packets": 91044,
+        "rx_bytes": 11064481,
+        "tx_packets": 13689,
+        "tx_errors": 0,
+        "tx_dropped": 0
+      },
+      "mac": "46:e3:c5:7a:ed:fd",
+      "up": true
+    },
+    {
+      "type": "ethernet",
+      "name": "erspan0",
+      "up": false,
+      "statistics": {
+        "rx_errors": 0,
+        "rx_dropped": 0,
+        "tx_bytes": 0,
+        "rx_packets": 0,
+        "rx_bytes": 0,
+        "tx_packets": 0,
+        "tx_errors": 0,
+        "tx_dropped": 0
+      },
+      "mtu": 1450
+    },
+    {
+      "mac": "46:e3:c5:7a:ed:fd",
+      "type": "ethernet",
+      "name": "eth0",
+      "up": true,
+      "speed": "2500",
+      "statistics": {
+        "rx_errors": 0,
+        "rx_dropped": 0,
+        "tx_bytes": 5714360,
+        "rx_packets": 94092,
+        "rx_bytes": 3894120,
+        "tx_packets": 15047,
+        "tx_errors": 0,
+        "tx_dropped": 0
+      },
+      "addresses": [
+        {
+          "family": "ipv6",
+          "mask": 64,
+          "address": "fe80::44e3:c5ff:fe7a:edfd"
+        }
+      ],
+      "mtu": 1500
+    },
+    {
+      "type": "ethernet",
+      "name": "ip6gre0",
+      "up": false,
+      "statistics": {
+        "rx_errors": 0,
+        "rx_dropped": 0,
+        "tx_bytes": 0,
+        "rx_packets": 0,
+        "rx_bytes": 0,
+        "tx_packets": 0,
+        "tx_errors": 0,
+        "tx_dropped": 0
+      },
+      "mtu": 1448
+    },
+    {
+      "mac": "ee:ae:43:a4:ec:f7",
+      "type": "ethernet",
+      "name": "eth0",
+      "up": false,
+      "speed": "-1",
+      "statistics": {
+        "rx_errors": 0,
+        "rx_dropped": 0,
+        "tx_bytes": 0,
+        "rx_packets": 0,
+        "rx_bytes": 0,
+        "tx_packets": 0,
+        "tx_errors": 0,
+        "tx_dropped": 0
+      },
+      "mtu": 1500
+    },
+    {
+      "mac": "46:e3:c5:7a:ed:fd",
+      "type": "ethernet",
+      "name": "eth1",
+      "up": true,
+      "speed": "1000",
+      "statistics": {
+        "rx_errors": 0,
+        "rx_dropped": 3019,
+        "tx_bytes": 5497120,
+        "rx_packets": 94092,
+        "rx_bytes": 12261829,
+        "tx_packets": 13697,
+        "tx_errors": 0,
+        "tx_dropped": 0
+      },
+      "mtu": 1500
+    },
+    {
+      "mac": "46:e3:c5:7a:ed:fd",
+      "type": "ethernet",
+      "name": "eth2",
+      "up": false,
+      "speed": "-1",
+      "statistics": {
+        "rx_errors": 0,
+        "rx_dropped": 0,
+        "tx_bytes": 0,
+        "rx_packets": 0,
+        "rx_bytes": 0,
+        "tx_packets": 0,
+        "tx_errors": 0,
+        "tx_dropped": 0
+      },
+      "mtu": 1500
+    },
+    {
+      "mac": "46:e3:c5:7a:ed:fd",
+      "type": "ethernet",
+      "name": "eth3",
+      "up": false,
+      "speed": "-1",
+      "statistics": {
+        "rx_errors": 0,
+        "rx_dropped": 0,
+        "tx_bytes": 0,
+        "rx_packets": 0,
+        "rx_bytes": 0,
+        "tx_packets": 0,
+        "tx_errors": 0,
+        "tx_dropped": 0
+      },
+      "mtu": 1500
+    },
+    {
+      "mac": "46:e3:c5:7a:ed:fd",
+      "type": "ethernet",
+      "name": "eth4",
+      "up": false,
+      "speed": "-1",
+      "statistics": {
+        "rx_errors": 0,
+        "rx_dropped": 0,
+        "tx_bytes": 0,
+        "rx_packets": 0,
+        "rx_bytes": 0,
+        "tx_packets": 0,
+        "tx_errors": 0,
+        "tx_dropped": 0
+      },
+      "mtu": 1500
+    },
+    {
+      "mac": "6a:88:1d:1e:55:1f",
+      "type": "mobile",
+      "up": true,
+      "mobile": {
+        "operator_name": "CHN-UNICOM",
+        "power_status": "on",
+        "operator_code": "46001",
+        "model": "",
+        "connection_status": "connected",
+        "manufacturer": "RM500UCNVAAR03A12M2G_01.001.01.001",
+        "imei": "869955060207268",
+        "signal": {
+          "lte": {
+            "rsrq": -10,
+            "rsrp": -87,
+            "snr": 5,
+            "csq": 20,
+            "rssi": -73
+          }
+        }
+      },
+      "name": "modem",
+      "ping": {
+        "latency_ms": 215.554,
+        "packet_loss": "0%",
+        "jitter_ms": 316.57,
+        "dest_ip": "8.8.8.8",
+        "throughput": {
+          "tx_bytes": 10663864,
+          "rx_bytes": 10616832
+        }
+      },
+      "statistics": {
+        "rx_errors": 0,
+        "rx_dropped": 0,
+        "tx_bytes": 2486587836,
+        "rx_packets": 583969,
+        "rx_bytes": 37278970,
+        "tx_packets": 1777983,
+        "tx_errors": 0,
+        "tx_dropped": 0
+      },
+      "mtu": 1500,
+      "addresses": [
+        {
+          "family": "ipv4",
+          "mask": 24,
+          "address": "10.172.119.242"
+        },
+        {
+          "family": "ipv6",
+          "mask": 64,
+          "address": "fe80::6888:1dff:fe1e:551f"
+        }
+      ]
+    },
+    {
+      "mac": "e2:f1:ef:9a:c9:4d",
+      "type": "mobile",
+      "up": true,
+      "mobile": {
+        "operator_name": "CHN-UNICOM",
+        "power_status": "on",
+        "operator_code": "46001",
+        "model": "",
+        "connection_status": "connected",
+        "manufacturer": "RM500UCNVAAR03A12M2G_01.001.01.001",
+        "imei": "869955060206005",
+        "signal": {
+          "lte": {
+            "rsrq": -3,
+            "rsrp": -107,
+            "snr": 5,
+            "csq": 3,
+            "rssi": -107
+          }
+        }
+      },
+      "name": "modem2",
+      "ping": {
+        "latency_ms": 209.26,
+        "packet_loss": "0%",
+        "jitter_ms": 317.259,
+        "dest_ip": "8.8.8.8",
+        "throughput": {
+          "tx_bytes": 10663864,
+          "rx_bytes": 10616832
+        }
+      },
+      "statistics": {
+        "rx_errors": 0,
+        "rx_dropped": 0,
+        "tx_bytes": 90198,
+        "rx_packets": 960,
+        "rx_bytes": 77604,
+        "tx_packets": 933,
+        "tx_errors": 0,
+        "tx_dropped": 0
+      },
+      "mtu": 1500,
+      "addresses": [
+        {
+          "family": "ipv4",
+          "mask": 24,
+          "address": "10.196.72.96"
+        },
+        {
+          "family": "ipv6",
+          "mask": 64,
+          "address": "fe80::e0f1:efff:fe9a:c94d"
+        }
+      ]
+    },
+    {
+      "type": "wireless",
+      "name": "ra0",
+      "up": false,
+      "statistics": {
+        "rx_errors": 0,
+        "rx_dropped": 0,
+        "tx_bytes": 0,
+        "rx_packets": 0,
+        "rx_bytes": 0,
+        "tx_packets": 0,
+        "tx_errors": 0,
+        "tx_dropped": 0
+      },
+      "mtu": 1500
+    }
+  ],
+  "neighbors": [
+    {
+      "mac": "0e:ec:f2:c9:67:ec",
+      "state": "STALE",
+      "interface": "modem2",
+      "ip": "8.8.8.8",
+      "vendor": ""
+    },
+    {
+      "state": "FAILED",
+      "interface": "br0",
+      "ip": "192.168.2.33",
+      "vendor": ""
+    },
+    {
+      "mac": "ea:33:06:80:99:60",
+      "state": "STALE",
+      "interface": "modem",
+      "ip": "10.172.119.1",
+      "vendor": ""
+    },
+    {
+      "mac": "0e:ec:f2:c9:67:ec",
+      "state": "STALE",
+      "interface": "modem2",
+      "ip": "10.196.72.1",
+      "vendor": ""
+    },
+    {
+      "state": "FAILED",
+      "interface": "br0",
+      "ip": "192.168.2.64",
+      "vendor": ""
+    },
+    {
+      "mac": "b0:97:38:ae:1f:98",
+      "state": "STALE",
+      "interface": "br0",
+      "ip": "192.168.2.1",
+      "vendor": "Shenzhen Skyworth Digital Technology CO., Ltd"
+    },
+    {
+      "mac": "84:47:09:3f:64:c7",
+      "state": "STALE",
+      "interface": "br0",
+      "ip": "192.168.2.20",
+      "vendor": "Shenzhen IP3 Century Intelligent Technology CO.,Ltd"
+    },
+    {
+      "state": "FAILED",
+      "interface": "br0",
+      "ip": "192.168.2.204",
+      "vendor": ""
+    },
+    {
+      "mac": "00:be:43:8e:26:01",
+      "state": "REACHABLE",
+      "interface": "br0",
+      "ip": "192.168.2.254",
+      "vendor": "Dell Inc."
+    },
+    {
+      "mac": "56:85:99:c5:66:9e",
+      "state": "STALE",
+      "interface": "br0",
+      "ip": "192.168.2.4",
+      "vendor": ""
+    },
+    {
+      "mac": "00:00:00:00:00:00",
+      "state": "STALE",
+      "interface": "br0",
+      "ip": "fe80::3406:e8ff:fe87:efe3",
+      "vendor": "XEROX CORPORATION"
+    },
+    {
+      "mac": "00:00:00:00:00:00",
+      "state": "STALE",
+      "interface": "br0",
+      "ip": "fe80::9079:4dff:fef8:52e2",
+      "vendor": "XEROX CORPORATION"
+    },
+    {
+      "mac": "ea:33:06:80:99:60",
+      "state": "STALE",
+      "interface": "modem",
+      "ip": "fe80::e833:6ff:fe80:9960",
+      "vendor": ""
+    },
+    {
+      "mac": "84:47:09:3f:64:c7",
+      "state": "STALE",
+      "interface": "br0",
+      "ip": "fe80::104f:17b6:a243:87b8",
+      "vendor": "Shenzhen IP3 Century Intelligent Technology CO.,Ltd"
+    },
+    {
+      "mac": "00:88:01:c1:1f:8f",
+      "state": "STALE",
+      "interface": "br0",
+      "ip": "fe80::1",
+      "vendor": ""
+    },
+    {
+      "mac": "0e:ec:f2:c9:67:ec",
+      "state": "STALE",
+      "interface": "modem2",
+      "ip": "fe80::cec:f2ff:fec9:67ec",
+      "vendor": ""
+    }
+  ],
+  "device": {},
+  "zone_firewall": {
+    "data": {
+      "proto": "static"
+    }
+  },
+  "wlan": {
+    "wlan_data": {
+      "proto": "static",
+      "ssid": "",
+      "channel": "",
+      "status": "disable",
+      "mode": "ap"
+    }
+  },
+  "cellular": {
+    "modem2": {
+      "module_model": "",
+      "rsrp": "-107",
+      "rsrq": "-3",
+      "up_time": "157 seconds",
+      "proto": "static",
+      "band": "78",
+      "lac": "9714689",
+      "dns": "218.104.111.122",
+      "module_version": "RM500UCNVAAR03A12M2G_01.001.01.001",
+      "modem_select": "2",
+      "sim_imsi": "460015663999784",
+      "sim_status": "sim2",
+      "operator": "CHN-UNICOM",
+      "ip_address": "10.196.72.96",
+      "sinr": "5",
+      "modem_status": "connected",
+      "sim_iccid": "89860124801493993003",
+      "cell_id": "1142165765",
+      "signal": "3",
+      "imei": "869955060206005",
+      "network_type": "NR5G-SA"
+    },
+    "modem": {
+      "module_model": "",
+      "rsrp": "-87",
+      "rsrq": "-10",
+      "up_time": "107 seconds",
+      "proto": "static",
+      "band": "8",
+      "lac": "62479",
+      "dns": "218.104.111.122",
+      "module_version": "RM500UCNVAAR03A12M2G_01.001.01.001",
+      "modem_select": "0",
+      "sim_imsi": "460017130535210",
+      "sim_status": "sim1",
+      "operator": "CHN-UNICOM",
+      "ip_address": "10.172.119.242",
+      "sinr": "5",
+      "modem_status": "connected",
+      "sim_iccid": "89860124801485183944",
+      "cell_id": "180410012",
+      "signal": "20",
+      "imei": "869955060207268",
+      "network_type": "LTE"
+    }
+  },
+  "ethernet": {
+    "eth2_data": {
+      "proto": "static",
+      "port": "eth2",
+      "flowrx": "0",
+      "zone": "",
+      "speed": "auto",
+      "mode": "bridge",
+      "flowtx": "0",
+      "ip": ""
+    },
+    "eth1_data": {
+      "proto": "static",
+      "port": "eth1",
+      "flowrx": "0",
+      "zone": "",
+      "speed": "auto",
+      "mode": "bridge",
+      "flowtx": "0",
+      "ip": ""
+    },
+    "eth3_data": {
+      "proto": "static",
+      "port": "eth3",
+      "flowrx": "0",
+      "zone": "",
+      "speed": "auto",
+      "mode": "bridge",
+      "flowtx": "0",
+      "ip": ""
+    },
+    "eth4_data": {
+      "proto": "static",
+      "port": "eth4",
+      "flowrx": "0",
+      "zone": "",
+      "speed": "auto",
+      "mode": "bridge",
+      "flowtx": "0",
+      "ip": ""
+    }
+  },
+  "realtimemonitor": {
+    "traffic": {
+      "dpi_client_data": [
+        {
+          "client": "192.168.6.17",
+          "hour": "05",
+          "data": {
+            "application": {
+              "unknown": 76
+            },
+            "total": 76,
+            "protocol": {
+              "mdns": 76
+            },
+            "host": {
+              "_moxa._tcp.local": 76
+            }
+          }
+        },
+        {
+          "client": "192.168.16.17",
+          "hour": "05",
+          "data": {
+            "application": {
+              "unknown": 76
+            },
+            "total": 76,
+            "protocol": {
+              "mdns": 76
+            },
+            "host": {
+              "_moxa._tcp.local": 76
+            }
+          }
+        },
+        {
+          "client": "192.168.5.88",
+          "hour": "05",
+          "data": {
+            "application": {
+              "unknown": 76
+            },
+            "total": 76,
+            "protocol": {
+              "mdns": 76
+            },
+            "host": {
+              "_moxa._tcp.local": 76
+            }
+          }
+        },
+        {
+          "client": "fe80::1c5a:9aff:fe6b:ea47",
+          "hour": "04",
+          "data": {
+            "application": {
+              "unknown": 1300
+            },
+            "total": 1300,
+            "protocol": {
+              "icmpv6": 1300
+            },
+            "host": {}
+          }
+        },
+        {
+          "client": "fe80::5485:99ff:fec5:669e",
+          "hour": "04",
+          "data": {
+            "application": {
+              "unknown": 1357
+            },
+            "total": 1357,
+            "protocol": {
+              "icmpv6": 960,
+              "dhcpv6": 397
+            },
+            "host": {}
+          }
+        },
+        {
+          "client": "192.168.2.4",
+          "hour": "04",
+          "data": {
+            "application": {
+              "unknown": 90
+            },
+            "total": 90,
+            "protocol": {
+              "icmp": 90
+            },
+            "host": {}
+          }
+        },
+        {
+          "client": "192.168.2.33",
+          "hour": "04",
+          "data": {
+            "application": {
+              "unknown": 404
+            },
+            "total": 404,
+            "protocol": {
+              "dhcp": 342,
+              "icmp": 62
+            },
+            "host": {}
+          }
+        },
+        {
+          "client": "192.168.2.64",
+          "hour": "04",
+          "data": {
+            "application": {
+              "unknown": 404
+            },
+            "total": 404,
+            "protocol": {
+              "dhcp": 342,
+              "icmp": 62
+            },
+            "host": {}
+          }
+        },
+        {
+          "client": "192.168.2.125",
+          "hour": "04",
+          "data": {
+            "application": {
+              "unknown": 684
+            },
+            "total": 684,
+            "protocol": {
+              "dhcp": 684
+            },
+            "host": {}
+          }
+        },
+        {
+          "client": "192.168.2.112",
+          "hour": "04",
+          "data": {
+            "application": {
+              "unknown": 1368
+            },
+            "total": 1368,
+            "protocol": {
+              "dhcp": 1368
+            },
+            "host": {}
+          }
+        },
+        {
+          "client": "192.168.2.111",
+          "hour": "04",
+          "data": {
+            "application": {
+              "unknown": 1368
+            },
+            "total": 1368,
+            "protocol": {
+              "dhcp": 1368
+            },
+            "host": {}
+          }
+        },
+        {
+          "client": "192.168.2.163",
+          "hour": "04",
+          "data": {
+            "application": {
+              "unknown": 1368
+            },
+            "total": 1368,
+            "protocol": {
+              "dhcp": 1368
+            },
+            "host": {}
+          }
+        },
+        {
+          "client": "192.168.2.1",
+          "hour": "04",
+          "data": {
+            "application": {
+              "unknown": 1180
+            },
+            "total": 1180,
+            "protocol": {
+              "dhcp": 1180
+            },
+            "host": {}
+          }
+        },
+        {
+          "client": "192.168.2.120",
+          "hour": "04",
+          "data": {
+            "application": {
+              "unknown": 1368
+            },
+            "total": 1368,
+            "protocol": {
+              "dhcp": 1368
+            },
+            "host": {}
+          }
+        },
+        {
+          "client": "fe80::288:2ff:fec1:12e6",
+          "hour": "04",
+          "data": {
+            "application": {
+              "unknown": 440
+            },
+            "total": 440,
+            "protocol": {
+              "icmpv6": 440
+            },
+            "host": {}
+          }
+        },
+        {
+          "client": "192.168.6.95",
+          "hour": "03",
+          "data": {
+            "application": {
+              "unknown": 2082
+            },
+            "total": 2082,
+            "protocol": {
+              "ssdp": 1353,
+              "netbios": 729
+            },
+            "host": {
+              "239.255.255.250": 1353,
+              "huawei": 729
+            }
+          }
+        },
+        {
+          "client": "fe80::a070:d2ff:fe12:b762",
+          "hour": "04",
+          "data": {
+            "application": {
+              "unknown": 300
+            },
+            "total": 300,
+            "protocol": {
+              "icmpv6": 300
+            },
+            "host": {}
+          }
+        },
+        {
+          "client": "fe80::3406:e8ff:fe87:efe3",
+          "hour": "06",
+          "data": {
+            "application": {
+              "unknown": 1242
+            },
+            "total": 1242,
+            "protocol": {
+              "icmpv6": 1242
+            },
+            "host": {}
+          }
+        },
+        {
+          "client": "fe80::a07c:8ff:fe86:b1c",
+          "hour": "02",
+          "data": {
+            "application": {
+              "unknown": 480
+            },
+            "total": 480,
+            "protocol": {
+              "icmpv6": 480
+            },
+            "host": {}
+          }
+        },
+        {
+          "client": "192.168.2.164",
+          "hour": "04",
+          "data": {
+            "application": {
+              "unknown": 1368
+            },
+            "total": 1368,
+            "protocol": {
+              "dhcp": 1368
+            },
+            "host": {}
+          }
+        },
+        {
+          "client": "fe80::acb6:33ff:fe57:c797",
+          "hour": "02",
+          "data": {
+            "application": {
+              "unknown": 1300
+            },
+            "total": 1300,
+            "protocol": {
+              "icmpv6": 1300
+            },
+            "host": {}
+          }
+        },
+        {
+          "client": "fe80::8415:7ff:fe8a:b6f4",
+          "hour": "02",
+          "data": {
+            "application": {
+              "unknown": 1210
+            },
+            "total": 1210,
+            "protocol": {
+              "icmpv6": 1210
+            },
+            "host": {}
+          }
+        },
+        {
+          "client": "fe80::60ce:91ff:fea3:e304",
+          "hour": "04",
+          "data": {
+            "application": {
+              "unknown": 172
+            },
+            "total": 172,
+            "protocol": {
+              "icmpv6": 172
+            },
+            "host": {}
+          }
+        },
+        {
+          "client": "fe80::a0b0:38ff:fe18:db4f",
+          "hour": "02",
+          "data": {
+            "application": {
+              "unknown": 150
+            },
+            "total": 150,
+            "protocol": {
+              "icmpv6": 150
+            },
+            "host": {}
+          }
+        },
+        {
+          "client": "fe80::211:22ff:fe33:4455",
+          "hour": "03",
+          "data": {
+            "application": {
+              "unknown": 8450
+            },
+            "total": 8450,
+            "protocol": {
+              "icmpv6": 8450
+            },
+            "host": {}
+          }
+        },
+        {
+          "client": "fe80::8647:9ff:fe3f:64c7",
+          "hour": "00",
+          "data": {
+            "application": {
+              "unknown": 96
+            },
+            "total": 96,
+            "protocol": {
+              "dhcpv6": 96
+            },
+            "host": {}
+          }
+        },
+        {
+          "client": "192.168.2.8",
+          "hour": "06",
+          "data": {
+            "application": {
+              "unknown": 1416
+            },
+            "total": 1416,
+            "protocol": {
+              "mdns": 1416
+            },
+            "host": {
+              "desktop-gab4ltf.local": 1416
+            }
+          }
+        },
+        {
+          "client": "192.168.2.150",
+          "hour": "06",
+          "data": {
+            "application": {
+              "unknown": 17124
+            },
+            "total": 17124,
+            "protocol": {
+              "ssdp": 17124
+            },
+            "host": {
+              "239.255.255.250": 17124
+            }
+          }
+        },
+        {
+          "client": "192.168.1.26",
+          "hour": "06",
+          "data": {
+            "application": {
+              "unknown": 1785
+            },
+            "total": 1785,
+            "protocol": {
+              "ssdp": 537,
+              "netbios": 1248
+            },
+            "host": {
+              "239.255.255.250": 537,
+              "desktop-gab4ltf": 1248
+            }
+          }
+        },
+        {
+          "client": "fe80::ef74:b93f:53ff:9ef7",
+          "hour": "06",
+          "data": {
+            "application": {
+              "unknown": 4590
+            },
+            "total": 4590,
+            "protocol": {
+              "dhcpv6": 1560,
+              "icmpv6": 3030
+            },
+            "host": {}
+          }
+        },
+        {
+          "client": "fe80::9079:4dff:fef8:52e2",
+          "hour": "02",
+          "data": {
+            "application": {
+              "unknown": 1506
+            },
+            "total": 1506,
+            "protocol": {
+              "icmpv6": 1506
+            },
+            "host": {}
+          }
+        },
+        {
+          "client": "192.168.2.249",
+          "hour": "06",
+          "data": {
+            "application": {
+              "unknown": 1996
+            },
+            "total": 1996,
+            "protocol": {
+              "netbios": 1996
+            },
+            "host": {
+              "workgroup": 920,
+              "dop": 1076
+            }
+          }
+        },
+        {
+          "client": "192.168.0.20",
+          "hour": "06",
+          "data": {
+            "application": {
+              "unknown": 2468
+            },
+            "total": 2468,
+            "protocol": {
+              "ssdp": 1496,
+              "netbios": 972
+            },
+            "host": {
+              "239.255.255.250": 1496,
+              "suke": 972
+            }
+          }
+        },
+        {
+          "client": "192.168.2.254",
+          "hour": "06",
+          "data": {
+            "application": {
+              "unknown": 9811
+            },
+            "total": 9811,
+            "protocol": {
+              "netbios": 2072,
+              "mdns": 7739
+            },
+            "host": {
+              "_ipps._tcp.local": 87,
+              "1.0.6.2.e.8.e.f.f.f.3.4.e.b.2.0.0.f.2.e.0.0.5.1.e.4.2.8.8.0.4.2.ip6.arpa": 7652,
+              "ubuntu_smb": 2072
+            }
+          }
+        },
+        {
+          "client": "fe80::1",
+          "hour": "06",
+          "data": {
+            "application": {
+              "unknown": 2322
+            },
+            "total": 2322,
+            "protocol": {
+              "icmpv6": 2322
+            },
+            "host": {}
+          }
+        },
+        {
+          "client": "fe80::20c:29ff:fe02:93db",
+          "hour": "06",
+          "data": {
+            "application": {
+              "unknown": 3498
+            },
+            "total": 3498,
+            "protocol": {
+              "dhcpv6": 798,
+              "icmpv6": 2700
+            },
+            "host": {}
+          }
+        },
+        {
+          "client": "10.121.23.2",
+          "hour": "06",
+          "data": {
+            "application": {
+              "unknown": 23379
+            },
+            "total": 23379,
+            "protocol": {
+              "ssdp": 22048,
+              "mdns": 83,
+              "netbios": 1248
+            },
+            "host": {
+              "workgroup": 276,
+              "test-pc": 972,
+              "239.255.255.250": 22048,
+              "_sleep-proxy._udp.local": 83
+            }
+          }
+        },
+        {
+          "client": "192.168.2.6",
+          "hour": "06",
+          "data": {
+            "application": {
+              "unknown": 49664
+            },
+            "total": 49664,
+            "protocol": {
+              "llmnr": 402,
+              "mdns": 48362,
+              "igmp": 900
+            },
+            "host": {
+              "unhappy": 402,
+              "_dosvc._tcp.local": 48362
+            }
+          }
+        },
+        {
+          "client": "192.168.0.6",
+          "hour": "06",
+          "data": {
+            "application": {
+              "unknown": 2575
+            },
+            "total": 2575,
+            "protocol": {
+              "ssdp": 1360,
+              "netbios": 1215
+            },
+            "host": {
+              "239.255.255.250": 1360,
+              "unhappy": 1215
+            }
+          }
+        },
+        {
+          "client": "192.168.2.161",
+          "hour": "04",
+          "data": {
+            "application": {
+              "unknown": 2048
+            },
+            "total": 2048,
+            "protocol": {
+              "ssdp": 680,
+              "dhcp": 1368
+            },
+            "host": {
+              "239.255.255.250": 680
+            }
+          }
+        },
+        {
+          "client": "fe80::104f:17b6:a243:87b8",
+          "hour": "06",
+          "data": {
+            "application": {
+              "unknown": 41571
+            },
+            "total": 41571,
+            "protocol": {
+              "mdns": 41028,
+              "dns": 285,
+              "icmpv6": 258
+            },
+            "host": {
+              "www.huiseen.com": 285,
+              "_dosvc._tcp.local": 41028
+            }
+          }
+        },
+        {
+          "client": "192.168.2.20",
+          "hour": "06",
+          "data": {
+            "application": {
+              "unknown": 38397
+            },
+            "total": 38397,
+            "protocol": {
+              "mdns": 38397
+            },
+            "host": {
+              "_dosvc._tcp.local": 38397
+            }
+          }
+        }
+      ]
+    },
+    "real_time_traffic": {
+      "data": {
+        "talkers":      {
+                "top_hosts":    [{
+                                "mac":  "",
+                                "totals":       {
+                                        "upload":       1254255,
+                                        "download":     4284125,
+                                        "bandwidth":    0,
+                                        "packets":      0
+                                },
+                                "apps": {
+                                        "unknown":      13264174
+                                },
+                                "host": "192.168.2.161",
+                                "ip":   "192.168.2.161"
+                        }, {
+                                "mac":  "00:00:c0:a8:02:01",
+                                "totals":       {
+                                        "upload":       1254255,
+                                        "download":     12542,
+                                        "bandwidth":    5667,
+                                        "packets":      0
+                                },
+                                "apps": {
+                                        "unknown":      2028363
+                                },
+                                "host": "192.168.2.1",
+                                "ip":   "192.168.2.1"
+                        }, {
+                                "mac":  "00:00:c0:a8:02:14",
+                                "totals":       {
+                                        "upload":       0,
+                                        "download":     0,
+                                        "bandwidth":    34568765,
+                                        "packets":      0
+                                },
+                                "apps": {
+                                        "unknown":      1330576,
+                                        "netify.internal-network":      297115
+                                },
+                                "host": "192.168.2.20",
+                                "ip":   "192.168.2.20"
+                        }, {
+                                "mac":  "",
+                                "totals":       {
+                                        "upload":       0,
+                                        "download":     0,
+                                        "bandwidth":    0,
+                                        "packets":      0
+                                },
+                                "apps": {
+                                        "netify.reverse-dns":   1158864,
+                                        "unknown":      17094,
+                                        "netify.internal-network":      348
+                                },
+                                "host": "192.168.2.254",
+                                "ip":   "192.168.2.254"
+                        }, {
+                                "mac":  "00:00:c0:a8:02:96",
+                                "totals":       {
+                                        "upload":       0,
+                                        "download":     0,
+                                        "bandwidth":    345678,
+                                        "packets":      0
+                                },
+                                "apps": {
+                                        "unknown":      887931
+                                },
+                                "host": "192.168.2.150",
+                                "ip":   "192.168.2.150"
+                        }, {
+                                "mac":  "00:00:c0:a8:02:06",
+                                "totals":       {
+                                        "upload":       0,
+                                        "download":     0,
+                                        "bandwidth":    0,
+                                        "packets":      0
+                                },
+                                "apps": {
+                                        "netify.internal-network":      373238
+                                },
+                                "host": "192.168.2.6",
+                                "ip":   "192.168.2.6"
+                        }, {
+                                "mac":  "",
+                                "totals":       {
+                                        "upload":       0,
+                                        "download":     0,
+                                        "bandwidth":    0,
+                                        "packets":      0
+                                },
+                                "apps": {
+                                        "netify.internal-network":      321326,
+                                        "unknown":      13058,
+                                        "netify.mozilla":       1061,
+                                        "netify.taobao":        588,
+                                        "netify.sina":  570,
+                                        "netify.sogou": 570,
+                                        "netify.baidu": 558,
+                                        "netify.firefox":       500,
+                                        "netify.cloudflare-dns":        490
+                                },
+                                "host": "fe80::104f:17b6:a243:87b8",
+                                "ip":   "fe80::104f:17b6:a243:87b8"
+                        }, {
+                                "mac":  "",
+                                "totals":       {
+                                        "upload":       0,
+                                        "download":     0,
+                                        "bandwidth":    0,
+                                        "packets":      0
+                                },
+                                "apps": {
+                                        "unknown":      177828
+                                },
+                                "host": "10.121.23.2",
+                                "ip":   "10.121.23.2"
+                        }, {
+                                "mac":  "",
+                                "totals":       {
+                                        "upload":       0,
+                                        "download":     0,
+                                        "bandwidth":    0,
+                                        "packets":      0
+                                },
+                                "apps": {
+                                        "unknown":      34445
+                                },
+                                "host": "192.168.0.6",
+                                "ip":   "192.168.0.6"
+                        }, {
+                                "mac":  "",
+                                "totals":       {
+                                        "upload":       0,
+                                        "download":     0,
+                                        "bandwidth":    0,
+                                        "packets":      0
+                                },
+                                "apps": {
+                                        "unknown":      28698
+                                },
+                                "host": "fe80::20c:29ff:fe02:93db",
+                                "ip":   "fe80::20c:29ff:fe02:93db"
+                        }, {
+                                "mac":  "",
+                                "totals":       {
+                                        "upload":       0,
+                                        "download":     0,
+                                        "bandwidth":    0,
+                                        "packets":      0
+                                },
+                                "apps": {
+                                        "unknown":      24654
+                                },
+                                "host": "192.168.0.20",
+                                "ip":   "192.168.0.20"
+                        }, {
+                                "mac":  "",
+                                "totals":       {
+                                        "upload":       0,
+                                        "download":     0,
+                                        "bandwidth":    0,
+                                        "packets":      0
+                                },
+                                "apps": {
+                                        "netify.internal-network":      12348,
+                                        "unknown":      9810
+                                },
+                                "host": "192.168.2.8",
+                                "ip":   "192.168.2.8"
+                        }, {
+                                "mac":  "",
+                                "totals":       {
+                                        "upload":       0,
+                                        "download":     0,
+                                        "bandwidth":    0,
+                                        "packets":      0
+                                },
+                                "apps": {
+                                        "unknown":      17802,
+                                        "netify.baidu": 526,
+                                        "netify.feishu":        506,
+                                        "netify.microsoft":     333
+                                },
+                                "host": "fe80::1",
+                                "ip":   "fe80::1"
+                        }, {
+                                "mac":  "",
+                                "totals":       {
+                                        "upload":       0,
+                                        "download":     0,
+                                        "bandwidth":    0,
+                                        "packets":      0
+                                },
+                                "apps": {
+                                        "unknown":      16053
+                                },
+                                "host": "192.168.2.249",
+                                "ip":   "192.168.2.249"
+                        }, {
+                                "mac":  "",
+                                "totals":       {
+                                        "upload":       0,
+                                        "download":     0,
+                                        "bandwidth":    0,
+                                        "packets":      0
+                                },
+                                "apps": {
+                                        "unknown":      10197,
+                                        "netify.internal-network":      76
+                                },
+                                "host": "192.168.1.26",
+                                "ip":   "192.168.1.26"
+                        }, {
+                                "mac":  "",
+                                "totals":       {
+                                        "upload":       0,
+                                        "download":     0,
+                                        "bandwidth":    0,
+                                        "packets":      0
+                                },
+                                "apps": {
+                                        "unknown":      4140
+                                },
+                                "host": "192.168.2.2",
+                                "ip":   "192.168.2.2"
+                        }, {
+                                "mac":  "",
+                                "totals":       {
+                                        "upload":       0,
+                                        "download":     0,
+                                        "bandwidth":    0,
+                                        "packets":      0
+                                },
+                                "apps": {
+                                        "unknown":      2082
+                                },
+                                "host": "192.168.6.95",
+                                "ip":   "192.168.6.95"
+                        }, {
+                                "mac":  "",
+                                "totals":       {
+                                        "upload":       0,
+                                        "download":     0,
+                                        "bandwidth":    0,
+                                        "packets":      0
+                                },
+                                "apps": {
+                                        "unknown":      1368
+                                },
+                                "host": "192.168.2.111",
+                                "ip":   "192.168.2.111"
+                        }, {
+                                "mac":  "",
+                                "totals":       {
+                                        "upload":       0,
+                                        "download":     0,
+                                        "bandwidth":    0,
+                                        "packets":      0
+                                },
+                                "apps": {
+                                        "unknown":      1368
+                                },
+                                "host": "192.168.2.112",
+                                "ip":   "192.168.2.112"
+                        }, {
+                                "mac":  "",
+                                "totals":       {
+                                        "upload":       0,
+                                        "download":     0,
+                                        "bandwidth":    0,
+                                        "packets":      0
+                                },
+                                "apps": {
+                                        "unknown":      1368
+                                },
+                                "host": "192.168.2.120",
+                                "ip":   "192.168.2.120"
+                        }, {
+                                "mac":  "",
+                                "totals":       {
+                                        "upload":       0,
+                                        "download":     0,
+                                        "bandwidth":    0,
+                                        "packets":      0
+                                },
+                                "apps": {
+                                        "unknown":      1368
+                                },
+                                "host": "192.168.2.163",
+                                "ip":   "192.168.2.163"
+                        }, {
+                                "mac":  "",
+                                "totals":       {
+                                        "upload":       0,
+                                        "download":     0,
+                                        "bandwidth":    0,
+                                        "packets":      0
+                                },
+                                "apps": {
+                                        "unknown":      1368
+                                },
+                                "host": "192.168.2.164",
+                                "ip":   "192.168.2.164"
+                        }, {
+                                "mac":  "",
+                                "totals":       {
+                                        "upload":       0,
+                                        "download":     0,
+                                        "bandwidth":    0,
+                                        "packets":      0
+                                },
+                                "apps": {
+                                        "unknown":      1300
+                                },
+                                "host": "fe80::1c5a:9aff:fe6b:ea47",
+                                "ip":   "fe80::1c5a:9aff:fe6b:ea47"
+                        }, {
+                                "mac":  "",
+                                "totals":       {
+                                        "upload":       0,
+                                        "download":     0,
+                                        "bandwidth":    0,
+                                        "packets":      0
+                                },
+                                "apps": {
+                                        "unknown":      684
+                                },
+                                "host": "192.168.2.125",
+                                "ip":   "192.168.2.125"
+                        }, {
+                                "mac":  "00:00:c0:a8:02:21",
+                                "totals":       {
+                                        "upload":       0,
+                                        "download":     0,
+                                        "bandwidth":    0,
+                                        "packets":      0
+                                },
+                                "apps": {
+                                        "unknown":      404
+                                },
+                                "host": "192.168.2.33",
+                                "ip":   "192.168.2.33"
+                        }, {
+                                "mac":  "00:00:c0:a8:02:40",
+                                "totals":       {
+                                        "upload":       0,
+                                        "download":     0,
+                                        "bandwidth":    0,
+                                        "packets":      0
+                                },
+                                "apps": {
+                                        "unknown":      404
+                                },
+                                "host": "192.168.2.64",
+                                "ip":   "192.168.2.64"
+                        }, {
+                                "mac":  "00:00:c0:a8:02:04",
+                                "totals":       {
+                                        "upload":       0,
+                                        "download":     0,
+                                        "bandwidth":    0,
+                                        "packets":      0
+                                },
+                                "apps": {
+                                        "unknown":      90
+                                },
+                                "host": "192.168.2.4",
+                                "ip":   "192.168.2.4"
+                        }, {
+                                "mac":  "",
+                                "totals":       {
+                                        "upload":       0,
+                                        "download":     0,
+                                        "bandwidth":    0,
+                                        "packets":      0
+                                },
+                                "apps": {
+                                        "netify.internal-network":      76
+                                },
+                                "host": "192.168.16.17",
+                                "ip":   "192.168.16.17"
+                        }, {
+                                "mac":  "",
+                                "totals":       {
+                                        "upload":       0,
+                                        "download":     0,
+                                        "bandwidth":    0,
+                                        "packets":      0
+                                },
+                                "apps": {
+                                        "netify.internal-network":      76
+                                },
+                                "host": "192.168.5.88",
+                                "ip":   "192.168.5.88"
+                        }, {
+                                "mac":  "",
+                                "totals":       {
+                                        "upload":       0,
+                                        "download":     0,
+                                        "bandwidth":    0,
+                                        "packets":      0
+                                },
+                                "apps": {
+                                        "netify.internal-network":      76
+                                },
+                                "host": "192.168.6.17",
+                                "ip":   "192.168.6.17"
+                        }],
+                "top_protocols":        [{
+                                "name": "http/s",
+                                "value":        13190852
+                        }, {
+                                "name": "mdns",
+                                "value":        2164124
+                        }, {
+                                "name": "dns",
+                                "value":        2028847
+                        }, {
+                                "name": "ssh",
+                                "value":        1330576
+                        }, {
+                                "name": "http",
+                                "value":        509034
+                        }, {
+                                "name": "ssdp",
+                                "value":        457502
+                        }, {
+                                "name": "icmp",
+                                "value":        161867
+                        }, {
+                                "name": "netbios",
+                                "value":        78765
+                        }, {
+                                "name": "icmpv6",
+                                "value":        47160
+                        }, {
+                                "name": "rtp",
+                                "value":        36975
+                        }, {
+                                "name": "dhcp",
+                                "value":        12155
+                        }, {
+                                "name": "igmp",
+                                "value":        12000
+                        }, {
+                                "name": "dhcpv6",
+                                "value":        8448
+                        }, {
+                                "name": "llmnr",
+                                "value":        4974
+                        }, {
+                                "name": "nat/pmp",
+                                "value":        2376
+                        }, {
+                                "name": "skype/teams",
+                                "value":        798
+                        }],
+                "top_apps":     [{
+                                "name": "unknown",
+                                "value":        17876627
+                        }, {
+                                "name": "netify.reverse-dns",
+                                "value":        1158864
+                        }, {
+                                "name": "netify.internal-network",
+                                "value":        1005260
+                        }, {
+                                "name": "netify.baidu",
+                                "value":        1084
+                        }, {
+                                "name": "netify.mozilla",
+                                "value":        1061
+                        }, {
+                                "name": "netify.taobao",
+                                "value":        588
+                        }, {
+                                "name": "netify.sina",
+                                "value":        570
+                        }, {
+                                "name": "netify.sogou",
+                                "value":        570
+                        }, {
+                                "name": "netify.feishu",
+                                "value":        506
+                        }, {
+                                "name": "netify.firefox",
+                                "value":        500
+                        }, {
+                                "name": "netify.cloudflare-dns",
+                                "value":        490
+                        }, {
+                                "name": "netify.microsoft",
+                                "value":        333
+                        }]
+        }
+}
+    }
+  },
+  "resources": {
+    "memory": {
+      "total": 1038921728,
+      "shared": 20557824,
+      "free": 833818624,
+      "cached": 60223488,
+      "available": 877178880,
+      "buffered": 10850304
+    },
+    "cpus": 2,
+    "disk": [
+      {
+        "filesystem": "/dev/root",
+        "available_bytes": 0,
+        "mount_point": "/rom",
+        "used_percent": 100,
+        "size_bytes": 22544384,
+        "used_bytes": 22544384
+      },
+      {
+        "filesystem": "/dev/mtdblock7",
+        "available_bytes": 1712128,
+        "mount_point": "/overlay",
+        "used_percent": 18,
+        "size_bytes": 2097152,
+        "used_bytes": 385024
+      },
+      {
+        "filesystem": "/dev/mmcblk0p1",
+        "available_bytes": 202682368,
+        "mount_point": "/mnt/mmcblk0p1",
+        "used_percent": 76,
+        "size_bytes": 907067392,
+        "used_bytes": 640634880
+      },
+      {
+        "filesystem": "/dev/mmcblk0p2",
+        "available_bytes": 2024448000,
+        "mount_point": "/mnt/mmcblk0p2",
+        "used_percent": 4,
+        "size_bytes": 2251677696,
+        "used_bytes": 92491776
+      },
+      {
+        "filesystem": "/dev/mmcblk0p3",
+        "available_bytes": 478058496,
+        "mount_point": "/mnt/mmcblk0p3",
+        "used_percent": 0,
+        "size_bytes": 509177856,
+        "used_bytes": 81920
+      },
+      {
+        "filesystem": "/dev/mmcblk0p5",
+        "available_bytes": 12588032,
+        "mount_point": "/mnt/mmcblk0p5",
+        "used_percent": 9,
+        "size_bytes": 15057920,
+        "used_bytes": 1297408
+      },
+      {
+        "filesystem": "/dev/mmcblk0p6",
+        "available_bytes": 13136896,
+        "mount_point": "/mnt/mmcblk0p6",
+        "used_percent": 5,
+        "size_bytes": 15057920,
+        "used_bytes": 748544
+      },
+      {
+        "filesystem": "/dev/mtdblock8",
+        "available_bytes": 282624,
+        "mount_point": "/config",
+        "used_percent": 46,
+        "size_bytes": 524288,
+        "used_bytes": 241664
+      },
+      {
+        "filesystem": "/dev/mtdblock9",
+        "available_bytes": 323584,
+        "mount_point": "/factory",
+        "used_percent": 38,
+        "size_bytes": 524288,
+        "used_bytes": 200704
+      },
+      {
+        "filesystem": "/dev/mtdblock10",
+        "available_bytes": 2383872,
+        "mount_point": "/patch",
+        "used_percent": 9,
+        "size_bytes": 2621440,
+        "used_bytes": 237568
+      }
+    ],
+    "load": [
+      0.13,
+      0.06,
+      0.09
+    ],
+    "swap": {
+      "free": 0,
+      "total": 0
+    }
+  },
+  "performance_sla": {
+    "data": {
+      "sla_check_interval": "0",
+      "sla_packet_loss": "0",
+      "base_particpants": "",
+      "base_protocol": "",
+      "update_static_route": "",
+      "sla_target": "",
+      "sla_restore_interval": "0",
+      "sla_fail_interval": "0",
+      "sla_latency": "0",
+      "sla_jitter": "0",
+      "base_server": ""
+    }
+  },
+  "device_type": "4g_5g_router"
+}

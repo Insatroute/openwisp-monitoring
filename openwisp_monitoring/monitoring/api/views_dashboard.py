@@ -156,6 +156,8 @@ class WanUplinksAllDevicesView(
     """
 
     queryset = Device.objects.all()
+    organization_field = "organization"
+    permission_classes = (IsOrganizationMember, DjangoModelPermissions)
     # organization_field defaults to "organization" via OrgLookup
 
     def get(self, request, *args, **kwargs):
@@ -238,6 +240,8 @@ class DataUsageAllDevicesView(
     """
 
     queryset = Device.objects.all()
+    organization_field = "organization"
+    permission_classes = (IsOrganizationMember, DjangoModelPermissions)
     # org filter on Device.organization
 
     def get(self, request, *args, **kwargs):
@@ -293,6 +297,8 @@ class MobileDistributionAllDevicesView(
     """
 
     queryset = Device.objects.all()
+    organization_field = "organization"
+    permission_classes = (IsOrganizationMember, DjangoModelPermissions)
     # org filter on Device.organization
 
     def get(self, request, *args, **kwargs):
