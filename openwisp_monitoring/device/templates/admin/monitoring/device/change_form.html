@@ -33,7 +33,7 @@
 </div>
 {% endif %}
 
-{% if not add or device_data %}
+{% if not add and device_data %}
   <div class="inline-group" id="ow-traffic">
   <fieldset class="module">
      <h2>{% trans 'Traffic' %}</h2>
@@ -76,7 +76,7 @@
 </div>
 {% endif %}
 
-{% if not add %}
+{% if not add and device_data %}
 <div class="inline-group" id="ow-events">
   <fieldset class="module">
     <h2>{% trans 'Events' %}</h2>
