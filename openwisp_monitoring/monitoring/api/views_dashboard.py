@@ -8,6 +8,7 @@ from openwisp_users.api.mixins import (
     ProtectedAPIMixin,
     FilterByOrganizationMembership,
 )
+from openwisp_users.api.permissions import IsOrganizationMember, DjangoModelPermissions
 
 from .views_realdata import fetch_device_data
 
@@ -86,47 +87,103 @@ class GlobalTopAppsView(
         return Response({"top_10_apps": top_10_apps})
 
 
+# class GlobalTopDevicesView(
+#     ProtectedAPIMixin,
+#     FilterByOrganizationMembership,
+#     generics.GenericAPIView,
+# ):
+#     """
+#     Top 10 devices based on total rx/tx bytes across all interfaces.
+#     Uses DeviceData → Device.organization for org filtering.
+#     """
+
+#     queryset = DeviceData.objects.all()
+#     organization_field = "device__organization"
+
+#     def get(self, request, *args, **kwargs):
+#         devices = []
+
+#         for device_data in self.get_queryset():
+#             data = device_data.data_user_friendly or {}
+#             general = data.get("general", {})
+#             interfaces = data.get("interfaces", [])
+
+#             total_rx = total_tx = 0
+#             for iface in interfaces:
+#                 stats = iface.get("statistics") or {}
+#                 total_rx += stats.get("rx_bytes", 0)
+#                 total_tx += stats.get("tx_bytes", 0)
+
+#             total_traffic = total_rx + total_tx
+#             hostname = general.get("hostname") or "Unknown"
+
+#             devices.append(
+#                 {
+#                     "device": hostname,
+#                     "total_bytes": total_traffic,
+#                     "total_gb": round(total_traffic / (1024 ** 3), 3),
+#                 }
+#             )
+
+#         top_devices = sorted(devices, key=lambda d: d["total_bytes"], reverse=True)[:10]
+#         return Response({"top_10_devices": top_devices})
+
 class GlobalTopDevicesView(
     ProtectedAPIMixin,
     FilterByOrganizationMembership,
     generics.GenericAPIView,
 ):
     """
-    Top 10 devices based on total rx/tx bytes across all interfaces.
-    Uses DeviceData → Device.organization for org filtering.
+    Return 'top' devices by total rx+tx bytes in DeviceData.
+    Org filtering:
+      - Uses FilterByOrganizationMembership on device__organization
+      - Members see their org devices, superusers see all
     """
 
     queryset = DeviceData.objects.all()
     organization_field = "device__organization"
+    permission_classes = (IsOrganizationMember, DjangoModelPermissions)
 
     def get(self, request, *args, **kwargs):
+        # basic query params (match your frontend: org, time, limit, etc.)
+        limit = int(request.query_params.get("limit", 10) or 10)
+        if limit <= 0:
+            limit = 10
+
+        # let mixin apply organization filter: this NEVER uses user.organizations
+        device_data_qs = self.get_queryset()
+
         devices = []
 
-        for device_data in self.get_queryset():
-            data = device_data.data_user_friendly or {}
-            general = data.get("general", {})
-            interfaces = data.get("interfaces", [])
+        for dd in device_data_qs:
+            data = dd.data_user_friendly or {}
+            general = data.get("general", {}) or {}
+            interfaces = data.get("interfaces", []) or []
 
-            total_rx = total_tx = 0
+            total_rx = 0
+            total_tx = 0
             for iface in interfaces:
                 stats = iface.get("statistics") or {}
-                total_rx += stats.get("rx_bytes", 0)
-                total_tx += stats.get("tx_bytes", 0)
+                total_rx += stats.get("rx_bytes", 0) or 0
+                total_tx += stats.get("tx_bytes", 0) or 0
 
-            total_traffic = total_rx + total_tx
-            hostname = general.get("hostname") or "Unknown"
+            total_bytes = total_rx + total_tx
 
-            devices.append(
-                {
-                    "device": hostname,
-                    "total_bytes": total_traffic,
-                    "total_gb": round(total_traffic / (1024 ** 3), 3),
-                }
-            )
+            devices.append({
+                "device_id": str(dd.device_id) if hasattr(dd, "device_id") else str(getattr(dd, "device_id", "")),
+                "name": general.get("hostname") or getattr(dd.device, "hostname", "") or getattr(dd.device, "name", ""),
+                "total_bytes": total_bytes,
+                "total_gb": round(total_bytes / (1024 ** 3), 3),
+            })
 
-        top_devices = sorted(devices, key=lambda d: d["total_bytes"], reverse=True)[:10]
-        return Response({"top_10_devices": top_devices})
+        # sort and truncate
+        devices_sorted = sorted(devices, key=lambda d: d["total_bytes"], reverse=True)
+        top = devices_sorted[:limit]
 
+        return Response({
+            "top_10_devices": top,
+            "message": ""  # optional: add any backend note if you want
+        })
 
 class WanUplinksAllDevicesView(
     ProtectedAPIMixin,
