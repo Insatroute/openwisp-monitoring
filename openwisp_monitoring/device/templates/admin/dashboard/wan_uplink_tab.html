@@ -267,7 +267,7 @@
                 <span class="wan-summary-value" id="home-wan-total">0</span>
                 <span class="wan-summary-unit">links</span>
             </div>
-            <div class="wan-summary-sub">All WAN interfaces (including cellular)</div>
+            <div class="wan-summary-sub">All WAN interfaces</div>
         </div>
 
         <!-- Connected -->
@@ -328,96 +328,9 @@
             </tr>
         </thead>
         <tbody id="home-wan-tbody">
-
-            {% for iface in device_data.interfaces %}
-            {% if iface.is_wan or iface.type == 'mobile' %}
-            {# skip sub-interfaces like eth0.10 or eth0-1 #}
-            {% if iface.name|cut:'.' == iface.name and iface.name|cut:'-' == iface.name %}
-
-            {% with iface.up|yesno:"connected,disconnected" as status_label %}
-
-            <tr data-status="{{ status_label }}" data-uplink="{{ iface.name|upper }}">
-                <td class="home-wan-status-cell">
-                    <span class="home-wan-status-dot home-wan-status-{{ status_label }}"></span>
-                    {{ status_label|capfirst }}
-                </td>
-
-                <td class="home-wan-nowrap">
-                    {{ device_data.general.hostname|default:"-" }}
-                </td>
-                <td class="home-wan-nowrap">
-                    {{ device_data.general.serialnumber|default:"-" }}
-                </td>
-                <td class="home-wan-nowrap">
-                    {{ device_data.general.model|default:"-" }}
-                </td>
-                <td class="home-wan-nowrap">
-                    {{ device_data.general.location|default:"-" }}
-                </td>
-                {% comment %} <td class="home-wan-nowrap">
-                    {% if iface.type == 'mobile' %}
-                    Cellular Path
-                    {% else %}
-                    Wired Path
-                    {% endif %}
-                </td> {% endcomment %}
-
-                <td class="home-wan-nowrap">
-                    {% if iface.type == 'mobile' %}
-                    {% if iface.name == 'modem' %}
-                    <a class="home-wan-linkish">Cellular (SIM1)</a>
-                    {% elif iface.name == 'modem2' %}
-                    <a class="home-wan-linkish">Cellular (SIM2)</a>
-                    {% else %}
-                    <a class="home-wan-linkish">{{ iface.name|upper }}</a>
-                    {% endif %}
-                    {% else %}
-                    <a class="home-wan-linkish">{{ iface.name|upper }}</a>
-                    {% endif %}
-                </td>
-
-                {% comment %} <td class="home-wan-nowrap">—</td> {% endcomment %}
-
-                <td>
-                    {% if iface.addresses %}
-                    {% for addr in iface.addresses %}
-                    <div>
-                        {{ addr.address }}{% if addr.mask %}/{{ addr.mask }}{% endif %}
-                        <span class="home-wan-muted"> ({{ addr.family|upper }})</span>
-                    </div>
-                    {% endfor %}
-                    {% else %}
-                    <span class="home-wan-muted">—</span>
-                    {% endif %}
-                </td>
-
-                <td class="home-wan-nowrap">—</td>
-
-                <td class="home-wan-throughput">
-                    <span class="home-wan-kp home-wan-kp-up">
-                        <i></i>{{ iface.|default:0|filesizeformat }}
-                    </span>
-                    <span class="home-wan-kp home-wan-kp-down">
-                        <i></i>{{ iface.statistics.rx.bytes|default:0|filesizeformat }}
-                    </span>
-                </td>
-
-                <td class="home-wan-nowrap">—</td>
-                <td class="home-wan-nowrap">—</td>
-                <td class="home-wan-nowrap">—</td>
-            </tr>
-
-            {% endwith %}
-            {% endif %}
-            {% endif %}
-
-            {% empty %}
-            {# When there is no device_data.interfaces at all, show a single "no data" row #}
             <tr class="home-wan-empty-row" data-empty="1">
-                <td colspan="14" class="home-wan-nowrap home-wan-muted">No WAN uplink data found</td>
+                <td colspan="14" class="home-wan-nowrap home-wan-muted">Loading WAN uplink data...</td>
             </tr>
-            {% endfor %}
-
         </tbody>
     </table>
 </div>
@@ -582,8 +495,15 @@
                 ? row.ping_packet_loss
                 : '—';
 
-            const tx = (typeof row.tx_bytes === 'number') ? formatBytes(row.tx_bytes) : '—';
-            const rx = (typeof row.rx_bytes === 'number') ? formatBytes(row.rx_bytes) : '—';
+            const txRaw = (typeof row.throughput_tx_bytes === 'number')
+                ? row.throughput_tx_bytes
+                : ((typeof row.tx_bytes === 'number') ? row.tx_bytes : null);
+            const rxRaw = (typeof row.throughput_rx_bytes === 'number')
+                ? row.throughput_rx_bytes
+                : ((typeof row.rx_bytes === 'number') ? row.rx_bytes : null);
+
+            const tx = txRaw !== null ? formatBytes(txRaw) : '—';
+            const rx = rxRaw !== null ? formatBytes(rxRaw) : '—';
 
             tr.dataset.status = status;
             tr.dataset.uplink = uplinkName;
@@ -597,10 +517,9 @@
                 <td class="home-wan-nowrap">${serial}</td>
                 <td class="home-wan-nowrap">${model}</td>
                 <td class="home-wan-nowrap">${location}</td>
-                <td class="home-wan-nowrap">${pathLabel}</td>
                 <td class="home-wan-nowrap"><a class="home-wan-linkish">${uplinkName}</a></td>
-                <td class="home-wan-nowrap">${uptime}</td>
-                <td>${ipMask !== '—'
+                <td>
+                    ${ipMask !== '—'
                     ? `<div>${ipMask} <span class="home-wan-muted">(IPV4)</span></div>`
                     : `<span class="home-wan-muted">—</span>`}
                 </td>
