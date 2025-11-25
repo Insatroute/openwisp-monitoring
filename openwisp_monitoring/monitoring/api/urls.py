@@ -12,11 +12,11 @@ urlpatterns = [
         views.dashboard_timeseries,
         name="api_dashboard_timeseries",
     ),
-    path(
-        "api/v1/monitoring/top-devices-simple/",
-        views_topdevices.top_devices_simple,
-        name="monitoring-top-devices-simple"
-    ),
+    # path(
+    #     "api/v1/monitoring/top-devices-simple/",
+    #     views_topdevices.top_devices_simple,
+    #     name="monitoring-top-devices-simple"
+    # ),
     # path(
     #     "api/v1/monitoring/global-top-devices/",
     #     views_topapp.global_top_devices,
