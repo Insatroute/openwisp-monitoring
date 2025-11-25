@@ -56,7 +56,8 @@ class GlobalTopAppsView(
     """
 
     queryset = DeviceData.objects.all()
-    organization_field = "device__organization"
+    organization_field = "organization"
+    permission_classes = (IsOrganizationMember, DjangoModelPermissions)
 
     def get(self, request, *args, **kwargs):
         app_counter = Counter()
@@ -87,48 +88,6 @@ class GlobalTopAppsView(
             for label, traffic in app_counter.most_common(10)
         ]
         return Response({"top_10_apps": top_10_apps})
-
-
-# class GlobalTopDevicesView(
-#     ProtectedAPIMixin,
-#     FilterByOrganizationMembership,
-#     generics.GenericAPIView,
-# ):
-#     """
-#     Top 10 devices based on total rx/tx bytes across all interfaces.
-#     Uses DeviceData → Device.organization for org filtering.
-#     """
-
-#     queryset = DeviceData.objects.all()
-#     organization_field = "device__organization"
-
-#     def get(self, request, *args, **kwargs):
-#         devices = []
-
-#         for device_data in self.get_queryset():
-#             data = device_data.data_user_friendly or {}
-#             general = data.get("general", {})
-#             interfaces = data.get("interfaces", [])
-
-#             total_rx = total_tx = 0
-#             for iface in interfaces:
-#                 stats = iface.get("statistics") or {}
-#                 total_rx += stats.get("rx_bytes", 0)
-#                 total_tx += stats.get("tx_bytes", 0)
-
-#             total_traffic = total_rx + total_tx
-#             hostname = general.get("hostname") or "Unknown"
-
-#             devices.append(
-#                 {
-#                     "device": hostname,
-#                     "total_bytes": total_traffic,
-#                     "total_gb": round(total_traffic / (1024 ** 3), 3),
-#                 }
-#             )
-
-#         top_devices = sorted(devices, key=lambda d: d["total_bytes"], reverse=True)[:10]
-#         return Response({"top_10_devices": top_devices})
 
 class GlobalTopDevicesView(
     ProtectedAPIMixin,
