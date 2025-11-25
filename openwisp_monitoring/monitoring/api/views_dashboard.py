@@ -1,3 +1,5 @@
+from __future__ import annotations
+from typing import Dict, Any, List
 from collections import Counter
 from datetime import timedelta
 from swapper import load_model
@@ -134,124 +136,56 @@ class GlobalTopDevicesView(
     generics.GenericAPIView,
 ):
     """
-    Replacement for old top_devices_simple, but:
-      - class-based
-      - org + permission handled by ProtectedAPIMixin + FilterByOrganizationMembership
-      - no direct use of user.organizations
+    Top 10 devices by total rx+tx bytes (overall project, but scoped by org).
     """
+    # IMPORTANT: DeviceData itself has organization, so no select_related('device')
+    queryset = DeviceData.objects.all()
 
-    queryset = Device.objects.all()
-    # FilterByOrganizationMembership will use organization_field by default = "organization"
+    # FilterByOrganizationMembership will filter on this field
     organization_field = "organization"
-    # allow members (not only managers); change to IsOrganizationManager if you want stricter
-    permission_classes = (IsOrganizationMember, DjangoModelPermissions)
 
     def get(self, request, *args, **kwargs):
-        # org param (optional now, defaults to ALL)
-        org_param = (request.GET.get("org") or request.GET.get("organization_slug") or "ALL").strip()
-        all_orgs = org_param.lower() in ("all", "*", "")
+        devices = []
 
-        # flags
-        include_all = _parse_bool(request.GET.get("include_all"), False)
-        include_org = _parse_bool(request.GET.get("include_org"), False)
+        # get_queryset() already applies org filter according to user
+        for obj in self.get_queryset():
+            data = getattr(obj, "data_user_friendly", None) or {}
+            general = data.get("general") or {}
+            interfaces = data.get("interfaces") or []
 
-        # time window
-        time_arg, start, end = _parse_window(
-            request.GET.get("time"),
-            request.GET.get("start"),
-            request.GET.get("end"),
-        )
+            total_rx = 0
+            total_tx = 0
 
-        # limit
-        limit_raw = request.GET.get("limit", "5")
-        if isinstance(limit_raw, str) and limit_raw.lower() in ("all", "*", "0"):
-            limit = 10**9
-            limit_label = "all"
-        else:
-            try:
-                limit = max(1, min(int(limit_raw), 5000))
-                limit_label = limit
-            except Exception:
-                return Response({"detail": "Invalid 'limit'."}, status=400)
+            for iface in interfaces:
+                stats = iface.get("statistics") or {}
+                total_rx += stats.get("rx_bytes") or 0
+                total_tx += stats.get("tx_bytes") or 0
 
-        # ifnames
-        ifnames_str = request.GET.get("wan_ifs") or ""
-        ifnames = [x.strip() for x in ifnames_str.split(",") if x.strip()] or None
+            total_bytes = total_rx + total_tx
 
-        # user-aware cache key (superuser can share, normal users isolated)
-        if request.user.is_superuser:
-            user_key = "su"
-        else:
-            user_key = f"user:{request.user.pk}"
+            # Try hostname from monitoring first, then model fields
+            name = (
+                general.get("hostname")
+                or getattr(obj, "name", "")
+                or getattr(obj, "serial_number", "")
+                or str(obj.pk)
+            )
 
-        ck = (
-            f"td:{user_key}:ALL:{all_orgs}:org={org_param}:"
-            f"t={time_arg}:s={start}:e={end}:"
-            f"ifs={','.join(ifnames) if ifnames else 'ALL'}:"
-            f"lim={limit_label}:incall={int(include_all)}:incorg={int(include_org)}"
-        )
-        cached = cache.get(ck)
-        if cached:
-            return Response(cached)
+            devices.append(
+                {
+                    "device_id": str(obj.pk),
+                    "name": name,
+                    "total_bytes": int(total_bytes),
+                    "total_gb": round(total_bytes / (1024 ** 3), 3),
+                }
+            )
 
-        # --------- get Device queryset with org + user restrictions via mixin ----------
-        try:
-            qs = self.get_queryset()  # FilterByOrganizationMembership already applied
+        # Sort by total traffic (desc) and take top 10
+        devices.sort(key=lambda d: d["total_bytes"], reverse=True)
+        top_10 = devices[:10]
 
-            # extra filter by org slug if org != ALL
-            if not all_orgs:
-                qs = qs.filter(organization__slug=org_param)
-
-            fields = ["id", "name"]
-            if include_org or all_orgs:
-                fields.append("organization__slug")
-
-            devices = list(qs.values(*fields))
-        except Exception as e:
-            return Response({"detail": f"Error reading devices: {e}"}, status=500)
-        # -------------------------------------------------------------------------------
-
-        # sum totals per device from Influx
-        results: List[Dict[str, Any]] = []
-        for d in devices:
-            dev_id = str(d["id"])
-            try:
-                total = _query_total(dev_id, ifnames, time_arg, start, end)
-            except Exception:
-                total = 0
-
-            item = {
-                "device_id": dev_id,
-                "name": d.get("name") or dev_id,
-                "total_bytes": int(total or 0),
-                "total_gb": round((total or 0) / (1024**3), 3),
-            }
-            if include_org or all_orgs:
-                item["organization"] = d.get("organization__slug", None)
-            results.append(item)
-
-        # sort by total desc
-        results.sort(key=lambda x: x["total_bytes"], reverse=True)
-
-        payload = {
-            "org": "ALL" if all_orgs else org_param,
-            "window": {"time": time_arg, "start": start, "end": end},
-            "limit": limit_label,
-            "interface_scope": ",".join(ifnames) if ifnames else "ALL",
-            "count_devices": len(results),
-            "top": results[:limit],
-            "note": (
-                f'Read from InfluxDB {"v2" if INF_V2 else "v1"} '
-                f'({INF_DB if not INF_V2 else INF_V2_BUCKET}; '
-                f'measurement="{MEASUREMENT}"; fields="{"+".join(FIELDS)}"). '
-                f'Use wan_ifs to avoid bridge double-counting.'
-            ),
-        }
-        if include_all:
-            payload["devices"] = results
-
-        cache.set(ck, payload, 60)
-        return Response(payload)
+        return Response({"top_10_devices": top_10})
+    
 class WanUplinksAllDevicesView(
     ProtectedAPIMixin,
     FilterByOrganizationMembership,
