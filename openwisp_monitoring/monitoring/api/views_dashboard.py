@@ -150,15 +150,9 @@ class WanUplinksAllDevicesView(
     FilterByOrganizationMembership,
     generics.GenericAPIView,
 ):
-    """
-    WAN uplink status for all devices in the user's organizations.
-    Org filtering is on Device.organization (default organization_field).
-    """
-
     queryset = DeviceData.objects.all()
     organization_field = "organization"
     permission_classes = (IsOrganizationMember, DjangoModelPermissions)
-    # organization_field defaults to "organization" via OrgLookup
 
     def get(self, request, *args, **kwargs):
         devices = self.get_queryset()
@@ -166,26 +160,22 @@ class WanUplinksAllDevicesView(
         summary = {
             "total": 0,
             "connected": 0,
-            "abnormal": 0,  # kept for compatibility
+            "abnormal": 0,
             "disconnected": 0,
         }
         rows = []
 
-        for device in devices:
-            try:
-                data = fetch_device_data(device)
-            except Exception:
-                # skip devices we cannot fetch
-                continue
+        for device_data in devices:
+            data = getattr(device_data, "data_user_friendly", {}) or {}
 
             general = data.get("general", {}) or {}
-            hostname = general.get("hostname") or getattr(device, "hostname", "")
-            serialnumber = general.get("serialnumber") or getattr(device, "serialnumber", "")
+            hostname = general.get("hostname") or ""
+            serialnumber = general.get("serialnumber") or ""
             interfaces = data.get("interfaces", []) or []
 
             dl = (
                 DeviceLocation.objects
-                .filter(content_object_id=device.id)
+                .filter(content_object_id=device_data.device_id)
                 .select_related("location")
                 .first()
             )
@@ -206,12 +196,12 @@ class WanUplinksAllDevicesView(
 
                 rows.append(
                     {
-                        "device_id": device.pk,
+                        "device_id": device_data.device_id,
                         "hostname": hostname,
                         "serial_number": serialnumber,
-                        "model": getattr(device, "model", ""),
+                        "model": "",
                         "location": location_name,
-                        "path_label": getattr(device, "wan_path_label", ""),
+                        "path_label": "",
                         "interface_name": iface.get("name"),
                         "uplink_type": iface.get("type"),
                         "interface_ip": ipv4_addr,
@@ -228,21 +218,14 @@ class WanUplinksAllDevicesView(
 
         return Response({"summary": summary, "rows": rows})
 
-
 class DataUsageAllDevicesView(
     ProtectedAPIMixin,
     FilterByOrganizationMembership,
     generics.GenericAPIView,
 ):
-    """
-    Total data usage for devices in user's organizations,
-    split by cellular / wired / wireless.
-    """
-
     queryset = DeviceData.objects.all()
     organization_field = "organization"
     permission_classes = (IsOrganizationMember, DjangoModelPermissions)
-    # org filter on Device.organization
 
     def get(self, request, *args, **kwargs):
         summary = {
@@ -252,11 +235,8 @@ class DataUsageAllDevicesView(
             "wireless": {"sent": 0, "received": 0, "total": 0},
         }
 
-        for device in self.get_queryset():
-            try:
-                data = fetch_device_data(device)
-            except Exception:
-                continue
+        for device_data in self.get_queryset():
+            data = getattr(device_data, "data_user_friendly", {}) or {}
 
             interfaces = data.get("interfaces", []) or []
 
@@ -273,44 +253,28 @@ class DataUsageAllDevicesView(
                     _add_traffic(summary["wired"], tx, rx)
                 elif iface_type in ("wifi", "wireless"):
                     _add_traffic(summary["wireless"], tx, rx)
-                else:
-                    continue
 
         for key in ("cellular", "wired", "wireless"):
-            _add_traffic(
-                summary["total"],
-                summary[key]["sent"],
-                summary[key]["received"],
-            )
+            _add_traffic(summary["total"], summary[key]["sent"], summary[key]["received"])
 
         return Response(summary)
-
 
 class MobileDistributionAllDevicesView(
     ProtectedAPIMixin,
     FilterByOrganizationMembership,
     generics.GenericAPIView,
 ):
-    """
-    Carrier and network-type distribution for mobile interfaces
-    on devices in the user's organizations.
-    """
-
     queryset = DeviceData.objects.all()
     organization_field = "organization"
     permission_classes = (IsOrganizationMember, DjangoModelPermissions)
-    # org filter on Device.organization
 
     def get(self, request, *args, **kwargs):
         carrier_counter = Counter()
         network_counter = Counter()
         total_modems = 0
 
-        for device in self.get_queryset():
-            try:
-                data = fetch_device_data(device)
-            except Exception:
-                continue
+        for device_data in self.get_queryset():
+            data = getattr(device_data, "data_user_friendly", {}) or {}
 
             interfaces = data.get("interfaces", []) or []
 
@@ -334,19 +298,17 @@ class MobileDistributionAllDevicesView(
                 else:
                     network_counter["Unknown"] += 1
 
-        return Response(
-            {
-                "carrier": {
-                    "labels": list(carrier_counter.keys()),
-                    "data": list(carrier_counter.values()),
-                },
-                "network": {
-                    "labels": list(network_counter.keys()),
-                    "data": list(network_counter.values()),
-                },
-                "total_modems": total_modems,
-            }
-        )
+        return Response({
+            "carrier": {
+                "labels": list(carrier_counter.keys()),
+                "data": list(carrier_counter.values()),
+            },
+            "network": {
+                "labels": list(network_counter.keys()),
+                "data": list(network_counter.values()),
+            },
+            "total_modems": total_modems,
+        })
 
 global_top_apps = GlobalTopAppsView.as_view()
 global_top_devices = GlobalTopDevicesView.as_view()
