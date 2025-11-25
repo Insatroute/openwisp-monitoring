@@ -29,6 +29,28 @@
   .wp-connected .wp-icon svg { opacity:1; filter:brightness(100%) contrast(110%); }
   .wp-disconnected .wp-icon { background:#e5e7eb; border-color:#cbd5e1; }
 
+  /* ===== New: LAN/WAN tile colors for ETH0–ETH5 ===== */
+  .wp-lan-up .wp-icon {
+    background:#f5c857;           /* yellow */
+    border-color:#eab308;
+    box-shadow:none;
+  }
+  .wp-lan-down .wp-icon {
+    background:#e5e7eb;           /* grey */
+    border-color:#cbd5e1;
+  }
+
+  .wp-wan-up .wp-icon {
+    background:#22c55e;           /* green */
+    border-color:#16a34a;
+    box-shadow:none;
+  }
+  .wp-wan-down .wp-icon {
+    background:#e62727;           /* red */
+    border-color:#b91c1c;
+    box-shadow:none;
+  }
+
   .wp-legend { display:flex; align-items:center; gap:18px; margin-top:12px; justify-content: center; }
   .wp-legend .wp-dot { width:10px; height:10px; border-radius:50%; display:inline-block; margin-right:6px; }
   .wp-dot-green{ background:#22c55e; }
@@ -48,6 +70,13 @@
   .wp-status-dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:10px; vertical-align:middle; }
   .wp-dot-green { background:#22c55e; }
   .wp-dot-gray  { background:#cbd5e1; }
+
+  /* New: status dot colors for Ethernet LAN/WAN only */
+  .wp-dot-lan-up   { background:#facc15; }  /* yellow */
+  .wp-dot-lan-down { background:#cbd5e1; }  /* grey */
+
+  .wp-dot-wan-up   { background:#22c55e; }  /* green */
+  .wp-dot-wan-down { background:#ef4444; }  /* red */
 
   .wp-linkish { color:#11274b; font-weight:700; text-decoration:none; }
   .wp-linkish:hover { text-decoration:underline; }
@@ -130,7 +159,6 @@
         <div id="wp-tile-sim1" class="wp-port-tile wp-disconnected">
           <div class="wp-icon"><svg><use href="#wp-icon-sim"/></svg></div>
           <div class="wp-port-label">SIM1</div>
-          {% comment %} <div class="wp-port-role">—</div> {% endcomment %}
           <div class="wp-port-role" id="wp-role-sim1">-</div>
         </div>
         <div id="wp-tile-sim2" class="wp-port-tile wp-disconnected">
@@ -149,10 +177,34 @@
       </div> {% endcomment %}
     </div>
 
-    <div class="wp-legend">
-      <span><i class="wp-dot wp-dot-green"></i>Connected</span>
-      <span><i class="wp-dot wp-dot-gray"></i>Disconnected</span>
-    </div>
+   <div class="wp-legend" style="display:flex; justify-content:center; gap:85px; margin-top:12px;">
+
+  <!-- LAN Column -->
+  <div>
+    <span><i class="wp-dot wp-dot-lan-up"></i>LAN Connected</span><br>
+    <span><i class="wp-dot wp-dot-lan-down"></i>LAN Not Connected</span>
+  </div>
+
+  <!-- Divider -->
+  <div style="width:1px; background:#e2e8f0; margin:0 10px;"></div>
+
+  <!-- WAN Column -->
+  <div>
+    <span><i class="wp-dot wp-dot-wan-up"></i>WAN Up</span><br>
+    <span><i class="wp-dot wp-dot-wan-down"></i>WAN Down</span>
+  </div>
+
+  <!-- Divider -->
+  <div style="width:1px; background:#e2e8f0; margin:0 10px;"></div>
+
+  <!-- SIM/Wi-Fi Column -->
+  <div>
+    <span><i class="wp-dot wp-dot-green"></i>SIM Connected</span><br>
+    <span><i class="wp-dot wp-dot-gray"></i>SIM Not Inserted</span>
+  </div>
+
+</div>
+
   </div>
 </div>
 
@@ -189,7 +241,10 @@
       {% if iface.name|cut:'.' == iface.name and iface.name|cut:'-' == iface.name %}
         <tr>
           <td class="wp-nowrap">
-            <span class="wp-status-dot {% if iface.up %}wp-dot-green{% else %}wp-dot-gray{% endif %}"></span>
+            <span
+              class="wp-status-dot {% if iface.up %}wp-dot-green{% else %}wp-dot-gray{% endif %}"
+              id="wp-status-{{ iface.name }}"
+            ></span>
             {% if iface.up %}Online{% else %}Offline{% endif %}
           </td>
           <td class="wp-nowrap">
@@ -326,7 +381,7 @@
     return i.mobile.operator_name;
   }
 
-  // ETH0..ETH5 (skip sub-ifs)
+  // ETH0..ETH5 (skip sub-ifs) – TILE COLORS & ROLE LABELS
   ['eth0','eth1','eth2','eth3','eth4','eth5'].forEach(function(name){
     var m = IFACES.find(function(i){
       if(i.type !== 'ethernet') return false;
@@ -334,24 +389,47 @@
       if(i.name.indexOf('-') !== -1) return false;
       return i.name === name;
     });
-    // up/down state
-    wpSetState('wp-tile-' + name, !!(m && m.up));
-    // role badge
+
+    var tile = document.getElementById('wp-tile-' + name);
+    var isUp = !!(m && m.up);
+    var role = roleOf(name);   // "LAN" / "WAN" / "-"
+
+    if (tile) {
+      tile.classList.remove(
+        'wp-connected', 'wp-disconnected',
+        'wp-lan-up', 'wp-lan-down',
+        'wp-wan-up', 'wp-wan-down'
+      );
+
+      if (role === 'LAN') {
+        tile.classList.add(isUp ? 'wp-lan-up' : 'wp-lan-down');
+      } else if (role === 'WAN') {
+        tile.classList.add(isUp ? 'wp-wan-up' : 'wp-wan-down');
+      } else {
+        // fallback: old behavior if role is unknown
+        tile.classList.add(isUp ? 'wp-connected' : 'wp-disconnected');
+      }
+    }
+
+    // role badge below the icon
     var roleEl = document.getElementById('wp-role-' + name);
-    if(roleEl){ roleEl.textContent = roleOf(name); }
-    // also annotate the table name cell "(LAN/WAN)"
+    if (roleEl) { roleEl.textContent = role; }
+
+    // annotate the table name cell "(LAN/WAN)"
     var rowRole = document.getElementById('wp-row-role-' + name);
-    if(rowRole){ rowRole.textContent = ' (' + roleOf(name) + ')'; }
+    if (rowRole) {
+      rowRole.textContent = role === '-' ? '' : ' (' + role + ')';
+    }
   });
 
-  // ================== SIM tiles: show operator as role ==================
+  // ================== SIM tiles: show operator as role (unchanged behavior) ==================
   var sim1Name = 'modem';
   var sim2Name = 'modem2';
 
   var sim1 = IFACES.find(function(i){ return i.name === sim1Name && i.type === 'mobile'; });
   var sim2 = IFACES.find(function(i){ return i.name === sim2Name && i.type === 'mobile'; });
 
-  // state
+  // state (still using wp-connected/wp-disconnected)
   wpSetState('wp-tile-sim1', !!(sim1 && sim1.up));
   wpSetState('wp-tile-sim2', !!(sim2 && sim2.up));
 
@@ -365,7 +443,7 @@
     sim2RoleEl.textContent = operatorOf(sim2Name);
   }
 
-  // optional: if you have row labels in a table
+  // optional: if you have row labels in a table (currently no dedicated ids for sim rows)
   var sim1RowRole = document.getElementById('wp-row-role-sim1');
   if (sim1RowRole) {
     sim1RowRole.textContent = ' (' + operatorOf(sim1Name) + ')';
@@ -376,17 +454,47 @@
     sim2RowRole.textContent = ' (' + operatorOf(sim2Name) + ')';
   }
 
-  (function () {
-  var tbody    = document.getElementById('wp-uplink-tbody');
-  var emptyRow = document.getElementById('wp-uplink-empty-row');
-  if (!tbody || !emptyRow) return;
+  // ===== Status dots for Ethernet LAN/WAN only (SIM/Wi-Fi untouched) =====
+  IFACES.forEach(function(i){
+    // Only handle plain ethernet ifaces (no subinterfaces or special names)
+    if (i.type !== 'ethernet') return;
+    if (i.name.indexOf('.') !== -1 || i.name.indexOf('-') !== -1) return;
 
-  var dataRows = Array.prototype.filter.call(tbody.querySelectorAll('tr'), function (tr) {
-    return tr.id !== 'wp-uplink-empty-row';
+    var dot = document.getElementById('wp-status-' + i.name);
+    if (!dot) return;
+
+    var isUp = !!i.up;
+    var role = roleOf(i.name);   // "LAN", "WAN" or "-"
+
+    // Remove any previous special classes
+    dot.classList.remove(
+      'wp-dot-lan-up', 'wp-dot-lan-down',
+      'wp-dot-wan-up', 'wp-dot-wan-down'
+    );
+
+    if (role === 'LAN') {
+      dot.classList.remove('wp-dot-green', 'wp-dot-gray');
+      dot.classList.add(isUp ? 'wp-dot-lan-up' : 'wp-dot-lan-down');
+    } else if (role === 'WAN') {
+      dot.classList.remove('wp-dot-green', 'wp-dot-gray');
+      dot.classList.add(isUp ? 'wp-dot-wan-up' : 'wp-dot-wan-down');
+    }
+    // else role "-" -> keep original green/gray from template
   });
 
-  emptyRow.style.display = (dataRows.length === 0) ? 'table-row' : 'none';
-})();
+  // Empty-row handler
+  (function () {
+    var tbody    = document.getElementById('wp-uplink-tbody');
+    var emptyRow = document.getElementById('wp-uplink-empty-row');
+    if (!tbody || !emptyRow) return;
+
+    var dataRows = Array.prototype.filter.call(tbody.querySelectorAll('tr'), function (tr) {
+      return tr.id !== 'wp-uplink-empty-row';
+    });
+
+    emptyRow.style.display = (dataRows.length === 0) ? 'table-row' : 'none';
+  })();
+
   // Wi-Fi placeholder (keep gray unless you map an iface like wlan0)
   // var wifi = IFACES.find(i => i.name === 'wlan0');
   // wpSetState('wp-tile-wifi', !!(wifi && wifi.up));
