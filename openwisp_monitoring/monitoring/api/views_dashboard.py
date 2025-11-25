@@ -138,7 +138,7 @@ class GlobalTopDevicesView(
         top_10 = devices[:10]
 
         return Response({"top_10_devices": top_10})
-    
+
 class WanUplinksAllDevicesView(
     ProtectedAPIMixin,
     FilterByOrganizationMembership,
@@ -149,7 +149,8 @@ class WanUplinksAllDevicesView(
     Manager-only access.
     """
 
-    queryset = DeviceData.objects.select_related("device").all()
+    # NOTE: we can safely prefetch `monitoring`, NOT `device`
+    queryset = DeviceData.objects.select_related("monitoring").all()
     organization_field = "organization"
 
     def get(self, request, *args, **kwargs):
@@ -158,31 +159,48 @@ class WanUplinksAllDevicesView(
         summary = {
             "total": 0,
             "connected": 0,
-            "abnormal": 0,
+            "abnormal": 0,   # kept for compatibility, even if we don't use it now
             "disconnected": 0,
         }
-
         rows = []
 
         for dd in device_data_qs:
-            device = dd.device  # real device model
-            data = dd.data_user_friendly or {}
+            # monitoring JSON
+            data = getattr(dd, "data_user_friendly", {}) or {}
 
             general = data.get("general", {}) or {}
-            hostname = general.get("hostname") or device.name or ""
-            serialnumber = general.get("serialnumber") or device.serial_number or ""
             interfaces = data.get("interfaces", []) or []
 
-            # get location from Device model, not DeviceData
-            dl = (
-                DeviceLocation.objects
-                .filter(content_object_id=device.id)
-                .select_related("location")
-                .first()
+            # try to reach actual Device via monitoring.device, if present
+            monitoring_obj = getattr(dd, "monitoring", None)
+            device = getattr(monitoring_obj, "device", None)
+
+            hostname = (
+                general.get("hostname")
+                or (getattr(device, "name", "") if device else "")
+                or (getattr(device, "serial_number", "") if device else "")
+                or ""
             )
-            location_name = dl.location.name if dl and dl.location else "-"
+            serialnumber = (
+                general.get("serialnumber")
+                or (getattr(device, "serial_number", "") if device else "")
+                or ""
+            )
+
+            # location via Device if we have it
+            location_name = "-"
+            if device is not None:
+                dl = (
+                    DeviceLocation.objects
+                    .filter(content_object_id=device.id)
+                    .select_related("location")
+                    .first()
+                )
+                if dl and dl.location:
+                    location_name = dl.location.name
 
             for iface in interfaces:
+                # only ethernet WANs
                 if not (iface.get("type") == "ethernet" and iface.get("is_wan") is True):
                     continue
 
@@ -196,12 +214,12 @@ class WanUplinksAllDevicesView(
                 throughput = ping.get("throughput") or {}
 
                 rows.append({
-                    "device_id": str(device.id),
+                    "device_id": str(getattr(device, "id", dd.id)),
                     "hostname": hostname,
                     "serial_number": serialnumber,
-                    "model": device.model or "",
+                    "model": getattr(device, "model", "") if device else "",
                     "location": location_name,
-                    "path_label": getattr(device, "wan_path_label", ""),
+                    "path_label": getattr(device, "wan_path_label", "") if device else "",
                     "interface_name": iface.get("name"),
                     "uplink_type": iface.get("type"),
 
@@ -219,10 +237,7 @@ class WanUplinksAllDevicesView(
                     "status": status,
                 })
 
-        return Response({
-            "summary": summary,
-            "rows": rows,
-        })
+        return Response({"summary": summary, "rows": rows})
 
 class DataUsageAllDevicesView(
     ProtectedAPIMixin,
