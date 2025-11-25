@@ -275,24 +275,13 @@
     const sim1 = readStatsMB(get('modem'));
     const sim2 = readStatsMB(get('modem2'));
 
-    // WAN / wired: only interfaces with role: 'wan' and is_wan: true
-    const wanIfaces = ifaces.filter(i =>
-      i &&
-      i.type === 'ethernet' &&
-      i.role === 'wan' &&
-      i.is_wan === true
-    );
-
-    let wiredUp = 0, wiredDown = 0;
-    wanIfaces.forEach(iface => {
-      const s = readStatsMB(iface);
-      wiredUp += s.txMB;
-      wiredDown += s.rxMB;
-    });
-
-    // still show eth0 / eth1 cards explicitly
+    // show eth0 / eth1 cards explicitly
     const eth0 = readStatsMB(get('eth0'));
     const eth1 = readStatsMB(get('eth1'));
+
+    // WAN / wired TOTAL = WAN1 (eth0) + WAN2 (eth1)
+    const wiredUp = eth0.txMB + eth1.txMB;
+    const wiredDown = eth0.rxMB + eth1.rxMB;
 
     const cellularUp = sim1.txMB + sim2.txMB;
     const cellularDown = sim1.rxMB + sim2.rxMB;
@@ -352,6 +341,10 @@
       cellular: cellularUp + cellularDown,
       wired: wiredUp + wiredDown
     };
+
+    console.log('DJ_Totals_Usage: =======', totals);
+    console.log('DJ_General_Usage: add======', cellularUp + cellularDown, wiredUp + wiredDown);
+ 
 
     const serial = general.serialnumber || 'default';
     const HISTORY_KEY = 'device_usage_hourly_' + serial;
