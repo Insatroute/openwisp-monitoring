@@ -144,11 +144,16 @@ class WanUplinksAllDevicesView(
     FilterByOrganizationMembership,
     generics.GenericAPIView,
 ):
-    queryset = DeviceData.objects.all()
+    """
+    WAN uplink status for all devices in the user's organizations.
+    Manager-only access.
+    """
+
+    queryset = DeviceData.objects.select_related("device").all()
     organization_field = "organization"
 
     def get(self, request, *args, **kwargs):
-        devices = self.get_queryset()
+        device_data_qs = self.get_queryset()
 
         summary = {
             "total": 0,
@@ -156,19 +161,22 @@ class WanUplinksAllDevicesView(
             "abnormal": 0,
             "disconnected": 0,
         }
+
         rows = []
 
-        for device_data in devices:
-            data = getattr(device_data, "data_user_friendly", {}) or {}
+        for dd in device_data_qs:
+            device = dd.device  # real device model
+            data = dd.data_user_friendly or {}
 
             general = data.get("general", {}) or {}
-            hostname = general.get("hostname") or ""
-            serialnumber = general.get("serialnumber") or ""
+            hostname = general.get("hostname") or device.name or ""
+            serialnumber = general.get("serialnumber") or device.serial_number or ""
             interfaces = data.get("interfaces", []) or []
 
+            # get location from Device model, not DeviceData
             dl = (
                 DeviceLocation.objects
-                .filter(content_object_id=device_data.device_id)
+                .filter(content_object_id=device.id)
                 .select_related("location")
                 .first()
             )
@@ -187,29 +195,34 @@ class WanUplinksAllDevicesView(
                 ping = iface.get("ping") or {}
                 throughput = ping.get("throughput") or {}
 
-                rows.append(
-                    {
-                        "device_id": device_data.device_id,
-                        "hostname": hostname,
-                        "serial_number": serialnumber,
-                        "model": "",
-                        "location": location_name,
-                        "path_label": "",
-                        "interface_name": iface.get("name"),
-                        "uplink_type": iface.get("type"),
-                        "interface_ip": ipv4_addr,
-                        "interface_mask": ipv4_mask,
-                        "throughput_tx_bytes": throughput.get("tx_bytes"),
-                        "throughput_rx_bytes": throughput.get("rx_bytes"),
-                        "ping_dest": ping.get("dest_ip"),
-                        "ping_latency_ms": ping.get("latency_ms"),
-                        "ping_packet_loss": ping.get("packet_loss"),
-                        "ping_jitter_ms": ping.get("jitter_ms"),
-                        "status": status,
-                    }
-                )
+                rows.append({
+                    "device_id": str(device.id),
+                    "hostname": hostname,
+                    "serial_number": serialnumber,
+                    "model": device.model or "",
+                    "location": location_name,
+                    "path_label": getattr(device, "wan_path_label", ""),
+                    "interface_name": iface.get("name"),
+                    "uplink_type": iface.get("type"),
 
-        return Response({"summary": summary, "rows": rows})
+                    "interface_ip": ipv4_addr,
+                    "interface_mask": ipv4_mask,
+
+                    "throughput_tx_bytes": throughput.get("tx_bytes"),
+                    "throughput_rx_bytes": throughput.get("rx_bytes"),
+
+                    "ping_dest": ping.get("dest_ip"),
+                    "ping_latency_ms": ping.get("latency_ms"),
+                    "ping_packet_loss": ping.get("packet_loss"),
+                    "ping_jitter_ms": ping.get("jitter_ms"),
+
+                    "status": status,
+                })
+
+        return Response({
+            "summary": summary,
+            "rows": rows,
+        })
 
 class DataUsageAllDevicesView(
     ProtectedAPIMixin,
