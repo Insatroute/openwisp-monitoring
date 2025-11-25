@@ -618,141 +618,128 @@
       }
   }
 
-  /* ========== TOP BRANCHES (top-devices-simple from device_map) ========== */
-  async function fetchAndDisplayTopDevicesChart({
-      org = 'ALL', time = '7d', limit = 10, wan_ifs = ''   // leave wan_ifs blank to sum all interfaces
-  } = {}) {
+  /* ========== TOP DEVICES (global-top-devices) ========== */
+async function fetchAndDisplayTopDevicesChart() {
 
-      const containerId = 'top-devices-chart-container';
-      const loader = document.getElementById('chart-loading-devices');
+    const containerId = 'top-devices-chart-container';
+    const loader = document.getElementById('chart-loading-devices');
 
-      if (loader) {
-          loader.style.display = 'block';
-          loader.textContent = 'Loading...';
-      }
+    if (loader) {
+        loader.style.display = 'block';
+        loader.textContent = 'Loading...';
+    }
 
-      const qs = new URLSearchParams({ org, time, limit, include_org: '1' });
-      if (wan_ifs) qs.set('wan_ifs', wan_ifs);
+    try {
+        const base = window.API_BASE_URL || 'https://controller.nexapp.co.in';
+        const resp = await fetch(`${base}/api/v1/monitoring/global-top-devices/`, {
+            credentials: 'include'
+        });
 
-      try {
-          const base = window.API_BASE_URL || 'https://controller.nexapp.co.in';
-          const resp = await fetch(`${base}/api/v1/monitoring/top-devices-simple/?${qs.toString()}`, {
-              credentials: 'include'
-          });
+        let json = null;
+        try { json = await resp.json(); } catch (_) { json = null; }
 
-          let json = null;
-          try { json = await resp.json(); } catch (_) { json = null; }
+        if (!resp.ok) {
+            let msg;
+            if (resp.status === 401) {
+                msg = 'You are not authenticated. Please log in to see top devices.';
+            } else if (resp.status === 403) {
+                msg = json?.detail || 'You do not have permission to view top devices.';
+            } else {
+                msg = json?.message || 'Unable to load top devices.';
+            }
+            showEmptyChartMessage(containerId, msg);
+            return;
+        }
 
-          if (!resp.ok) {
-              let msg;
-              if (resp.status === 401) {
-                  msg = 'You are not authenticated. Please log in to see top branches.';
-              } else if (resp.status === 403) {
-                  msg = json?.detail || 'You do not have permission to view top branches.';
-              } else if (resp.status === 404) {
-                  msg = 'Top branches data is not available.';
-              } else {
-                  msg = json?.message || 'Unable to load top branches.';
-              }
-              showEmptyChartMessage(containerId, msg);
-              return;
-          }
+        const rows = json.top_10_devices || [];
 
-          const rows = (json.top || []).slice(0, limit);
-          const backendMsg = json?.message || null;
+        if (!rows.length) {
+            showEmptyChartMessage(containerId, 'No device traffic data available.');
+            return;
+        }
 
-          // If no rows at all
-          if (!rows.length) {
-              showEmptyChartMessage(containerId, backendMsg || 'No devices data available.');
-              return;
-          }
+        const allZero = rows.every(r => (r.total_bytes || 0) === 0);
+        if (allZero) {
+            showEmptyChartMessage(containerId, 'No device traffic data available.');
+            return;
+        }
 
-          // If all total_bytes are 0 => treat as no meaningful data
-          const allZero = rows.every(r => (r.total_bytes || 0) === 0);
-          if (allZero) {
-              showEmptyChartMessage(containerId, backendMsg || 'No devices data available.');
-              return;
-          }
+        const labels = rows.map(r => r.name || r.device_id);
+        const valuesGB = rows.map(r => +r.total_gb || 0);
 
-          const labels = rows.map(r => r.name || r.device_id);
-          const valuesGB = rows.map(r => (typeof r.total_gb === 'number')
-              ? +r.total_gb
-              : +((r.total_bytes || 0) / (1024 ** 3)).toFixed(3)
-          );
+        const canvas = ensureCanvas(containerId, 'topDevicesChart');
+        if (!canvas) return;
 
-          const canvas = ensureCanvas(containerId, 'topDevicesChart');
-          if (!canvas) return;
+        const existing = Chart.getChart('topDevicesChart');
+        if (existing) existing.destroy();
 
-          const existing = Chart.getChart('topDevicesChart');
-          if (existing) existing.destroy();
+        const ctx = canvas.getContext('2d');
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [{
+                    data: valuesGB,
+                    backgroundColor: '#60a5fa',
+                    borderRadius: 8,
+                    barThickness: 12,
+                    barPercentage: 0.5,
+                    categoryPercentage: 0.5
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                layout: { padding: { left: 16, right: 60, top: 10, bottom: 10 } },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        grid: { display: true, color: '#e5e7eb' },
+                        ticks: {
+                            callback: (v) => `${v} GB`,
+                            font: { size: 11 }
+                        }
+                    },
+                    y: {
+                        grid: { display: false },
+                        ticks: { font: { size: 12, weight: '500' } }
+                    }
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: (ctx) => ` ${ctx.parsed.x.toFixed(2)} GB`
+                        }
+                    },
+                    datalabels: {
+                        anchor: 'end',
+                        align: 'end',
+                        offset: 6,
+                        formatter: (v) => `${v.toFixed(2)} GB`,
+                        font: { weight: '500', size: 10 },
+                        color: '#374151'
+                    }
+                }
+            }
+        });
 
-          const ctx = canvas.getContext('2d');
-          new Chart(ctx, {
-              type: 'bar',
-              data: {
-                  labels,
-                  datasets: [{
-                      data: valuesGB,
-                      backgroundColor: '#60a5fa',
-                      borderRadius: 8,
-                      barThickness: 12,
-                      barPercentage: 0.5,
-                      categoryPercentage: 0.5
-                  }]
-              },
-              options: {
-                  indexAxis: 'y',
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  layout: { padding: { left: 16, right: 60, top: 10, bottom: 10 } },
-                  scales: {
-                      x: {
-                          beginAtZero: true,
-                          grid: { display: true, color: '#e5e7eb' },
-                          ticks: {
-                              callback: (v) => `${v} GB`,
-                              font: { size: 11 }
-                          }
-                      },
-                      y: {
-                          grid: { display: false },
-                          ticks: { font: { size: 12, weight: '500' } }
-                      }
-                  },
-                  plugins: {
-                      legend: { display: false },
-                      tooltip: {
-                          callbacks: {
-                              label: (ctx) => ` ${ctx.parsed.x.toFixed(2)} GB`
-                          }
-                      },
-                      datalabels: {
-                          anchor: 'end',
-                          align: 'end',
-                          offset: 6,
-                          formatter: (v) => `${v.toFixed(2)} GB`,
-                          font: { weight: '500', size: 10 },
-                          color: '#374151'
-                      }
-                  }
-              }
-          });
+    } catch (e) {
+        console.error('Top Devices error:', e);
+        showEmptyChartMessage(containerId, 'Unable to load top devices.');
+    } finally {
+        if (loader) loader.style.display = 'none';
+    }
+}
 
-      } catch (e) {
-          console.error('Top Devices error:', e);
-          showEmptyChartMessage(containerId, 'Unable to load top branches.');
-      } finally {
-          if (loader) loader.style.display = 'none';
-      }
-  }
+document.addEventListener('DOMContentLoaded', () => {
+    fetchAndDisplayTopAppsChart();
+    fetchAndDisplayTopDevicesChart();
 
-  document.addEventListener('DOMContentLoaded', () => {
-      fetchAndDisplayTopAppsChart();
-      fetchAndDisplayTopDevicesChart();
-
-      setInterval(fetchAndDisplayTopAppsChart, 30000);      // 30s
-      setInterval(fetchAndDisplayTopDevicesChart, 30000);   // 30s
-  });
+    setInterval(fetchAndDisplayTopAppsChart, 30000);
+    setInterval(fetchAndDisplayTopDevicesChart, 30000);
+});
 </script>
 
 
