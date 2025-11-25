@@ -134,42 +134,124 @@ class GlobalTopDevicesView(
     generics.GenericAPIView,
 ):
     """
-    Top 10 devices based on total rx/tx bytes across all interfaces.
-    Uses DeviceData -> device -> organization for org filtering.
+    Replacement for old top_devices_simple, but:
+      - class-based
+      - org + permission handled by ProtectedAPIMixin + FilterByOrganizationMembership
+      - no direct use of user.organizations
     """
 
-    queryset = DeviceData.objects.select_related("device")  # 👈 IMPORTANT
-    organization_field = "device__organization"            # 👈 org is on Device
+    queryset = Device.objects.all()
+    # FilterByOrganizationMembership will use organization_field by default = "organization"
+    organization_field = "organization"
+    # allow members (not only managers); change to IsOrganizationManager if you want stricter
     permission_classes = (IsOrganizationMember, DjangoModelPermissions)
 
     def get(self, request, *args, **kwargs):
-        devices = []
+        # org param (optional now, defaults to ALL)
+        org_param = (request.GET.get("org") or request.GET.get("organization_slug") or "ALL").strip()
+        all_orgs = org_param.lower() in ("all", "*", "")
 
-        for device_data in self.get_queryset():
-            data = device_data.data_user_friendly or {}
-            general = data.get("general", {})
-            interfaces = data.get("interfaces", [])
+        # flags
+        include_all = _parse_bool(request.GET.get("include_all"), False)
+        include_org = _parse_bool(request.GET.get("include_org"), False)
 
-            total_rx = total_tx = 0
-            for iface in interfaces:
-                stats = iface.get("statistics") or {}
-                total_rx += stats.get("rx_bytes", 0) or 0
-                total_tx += stats.get("tx_bytes", 0) or 0
+        # time window
+        time_arg, start, end = _parse_window(
+            request.GET.get("time"),
+            request.GET.get("start"),
+            request.GET.get("end"),
+        )
 
-            total_traffic = total_rx + total_tx
-            hostname = general.get("hostname") or getattr(device_data.device, "hostname", "Unknown")
+        # limit
+        limit_raw = request.GET.get("limit", "5")
+        if isinstance(limit_raw, str) and limit_raw.lower() in ("all", "*", "0"):
+            limit = 10**9
+            limit_label = "all"
+        else:
+            try:
+                limit = max(1, min(int(limit_raw), 5000))
+                limit_label = limit
+            except Exception:
+                return Response({"detail": "Invalid 'limit'."}, status=400)
 
-            devices.append({
-                "device": hostname,
-                "total_bytes": total_traffic,
-                "total_gb": round(total_traffic / (1024 ** 3), 3),
-            })
+        # ifnames
+        ifnames_str = request.GET.get("wan_ifs") or ""
+        ifnames = [x.strip() for x in ifnames_str.split(",") if x.strip()] or None
 
-        top_devices = sorted(devices, key=lambda d: d["total_bytes"], reverse=True)[:10]
+        # user-aware cache key (superuser can share, normal users isolated)
+        if request.user.is_superuser:
+            user_key = "su"
+        else:
+            user_key = f"user:{request.user.pk}"
 
-        return Response({"top_10_devices": top_devices})
+        ck = (
+            f"td:{user_key}:ALL:{all_orgs}:org={org_param}:"
+            f"t={time_arg}:s={start}:e={end}:"
+            f"ifs={','.join(ifnames) if ifnames else 'ALL'}:"
+            f"lim={limit_label}:incall={int(include_all)}:incorg={int(include_org)}"
+        )
+        cached = cache.get(ck)
+        if cached:
+            return Response(cached)
 
+        # --------- get Device queryset with org + user restrictions via mixin ----------
+        try:
+            qs = self.get_queryset()  # FilterByOrganizationMembership already applied
 
+            # extra filter by org slug if org != ALL
+            if not all_orgs:
+                qs = qs.filter(organization__slug=org_param)
+
+            fields = ["id", "name"]
+            if include_org or all_orgs:
+                fields.append("organization__slug")
+
+            devices = list(qs.values(*fields))
+        except Exception as e:
+            return Response({"detail": f"Error reading devices: {e}"}, status=500)
+        # -------------------------------------------------------------------------------
+
+        # sum totals per device from Influx
+        results: List[Dict[str, Any]] = []
+        for d in devices:
+            dev_id = str(d["id"])
+            try:
+                total = _query_total(dev_id, ifnames, time_arg, start, end)
+            except Exception:
+                total = 0
+
+            item = {
+                "device_id": dev_id,
+                "name": d.get("name") or dev_id,
+                "total_bytes": int(total or 0),
+                "total_gb": round((total or 0) / (1024**3), 3),
+            }
+            if include_org or all_orgs:
+                item["organization"] = d.get("organization__slug", None)
+            results.append(item)
+
+        # sort by total desc
+        results.sort(key=lambda x: x["total_bytes"], reverse=True)
+
+        payload = {
+            "org": "ALL" if all_orgs else org_param,
+            "window": {"time": time_arg, "start": start, "end": end},
+            "limit": limit_label,
+            "interface_scope": ",".join(ifnames) if ifnames else "ALL",
+            "count_devices": len(results),
+            "top": results[:limit],
+            "note": (
+                f'Read from InfluxDB {"v2" if INF_V2 else "v1"} '
+                f'({INF_DB if not INF_V2 else INF_V2_BUCKET}; '
+                f'measurement="{MEASUREMENT}"; fields="{"+".join(FIELDS)}"). '
+                f'Use wan_ifs to avoid bridge double-counting.'
+            ),
+        }
+        if include_all:
+            payload["devices"] = results
+
+        cache.set(ck, payload, 60)
+        return Response(payload)
 class WanUplinksAllDevicesView(
     ProtectedAPIMixin,
     FilterByOrganizationMembership,
