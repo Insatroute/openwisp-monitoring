@@ -1,9 +1,5 @@
-from __future__ import annotations
-from typing import Dict, Any, List
 from collections import Counter
-from datetime import timedelta
 from swapper import load_model
-from django.utils import timezone
 from rest_framework import generics
 from rest_framework.response import Response
 from openwisp_users.api.mixins import (
@@ -12,7 +8,6 @@ from openwisp_users.api.mixins import (
 )
 from openwisp_users.api.permissions import IsOrganizationMember, DjangoModelPermissions
 
-from .views_realdata import fetch_device_data
 
 Device = load_model("config", "Device")
 DeviceData = load_model("device_monitoring", "DeviceData")
@@ -57,7 +52,6 @@ class GlobalTopAppsView(
 
     queryset = DeviceData.objects.all()
     organization_field = "organization"
-    permission_classes = (IsOrganizationMember, DjangoModelPermissions)
 
     def get(self, request, *args, **kwargs):
         app_counter = Counter()
@@ -152,7 +146,6 @@ class WanUplinksAllDevicesView(
 ):
     queryset = DeviceData.objects.all()
     organization_field = "organization"
-    permission_classes = (IsOrganizationMember, DjangoModelPermissions)
 
     def get(self, request, *args, **kwargs):
         devices = self.get_queryset()
@@ -225,7 +218,6 @@ class DataUsageAllDevicesView(
 ):
     queryset = DeviceData.objects.all()
     organization_field = "organization"
-    permission_classes = (IsOrganizationMember, DjangoModelPermissions)
 
     def get(self, request, *args, **kwargs):
         summary = {
@@ -266,7 +258,6 @@ class MobileDistributionAllDevicesView(
 ):
     queryset = DeviceData.objects.all()
     organization_field = "organization"
-    permission_classes = (IsOrganizationMember, DjangoModelPermissions)
 
     def get(self, request, *args, **kwargs):
         carrier_counter = Counter()
