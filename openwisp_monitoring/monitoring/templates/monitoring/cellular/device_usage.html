@@ -109,8 +109,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 16px
+    gap: 12px
   }
 
   .chart-title {
@@ -279,24 +278,24 @@
     const sim1 = readStatsMB(sim1Iface);
     const sim2 = readStatsMB(sim2Iface);
 
-    // Wired TOTAL: only interfaces with is_wan:true and role:"wan"
-    const wanIfaces = ifaces.filter(i =>
-      i &&
-      i.type === 'ethernet' &&
-      i.role === 'wan' &&
-      i.is_wan === true
-    );
+    // Wired WANs: only interfaces with is_wan:true and role:"wan"
+    const wanIfaces = ifaces
+      .filter(i =>
+        i &&
+        i.type === 'ethernet' &&
+        i.role === 'wan' &&
+        i.is_wan === true
+      )
+      .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
-    let wiredUp = 0, wiredDown = 0;
-    wanIfaces.forEach(iface => {
-      const s = readStatsMB(iface);
-      wiredUp += s.txMB;
-      wiredDown += s.rxMB;
-    });
+    const wan1Iface = wanIfaces[0] || null;
+    const wan2Iface = wanIfaces[1] || null;
 
-    // still show eth0 / eth1 cards individually
-    const eth0 = readStatsMB(get('eth0'));
-    const eth1 = readStatsMB(get('eth1'));
+    const wan1Stats = readStatsMB(wan1Iface);
+    const wan2Stats = readStatsMB(wan2Iface);
+
+    let wiredUp = wan1Stats.txMB + wan2Stats.txMB;
+    let wiredDown = wan1Stats.rxMB + wan2Stats.rxMB;
 
     const cellularUp = sim1.txMB + sim2.txMB;
     const cellularDown = sim1.rxMB + sim2.rxMB;
@@ -329,18 +328,22 @@
         `Upload: ${fmtData(cellularUp)}<br>Download: ${fmtData(cellularDown)}`;
     }
 
+    // WAN1 card uses first WAN interface only (or 0 if none)
     const eth0Card = document.getElementById('eth0-card');
     if (eth0Card) {
-      eth0Card.querySelector('.interface-value').textContent = fmtData(eth0.totalMB);
+      const s = wan1Iface ? wan1Stats : { txMB: 0, rxMB: 0, totalMB: 0 };
+      eth0Card.querySelector('.interface-value').textContent = fmtData(s.totalMB);
       eth0Card.querySelector('.interface-stats').innerHTML =
-        `Upload: ${fmtData(eth0.txMB)}<br>Download: ${fmtData(eth0.rxMB)}`;
+        `Upload: ${fmtData(s.txMB)}<br>Download: ${fmtData(s.rxMB)}`;
     }
 
+    // WAN2 card uses second WAN interface only (or 0 if it doesn't exist)
     const eth1Card = document.getElementById('eth1-card');
     if (eth1Card) {
-      eth1Card.querySelector('.interface-value').textContent = fmtData(eth1.totalMB);
+      const s = wan2Iface ? wan2Stats : { txMB: 0, rxMB: 0, totalMB: 0 };
+      eth1Card.querySelector('.interface-value').textContent = fmtData(s.totalMB);
       eth1Card.querySelector('.interface-stats').innerHTML =
-        `Upload: ${fmtData(eth1.txMB)}<br>Download: ${fmtData(eth1.rxMB)}`;
+        `Upload: ${fmtData(s.txMB)}<br>Download: ${fmtData(s.rxMB)}`;
     }
 
     const wiredSummary = document.getElementById('wired-total-summary');
