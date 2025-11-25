@@ -316,9 +316,9 @@
                 <th>Serial Number</th>
                 <th>Model</th>
                 <th>Location</th>
-                <th>Path Label</th>
+                {% comment %} <th>Path Label</th> {% endcomment %}
                 <th>Uplink</th>
-                <th>Uptime</th>
+                {% comment %} <th>Uptime</th> {% endcomment %}
                 <th>Interface IP/Mask</th>
                 <th>Ping Destination</th>
                 <th>Throughput</th>
@@ -343,24 +343,24 @@
                 </td>
 
                 <td class="home-wan-nowrap">
-                    {{ device_data.general.hostname|default:"Core-Router-01" }}
+                    {{ device_data.general.hostname|default:"-" }}
                 </td>
                 <td class="home-wan-nowrap">
-                    {{ device_data.general.serialnumber|default:"SN-114GSQ2209N23015" }}
+                    {{ device_data.general.serialnumber|default:"-" }}
                 </td>
                 <td class="home-wan-nowrap">
-                    {{ device_data.general.model|default:"NX-6005" }}
+                    {{ device_data.general.model|default:"-" }}
                 </td>
                 <td class="home-wan-nowrap">
-                    {{ device_data.general.location|default:"Head Office" }}
+                    {{ device_data.general.location|default:"-" }}
                 </td>
-                <td class="home-wan-nowrap">
+                {% comment %} <td class="home-wan-nowrap">
                     {% if iface.type == 'mobile' %}
                     Cellular Path
                     {% else %}
                     Wired Path
                     {% endif %}
-                </td>
+                </td> {% endcomment %}
 
                 <td class="home-wan-nowrap">
                     {% if iface.type == 'mobile' %}
@@ -376,7 +376,7 @@
                     {% endif %}
                 </td>
 
-                <td class="home-wan-nowrap">—</td>
+                {% comment %} <td class="home-wan-nowrap">—</td> {% endcomment %}
 
                 <td>
                     {% if iface.addresses %}
@@ -395,7 +395,7 @@
 
                 <td class="home-wan-throughput">
                     <span class="home-wan-kp home-wan-kp-up">
-                        <i></i>{{ iface.statistics.tx.bytes|default:0|filesizeformat }}
+                        <i></i>{{ iface.|default:0|filesizeformat }}
                     </span>
                     <span class="home-wan-kp home-wan-kp-down">
                         <i></i>{{ iface.statistics.rx.bytes|default:0|filesizeformat }}
