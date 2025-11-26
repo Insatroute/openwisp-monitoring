@@ -185,11 +185,20 @@
       return baseValues.reduce((acc, v, i) => acc + (active[i] ? v : 0), 0);
     }
 
+    const hasPositive = baseValues.some(v => v > 0);
+    const labelLooksNoData =
+      labels.length === 1 &&
+      (labels[0].toLowerCase() === 'no data' || baseValues[0] === 0);
+
+    // "no data" = either explicit label or all values = 0
+    const isNoData = !hasPositive || labelLooksNoData;
+    const showPercent = !isNoData;
+
     // values actually sent to Plotly (we need non-zero to draw a ring)
     function makePlotValues() {
       const masked = baseValues.map((v, i) => (active[i] ? v : 0));
-      const hasPositive = masked.some(v => v > 0);
-      if (hasPositive) return masked;
+      const hasPos = masked.some(v => v > 0);
+      if (hasPos) return masked;
 
       if (!masked.length) return masked;
 
@@ -201,12 +210,8 @@
 
     const plotValues = makePlotValues();
 
-    // If only one label and it is "No data", force grey color
-    const isNoData =
-      labels.length === 1 &&
-      (labels[0].toLowerCase() === "no data" || values[0] === 0);
-
-    const finalColors = isNoData ? ["#808080"] : (colors || []);
+    // If "no data", force grey
+    const finalColors = isNoData ? ['#808080'] : (colors || []);
 
     const rect = el.getBoundingClientRect();
     const data = [{
@@ -216,11 +221,11 @@
       hole: 0.69,
       sort: false,
       direction: 'clockwise',
-      texttemplate: '',
+      texttemplate: showPercent ? '%{percent:.1%}' : '',
       textposition: 'inside',
       insidetextorientation: 'auto',
       textfont: { size: 9, color: '#ffffff' },
-      textinfo: 'none',
+      textinfo: showPercent ? 'percent' : 'none',
       hoverinfo: 'label',
       marker: { colors: finalColors }
     }];
@@ -822,10 +827,11 @@
   }
 
   .overview-mini-legend {
-    display: grid;
+    display: flex;
     align-items: center;
     justify-content: center;
-    padding: 8px 6px 2px 6px;
+    padding: 12px 6px 2px 6px;
+    gap: 10px
   }
 
   .legend-item {
