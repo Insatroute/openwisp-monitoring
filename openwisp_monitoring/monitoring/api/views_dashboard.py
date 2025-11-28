@@ -217,7 +217,7 @@ class WanUplinksAllDevicesView(
                 if not (iface.get("type") == "ethernet" and iface.get("is_wan") is True):
                     continue
 
-                status = _link_status(iface)
+                status = _link_status(iface, device=device)
 
                 summary["total"] += 1
                 summary[status] += 1
