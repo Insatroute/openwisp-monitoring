@@ -315,6 +315,15 @@
   </fieldset>
 </div>
 
+{% if not add and wan_sla %}
+<div class="inline-group" id="ow-sla">
+  <fieldset class="module">
+    <h2>{% trans 'SLA' %}</h2>
+    {% include 'monitoring/sla/wan_sla.html' %}
+  </fieldset>
+</div>
+{% endif %}
+
 <style>
   .change-form{
      margin: 0 !important;
