@@ -7,6 +7,7 @@ from openwisp_users.api.mixins import (
     FilterByOrganizationMembership,
 )
 from openwisp_users.api.permissions import IsOrganizationMember, DjangoModelPermissions
+from openwisp_monitoring.device.base.models import UP_STATUSES
 
 
 Device = load_model("config", "Device")
@@ -25,8 +26,20 @@ def _ipv4_addr_mask(iface: dict):
     return ipv4.get("address"), ipv4.get("mask")
 
 
-def _link_status(iface: dict) -> str:
+def _link_status(device, iface):
+    monitoring = getattr(device, "monitoring", None)
+
+    live_is_up = False
+    if monitoring and hasattr(monitoring, "status"):
+        live_is_up = monitoring.status in UP_STATUSES
+
+    # Device offline → force disconnected
+    if not live_is_up:
+        return "disconnected"
+
+    # Device online → use interface flag
     return "connected" if iface.get("up") else "disconnected"
+
 
 
 def _add_traffic(bucket, tx_bytes, rx_bytes):
