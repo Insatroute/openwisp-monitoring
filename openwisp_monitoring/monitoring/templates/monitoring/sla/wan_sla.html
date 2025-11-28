@@ -61,9 +61,9 @@
             {% if w.passed is None %}
               —
             {% elif w.passed %}
-              <span style="color:#059669;font-weight:600;">✔ {% trans "PASS" %}</span>
+              <span style="color:#059669;font-weight:600;">{% trans "PASS" %}</span>
             {% else %}
-              <span style="color:#dc2626;font-weight:600;">✘ {% trans "FAIL" %}</span>
+              <span style="color:#dc2626;font-weight:600;">{% trans "FAIL" %}</span>
             {% endif %}
           </td>
         </tr>

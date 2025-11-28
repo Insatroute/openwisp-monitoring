@@ -26,18 +26,13 @@ def _ipv4_addr_mask(iface: dict):
     return ipv4.get("address"), ipv4.get("mask")
 
 
-def _link_status(device, iface):
+def _link_status(device, iface: dict) -> str:
     monitoring = getattr(device, "monitoring", None)
-
-    live_is_up = False
-    if monitoring and hasattr(monitoring, "status"):
-        live_is_up = monitoring.status in UP_STATUSES
-
-    # Device offline → force disconnected
+    live_is_up = bool(
+        monitoring and getattr(monitoring, "status", None) in UP_STATUSES
+    )
     if not live_is_up:
         return "disconnected"
-
-    # Device online → use interface flag
     return "connected" if iface.get("up") else "disconnected"
 
 
@@ -217,7 +212,7 @@ class WanUplinksAllDevicesView(
                 if not (iface.get("type") == "ethernet" and iface.get("is_wan") is True):
                     continue
 
-                status = _link_status(iface, device=device)
+                status = _link_status(device, iface)
 
                 summary["total"] += 1
                 summary[status] += 1
