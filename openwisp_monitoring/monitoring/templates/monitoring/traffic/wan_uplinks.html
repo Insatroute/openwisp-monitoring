@@ -10,7 +10,7 @@
   .wp-ports-box {
     display:flex; padding:20px 10px;
     border:1px dashed #e3e7ee; border-radius:14px; background:#f9fafb;
-    align-items:center; flex-wrap:wrap; margin:20px;
+    align-items:center; flex-wrap:wrap; margin:10px;
   }
 
   .wp-port-tile { width:86px; display:flex; flex-direction:column; align-items:center; gap:6px; }
@@ -144,18 +144,31 @@
 
   <div class="wp-panel-bd">
     <div class="wp-ports-wrap">
+
       <div class="wp-ports-box">
-        <!-- ETH0..ETH5 -->
-        {% for n in "012345"|make_list %}
-          <div id="wp-tile-eth{{n}}" class="wp-port-tile wp-disconnected">
-            <div class="wp-icon"><svg><use href="#wp-icon-rj45"/></svg></div>
-            <div class="wp-port-label">ETH{{n}}</div>
-            <div class="wp-port-role" id="wp-role-eth{{n}}"></div>
-          </div>
-        {% endfor %}
+        {% if device_data.device_type == "4g_5g_router" %}
+            {# Show only ETH0..ETH3 #}
+            {% for n in "012345"|make_list %}
+              <div id="wp-tile-eth{{n}}" class="wp-port-tile wp-disconnected">
+                <div class="wp-icon"><svg><use href="#wp-icon-rj45"/></svg></div>
+                <div class="wp-port-label">ETH{{n}}</div>
+                <div class="wp-port-role" id="wp-role-eth{{n}}"></div>
+              </div>
+            {% endfor %}
+        {% else %}
+            {# Default / 4g_5g_router = show ETH0..ETH5 #}
+            {% for n in "0123"|make_list %}
+              <div id="wp-tile-eth{{n}}" class="wp-port-tile wp-disconnected">
+                <div class="wp-icon"><svg><use href="#wp-icon-rj45"/></svg></div>
+                <div class="wp-port-label">ETH{{n}}</div>
+                <div class="wp-port-role" id="wp-role-eth{{n}}"></div>
+              </div>
+            {% endfor %}
+        {% endif %}
       </div>
+
+      {% if device_data.device_type == "4g_5g_router" %}
       <div class="wp-ports-box">
-        <!-- SIMs -->
         <div id="wp-tile-sim1" class="wp-port-tile wp-disconnected">
           <div class="wp-icon"><svg><use href="#wp-icon-sim"/></svg></div>
           <div class="wp-port-label">SIM1</div>
@@ -167,17 +180,15 @@
           <div class="wp-port-role" id="wp-role-sim2">-</div>
         </div>
       </div>
-      {% comment %} <div class="wp-ports-box">
-        <!-- Wi-Fi -->
-        <div id="wp-tile-wifi" class="wp-port-tile wp-disconnected">
-          <div class="wp-icon"><svg><use href="#wp-icon-wifi"/></svg></div>
-          <div class="wp-port-label">Wi-Fi(STA)</div>
-          <div class="wp-port-role">-</div>
-        </div>
-      </div> {% endcomment %}
+      {% endif %}
+
     </div>
 
+
    <div class="wp-legend" style="display:flex; justify-content:center; gap:85px; margin-top:12px;">
+
+  <!-- LAN Column -->
+ <div class="wp-legend" style="display:flex; align-items:center; gap:10px;">
 
   <!-- LAN Column -->
   <div>
@@ -194,18 +205,21 @@
     <span><i class="wp-dot wp-dot-wan-down"></i>WAN Down</span>
   </div>
 
+  {% if device_data.device_type == "4g_5g_router" %}
   <!-- Divider -->
   <div style="width:1px; background:#e2e8f0; margin:0 10px;"></div>
 
-  <!-- SIM/Wi-Fi Column -->
+  <!-- SIM Column (only for 4g_5g_router) -->
   <div>
     <span><i class="wp-dot wp-dot-green"></i>SIM Connected</span><br>
     <span><i class="wp-dot wp-dot-gray"></i>SIM Not Inserted</span>
   </div>
+  {% endif %}
 
 </div>
 
-  </div>
+</div>
+</div>
 </div>
 
 {# ================= Uplink Table (all columns) ================= #}
