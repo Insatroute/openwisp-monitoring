@@ -1,24 +1,181 @@
 {% load i18n %}
 
+<style>
+  .sla-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+  }
+  .sla-summary-card {
+    background: #ffffff;
+    border-radius: 0.5rem;
+    border: 1px solid #e5e7eb;
+    padding: 0.75rem 0.9rem;
+  }
+  .sla-summary-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    color: #6b7280;
+    letter-spacing: .05em;
+    margin-bottom: 4px;
+  }
+  .sla-summary-value {
+    font-size: 13px;
+    font-weight: 600;
+    color: #111827;
+  }
+  .sla-summary-sub {
+    font-size: 11px;
+    color: #6b7280;
+  }
+  .sla-overall-pass {
+    color: #16a34a;
+  }
+  .sla-overall-fail {
+    color: #dc2626;
+  }
+  .sla-badge-mode {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    background: #eef2ff;
+    color: #4f46e5;
+  }
+  .sla-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    margin-top: 0.5rem;
+  }
+  .sla-table th,
+  .sla-table td {
+    padding: 6px 8px;
+    border-bottom: 1px solid #e5e7eb;
+  }
+  .sla-table th {
+    text-align: left;
+    font-weight: 600;
+    color: #6b7280;
+  }
+  .sla-chip-up {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 999px;
+    font-size: 11px;
+    background: #ecfdf3;
+    color: #166534;
+  }
+  .sla-chip-down {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 999px;
+    font-size: 11px;
+    background: #fef2f2;
+    color: #b91c1c;
+  }
+  .sla-status-pass {
+    color: #059669;
+    font-weight: 600;
+  }
+  .sla-status-fail {
+    color: #dc2626;
+    font-weight: 600;
+  }
+  .sla-window-form {
+    margin-bottom: 0.75rem;
+    font-size: 12px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    align-items: center;
+  }
+</style>
+
 <h3>{% trans "WAN SLA" %}</h3>
 
 {% if wan_sla and wan_sla.wan_results %}
-  <p style="font-size: 12px; color: #4b5563;">
-    <strong>{% trans "Mode" %}:</strong> {{ wan_sla.mode|upper }}
-    {% if wan_sla.threshold %}
-      &nbsp;|&nbsp;
-      <strong>{% trans "Threshold" %}:</strong> {{ wan_sla.threshold }}%
-    {% endif %}
-    {% if wan_sla.start and wan_sla.end %}
-      <br>
-      <strong>{% trans "Window" %}:</strong>
-      {{ wan_sla.start|date:"Y-m-d H:i" }}
-      →
-      {{ wan_sla.end|date:"Y-m-d H:i" }}
-    {% endif %}
-  </p>
+  {# Window selector #}
+  <form method="get" class="sla-window-form">
+    <label for="id_sla_window">{% trans "Window" %}:</label>
+    <select name="sla_window" id="id_sla_window" onchange="this.form.submit()">
+      <option value="24h" {% if sla_window_key == "24h" %}selected{% endif %}>
+        {% trans "Last 24 hours" %}
+      </option>
+      <option value="7d" {% if sla_window_key == "7d" %}selected{% endif %}>
+        {% trans "Last 7 days" %}
+      </option>
+      <option value="30d" {% if sla_window_key == "30d" %}selected{% endif %}>
+        {% trans "Last 30 days" %}
+      </option>
+    </select>
+  </form>
 
-  <table class="table" style="font-size: 12px;">
+  {# Summary cards #}
+  <div class="sla-summary-grid">
+    <div class="sla-summary-card">
+      <div class="sla-summary-label">{% trans "Overall SLA" %}</div>
+      <div class="sla-summary-value">
+        {% if wan_sla.overall_uptime is not None %}
+          {{ wan_sla.overall_uptime }}%
+        {% else %}
+          —
+        {% endif %}
+      </div>
+      {% if wan_sla.overall_passed is not None %}
+        <div class="sla-summary-sub">
+          {% if wan_sla.overall_passed %}
+            <span class="sla-overall-pass">✔ {% trans "PASS" %}</span>
+          {% else %}
+            <span class="sla-overall-fail">✘ {% trans "FAIL" %}</span>
+          {% endif %}
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="sla-summary-card">
+      <div class="sla-summary-label">{% trans "Profile / Mode" %}</div>
+      <div class="sla-summary-value">
+        {% if wan_sla.profile_name %}
+          {{ wan_sla.profile_name }}
+        {% else %}
+          {% trans "Effective SLA" %}
+        {% endif %}
+      </div>
+      <div class="sla-summary-sub">
+        {% if wan_sla.mode %}
+          <span class="sla-badge-mode">{{ wan_sla.mode|upper }}</span>
+        {% else %}
+          —
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="sla-summary-card">
+      <div class="sla-summary-label">{% trans "Threshold / Period" %}</div>
+      <div class="sla-summary-value">
+        {% if wan_sla.threshold %}
+          {{ wan_sla.threshold }}%
+        {% else %}
+          —
+        {% endif %}
+      </div>
+      <div class="sla-summary-sub">
+        {% if wan_sla.start and wan_sla.end %}
+          {{ wan_sla.start|date:"Y-m-d H:i" }} →
+          {{ wan_sla.end|date:"Y-m-d H:i" }}
+        {% else %}
+          {% trans "Period based on selected window" %}
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {# WAN table #}
+  <table class="sla-table">
     <thead>
       <tr>
         <th>{% trans "WAN interface" %}</th>
@@ -34,13 +191,9 @@
           <td>{{ w.label }}</td>
           <td>
             {% if w.is_up %}
-              <span style="display:inline-block;padding:2px 6px;border-radius:999px;background:#ecfdf3;color:#166534;">
-                {% trans "UP" %}
-              </span>
+              <span class="sla-chip-up">{% trans "UP" %}</span>
             {% else %}
-              <span style="display:inline-block;padding:2px 6px;border-radius:999px;background:#fef2f2;color:#b91c1c;">
-                {% trans "DOWN" %}
-              </span>
+              <span class="sla-chip-down">{% trans "DOWN" %}</span>
             {% endif %}
           </td>
           <td>
@@ -61,9 +214,9 @@
             {% if w.passed is None %}
               —
             {% elif w.passed %}
-              <span style="color:#059669;font-weight:600;">{% trans "PASS" %}</span>
+              <span class="sla-status-pass">✔ {% trans "PASS" %}</span>
             {% else %}
-              <span style="color:#dc2626;font-weight:600;">{% trans "FAIL" %}</span>
+              <span class="sla-status-fail">✘ {% trans "FAIL" %}</span>
             {% endif %}
           </td>
         </tr>
