@@ -208,8 +208,15 @@ class WanUplinksAllDevicesView(
                     location_name = dl.location.name
 
             for iface in interfaces:
-                # only ethernet WANs
-                if not (iface.get("type") == "ethernet" and iface.get("is_wan") is True):
+                itype = (iface.get("type") or "").lower()
+
+                # allow WAN ethernet + all mobile interfaces
+                allowed = (
+                    (itype == "ethernet" and iface.get("is_wan") is True) or
+                    (itype == "mobile")
+                )
+
+                if not allowed:
                     continue
 
                 status = _link_status(device, iface)
