@@ -475,20 +475,37 @@
     }
 
     // ---------- helper: choose common unit for a set of byte values (for charts) ----------
+    // Start from KB, then go to MB, GB, TB if max > 1024 of the previous unit
     function getChartUnitScale(byteArray) {
         const units = ['B', 'KB', 'MB', 'GB', 'TB'];
         const maxBytes = Math.max(...byteArray, 0);
+
         if (maxBytes <= 0) {
-            return { unit: 'KB', divisor: 1024 }; // default
+            console.log('Determined chart unit scale:===== KB for max bytes:', maxBytes);
+            return { unit: 'KB', divisor: 1024 };
         }
-        let unitIndex = 0;
-        let value = maxBytes;
-        while (value >= 1024 && unitIndex < units.length - 1) {
-            value = value / 1024;
-            unitIndex++;
+
+        const KB = 1024;
+        const MB = KB * 1024;
+        const GB = MB * 1024;
+        const TB = GB * 1024;
+
+        let unit = 'KB';
+        let divisor = KB;
+
+        if (maxBytes >= MB && maxBytes < GB) {
+            unit = 'MB';
+            divisor = MB;
+        } else if (maxBytes >= GB && maxBytes < TB) {
+            unit = 'GB';
+            divisor = GB;
+        } else if (maxBytes >= TB) {
+            unit = 'TB';
+            divisor = TB;
         }
-        console.log('Determined chart unit scale:=====', units[unitIndex], 'for max bytes:', maxBytes);
-        return { unit: units[unitIndex], divisor: Math.pow(1024, unitIndex) };
+
+        console.log('Determined chart unit scale:=====', unit, 'for max bytes:', maxBytes);
+        return { unit, divisor };
     }
 
     /* ========== TOP APPLICATIONS (from device_map, adapted to this DOM) ========== */
