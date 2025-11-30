@@ -218,6 +218,20 @@ class WanUplinksAllDevicesView(
 
                 if not allowed:
                     continue
+                
+                raw_name = (iface.get("name") or "").lower()
+                
+                if itype == "mobile":
+                    if raw_name == "modem":
+                        display_name = "Cellular1"
+                    elif raw_name == "modem2":
+                        display_name = "Cellular2"
+                    else:
+                        display_name = "Cellular"
+                    display_uplink_type = "cellular"
+                else:
+                    display_name = iface.get("name")
+                    display_uplink_type = iface.get("type")
 
                 status = _link_status(device, iface)
 
@@ -235,8 +249,8 @@ class WanUplinksAllDevicesView(
                     "model": getattr(device, "model", "") if device else "",
                     "location": location_name,
                     "path_label": getattr(device, "wan_path_label", "") if device else "",
-                    "interface_name": iface.get("name"),
-                    "uplink_type": iface.get("type"),
+                    "interface_name": display_name,
+                    "uplink_type": display_uplink_type,
 
                     "interface_ip": ipv4_addr,
                     "interface_mask": ipv4_mask,
