@@ -235,8 +235,6 @@
             value = value / 1024;
             i++;
         }
-        // We don't really want to show plain bytes; if we ended on 'B' and it's >= 1024, loop would have moved.
-        // For very small values, keep as B.
         return { value: value.toFixed(2), unit: units[i] };
     }
 
@@ -476,6 +474,22 @@
         return canvas;
     }
 
+    // ---------- helper: choose common unit for a set of byte values (for charts) ----------
+    function getChartUnitScale(byteArray) {
+        const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+        const maxBytes = Math.max(...byteArray, 0);
+        if (maxBytes <= 0) {
+            return { unit: 'KB', divisor: 1024 }; // default
+        }
+        let unitIndex = 0;
+        let value = maxBytes;
+        while (value >= 1024 && unitIndex < units.length - 1) {
+            value = value / 1024;
+            unitIndex++;
+        }
+        return { unit: units[unitIndex], divisor: Math.pow(1024, unitIndex) };
+    }
+
     /* ========== TOP APPLICATIONS (from device_map, adapted to this DOM) ========== */
     async function fetchAndDisplayTopAppsChart() {
         const containerId = 'top-apps-chart-container';
@@ -525,19 +539,21 @@
                 return;
             }
 
-            // Prepare labels and values (bytes → GB for consistent scale)
+            // Prepare labels and raw byte values
             const labels = topApps.map(item => String(item.label ?? ''));
-            const valuesGB = topApps.map(item => {
-                const bytes = Number(item.traffic) || 0;
-                return +(bytes / (1024 ** 3)).toFixed(2); // bytes → GB
-            });
+            const bytesArray = topApps.map(item => Number(item.traffic) || 0);
 
             // If all traffic is zero, treat as "no data"
-            if (valuesGB.every(v => !v || v <= 0)) {
+            const allZero = bytesArray.every(v => !v || v <= 0);
+            if (allZero) {
                 showEmptyChartMessage(containerId, backendMsg || 'No application traffic data available.');
                 if (loadingEl) loadingEl.style.display = 'none';
                 return;
             }
+
+            // Decide common unit for this chart based on max bytes
+            const { unit, divisor } = getChartUnitScale(bytesArray);
+            const valuesScaled = bytesArray.map(b => +(b / divisor).toFixed(2));
 
             // Ensure canvas exists (handles previous empty-state where we replaced innerHTML)
             const canvas = ensureCanvas(containerId, 'topAppsChart');
@@ -555,7 +571,7 @@
                     labels,
                     datasets: [
                         {
-                            data: valuesGB,
+                            data: valuesScaled,
                             backgroundColor: '#60a5fa',
                             borderRadius: 8,
                             barPercentage: 0.5,
@@ -577,7 +593,7 @@
                                 color: '#e5e7eb'
                             },
                             ticks: {
-                                callback: (val) => `${val} GB`,
+                                callback: (val) => `${val} ${unit}`,
                                 font: { size: 11 }
                             }
                         },
@@ -592,14 +608,14 @@
                         legend: { display: false },
                         tooltip: {
                             callbacks: {
-                                label: (ctx) => ` ${ctx.parsed.x.toFixed(2)} GB`
+                                label: (ctx) => ` ${ctx.parsed.x.toFixed(2)} ${unit}`
                             }
                         },
                         datalabels: {
                             anchor: 'end',
                             align: 'end',
                             offset: 6,
-                            formatter: (val) => `${val.toFixed(2)} GB`,
+                            formatter: (val) => `${Number(val).toFixed(2)} ${unit}`,
                             font: { weight: '500', size: 10 },
                             color: '#374151'
                         }
@@ -657,14 +673,18 @@
                 return;
             }
 
-            const allZero = rows.every(r => (r.total_bytes || 0) === 0);
+            const bytesArray = rows.map(r => Number(r.total_bytes) || 0);
+            const allZero = bytesArray.every(v => !v || v <= 0);
             if (allZero) {
                 showEmptyChartMessage(containerId, 'No device traffic data available.');
                 return;
             }
 
             const labels = rows.map(r => r.name || r.device_id);
-            const valuesGB = rows.map(r => +r.total_gb || 0);
+
+            // Decide common unit for this chart
+            const { unit, divisor } = getChartUnitScale(bytesArray);
+            const valuesScaled = bytesArray.map(b => +(b / divisor).toFixed(2));
 
             const canvas = ensureCanvas(containerId, 'topDevicesChart');
             if (!canvas) return;
@@ -678,7 +698,7 @@
                 data: {
                     labels,
                     datasets: [{
-                        data: valuesGB,
+                        data: valuesScaled,
                         backgroundColor: '#60a5fa',
                         borderRadius: 8,
                         barThickness: 12,
@@ -696,7 +716,7 @@
                             beginAtZero: true,
                             grid: { display: true, color: '#e5e7eb' },
                             ticks: {
-                                callback: (v) => `${v} GB`,
+                                callback: (v) => `${v} ${unit}`,
                                 font: { size: 11 }
                             }
                         },
@@ -709,14 +729,14 @@
                         legend: { display: false },
                         tooltip: {
                             callbacks: {
-                                label: (ctx) => ` ${ctx.parsed.x.toFixed(2)} GB`
+                                label: (ctx) => ` ${ctx.parsed.x.toFixed(2)} ${unit}`
                             }
                         },
                         datalabels: {
                             anchor: 'end',
                             align: 'end',
                             offset: 6,
-                            formatter: (v) => `${v.toFixed(2)} GB`,
+                            formatter: (v) => `${Number(v).toFixed(2)} ${unit}`,
                             font: { weight: '500', size: 10 },
                             color: '#374151'
                         }
