@@ -307,6 +307,33 @@ class DataUsageAllDevicesView(
             _add_traffic(summary["total"], summary[key]["sent"], summary[key]["received"])
 
         return Response(summary)
+    
+def normalize_operator_name(raw: str) -> str:
+    if not raw:
+        return "Unknown"
+
+    name = raw.strip()
+    upper = name.upper()
+
+    # Jio
+    if "JIO" in upper:
+        return "Jio"
+
+    # Airtel
+    if "AIRTEL" in upper:
+        return "Airtel"
+
+    # Vi (Vodafone-Idea)
+    if "VI " in upper or upper.startswith("VI") or "VODAFONE" in upper or "IDEA" in upper:
+        return "Vi India"
+
+    # BSNL
+    if "BSNL" in upper:
+        return "BSNL"
+
+    # default: pretty normalized text
+    return " ".join(part.capitalize() for part in name.split())
+
 
 class MobileDistributionAllDevicesView(
     ProtectedAPIMixin,
@@ -323,7 +350,6 @@ class MobileDistributionAllDevicesView(
 
         for device_data in self.get_queryset():
             data = getattr(device_data, "data_user_friendly", {}) or {}
-
             interfaces = data.get("interfaces", []) or []
 
             for iface in interfaces:
@@ -333,7 +359,9 @@ class MobileDistributionAllDevicesView(
                 mobile = iface.get("mobile", {}) or {}
                 total_modems += 1
 
-                operator = mobile.get("operator_name") or "Unknown"
+                # ✅ normalize operator name here
+                raw_operator = mobile.get("operator_name") or "Unknown"
+                operator = normalize_operator_name(raw_operator)
                 carrier_counter[operator] += 1
 
                 signal = mobile.get("signal") or {}
@@ -357,6 +385,7 @@ class MobileDistributionAllDevicesView(
             },
             "total_modems": total_modems,
         })
+
 
 global_top_apps = GlobalTopAppsView.as_view()
 global_top_devices = GlobalTopDevicesView.as_view()
