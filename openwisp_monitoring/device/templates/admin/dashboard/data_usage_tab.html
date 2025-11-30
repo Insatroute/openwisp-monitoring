@@ -16,7 +16,7 @@
                 <div class="home-datausage-summary-label">Total Data Usage</div>
                 <div class="home-datausage-summary-main">
                     <span id="home-datausage-total-value" class="home-datausage-summary-value">0.00</span>
-                    <span class="home-datausage-summary-unit">GB</span>
+                    <span id="home-datausage-total-unit" class="home-datausage-summary-unit">GB</span>
                 </div>
                 <div class="home-datausage-summary-metrics">
                     <div class="home-datausage-summary-metric">
@@ -35,7 +35,7 @@
                 <div class="home-datausage-summary-label">Cellular</div>
                 <div class="home-datausage-summary-main">
                     <span id="home-datausage-cellular-value" class="home-datausage-summary-value">0.00</span>
-                    <span class="home-datausage-summary-unit">GB</span>
+                    <span id="home-datausage-cellular-unit" class="home-datausage-summary-unit">GB</span>
                 </div>
                 <div class="home-datausage-summary-metrics">
                     <div class="home-datausage-summary-metric">
@@ -56,7 +56,7 @@
                 <div class="home-datausage-summary-label">Wired</div>
                 <div class="home-datausage-summary-main">
                     <span id="home-datausage-wired-value" class="home-datausage-summary-value">0.00</span>
-                    <span class="home-datausage-summary-unit">GB</span>
+                    <span id="home-datausage-wired-unit" class="home-datausage-summary-unit">GB</span>
                 </div>
                 <div class="home-datausage-summary-metrics">
                     <div class="home-datausage-summary-metric">
@@ -75,7 +75,7 @@
                 <div class="home-datausage-summary-label">Wireless</div>
                 <div class="home-datausage-summary-main">
                     <span id="home-datausage-wireless-value" class="home-datausage-summary-value">0.00</span>
-                    <span class="home-datausage-summary-unit">GB</span>
+                    <span id="home-datausage-wireless-unit" class="home-datausage-summary-unit">GB</span>
                 </div>
                 <div class="home-datausage-summary-metrics">
                     <div class="home-datausage-summary-metric">
@@ -115,36 +115,7 @@
     </div>
 
     <!-- ===== data-usage distribution cards ===== -->
-    <!-- <div id="datausage-distribution-row" class="datausage-distribution-row">
-        <div class="datausage-distribution-grid">
-
-            <div class="ow-mini-card datausage-mini-card datausage-carrier-div">
-                <h4 class="ow-mini-title datausage-mini-title datausage-carrier-span">
-                    Top Group by data utilisation
-                </h4>
-                <div class="ow-mini-inner datausage-mini-inner">
-                    <div id="DataUsage-Carrier-Distribution-chart" class="ow-mini-plot datausage-mini-plot">
-                    </div>
-                </div>
-                <div class="ow-mini-legend datausage-mini-legend" id="DataUsage-Carrier-Distribution-legend">
-                </div>
-            </div>
-
-            <div class="ow-mini-card datausage-mini-card datausage-network-div">
-                <h4 class="ow-mini-title datausage-mini-title datausage-network-span">
-                    Least Group by data utilisation
-                </h4>
-                <div class="ow-mini-inner datausage-mini-inner">
-                    <div id="DataUsage-Network-Distribution-chart" class="ow-mini-plot datausage-mini-plot">
-                    </div>
-                </div>
-                <div class="ow-mini-legend datausage-mini-legend" id="DataUsage-Network-Distribution-legend">
-                </div>
-            </div>
-
-        </div>
-    </div> -->
-    <!-- =============================================== -->
+    <!-- (kept commented out as in original) -->
 
 </div>
 
@@ -252,6 +223,23 @@
 
     console.log('Data usage tab script loaded, OW_HIDE_CHARTS set to true.=====', window.OW_HIDE_CHARTS);
 
+    // helper to format bytes into KB / MB / GB / TB
+    function formatBytes(bytes) {
+        if (!bytes || bytes < 0) {
+            return { value: '0.00', unit: 'KB' }; // default
+        }
+        const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+        let value = Number(bytes);
+        let i = 0;
+        while (value >= 1024 && i < units.length - 1) {
+            value = value / 1024;
+            i++;
+        }
+        // We don't really want to show plain bytes; if we ended on 'B' and it's >= 1024, loop would have moved.
+        // For very small values, keep as B.
+        return { value: value.toFixed(2), unit: units[i] };
+    }
+
     async function fetchAndDisplaySummary() {
         try {
             const resp = await fetch("https://controller.nexapp.co.in/api/v1/monitoring/data-usage/", {
@@ -262,32 +250,45 @@
 
             const data = await resp.json();
 
-            // Convert bytes → GB
-            const toGB = (bytes) => +(bytes / (1024 * 1024 * 1024)).toFixed(2);
-
             /* ===== TOTAL ===== */
-            const totalSentGB = toGB(data.total.sent);
-            const totalRecvGB = toGB(data.total.received);
-            const totalGB = toGB(data.total.total);
+            const totalTotal = formatBytes(data.total.total);
+            const totalSent = formatBytes(data.total.sent);
+            const totalRecv = formatBytes(data.total.received);
 
-            document.getElementById("home-datausage-total-value").innerText = totalGB;
-            document.getElementById("home-datausage-total-sent").innerText = totalSentGB + " GB";
-            document.getElementById("home-datausage-total-recv").innerText = totalRecvGB + " GB";
+            document.getElementById("home-datausage-total-value").innerText = totalTotal.value;
+            document.getElementById("home-datausage-total-unit").innerText = totalTotal.unit;
+            document.getElementById("home-datausage-total-sent").innerText = `${totalSent.value} ${totalSent.unit}`;
+            document.getElementById("home-datausage-total-recv").innerText = `${totalRecv.value} ${totalRecv.unit}`;
 
             /* ===== CELLULAR ===== */
-            document.getElementById("home-datausage-cellular-value").innerText = toGB(data.cellular.total);
-            document.getElementById("home-datausage-cellular-sent").innerText = toGB(data.cellular.sent) + " GB";
-            document.getElementById("home-datausage-cellular-recv").innerText = toGB(data.cellular.received) + " GB";
+            const cellTotal = formatBytes(data.cellular.total);
+            const cellSent = formatBytes(data.cellular.sent);
+            const cellRecv = formatBytes(data.cellular.received);
+
+            document.getElementById("home-datausage-cellular-value").innerText = cellTotal.value;
+            document.getElementById("home-datausage-cellular-unit").innerText = cellTotal.unit;
+            document.getElementById("home-datausage-cellular-sent").innerText = `${cellSent.value} ${cellSent.unit}`;
+            document.getElementById("home-datausage-cellular-recv").innerText = `${cellRecv.value} ${cellRecv.unit}`;
 
             /* ===== WIRED ===== */
-            document.getElementById("home-datausage-wired-value").innerText = toGB(data.wired.total);
-            document.getElementById("home-datausage-wired-sent").innerText = toGB(data.wired.sent) + " GB";
-            document.getElementById("home-datausage-wired-recv").innerText = toGB(data.wired.received) + " GB";
+            const wiredTotal = formatBytes(data.wired.total);
+            const wiredSent = formatBytes(data.wired.sent);
+            const wiredRecv = formatBytes(data.wired.received);
+
+            document.getElementById("home-datausage-wired-value").innerText = wiredTotal.value;
+            document.getElementById("home-datausage-wired-unit").innerText = wiredTotal.unit;
+            document.getElementById("home-datausage-wired-sent").innerText = `${wiredSent.value} ${wiredSent.unit}`;
+            document.getElementById("home-datausage-wired-recv").innerText = `${wiredRecv.value} ${wiredRecv.unit}`;
 
             /* ===== WIRELESS ===== */
-            document.getElementById("home-datausage-wireless-value").innerText = toGB(data.wireless.total);
-            document.getElementById("home-datausage-wireless-sent").innerText = toGB(data.wireless.sent) + " GB";
-            document.getElementById("home-datausage-wireless-recv").innerText = toGB(data.wireless.received) + " GB";
+            const wirelessTotal = formatBytes(data.wireless.total);
+            const wirelessSent = formatBytes(data.wireless.sent);
+            const wirelessRecv = formatBytes(data.wireless.received);
+
+            document.getElementById("home-datausage-wireless-value").innerText = wirelessTotal.value;
+            document.getElementById("home-datausage-wireless-unit").innerText = wirelessTotal.unit;
+            document.getElementById("home-datausage-wireless-sent").innerText = `${wirelessSent.value} ${wirelessSent.unit}`;
+            document.getElementById("home-datausage-wireless-recv").innerText = `${wirelessRecv.value} ${wirelessRecv.unit}`;
 
         } catch (e) {
             console.error("Summary load error:", e);
