@@ -474,281 +474,204 @@
         return canvas;
     }
 
-    // ---------- helper: choose common unit for a set of byte values (for charts) ----------
+    // ---------- helper: convert bytes → choose unit KB/MB/GB/TB ----------
     function getChartUnitScale(byteArray) {
-        const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+        const units = ["B", "KB", "MB", "GB", "TB"];
         const maxBytes = Math.max(...byteArray, 0);
-        if (maxBytes <= 0) {
-            return { unit: 'KB', divisor: 1024 }; // default
-        }
+
+        if (maxBytes <= 0) return { unit: "KB", divisor: 1024 };
+
         let unitIndex = 0;
         let value = maxBytes;
+
         while (value >= 1024 && unitIndex < units.length - 1) {
-            value = value / 1024;
+            value /= 1024;
             unitIndex++;
         }
-        return { unit: units[unitIndex], divisor: Math.pow(1024, unitIndex) };
+
+        return {
+            unit: units[unitIndex],
+            divisor: Math.pow(1024, unitIndex)
+        };
     }
 
-    /* ========== TOP APPLICATIONS (from device_map, adapted to this DOM) ========== */
+    /* ================= TOP APPLICATIONS (in KB/MB/GB/TB) ================= */
     async function fetchAndDisplayTopAppsChart() {
-        const containerId = 'top-apps-chart-container';
-        const loadingEl = document.getElementById('chart-loading');
+        const containerId = "top-apps-chart-container";
+        const loadingEl = document.getElementById("chart-loading");
 
-        if (loadingEl) {
-            loadingEl.style.display = 'block';
-            loadingEl.textContent = 'Loading...';
-        }
+        if (loadingEl) loadingEl.style.display = "block";
 
         try {
-            const response = await fetch('https://controller.nexapp.co.in/api/v1/monitoring/global-top-apps/', {
-                headers: { 'accept': 'application/json' },
-                credentials: 'include'   // important when behind login
-            });
+            const response = await fetch(
+                "https://controller.nexapp.co.in/api/v1/monitoring/global-top-apps/",
+                { headers: { accept: "application/json" }, credentials: "include" }
+            );
 
-            let data = null;
-            try {
-                data = await response.json();
-            } catch (_) {
-                data = null;
-            }
+            let data = await response.json();
 
             if (!response.ok) {
-                let msg;
-                if (response.status === 401) {
-                    msg = 'You are not authenticated. Please log in to see top applications.';
-                } else if (response.status === 403) {
-                    msg = data?.detail || 'You do not have permission to view top applications.';
-                } else if (response.status === 404) {
-                    msg = 'Top application data is not available.';
-                } else {
-                    msg = data?.message || `Unable to load top applications.`;
-                }
-                showEmptyChartMessage(containerId, msg);
-                if (loadingEl) loadingEl.style.display = 'none';
+                showEmptyChartMessage(containerId, data?.message || "Unable to load top applications.");
+                loadingEl.style.display = "none";
                 return;
             }
 
-            const topApps = Array.isArray(data?.top_10_apps) ? data.top_10_apps : [];
-            const backendMsg = data?.message || null;
+            const apps = data.top_10_apps || [];
 
-            // If no apps at all -> show friendly message and bail
-            if (!topApps.length) {
-                showEmptyChartMessage(containerId, backendMsg || 'No application traffic data available.');
-                if (loadingEl) loadingEl.style.display = 'none';
+            if (!apps.length) {
+                showEmptyChartMessage(containerId, "No application traffic data available.");
+                loadingEl.style.display = "none";
                 return;
             }
 
-            // Prepare labels and raw byte values
-            const labels = topApps.map(item => String(item.label ?? ''));
-            const bytesArray = topApps.map(item => Number(item.traffic) || 0);
+            const labels = apps.map(a => a.label || "");
+            const bytesArray = apps.map(a => Number(a.traffic) || 0);
 
-            // If all traffic is zero, treat as "no data"
-            const allZero = bytesArray.every(v => !v || v <= 0);
-            if (allZero) {
-                showEmptyChartMessage(containerId, backendMsg || 'No application traffic data available.');
-                if (loadingEl) loadingEl.style.display = 'none';
+            if (bytesArray.every(b => b <= 0)) {
+                showEmptyChartMessage(containerId, "No application traffic data available.");
+                loadingEl.style.display = "none";
                 return;
             }
 
-            // Decide common unit for this chart based on max bytes
+            // decide best unit for chart
             const { unit, divisor } = getChartUnitScale(bytesArray);
             const valuesScaled = bytesArray.map(b => +(b / divisor).toFixed(2));
 
-            // Ensure canvas exists (handles previous empty-state where we replaced innerHTML)
-            const canvas = ensureCanvas(containerId, 'topAppsChart');
+            const canvas = ensureCanvas(containerId, "topAppsChart");
             if (!canvas) return;
 
-            // Destroy old chart if exists
-            const existingChart = Chart.getChart('topAppsChart');
-            if (existingChart) existingChart.destroy();
+            const old = Chart.getChart("topAppsChart");
+            if (old) old.destroy();
 
-            const ctx = canvas.getContext('2d');
-
-            new Chart(ctx, {
-                type: 'bar',
+            new Chart(canvas.getContext("2d"), {
+                type: "bar",
                 data: {
                     labels,
-                    datasets: [
-                        {
-                            data: valuesScaled,
-                            backgroundColor: '#60a5fa',
-                            borderRadius: 8,
-                            barPercentage: 0.5,
-                            categoryPercentage: 0.5,
-                            barThickness: 12,
-                            stack: 'stack0',
-                            order: 2
-                        }
-                    ]
+                    datasets: [{
+                        data: valuesScaled,
+                        backgroundColor: "#60a5fa",
+                        borderRadius: 8,
+                        barThickness: 12
+                    }]
                 },
                 options: {
-                    indexAxis: 'y', // horizontal bars
-                    layout: { padding: { left: 16, right: 60, top: 10, bottom: 10 } },
+                    indexAxis: "y",
                     scales: {
                         x: {
                             beginAtZero: true,
-                            grid: {
-                                display: true,
-                                color: '#e5e7eb'
-                            },
                             ticks: {
-                                callback: (val) => `${val} ${unit}`,
-                                font: { size: 11 }
-                            }
-                        },
-                        y: {
-                            grid: { display: false },
-                            ticks: {
-                                font: { size: 12, weight: '500' }
+                                callback: v => `${v} ${unit}`
                             }
                         }
                     },
                     plugins: {
-                        legend: { display: false },
                         tooltip: {
                             callbacks: {
-                                label: (ctx) => ` ${ctx.parsed.x.toFixed(2)} ${unit}`
+                                label: ctx => `${ctx.parsed.x.toFixed(2)} ${unit}`
                             }
                         },
                         datalabels: {
-                            anchor: 'end',
-                            align: 'end',
-                            offset: 6,
-                            formatter: (val) => `${Number(val).toFixed(2)} ${unit}`,
-                            font: { weight: '500', size: 10 },
-                            color: '#374151'
+                            anchor: "end",
+                            align: "end",
+                            formatter: v => `${v.toFixed(2)} ${unit}`
                         }
-                    },
-                    responsive: true,
-                    maintainAspectRatio: false
+                    }
                 }
             });
-
-        } catch (error) {
-            console.error('Error fetching global top apps:', error);
-            showEmptyChartMessage('top-apps-chart-container', 'Unable to load top applications.');
+        } catch (e) {
+            console.error(e);
+            showEmptyChartMessage(containerId, "Unable to load top applications.");
         } finally {
-            if (loadingEl) loadingEl.style.display = 'none';
+            if (loadingEl) loadingEl.style.display = "none";
         }
     }
 
-    /* ========== TOP DEVICES (global-top-devices) ========== */
+    /* ================= TOP BRANCHES (in KB/MB/GB/TB) ================= */
     async function fetchAndDisplayTopDevicesChart() {
+        const containerId = "top-devices-chart-container";
+        const loader = document.getElementById("chart-loading-devices");
 
-        const containerId = 'top-devices-chart-container';
-        const loader = document.getElementById('chart-loading-devices');
-
-        if (loader) {
-            loader.style.display = 'block';
-            loader.textContent = 'Loading...';
-        }
+        if (loader) loader.style.display = "block";
 
         try {
-            const base = window.API_BASE_URL || 'https://controller.nexapp.co.in';
-            const resp = await fetch(`${base}/api/v1/monitoring/global-top-devices/`, {
-                credentials: 'include'
-            });
+            const response = await fetch(
+                "https://controller.nexapp.co.in/api/v1/monitoring/global-top-devices/",
+                { credentials: "include" }
+            );
 
-            let json = null;
-            try { json = await resp.json(); } catch (_) { json = null; }
+            let json = await response.json();
 
-            if (!resp.ok) {
-                let msg;
-                if (resp.status === 401) {
-                    msg = 'You are not authenticated. Please log in to see top devices.';
-                } else if (resp.status === 403) {
-                    msg = json?.detail || 'You do not have permission to view top devices.';
-                } else {
-                    msg = json?.message || 'Unable to load top devices.';
-                }
-                showEmptyChartMessage(containerId, msg);
+            if (!response.ok) {
+                showEmptyChartMessage(containerId, json?.message || "Unable to load top devices.");
                 return;
             }
 
             const rows = json.top_10_devices || [];
 
             if (!rows.length) {
-                showEmptyChartMessage(containerId, 'No device traffic data available.');
-                return;
-            }
-
-            const bytesArray = rows.map(r => Number(r.total_bytes) || 0);
-            const allZero = bytesArray.every(v => !v || v <= 0);
-            if (allZero) {
-                showEmptyChartMessage(containerId, 'No device traffic data available.');
+                showEmptyChartMessage(containerId, "No device traffic data available.");
                 return;
             }
 
             const labels = rows.map(r => r.name || r.device_id);
+            const bytesArray = rows.map(r => Number(r.total_bytes) || 0);
 
-            // Decide common unit for this chart
+            if (bytesArray.every(v => v <= 0)) {
+                showEmptyChartMessage(containerId, "No device traffic data available.");
+                return;
+            }
+
+            // decide best common unit for chart
             const { unit, divisor } = getChartUnitScale(bytesArray);
             const valuesScaled = bytesArray.map(b => +(b / divisor).toFixed(2));
 
-            const canvas = ensureCanvas(containerId, 'topDevicesChart');
+            const canvas = ensureCanvas(containerId, "topDevicesChart");
             if (!canvas) return;
 
-            const existing = Chart.getChart('topDevicesChart');
-            if (existing) existing.destroy();
+            const old = Chart.getChart("topDevicesChart");
+            if (old) old.destroy();
 
-            const ctx = canvas.getContext('2d');
-            new Chart(ctx, {
-                type: 'bar',
+            new Chart(canvas.getContext("2d"), {
+                type: "bar",
                 data: {
                     labels,
                     datasets: [{
                         data: valuesScaled,
-                        backgroundColor: '#60a5fa',
+                        backgroundColor: "#60a5fa",
                         borderRadius: 8,
-                        barThickness: 12,
-                        barPercentage: 0.5,
-                        categoryPercentage: 0.5
+                        barThickness: 12
                     }]
                 },
                 options: {
-                    indexAxis: 'y',
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    layout: { padding: { left: 16, right: 60, top: 10, bottom: 10 } },
+                    indexAxis: "y",
                     scales: {
                         x: {
                             beginAtZero: true,
-                            grid: { display: true, color: '#e5e7eb' },
                             ticks: {
-                                callback: (v) => `${v} ${unit}`,
-                                font: { size: 11 }
+                                callback: v => `${v} ${unit}`
                             }
-                        },
-                        y: {
-                            grid: { display: false },
-                            ticks: { font: { size: 12, weight: '500' } }
                         }
                     },
                     plugins: {
-                        legend: { display: false },
                         tooltip: {
                             callbacks: {
-                                label: (ctx) => ` ${ctx.parsed.x.toFixed(2)} ${unit}`
+                                label: ctx => `${ctx.parsed.x.toFixed(2)} ${unit}`
                             }
                         },
                         datalabels: {
-                            anchor: 'end',
-                            align: 'end',
-                            offset: 6,
-                            formatter: (v) => `${Number(v).toFixed(2)} ${unit}`,
-                            font: { weight: '500', size: 10 },
-                            color: '#374151'
+                            anchor: "end",
+                            align: "end",
+                            formatter: v => `${v.toFixed(2)} ${unit}`
                         }
                     }
                 }
             });
 
         } catch (e) {
-            console.error('Top Devices error:', e);
-            showEmptyChartMessage(containerId, 'Unable to load top devices.');
+            console.error(e);
+            showEmptyChartMessage(containerId, "Unable to load top devices.");
         } finally {
-            if (loader) loader.style.display = 'none';
+            if (loader) loader.style.display = "none";
         }
     }
 
