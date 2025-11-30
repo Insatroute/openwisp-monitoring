@@ -268,6 +268,7 @@
       const item = document.createElement('div');
       item.className = 'legend-item';
       item.dataset.index = i;
+
       const sw = document.createElement('span');
       sw.className = 'legend-swatch';
       // use same color as chart; when no data, this is #808080
@@ -276,8 +277,16 @@
           ? '#808080'
           : (finalColors[i] || '#353c44');
       sw.style.background = colorForThis;
+
       const txt = document.createElement('span');
-      txt.textContent = label;
+      const valueForThis = typeof baseValues[i] !== 'undefined' ? baseValues[i] : null;
+      // show "Label (count)" when we have a numeric value
+      const labelText =
+        valueForThis !== null && !Number.isNaN(valueForThis)
+          ? `${label} (${valueForThis})`
+          : label;
+      txt.textContent = labelText;
+
       item.appendChild(sw);
       item.appendChild(txt);
       legendRoot.appendChild(item);
@@ -939,9 +948,6 @@
   div[id^="modebar"] .modebar-group:nth-child(4) {
     display: none !important;
   }
-
-
-
 
   /* ====== RESPONSIVE BREAKPOINTS ====== */
 
