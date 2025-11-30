@@ -798,8 +798,9 @@
     border-radius: 12px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, .1);
     padding: 14px;
-    height: 280px;
     box-sizing: border-box;
+    min-height: 280px;
+    /* allow card to grow with legend rows */
   }
 
   .overview-mini-title {
@@ -828,10 +829,12 @@
 
   .overview-mini-legend {
     display: flex;
+    flex-wrap: wrap;
+    /* allow multiple legend rows */
     align-items: center;
     justify-content: center;
     padding: 12px 6px 2px 6px;
-    gap: 10px
+    gap: 10px;
   }
 
   .legend-item {
@@ -843,6 +846,9 @@
     cursor: pointer;
     user-select: none;
     transition: opacity .15s ease, color .15s ease;
+    flex: 0 0 calc(33.333% - 10px);
+    /* exactly 3 per row */
+    justify-content: flex-start;
   }
 
   .legend-item.is-off {
@@ -930,9 +936,9 @@
     color: #666;
   }
 
-div[id^="modebar"] .modebar-group:nth-child(4) {
+  div[id^="modebar"] .modebar-group:nth-child(4) {
     display: none !important;
-}
+  }
 
 
 
