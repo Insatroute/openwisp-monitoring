@@ -19,25 +19,25 @@ AlertSettings = load_model("monitoring", "AlertSettings")
 DEFAULT_PING_CHECK_CONFIG = {
     "count": {
         "type": "integer",
-        "default": 5,
+        "default": 10,
         "minimum": 2,
         # chosen to avoid slowing down the queue
         "maximum": 20,
     },
     "interval": {
         "type": "integer",
-        "default": 25,
+        "default": 1000,   #1000
         "minimum": 10,
         # chosen to avoid slowing down the queue
-        "maximum": 1000,
+        "maximum": 1000,  #1000  
     },
     "bytes": {"type": "integer", "default": 56, "minimum": 12, "maximum": 65508},
     "timeout": {
         "type": "integer",
-        "default": 800,
+        "default": 1000,#1000
         "minimum": 5,
         # arbitrary chosen to avoid slowing down the queue
-        "maximum": 1500,
+        "maximum": 1500,   #1500
     },
 }
 
