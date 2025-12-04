@@ -9,10 +9,77 @@
     }
 
     .wan-summary-title {
-        margin: 0 0 6px 0;
+        margin: 0;
         font-size: 14px;
         font-weight: 600;
         color: #4b5563;
+    }
+
+    /* NEW: header row containing title + export button */
+    .wan-summary-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 6px;
+        gap: 8px;
+    }
+
+    /* NEW: export button style */
+    .wan-export-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        border: 1px solid #d1d5db;
+        background: #ffffff;
+        color: #0b63c5;
+        cursor: pointer;
+        line-height: 1.2;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, .04);
+    }
+
+    .wan-export-btn:hover {
+        background: #f3f4f6;
+    }
+
+    .wan-export-btn:active {
+        background: #e5e7eb;
+        box-shadow: 0 0 0 rgba(0, 0, 0, 0);
+    }
+
+    .wan-export-btn-icon {
+        width: 14px;
+        height: 14px;
+        display: inline-block;
+        border-radius: 3px;
+        border: 1px solid currentColor;
+        position: relative;
+    }
+
+    .wan-export-btn-icon::after {
+        content: '';
+        position: absolute;
+        left: 3px;
+        right: 3px;
+        bottom: 2px;
+        height: 2px;
+        background: currentColor;
+        border-radius: 999px;
+    }
+
+    .wan-export-btn-icon::before {
+        content: '';
+        position: absolute;
+        left: 5px;
+        right: 5px;
+        top: 3px;
+        height: 5px;
+        border-left: 2px solid currentColor;
+        border-right: 2px solid currentColor;
+        border-bottom: 2px solid currentColor;
+        transform: translateY(2px) rotate(0deg);
     }
 
     .wan-summary-card {
@@ -97,6 +164,15 @@
         .wan-summary-item+.wan-summary-item {
             border-left: none;
             border-top: 1px solid #e5e7eb;
+        }
+
+        .wan-summary-header {
+            align-items: flex-start;
+            flex-direction: column;
+        }
+
+        .wan-export-btn {
+            align-self: flex-start;
         }
     }
 
@@ -258,7 +334,14 @@
 
 {# ====== SINGLE SUMMARY CARD ====== #}
 <div class="wan-summary-wrap">
-    <div class="wan-summary-title">Summary</div>
+    <div class="wan-summary-header">
+        <div class="wan-summary-title">Summary</div>
+        <!-- NEW: Export CSV button -->
+        <button type="button" id="home-wan-export-btn" class="wan-export-btn">
+            <span class="wan-export-btn-icon" aria-hidden="true"></span>
+            <span>Download CSV</span>
+        </button>
+    </div>
     <div class="wan-summary-card">
         <!-- Total -->
         <div class="wan-summary-item">
@@ -363,6 +446,8 @@
         const pageInfoEl = paginationEl ? paginationEl.querySelector('.home-wan-page-info') : null;
         const prevBtn = paginationEl ? paginationEl.querySelector('[data-dir="prev"]') : null;
         const nextBtn = paginationEl ? paginationEl.querySelector('[data-dir="next"]') : null;
+
+        const exportBtn = document.getElementById('home-wan-export-btn');
 
         const PAGE_SIZE = 10;
         let allRows = [];
@@ -588,6 +673,116 @@
             nextBtn.addEventListener('click', function () {
                 if (currentPage < totalPages) renderPage(currentPage + 1);
             });
+        }
+
+        // NEW: CSV export logic
+        function exportWanCsv() {
+            if (!allRows.length) {
+                alert('No WAN uplink data to export yet.');
+                return;
+            }
+
+            const headers = [
+                'Status',
+                'Hostname',
+                'Serial Number',
+                'Model',
+                'Location',
+                'Uplink',
+                'Interface IP/Mask',
+                'Ping Destination',
+                'Throughput TX',
+                'Throughput RX',
+                'Latency',
+                'Jitter',
+                'Loss'
+            ];
+
+            const rows = allRows.map(function (row) {
+                const status = normalizeStatus(row.status);
+                const statusLabel = humanizeStatus(status);
+                const uplinkName = (row.interface_name || '').toUpperCase() || '—';
+                const hostname = row.hostname || '—';
+                const serial = row.serial_number || '—';
+                const model = row.model || '—';
+                const location = row.location || '—';
+
+                let ipMask = '—';
+                if (row.interface_ip) {
+                    ipMask = row.interface_ip;
+                    if (row.interface_mask !== null && row.interface_mask !== undefined) {
+                        ipMask += '/' + row.interface_mask;
+                    }
+                }
+
+                const pingDest = row.ping_dest || '—';
+                const latency = (typeof row.ping_latency_ms === 'number')
+                    ? row.ping_latency_ms.toFixed(1) + ' ms'
+                    : '—';
+                const jitter = (typeof row.ping_jitter_ms === 'number')
+                    ? row.ping_jitter_ms.toFixed(1) + ' ms'
+                    : '—';
+                const loss = (row.ping_packet_loss !== null && row.ping_packet_loss !== undefined && row.ping_packet_loss !== '')
+                    ? row.ping_packet_loss
+                    : '—';
+
+                const txRaw = (typeof row.throughput_tx_bytes === 'number')
+                    ? row.throughput_tx_bytes
+                    : ((typeof row.tx_bytes === 'number') ? row.tx_bytes : null);
+                const rxRaw = (typeof row.throughput_rx_bytes === 'number')
+                    ? row.throughput_rx_bytes
+                    : ((typeof row.rx_bytes === 'number') ? row.rx_bytes : null);
+
+                const tx = txRaw !== null ? formatBytes(txRaw) : '—';
+                const rx = rxRaw !== null ? formatBytes(rxRaw) : '—';
+
+                return [
+                    statusLabel,
+                    hostname,
+                    serial,
+                    model,
+                    location,
+                    uplinkName,
+                    ipMask,
+                    pingDest,
+                    tx,
+                    rx,
+                    latency,
+                    jitter,
+                    loss
+                ];
+            });
+
+            function escapeCsvValue(value) {
+                if (value === null || value === undefined) value = '';
+                value = String(value);
+                const needsQuotes = /[",\r\n]/.test(value);
+                if (needsQuotes) {
+                    value = '"' + value.replace(/"/g, '""') + '"';
+                }
+                return value;
+            }
+
+            const lines = [];
+            lines.push(headers.map(escapeCsvValue).join(','));
+            rows.forEach(function (r) {
+                lines.push(r.map(escapeCsvValue).join(','));
+            });
+
+            const csvContent = lines.join('\r\n');
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', 'wan_uplinks.csv');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+
+        if (exportBtn) {
+            exportBtn.addEventListener('click', exportWanCsv);
         }
 
         async function init() {
