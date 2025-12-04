@@ -1,4 +1,5 @@
-{# ================= Interfaces (ETH0–ETH5 | SIM1 | SIM2 | Wi-Fi) + Uplink table (with LAN/WAN detection) ====== #}
+{# ================= Interfaces (ETH, SFP, SIM, CONSOLE) + Uplink table (with LAN/WAN detection) ====== #}
+
 <style>
   /* ===== Generic panels ===== */
   .wp-panel { background:#fff; border:1px solid #eaecef; border-radius:12px; box-shadow:0 6px 20px rgba(0,0,0,.06); margin:16px 0; }
@@ -6,7 +7,7 @@
   .wp-panel-bd { padding:16px; }
 
   /* ===== Interfaces strip ===== */
-  .wp-ports-wrap { display:flex; justify-content:center; }
+  .wp-ports-wrap { display:flex; justify-content:center; flex-wrap:wrap; }
   .wp-ports-box {
     display:flex; padding:20px 10px;
     border:1px dashed #e3e7ee; border-radius:14px; background:#f9fafb;
@@ -29,7 +30,7 @@
   .wp-connected .wp-icon svg { opacity:1; filter:brightness(100%) contrast(110%); }
   .wp-disconnected .wp-icon { background:#e5e7eb; border-color:#cbd5e1; }
 
-  /* ===== New: LAN/WAN tile colors for ETH0–ETH5 ===== */
+  /* ===== New: LAN/WAN tile colors for ETH ===== */
   .wp-lan-up .wp-icon {
     background:#f5c857;           /* yellow */
     border-color:#eab308;
@@ -71,7 +72,7 @@
   .wp-dot-green { background:#22c55e; }
   .wp-dot-gray  { background:#cbd5e1; }
 
-  /* New: status dot colors for Ethernet LAN/WAN only */
+  /* Status dot colors for Ethernet LAN/WAN only */
   .wp-dot-lan-up   { background:#facc15; }  /* yellow */
   .wp-dot-lan-down { background:#cbd5e1; }  /* grey */
 
@@ -89,6 +90,7 @@
   .wp-kp-up i, .wp-kp-down i { display:inline-block; width:0; height:0; border-left:5px solid transparent; border-right:5px solid transparent; }
   .wp-kp-up  i { border-bottom:8px solid #22c55e; }
   .wp-kp-down i { border-top:8px solid #94a3b8; }
+
   .wp-empty-msg {
     width: 100%;
     padding: 10px 0;
@@ -129,6 +131,21 @@
       <path d="M8.5 15a6 6 0 0 1 7 0" stroke="#9aa7b7" stroke-width="2" stroke-linecap="round"/>
       <circle cx="12" cy="18" r="1.6" fill="#9aa7b7"/>
     </symbol>
+
+    {# SFP icon #}
+    <symbol id="wp-icon-sfp" viewBox="0 0 24 24">
+      <rect x="3" y="6" width="18" height="10" rx="2"
+          fill="#eaf0f7" stroke="#d0d6de" stroke-width="1"></rect>
+      <rect x="6" y="9" width="7" height="4" rx="1"
+          fill="#c8d1dc"></rect>
+      <rect x="14.5" y="9.2" width="3.5" height="1.4" rx="0.4"
+          fill="#adb7c4"></rect>
+      <rect x="14.5" y="11" width="3.5" height="1.4" rx="0.4"
+          fill="#adb7c4"></rect>
+      <rect x="9" y="15" width="6" height="2" rx="0.5"
+          fill="#d6dde7"></rect>
+      </symbol>
+
   </defs>
 </svg>
 
@@ -138,89 +155,260 @@
     <div class="wp-panel-title">Interfaces</div>
     <span class="wp-panel-updated">
       Last Updated:
-        {% if device_data.general.local_time %}{{ device_data.general.local_time|date:"Y-m-d H:i:s" }}{% else %}—{% endif %}
+      {% if device_data.general.local_time %}
+        {{ device_data.general.local_time|date:"Y-m-d H:i:s" }}
+      {% else %}
+        —
+      {% endif %}
     </span>
   </div>
 
   <div class="wp-panel-bd">
-    <div class="wp-ports-wrap">
+    {% with model=device.model|default_if_none:"" model_lc=device.model|default_if_none:""|lower %}
 
-      <div class="wp-ports-box">
-        {% if device_data.device_type == "4g_5g_router" %}
-            {# Show only ETH0..ETH3 #}
-            {% for n in "012345"|make_list %}
-              <div id="wp-tile-eth{{n}}" class="wp-port-tile wp-disconnected">
-                <div class="wp-icon"><svg><use href="#wp-icon-rj45"/></svg></div>
-                <div class="wp-port-label">ETH{{n}}</div>
-                <div class="wp-port-role" id="wp-role-eth{{n}}"></div>
-              </div>
-            {% endfor %}
-        {% else %}
-            {# Default / 4g_5g_router = show ETH0..ETH5 #}
-            {% for n in "0123"|make_list %}
-              <div id="wp-tile-eth{{n}}" class="wp-port-tile wp-disconnected">
-                <div class="wp-icon"><svg><use href="#wp-icon-rj45"/></svg></div>
-                <div class="wp-port-label">ETH{{n}}</div>
-                <div class="wp-port-role" id="wp-role-eth{{n}}"></div>
-              </div>
-            {% endfor %}
-        {% endif %}
-      </div>
-
-      {% if device_data.device_type == "4g_5g_router" %}
-      <div class="wp-ports-box">
-        <div id="wp-tile-sim1" class="wp-port-tile wp-disconnected">
-          <div class="wp-icon"><svg><use href="#wp-icon-sim"/></svg></div>
-          <div class="wp-port-label">SIM1</div>
-          <div class="wp-port-role" id="wp-role-sim1">-</div>
+      {# ---- Case 1: No model at all ---- #}
+      {% if not model %}
+        <div class="wp-empty-msg" style="text-align:center; margin-bottom:10px;">
+          This is a virtual form factor of NexappOS.
         </div>
-        <div id="wp-tile-sim2" class="wp-port-tile wp-disconnected">
-          <div class="wp-icon"><svg><use href="#wp-icon-sim"/></svg></div>
-          <div class="wp-port-label">SIM2</div>
-          <div class="wp-port-role" id="wp-role-sim2">-</div>
+
+      {# ---- Case 2: Virtual device (e.g. Amazon EC2) -> show only message, no tiles ---- #}
+      {% elif "amazon ec2" in model_lc or "t3a.medium" in model_lc %}
+        <div class="wp-empty-msg" style="text-align:center; margin-bottom:10px;">
+          This is a virtual form factor of NexappOS.
         </div>
-      </div>
-      {% endif %}
 
-    </div>
+      {# ---- Case 3: Hardware models -> render tiles + legend ---- #}
+      {% else %}
+        <div class="wp-ports-wrap">
 
+          {# ================== RJ45 PORTS BY MODEL ================== #}
+          <div class="wp-ports-box">
+            {# IRx400 – 4 ports (ETH0–ETH3) #}
+            {% if "irx400" in model_lc %}
+              {% for n in "0123"|make_list %}
+                <div id="wp-tile-eth{{n}}" class="wp-port-tile wp-disconnected">
+                  <div class="wp-icon"><svg><use href="#wp-icon-rj45"/></svg></div>
+                  <div class="wp-port-label">ETH{{n}}</div>
+                  <div class="wp-port-role" id="wp-role-eth{{n}}"></div>
+                </div>
+              {% endfor %}
 
-   <div class="wp-legend" style="display:flex; justify-content:center; gap:85px; margin-top:12px;">
+            {# IRx800 – 8 ports (ETH0–ETH7) #}
+            {% elif "irx800" in model_lc %}
+              {% for n in "01234567"|make_list %}
+                <div id="wp-tile-eth{{n}}" class="wp-port-tile wp-disconnected">
+                  <div class="wp-icon"><svg><use href="#wp-icon-rj45"/></svg></div>
+                  <div class="wp-port-label">ETH{{n}}</div>
+                  <div class="wp-port-role" id="wp-role-eth{{n}}"></div>
+                </div>
+              {% endfor %}
 
-  <!-- LAN Column -->
- <div class="wp-legend" style="display:flex; align-items:center; gap:10px;">
+            {# IRx600 – 6 ports (ETH0–ETH5) #}
+            {% elif "irx600" in model_lc %}
+              {% for n in "012345"|make_list %}
+                <div id="wp-tile-eth{{n}}" class="wp-port-tile wp-disconnected">
+                  <div class="wp-icon"><svg><use href="#wp-icon-rj45"/></svg></div>
+                  <div class="wp-port-label">ETH{{n}}</div>
+                  <div class="wp-port-role" id="wp-role-eth{{n}}"></div>
+                </div>
+              {% endfor %}
 
-  <!-- LAN Column -->
-  <div>
-    <span><i class="wp-dot wp-dot-lan-up"></i>LAN Connected</span><br>
-    <span><i class="wp-dot wp-dot-lan-down"></i>LAN Not Connected</span>
-  </div>
+            {# IRX1000 – 6 ports (ETH0–ETH5) #}
+            {% elif "irx1000" in model_lc %}
+              {% for n in "012345"|make_list %}
+                <div id="wp-tile-eth{{n}}" class="wp-port-tile wp-disconnected">
+                  <div class="wp-icon"><svg><use href="#wp-icon-rj45"/></svg></div>
+                  <div class="wp-port-label">ETH{{n}}</div>
+                  <div class="wp-port-role" id="wp-role-eth{{n}}"></div>
+                </div>
+              {% endfor %}
 
-  <!-- Divider -->
-  <div style="width:1px; background:#e2e8f0; margin:0 10px;"></div>
+            {# IRX1500 – 6 RJ45 ports (ETH0–ETH5) #}
+            {% elif "irx1500" in model_lc %}
+              {% for n in "012345"|make_list %}
+                <div id="wp-tile-eth{{n}}" class="wp-port-tile wp-disconnected">
+                  <div class="wp-icon"><svg><use href="#wp-icon-rj45"/></svg></div>
+                  <div class="wp-port-label">ETH{{n}}</div>
+                  <div class="wp-port-role" id="wp-role-eth{{n}}"></div>
+                </div>
+              {% endfor %}
 
-  <!-- WAN Column -->
-  <div>
-    <span><i class="wp-dot wp-dot-wan-up"></i>WAN Up</span><br>
-    <span><i class="wp-dot wp-dot-wan-down"></i>WAN Down</span>
-  </div>
+            {# IRx100-5G – 5 FE ports #}
+            {% elif "irx100-5g" in model_lc %}
+              {% for n in "01234"|make_list %}
+                <div id="wp-tile-eth{{n}}" class="wp-port-tile wp-disconnected">
+                  <div class="wp-icon"><svg><use href="#wp-icon-rj45"/></svg></div>
+                  <div class="wp-port-label">ETH{{n}}</div>
+                  <div class="wp-port-role" id="wp-role-eth{{n}}"></div>
+                </div>
+              {% endfor %}
 
-  {% if device_data.device_type == "4g_5g_router" %}
-  <!-- Divider -->
-  <div style="width:1px; background:#e2e8f0; margin:0 10px;"></div>
+            {# IR11004GS – 2 FE ports #}
+            {% elif "irx11004gs" in model_lc %}
+              {% for n in "01"|make_list %}
+                <div id="wp-tile-eth{{n}}" class="wp-port-tile wp-disconnected">
+                  <div class="wp-icon"><svg><use href="#wp-icon-rj45"/></svg></div>
+                  <div class="wp-port-label">ETH{{n}}</div>
+                  <div class="wp-port-role" id="wp-role-eth{{n}}"></div>
+                </div>
+              {% endfor %}
 
-  <!-- SIM Column (only for 4g_5g_router) -->
-  <div>
-    <span><i class="wp-dot wp-dot-green"></i>SIM Connected</span><br>
-    <span><i class="wp-dot wp-dot-gray"></i>SIM Not Inserted</span>
-  </div>
-  {% endif %}
+            {# IRX11004GD / IRX11004GDW – 5 FE ports #}
+            {% elif "irx11004gd" in model_lc or "irx11004gdw" in model_lc %}
+              {% for n in "01234"|make_list %}
+                <div id="wp-tile-eth{{n}}" class="wp-port-tile wp-disconnected">
+                  <div class="wp-icon"><svg><use href="#wp-icon-rj45"/></svg></div>
+                  <div class="wp-port-label">ETH{{n}}</div>
+                  <div class="wp-port-role" id="wp-role-eth{{n}}"></div>
+                </div>
+              {% endfor %}
 
-</div>
+            {# Fallback – 4 ports #}
+            {% else %}
+              {% for n in "0123"|make_list %}
+                <div id="wp-tile-eth{{n}}" class="wp-port-tile wp-disconnected">
+                  <div class="wp-icon"><svg><use href="#wp-icon-rj45"/></svg></div>
+                  <div class="wp-port-label">ETH{{n}}</div>
+                  <div class="wp-port-role" id="wp-role-eth{{n}}"></div>
+                </div>
+              {% endfor %}
+            {% endif %}
+          </div>  {# /.wp-ports-box RJ45 #}
 
-</div>
-</div>
-</div>
+          {# ================== SFP PORTS – IRX1500 ================== #}
+          {% if "irx1500" in model_lc %}
+            <div class="wp-ports-box">
+              <div id="wp-tile-sfp1" class="wp-port-tile wp-disconnected">
+                <div class="wp-icon"><svg><use href="#wp-icon-sfp"/></svg></div>
+                <div class="wp-port-label">SFP1</div>
+                <div class="wp-port-role" id="wp-role-sfp1">1G SFP</div>
+              </div>
+              <div id="wp-tile-sfp2" class="wp-port-tile wp-disconnected">
+                <div class="wp-icon"><svg><use href="#wp-icon-sfp"/></svg></div>
+                <div class="wp-port-label">SFP2</div>
+                <div class="wp-port-role" id="wp-role-sfp2">1G SFP</div>
+              </div>
+              <div id="wp-tile-sfpplus1" class="wp-port-tile wp-disconnected">
+                <div class="wp-icon"><svg><use href="#wp-icon-sfp"/></svg></div>
+                <div class="wp-port-label">SFP+1</div>
+                <div class="wp-port-role" id="wp-role-sfpplus1">10G SFP+</div>
+              </div>
+              <div id="wp-tile-sfpplus2" class="wp-port-tile wp-disconnected">
+                <div class="wp-icon"><svg><use href="#wp-icon-sfp"/></svg></div>
+                <div class="wp-port-label">SFP+2</div>
+                <div class="wp-port-role" id="wp-role-sfpplus2">10G SFP+</div>
+              </div>
+            </div>
+          {% endif %}
+
+          {# ================== CONSOLE PORT – models that have it ================== #}
+          {% if "irx800" in model_lc or "irx1000" in model_lc or "irx1500" in model_lc or "irx100-5g" in model_lc %}
+            <div class="wp-ports-box">
+              <div id="wp-tile-console" class="wp-port-tile wp-disconnected">
+                <div class="wp-icon"><svg><use href="#wp-icon-rj45"/></svg></div>
+                <div class="wp-port-label">CONSOLE</div>
+                <div class="wp-port-role" id="wp-role-console">-</div>
+              </div>
+            </div>
+          {% endif %}
+
+          {# ================== SIM SLOTS ================== #}
+          {% if "irx100-5g" in model_lc %}
+            {# IRx100-5G – Two SIM, Active–Active, 5G #}
+            <div class="wp-ports-box">
+              <div id="wp-tile-sim1" class="wp-port-tile wp-disconnected">
+                <div class="wp-icon"><svg><use href="#wp-icon-sim"/></svg></div>
+                <div class="wp-port-label">SIM1</div>
+                <div class="wp-port-role" id="wp-role-sim1">-</div>
+              </div>
+              <div id="wp-tile-sim2" class="wp-port-tile wp-disconnected">
+                <div class="wp-icon"><svg><use href="#wp-icon-sim"/></svg></div>
+                <div class="wp-port-label">SIM2</div>
+                <div class="wp-port-role" id="wp-role-sim2">-</div>
+              </div>
+            </div>
+
+          {% elif "ir11004gd" in model_lc %}
+            {# IR11004GD – Two SIM, Active–Passive, 4G #}
+            <div class="wp-ports-box">
+              <div id="wp-tile-sim1" class="wp-port-tile wp-disconnected">
+                <div class="wp-icon"><svg><use href="#wp-icon-sim"/></svg></div>
+                <div class="wp-port-label">SIM1</div>
+                <div class="wp-port-role" id="wp-role-sim1">-</div>
+              </div>
+              <div id="wp-tile-sim2" class="wp-port-tile wp-disconnected">
+                <div class="wp-icon"><svg><use href="#wp-icon-sim"/></svg></div>
+                <div class="wp-port-label">SIM2</div>
+                <div class="wp-port-role" id="wp-role-sim2">-</div>
+              </div>
+            </div>
+
+          {% elif "ir11004gdw" in model_lc %}
+            {# IR11004GDW – Two SIM, Active–Active, 4G #}
+            <div class="wp-ports-box">
+              <div id="wp-tile-sim1" class="wp-port-tile wp-disconnected">
+                <div class="wp-icon"><svg><use href="#wp-icon-sim"/></svg></div>
+                <div class="wp-port-label">SIM1</div>
+                <div class="wp-port-role" id="wp-role-sim1">-</div>
+              </div>
+              <div id="wp-tile-sim2" class="wp-port-tile wp-disconnected">
+                <div class="wp-icon"><svg><use href="#wp-icon-sim"/></svg></div>
+                <div class="wp-port-label">SIM2</div>
+                <div class="wp-port-role" id="wp-role-sim2">-</div>
+              </div>
+            </div>
+
+          {% elif "ir11004gs" in model_lc %}
+            {# IR11004GS – Single SIM #}
+            <div class="wp-ports-box">
+              <div id="wp-tile-sim1" class="wp-port-tile wp-disconnected">
+                <div class="wp-icon"><svg><use href="#wp-icon-sim"/></svg></div>
+                <div class="wp-port-label">SIM</div>
+                <div class="wp-port-role" id="wp-role-sim1">-</div>
+              </div>
+            </div>
+          {% endif %}
+
+        </div>  {# /.wp-ports-wrap #}
+
+        {# ================== Legend ================== #}
+        <div class="wp-legend" style="display:flex; justify-content:center; gap:85px; margin-top:12px;">
+          <div class="wp-legend" style="display:flex; align-items:center; gap:10px;">
+
+            <!-- LAN Column -->
+            <div>
+              <span><i class="wp-dot wp-dot-lan-up"></i>LAN Connected</span><br>
+              <span><i class="wp-dot wp-dot-lan-down"></i>LAN Not Connected</span>
+            </div>
+
+            <!-- Divider -->
+            <div style="width:1px; background:#e2e8f0; margin:0 10px;"></div>
+
+            <!-- WAN Column -->
+            <div>
+              <span><i class="wp-dot wp-dot-wan-up"></i>WAN Up</span><br>
+              <span><i class="wp-dot wp-dot-wan-down"></i>WAN Down</span>
+            </div>
+
+            {% if "irx100-5g" in model_lc or "ir11004gd" in model_lc or "ir11004gdw" in model_lc or "ir11004gs" in model_lc %}
+              <!-- Divider -->
+              <div style="width:1px; background:#e2e8f0; margin:0 10px;"></div>
+
+              <!-- SIM Column -->
+              <div>
+                <span><i class="wp-dot wp-dot-green"></i>SIM Connected</span><br>
+                <span><i class="wp-dot wp-dot-gray"></i>SIM Not Inserted</span>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+
+      {% endif %} {# /if model cases #}
+    {% endwith %}
+  </div>  {# /.wp-panel-bd #}
+</div>  {# /.wp-panel #}
+
 
 {# ================= Uplink Table (all columns) ================= #}
 <div class="wp-uplink-panel">
@@ -238,7 +426,6 @@
         <th>Status</th>
         <th>Path Label</th>
         <th>Uplink</th>
-        {% comment %} <th>Uptime</th> {% endcomment %}
         <th>Interface IP/Mask</th>
         <th>Ping Destination</th>
         <th>Throughput</th>
@@ -247,92 +434,89 @@
         <th>Loss</th>
       </tr>
     </thead>
-    <tbody>
-  <tbody id="wp-uplink-tbody">
-  {% for iface in device_data.interfaces %}
-    {# Show only WAN interfaces OR mobile interfaces #}
-    {% if iface.is_wan or iface.type == 'mobile' %}
-      {% if iface.name|cut:'.' == iface.name and iface.name|cut:'-' == iface.name %}
-        <tr>
-          <td class="wp-nowrap">
-            <span
-              class="wp-status-dot {% if iface.up %}wp-dot-green{% else %}wp-dot-gray{% endif %}"
-              id="wp-status-{{ iface.name }}"
-            ></span>
-            {% if iface.up %}Online{% else %}Offline{% endif %}
-          </td>
-          <td class="wp-nowrap">
-            {% if iface.type == 'mobile' %}
-              {% if iface.name == 'modem' %}
-                <span>
-                  {% if iface.mobile and iface.mobile.operator_name %}{{ iface.mobile.operator_name }}{% else %}-{% endif %}
+    <tbody id="wp-uplink-tbody">
+      {% for iface in device_data.interfaces %}
+        {# Show only WAN interfaces OR mobile interfaces #}
+        {% if iface.is_wan or iface.type == 'mobile' %}
+          {% if iface.name|cut:'.' == iface.name and iface.name|cut:'-' == iface.name %}
+            <tr>
+              <td class="wp-nowrap">
+                <span
+                  class="wp-status-dot {% if iface.up %}wp-dot-green{% else %}wp-dot-gray{% endif %}"
+                  id="wp-status-{{ iface.name }}"
+                ></span>
+                {% if iface.up %}Online{% else %}Offline{% endif %}
+              </td>
+              <td class="wp-nowrap">
+                {% if iface.type == 'mobile' %}
+                  {% if iface.name == 'modem' %}
+                    <span>
+                      {% if iface.mobile and iface.mobile.operator_name %}{{ iface.mobile.operator_name }}{% else %}-{% endif %}
+                    </span>
+                  {% elif iface.name == 'modem2' %}
+                    <span>
+                      {% if iface.mobile and iface.mobile.operator_name %}{{ iface.mobile.operator_name }}{% else %}-{% endif %}
+                    </span>
+                  {% else %}
+                    <span>-</span>
+                  {% endif %}
+                {% else %}
+                  <span>-</span>
+                {% endif %}
+              </td>
+              <td class="wp-nowrap">
+                {% if iface.type == 'mobile' %}
+                  {% if iface.name == 'modem' %}
+                    <a class="wp-linkish">Cellular (SIM1)</a>
+                  {% elif iface.name == 'modem2' %}
+                    <a class="wp-linkish">Cellular (SIM2)</a>
+                  {% else %}
+                    <a class="wp-linkish">{{ iface.name|upper }}</a>
+                  {% endif %}
+                {% else %}
+                  <a class="wp-linkish">{{ iface.name|upper }}</a>
+                  <span class="wp-muted" id="wp-row-role-{{ iface.name }}"> (WAN)</span>
+                {% endif %}
+              </td>
+
+              <td>
+                {% if iface.addresses %}
+                  {% for addr in iface.addresses %}
+                    <div>
+                      {{ addr.address }}{% if addr.mask %}/{{ addr.mask }}{% endif %}
+                      <span class="wp-muted">({{ addr.family|upper }})</span>
+                    </div>
+                  {% endfor %}
+                {% else %}
+                  <span class="wp-muted">—</span>
+                {% endif %}
+              </td>
+
+              <td class="wp-nowrap">{{ iface.ping.dest_ip }}</td>
+
+              <td class="wp-nowrap">
+                <span class="wp-kp-arrows">
+                  <span class="wp-kp-up"><i></i>{{ iface.ping.throughput.tx_bytes|default:0|filesizeformat }}</span>
+                  <span class="wp-kp-down"><i></i>{{ iface.ping.throughput.rx_bytes|default:0|filesizeformat }}</span>
                 </span>
-              {% elif iface.name == 'modem2' %}
-                <span>
-                  {% if iface.mobile and iface.mobile.operator_name %}{{ iface.mobile.operator_name }}{% else %}-{% endif %}
-                </span>
-              {% else %}
-                <span>-</span>
-              {% endif %}
-            {% else %}
-              <span>-</span>
-            {% endif %}
-          </td>
-          <td class="wp-nowrap">
-            {% if iface.type == 'mobile' %}
-              {% if iface.name == 'modem' %}
-                <a class="wp-linkish">Cellular (SIM1)</a>
-              {% elif iface.name == 'modem2' %}
-                <a class="wp-linkish">Cellular (SIM2)</a>
-              {% else %}
-                <a class="wp-linkish">{{ iface.name|upper }}</a>
-              {% endif %}
-            {% else %}
-              <a class="wp-linkish">{{ iface.name|upper }}</a>
-              <span class="wp-muted" id="wp-row-role-{{ iface.name }}"> (WAN)</span>
-            {% endif %}
-          </td>
+              </td>
 
-          {% comment %} <td class="wp-nowrap">{{ iface.uptime|default:"-" }}</td> {% endcomment %}
-
-          <td>
-            {% if iface.addresses %}
-              {% for addr in iface.addresses %}
-                <div>
-                  {{ addr.address }}{% if addr.mask %}/{{ addr.mask }}{% endif %}
-                  <span class="wp-muted">({{ addr.family|upper }})</span>
-                </div>
-              {% endfor %}
-            {% else %}
-              <span class="wp-muted">—</span>
-            {% endif %}
-          </td>
-
-          <td class="wp-nowrap">{{ iface.ping.dest_ip }}</td>
-
-          <td class="wp-nowrap">
-            <span class="wp-kp-arrows">
-              <span class="wp-kp-up"><i></i>{{ iface.ping.throughput.tx_bytes|default:0|filesizeformat }}</span>
-              <span class="wp-kp-down"><i></i>{{ iface.ping.throughput.rx_bytes|default:0|filesizeformat }}</span>
-            </span>
-          </td>
-
-          <td class="wp-nowrap">{{ iface.ping.latency_ms|default:0 }}</td>
-          <td class="wp-nowrap">{{ iface.ping.jitter_ms|default:0 }}</td>
-          <td class="wp-nowrap">{{ iface.ping.packet_loss|default:"0%" }}</td>
-        </tr>
-      {% endif %}
-    {% endif %}
-  {% endfor %}
-        <tr id="wp-uplink-empty-row" style="display:none;">
-          <td colspan="10">
-            <div class="wp-empty-msg">
-              No active WAN uplinks available.
-            </div>
-          </td>
-        </tr>
-      </tbody>
-</table>
+              <td class="wp-nowrap">{{ iface.ping.latency_ms|default:0 }}</td>
+              <td class="wp-nowrap">{{ iface.ping.jitter_ms|default:0 }}</td>
+              <td class="wp-nowrap">{{ iface.ping.packet_loss|default:"0%" }}</td>
+            </tr>
+          {% endif %}
+        {% endif %}
+      {% endfor %}
+      <tr id="wp-uplink-empty-row" style="display:none;">
+        <td colspan="10">
+          <div class="wp-empty-msg">
+            No active WAN uplinks available.
+          </div>
+        </td>
+      </tr>
+    </tbody>
+  </table>
 </div>
 
 <script>
@@ -395,8 +579,8 @@
     return i.mobile.operator_name;
   }
 
-  // ETH0..ETH5 (skip sub-ifs) – TILE COLORS & ROLE LABELS
-  ['eth0','eth1','eth2','eth3','eth4','eth5'].forEach(function(name){
+  // ETH0..ETH7 (skip sub-ifs) – TILE COLORS & ROLE LABELS
+  ['eth0','eth1','eth2','eth3','eth4','eth5','eth6','eth7'].forEach(function(name){
     var m = IFACES.find(function(i){
       if(i.type !== 'ethernet') return false;
       if(i.name.indexOf('.') !== -1) return false;
@@ -436,7 +620,7 @@
     }
   });
 
-  // ================== SIM tiles: show operator as role (unchanged behavior) ==================
+  // ================== SIM tiles: show operator as role (if available) ==================
   var sim1Name = 'modem';
   var sim2Name = 'modem2';
 
@@ -449,26 +633,17 @@
 
   var sim1RoleEl = document.getElementById('wp-role-sim1');
   if (sim1RoleEl) {
-    sim1RoleEl.textContent = operatorOf(sim1Name);
+    var op1 = operatorOf(sim1Name);
+    if (op1 !== '-') sim1RoleEl.textContent = op1;
   }
 
   var sim2RoleEl = document.getElementById('wp-role-sim2');
   if (sim2RoleEl) {
-    sim2RoleEl.textContent = operatorOf(sim2Name);
+    var op2 = operatorOf(sim2Name);
+    if (op2 !== '-') sim2RoleEl.textContent = op2;
   }
 
-  // optional: if you have row labels in a table (currently no dedicated ids for sim rows)
-  var sim1RowRole = document.getElementById('wp-row-role-sim1');
-  if (sim1RowRole) {
-    sim1RowRole.textContent = ' (' + operatorOf(sim1Name) + ')';
-  }
-
-  var sim2RowRole = document.getElementById('wp-row-role-sim2');
-  if (sim2RowRole) {
-    sim2RowRole.textContent = ' (' + operatorOf(sim2Name) + ')';
-  }
-
-  // ===== Status dots for Ethernet LAN/WAN only (SIM/Wi-Fi untouched) =====
+  // Status dots for Ethernet LAN/WAN only (SIM/Wi-Fi untouched)
   IFACES.forEach(function(i){
     // Only handle plain ethernet ifaces (no subinterfaces or special names)
     if (i.type !== 'ethernet') return;

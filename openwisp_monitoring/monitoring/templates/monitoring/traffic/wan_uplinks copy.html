@@ -1,0 +1,515 @@
+{# ================= Interfaces (ETH0–ETH5 | SIM1 | SIM2 | Wi-Fi) + Uplink table (with LAN/WAN detection) ====== #}
+<style>
+  /* ===== Generic panels ===== */
+  .wp-panel { background:#fff; border:1px solid #eaecef; border-radius:12px; box-shadow:0 6px 20px rgba(0,0,0,.06); margin:16px 0; }
+  .wp-panel-hd { padding:12px 16px; color:#1f2937; border-bottom:1px solid #eef0f3; display:flex; justify-content:space-between; align-items:center; }
+  .wp-panel-bd { padding:16px; }
+
+  /* ===== Interfaces strip ===== */
+  .wp-ports-wrap { display:flex; justify-content:center; }
+  .wp-ports-box {
+    display:flex; padding:20px 10px;
+    border:1px dashed #e3e7ee; border-radius:14px; background:#f9fafb;
+    align-items:center; flex-wrap:wrap; margin:10px;
+  }
+
+  .wp-port-tile { width:86px; display:flex; flex-direction:column; align-items:center; gap:6px; }
+  .wp-port-label { font-weight:800; color:#213547; font-size:12px; text-align:center; }
+  .wp-port-role { font-size:11px; color:#64748b; font-weight:700; letter-spacing:.02em; }
+
+  .wp-icon {
+    width:48px; height:36px; border-radius:8px;
+    background:linear-gradient(#eaf0f7, #e2e7ef);
+    box-shadow:inset 0 -2px 0 rgba(0,0,0,.05);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .wp-icon svg { width:28px; height:28px; opacity:.75; }
+
+  .wp-connected .wp-icon { background:#22c55e; border-color:#16a34a; box-shadow:none; }
+  .wp-connected .wp-icon svg { opacity:1; filter:brightness(100%) contrast(110%); }
+  .wp-disconnected .wp-icon { background:#e5e7eb; border-color:#cbd5e1; }
+
+  /* ===== New: LAN/WAN tile colors for ETH0–ETH5 ===== */
+  .wp-lan-up .wp-icon {
+    background:#f5c857;           /* yellow */
+    border-color:#eab308;
+    box-shadow:none;
+  }
+  .wp-lan-down .wp-icon {
+    background:#e5e7eb;           /* grey */
+    border-color:#cbd5e1;
+  }
+
+  .wp-wan-up .wp-icon {
+    background:#22c55e;           /* green */
+    border-color:#16a34a;
+    box-shadow:none;
+  }
+  .wp-wan-down .wp-icon {
+    background:#e62727;           /* red */
+    border-color:#b91c1c;
+    box-shadow:none;
+  }
+
+  .wp-legend { display:flex; align-items:center; gap:18px; margin-top:12px; justify-content: center; }
+  .wp-legend .wp-dot { width:10px; height:10px; border-radius:50%; display:inline-block; margin-right:6px; }
+  .wp-dot-green{ background:#22c55e; }
+  .wp-dot-gray{ background:#cbd5e1; }
+
+  /* ===== Uplink table ===== */
+  .wp-uplink-panel { background:#fff; border:1px solid #eaecef; border-radius:12px; box-shadow:0 6px 20px rgba(0,0,0,.06); margin:16px 0; }
+  .wp-uplink-hd { display:flex; align-items:center; justify-content:space-between; padding:12px 16px; border-bottom:1px solid #eef0f3; }
+  .wp-uplink-title, .wp-panel-title { font-weight:700; color:#1f2937; }
+  .wp-uplink-updated, .wp-panel-updated { font-size:12px; color:#6b7280; }
+
+  .wp-uplink-table { width:100%; border-collapse:separate; border-spacing:0; }
+  .wp-uplink-table th, .wp-uplink-table td { text-align:left; padding:12px 14px; border-bottom:1px solid #eef0f3; vertical-align:middle; }
+  .wp-uplink-table th { font-size:12px; text-transform:uppercase; letter-spacing:.02em; color:#6b7280; background:#f8fafc; }
+  .wp-uplink-table tr:last-child td { border-bottom:none; }
+
+  .wp-status-dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:10px; vertical-align:middle; }
+  .wp-dot-green { background:#22c55e; }
+  .wp-dot-gray  { background:#cbd5e1; }
+
+  /* New: status dot colors for Ethernet LAN/WAN only */
+  .wp-dot-lan-up   { background:#facc15; }  /* yellow */
+  .wp-dot-lan-down { background:#cbd5e1; }  /* grey */
+
+  .wp-dot-wan-up   { background:#22c55e; }  /* green */
+  .wp-dot-wan-down { background:#ef4444; }  /* red */
+
+  .wp-linkish { color:#11274b; font-weight:700; text-decoration:none; }
+  .wp-linkish:hover { text-decoration:underline; }
+
+  .wp-nowrap { white-space:nowrap; }
+  .wp-muted { color:#94a3b8; }
+
+  .wp-kp-arrows { display:flex; gap:10px; align-items:center; }
+  .wp-kp-up, .wp-kp-down { display:inline-flex; align-items:center; gap:6px; font-weight:700; }
+  .wp-kp-up i, .wp-kp-down i { display:inline-block; width:0; height:0; border-left:5px solid transparent; border-right:5px solid transparent; }
+  .wp-kp-up  i { border-bottom:8px solid #22c55e; }
+  .wp-kp-down i { border-top:8px solid #94a3b8; }
+  .wp-empty-msg {
+    width: 100%;
+    padding: 10px 0;
+    text-align: center;
+    color: #64748b;
+    font-size: 13px;
+    border: 1px dashed #e3e7ee;
+    border-radius: 10px;
+    background: #f9fafb;
+  }
+</style>
+
+{# ===== SVG symbols (prefixed ids) ===== #}
+<svg aria-hidden="true" width="0" height="0" style="position:absolute; left:-9999px; top:-9999px;">
+  <defs>
+    <symbol id="wp-icon-rj45" viewBox="0 0 24 24">
+      <rect x="3" y="5" width="18" height="14" rx="3" fill="#dbe2eb"></rect>
+      <rect x="5.5" y="10.5" width="13" height="6" rx="1.5" fill="#bfc8d4"></rect>
+      <rect x="6" y="6" width="2" height="3" rx="0.5" fill="#aeb8c5"></rect>
+      <rect x="9" y="6" width="2" height="3" rx="0.5" fill="#aeb8c5"></rect>
+      <rect x="12" y="6" width="2" height="3" rx="0.5" fill="#aeb8c5"></rect>
+      <rect x="15" y="6" width="2" height="3" rx="0.5" fill="#aeb8c5"></rect>
+      <rect x="8" y="14" width="8" height="2" rx="0.5" fill="#e3e8ee"></rect>
+    </symbol>
+
+    <symbol id="wp-icon-sim" viewBox="0 0 24 24">
+      <path d="M8 3h6l4 4v10a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" fill="#cfd8e3"/>
+      <rect x="9" y="9" width="6" height="6" rx="1" fill="#9aa7b7"/>
+      <rect x="10" y="10" width="1.5" height="1.5" fill="#e5e7eb"/>
+      <rect x="12.25" y="10" width="1.5" height="1.5" fill="#e5e7eb"/>
+      <rect x="10" y="12.25" width="1.5" height="1.5" fill="#e5e7eb"/>
+      <rect x="12.25" y="12.25" width="1.5" height="1.5" fill="#e5e7eb"/>
+    </symbol>
+
+    <symbol id="wp-icon-wifi" viewBox="0 0 24 24">
+      <path d="M2 9a14 14 0 0 1 20 0" stroke="#9aa7b7" stroke-width="2" stroke-linecap="round"/>
+      <path d="M5 12a10 10 0 0 1 14 0" stroke="#9aa7b7" stroke-width="2" stroke-linecap="round"/>
+      <path d="M8.5 15a6 6 0 0 1 7 0" stroke="#9aa7b7" stroke-width="2" stroke-linecap="round"/>
+      <circle cx="12" cy="18" r="1.6" fill="#9aa7b7"/>
+    </symbol>
+  </defs>
+</svg>
+
+{# ================= Interfaces ================= #}
+<div class="wp-panel">
+  <div class="wp-panel-hd">
+    <div class="wp-panel-title">Interfaces</div>
+    <span class="wp-panel-updated">
+      Last Updated:
+        {% if device_data.general.local_time %}{{ device_data.general.local_time|date:"Y-m-d H:i:s" }}{% else %}—{% endif %}
+    </span>
+  </div>
+
+  <div class="wp-panel-bd">
+    <div class="wp-ports-wrap">
+
+      <div class="wp-ports-box">
+        {% if device_data.device_type == "4g_5g_router" %}
+            {# Show only ETH0..ETH3 #}
+            {% for n in "012345"|make_list %}
+              <div id="wp-tile-eth{{n}}" class="wp-port-tile wp-disconnected">
+                <div class="wp-icon"><svg><use href="#wp-icon-rj45"/></svg></div>
+                <div class="wp-port-label">ETH{{n}}</div>
+                <div class="wp-port-role" id="wp-role-eth{{n}}"></div>
+              </div>
+            {% endfor %}
+        {% else %}
+            {# Default / 4g_5g_router = show ETH0..ETH5 #}
+            {% for n in "0123"|make_list %}
+              <div id="wp-tile-eth{{n}}" class="wp-port-tile wp-disconnected">
+                <div class="wp-icon"><svg><use href="#wp-icon-rj45"/></svg></div>
+                <div class="wp-port-label">ETH{{n}}</div>
+                <div class="wp-port-role" id="wp-role-eth{{n}}"></div>
+              </div>
+            {% endfor %}
+        {% endif %}
+      </div>
+
+      {% if device_data.device_type == "4g_5g_router" %}
+      <div class="wp-ports-box">
+        <div id="wp-tile-sim1" class="wp-port-tile wp-disconnected">
+          <div class="wp-icon"><svg><use href="#wp-icon-sim"/></svg></div>
+          <div class="wp-port-label">SIM1</div>
+          <div class="wp-port-role" id="wp-role-sim1">-</div>
+        </div>
+        <div id="wp-tile-sim2" class="wp-port-tile wp-disconnected">
+          <div class="wp-icon"><svg><use href="#wp-icon-sim"/></svg></div>
+          <div class="wp-port-label">SIM2</div>
+          <div class="wp-port-role" id="wp-role-sim2">-</div>
+        </div>
+      </div>
+      {% endif %}
+
+    </div>
+
+
+   <div class="wp-legend" style="display:flex; justify-content:center; gap:85px; margin-top:12px;">
+
+  <!-- LAN Column -->
+ <div class="wp-legend" style="display:flex; align-items:center; gap:10px;">
+
+  <!-- LAN Column -->
+  <div>
+    <span><i class="wp-dot wp-dot-lan-up"></i>LAN Connected</span><br>
+    <span><i class="wp-dot wp-dot-lan-down"></i>LAN Not Connected</span>
+  </div>
+
+  <!-- Divider -->
+  <div style="width:1px; background:#e2e8f0; margin:0 10px;"></div>
+
+  <!-- WAN Column -->
+  <div>
+    <span><i class="wp-dot wp-dot-wan-up"></i>WAN Up</span><br>
+    <span><i class="wp-dot wp-dot-wan-down"></i>WAN Down</span>
+  </div>
+
+  {% if device_data.device_type == "4g_5g_router" %}
+  <!-- Divider -->
+  <div style="width:1px; background:#e2e8f0; margin:0 10px;"></div>
+
+  <!-- SIM Column (only for 4g_5g_router) -->
+  <div>
+    <span><i class="wp-dot wp-dot-green"></i>SIM Connected</span><br>
+    <span><i class="wp-dot wp-dot-gray"></i>SIM Not Inserted</span>
+  </div>
+  {% endif %}
+
+</div>
+
+</div>
+</div>
+</div>
+
+{# ================= Uplink Table (all columns) ================= #}
+<div class="wp-uplink-panel">
+  <div class="wp-uplink-hd">
+    <div class="wp-uplink-title">Uplink</div>
+    <div class="wp-uplink-updated">
+      Last Updated:
+        {% if device_data.general.local_time %}{{ device_data.general.local_time|date:"Y-m-d H:i:s" }}{% else %}—{% endif %}
+    </div>
+  </div>
+
+  <table class="wp-uplink-table">
+    <thead>
+      <tr>
+        <th>Status</th>
+        <th>Path Label</th>
+        <th>Uplink</th>
+        {% comment %} <th>Uptime</th> {% endcomment %}
+        <th>Interface IP/Mask</th>
+        <th>Ping Destination</th>
+        <th>Throughput</th>
+        <th>Latency</th>
+        <th>Jitter</th>
+        <th>Loss</th>
+      </tr>
+    </thead>
+    <tbody>
+  <tbody id="wp-uplink-tbody">
+  {% for iface in device_data.interfaces %}
+    {# Show only WAN interfaces OR mobile interfaces #}
+    {% if iface.is_wan or iface.type == 'mobile' %}
+      {% if iface.name|cut:'.' == iface.name and iface.name|cut:'-' == iface.name %}
+        <tr>
+          <td class="wp-nowrap">
+            <span
+              class="wp-status-dot {% if iface.up %}wp-dot-green{% else %}wp-dot-gray{% endif %}"
+              id="wp-status-{{ iface.name }}"
+            ></span>
+            {% if iface.up %}Online{% else %}Offline{% endif %}
+          </td>
+          <td class="wp-nowrap">
+            {% if iface.type == 'mobile' %}
+              {% if iface.name == 'modem' %}
+                <span>
+                  {% if iface.mobile and iface.mobile.operator_name %}{{ iface.mobile.operator_name }}{% else %}-{% endif %}
+                </span>
+              {% elif iface.name == 'modem2' %}
+                <span>
+                  {% if iface.mobile and iface.mobile.operator_name %}{{ iface.mobile.operator_name }}{% else %}-{% endif %}
+                </span>
+              {% else %}
+                <span>-</span>
+              {% endif %}
+            {% else %}
+              <span>-</span>
+            {% endif %}
+          </td>
+          <td class="wp-nowrap">
+            {% if iface.type == 'mobile' %}
+              {% if iface.name == 'modem' %}
+                <a class="wp-linkish">Cellular (SIM1)</a>
+              {% elif iface.name == 'modem2' %}
+                <a class="wp-linkish">Cellular (SIM2)</a>
+              {% else %}
+                <a class="wp-linkish">{{ iface.name|upper }}</a>
+              {% endif %}
+            {% else %}
+              <a class="wp-linkish">{{ iface.name|upper }}</a>
+              <span class="wp-muted" id="wp-row-role-{{ iface.name }}"> (WAN)</span>
+            {% endif %}
+          </td>
+
+          {% comment %} <td class="wp-nowrap">{{ iface.uptime|default:"-" }}</td> {% endcomment %}
+
+          <td>
+            {% if iface.addresses %}
+              {% for addr in iface.addresses %}
+                <div>
+                  {{ addr.address }}{% if addr.mask %}/{{ addr.mask }}{% endif %}
+                  <span class="wp-muted">({{ addr.family|upper }})</span>
+                </div>
+              {% endfor %}
+            {% else %}
+              <span class="wp-muted">—</span>
+            {% endif %}
+          </td>
+
+          <td class="wp-nowrap">{{ iface.ping.dest_ip }}</td>
+
+          <td class="wp-nowrap">
+            <span class="wp-kp-arrows">
+              <span class="wp-kp-up"><i></i>{{ iface.ping.throughput.tx_bytes|default:0|filesizeformat }}</span>
+              <span class="wp-kp-down"><i></i>{{ iface.ping.throughput.rx_bytes|default:0|filesizeformat }}</span>
+            </span>
+          </td>
+
+          <td class="wp-nowrap">{{ iface.ping.latency_ms|default:0 }}</td>
+          <td class="wp-nowrap">{{ iface.ping.jitter_ms|default:0 }}</td>
+          <td class="wp-nowrap">{{ iface.ping.packet_loss|default:"0%" }}</td>
+        </tr>
+      {% endif %}
+    {% endif %}
+  {% endfor %}
+        <tr id="wp-uplink-empty-row" style="display:none;">
+          <td colspan="10">
+            <div class="wp-empty-msg">
+              No active WAN uplinks available.
+            </div>
+          </td>
+        </tr>
+      </tbody>
+</table>
+</div>
+
+<script>
+  // Build a richer snapshot so we can detect LAN/WAN
+  var IFACES = [
+    {% for iface in device_data.interfaces %}
+      {
+        "name": "{{ iface.name }}",
+        "type": "{{ iface.type }}",
+        "up": {% if iface.up %}true{% else %}false{% endif %},
+        "is_wan": {% if iface.is_wan %}true{% else %}false{% endif %},
+        "role": "{{ iface.role|default_if_none:'' }}",
+        {% if iface.bridge_members %}
+          "bridge_members": [
+            {% for m in iface.bridge_members %}"{{ m }}"{% if not forloop.last %},{% endif %}{% endfor %}
+          ],
+        {% else %}
+          "bridge_members": [],
+        {% endif %}
+        "mobile": {
+          {% if iface.mobile and iface.mobile.operator_name %}
+            "operator_name": "{{ iface.mobile.operator_name|escapejs }}"
+          {% else %}
+            "operator_name": null
+          {% endif %}
+        }
+      },
+    {% endfor %}
+  ];
+
+  function wpSetState(id, isUp){
+    var el = document.getElementById(id);
+    if(!el) return;
+    el.classList.remove('wp-connected','wp-disconnected');
+    el.classList.add(isUp ? 'wp-connected' : 'wp-disconnected');
+  }
+
+  // Collect LAN members from any bridge
+  var lanSet = new Set();
+  IFACES.forEach(function(i){
+    if(i.type === 'bridge' && Array.isArray(i.bridge_members)) {
+      i.bridge_members.forEach(function(m){ lanSet.add(m); });
+    }
+  });
+
+  // Helper: compute role of an ethernet iface
+  function roleOf(name){
+    var i = IFACES.find(function(x){ return x.name === name; });
+    if(!i) return '-';
+    if(i.is_wan || (i.role && i.role.toLowerCase() === 'wan')) return 'WAN';
+    if(lanSet.has(name)) return 'LAN';
+    return '-';
+  }
+
+  function operatorOf(name){
+    var i = IFACES.find(function(x){
+      return x.name === name && x.type === 'mobile';
+    });
+    if (!i || !i.mobile || !i.mobile.operator_name) return '-';
+    return i.mobile.operator_name;
+  }
+
+  // ETH0..ETH5 (skip sub-ifs) – TILE COLORS & ROLE LABELS
+  ['eth0','eth1','eth2','eth3','eth4','eth5'].forEach(function(name){
+    var m = IFACES.find(function(i){
+      if(i.type !== 'ethernet') return false;
+      if(i.name.indexOf('.') !== -1) return false;
+      if(i.name.indexOf('-') !== -1) return false;
+      return i.name === name;
+    });
+
+    var tile = document.getElementById('wp-tile-' + name);
+    var isUp = !!(m && m.up);
+    var role = roleOf(name);   // "LAN" / "WAN" / "-"
+
+    if (tile) {
+      tile.classList.remove(
+        'wp-connected', 'wp-disconnected',
+        'wp-lan-up', 'wp-lan-down',
+        'wp-wan-up', 'wp-wan-down'
+      );
+
+      if (role === 'LAN') {
+        tile.classList.add(isUp ? 'wp-lan-up' : 'wp-lan-down');
+      } else if (role === 'WAN') {
+        tile.classList.add(isUp ? 'wp-wan-up' : 'wp-wan-down');
+      } else {
+        // fallback: old behavior if role is unknown
+        tile.classList.add(isUp ? 'wp-connected' : 'wp-disconnected');
+      }
+    }
+
+    // role badge below the icon
+    var roleEl = document.getElementById('wp-role-' + name);
+    if (roleEl) { roleEl.textContent = role; }
+
+    // annotate the table name cell "(LAN/WAN)"
+    var rowRole = document.getElementById('wp-row-role-' + name);
+    if (rowRole) {
+      rowRole.textContent = role === '-' ? '' : ' (' + role + ')';
+    }
+  });
+
+  // ================== SIM tiles: show operator as role (unchanged behavior) ==================
+  var sim1Name = 'modem';
+  var sim2Name = 'modem2';
+
+  var sim1 = IFACES.find(function(i){ return i.name === sim1Name && i.type === 'mobile'; });
+  var sim2 = IFACES.find(function(i){ return i.name === sim2Name && i.type === 'mobile'; });
+
+  // state (still using wp-connected/wp-disconnected)
+  wpSetState('wp-tile-sim1', !!(sim1 && sim1.up));
+  wpSetState('wp-tile-sim2', !!(sim2 && sim2.up));
+
+  var sim1RoleEl = document.getElementById('wp-role-sim1');
+  if (sim1RoleEl) {
+    sim1RoleEl.textContent = operatorOf(sim1Name);
+  }
+
+  var sim2RoleEl = document.getElementById('wp-role-sim2');
+  if (sim2RoleEl) {
+    sim2RoleEl.textContent = operatorOf(sim2Name);
+  }
+
+  // optional: if you have row labels in a table (currently no dedicated ids for sim rows)
+  var sim1RowRole = document.getElementById('wp-row-role-sim1');
+  if (sim1RowRole) {
+    sim1RowRole.textContent = ' (' + operatorOf(sim1Name) + ')';
+  }
+
+  var sim2RowRole = document.getElementById('wp-row-role-sim2');
+  if (sim2RowRole) {
+    sim2RowRole.textContent = ' (' + operatorOf(sim2Name) + ')';
+  }
+
+  // ===== Status dots for Ethernet LAN/WAN only (SIM/Wi-Fi untouched) =====
+  IFACES.forEach(function(i){
+    // Only handle plain ethernet ifaces (no subinterfaces or special names)
+    if (i.type !== 'ethernet') return;
+    if (i.name.indexOf('.') !== -1 || i.name.indexOf('-') !== -1) return;
+
+    var dot = document.getElementById('wp-status-' + i.name);
+    if (!dot) return;
+
+    var isUp = !!i.up;
+    var role = roleOf(i.name);   // "LAN", "WAN" or "-"
+
+    // Remove any previous special classes
+    dot.classList.remove(
+      'wp-dot-lan-up', 'wp-dot-lan-down',
+      'wp-dot-wan-up', 'wp-dot-wan-down'
+    );
+
+    if (role === 'LAN') {
+      dot.classList.remove('wp-dot-green', 'wp-dot-gray');
+      dot.classList.add(isUp ? 'wp-dot-lan-up' : 'wp-dot-lan-down');
+    } else if (role === 'WAN') {
+      dot.classList.remove('wp-dot-green', 'wp-dot-gray');
+      dot.classList.add(isUp ? 'wp-dot-wan-up' : 'wp-dot-wan-down');
+    }
+    // else role "-" -> keep original green/gray from template
+  });
+
+  // Empty-row handler
+  (function () {
+    var tbody    = document.getElementById('wp-uplink-tbody');
+    var emptyRow = document.getElementById('wp-uplink-empty-row');
+    if (!tbody || !emptyRow) return;
+
+    var dataRows = Array.prototype.filter.call(tbody.querySelectorAll('tr'), function (tr) {
+      return tr.id !== 'wp-uplink-empty-row';
+    });
+
+    emptyRow.style.display = (dataRows.length === 0) ? 'table-row' : 'none';
+  })();
+
+  // Wi-Fi placeholder (keep gray unless you map an iface like wlan0)
+  // var wifi = IFACES.find(i => i.name === 'wlan0');
+  // wpSetState('wp-tile-wifi', !!(wifi && wifi.up));
+</script>

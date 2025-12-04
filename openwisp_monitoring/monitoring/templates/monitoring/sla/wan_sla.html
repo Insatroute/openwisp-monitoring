@@ -58,11 +58,23 @@
     color: #dc2626;
     font-weight: 600;
   }
+
+  /* Empty-state pill, similar to WAN uplink “No active ...” box */
+  .sla-empty-box {
+    margin-top: 1rem;
+    border-radius: 8px;
+    border: 1px dashed #d1d5db;
+    background: #f9fafb;
+    padding: 8px 16px;
+    text-align: center;
+    color: #6b7280;
+    font-size: 0.9rem;
+  }
 </style>
 
 <form method="get" class="sla-filter-form" style="margin-bottom: 12px;">
   <label for="id_sla_window"><strong>{% trans "SLA window" %}:</strong></label>
-  <select name="sla_window" id="id_sla_window" onchange="this.form.submit()">
+  <select name="sla_window" id="id_sla_window">
     <option value="1d"  {% if sla_window_key == '1d' %}selected{% endif %}>{% trans "Last 1 day" %}</option>
     <option value="3d"  {% if sla_window_key == '3d' %}selected{% endif %}>{% trans "Last 3 days" %}</option>
     <option value="7d"  {% if sla_window_key == '7d' %}selected{% endif %}>{% trans "Last 7 days" %}</option>
@@ -78,8 +90,6 @@
     <input type="text" name="sla_end"   value="{{ sla_end }}"   placeholder="YYYY-mm-dd HH:MM">
     <button type="submit">{% trans "Apply" %}</button>
   </span>
-
-  {# Keep other GET params when submitting (eg. hash not preserved, but filters can be) #}
 </form>
 
 <div class="sla-summary-grid">
@@ -119,7 +129,14 @@
   </div>
 </div>
 
+{# 1) No SLA profile at all → nice empty state #}
 {% if not sla_profile %}
+  <div class="sla-empty-box">
+    {% trans "No SLA metrics are applied to this device. Configure one in 'SLA Metrics' to see SLA results here." %}
+  </div>
+
+{% else %}
+  {# SLA profile exists → show details #}
   <h4 style="margin-top:0.5rem;">{% trans "SLA profile" %}</h4>
   <p style="font-size:0.9rem;">
     <strong>{{ sla_profile.name }}</strong><br>
@@ -132,41 +149,42 @@
       {% trans "24x7 coverage" %}
     {% endif %}
   </p>
-{% endif %}
 
-<h4 style="margin-top:1.5rem;">{% trans "Availability intervals in this window" %}</h4>
+  <h4 style="margin-top:1.5rem;">{% trans "Availability intervals in this window" %}</h4>
 
-{% if not sla_intervals %}
-  <table class="sla-intervals-table">
-    <thead>
-      <tr>
-        <th>{% trans "Start" %}</th>
-        <th>{% trans "End" %}</th>
-        <th>{% trans "Status" %}</th>
-        <th>{% trans "Duration" %}</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for it in sla_intervals %}
+  {# 2) Profile exists but no intervals → another empty state box #}
+  {% if sla_intervals %}
+    <table class="sla-intervals-table">
+      <thead>
         <tr>
-          <td>{{ it.start }}</td>
-          <td>{{ it.end }}</td>
-          <td>
-            {% if it.status == 'up' %}
-              <span class="sla-status-up">{% trans "Up" %}</span>
-            {% else %}
-              <span class="sla-status-down">{% trans "Down" %}</span>
-            {% endif %}
-          </td>
-          <td>{{ it.duration_human }}</td>
+          <th>{% trans "Start" %}</th>
+          <th>{% trans "End" %}</th>
+          <th>{% trans "Status" %}</th>
+          <th>{% trans "Duration" %}</th>
         </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-{% else %}
-  <p style="font-size:0.9rem; color:#6b7280;">
-    {% trans "No availability intervals found for this window." %}
-  </p>
+      </thead>
+      <tbody>
+        {% for it in sla_intervals %}
+          <tr>
+            <td>{{ it.start }}</td>
+            <td>{{ it.end }}</td>
+            <td>
+              {% if it.status == 'up' %}
+                <span class="sla-status-up">{% trans "Up" %}</span>
+              {% else %}
+                <span class="sla-status-down">{% trans "Down" %}</span>
+              {% endif %}
+            </td>
+            <td>{{ it.duration_human }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div class="sla-empty-box">
+      {% trans "No availability data found for the selected SLA window." %}
+    </div>
+  {% endif %}
 {% endif %}
 
 <script>
@@ -175,33 +193,31 @@
   if (!select) return;
 
   function disableAdminBeforeUnload() {
-    // Django admin attaches beforeunload via jQuery namespace
     if (window.django && django.jQuery) {
       try {
         django.jQuery(window).off('beforeunload.admin');
-      } catch (e) {
-        // ignore
-      }
+      } catch (e) {}
     }
-    // Fallback in case a plain onbeforeunload is used
     window.onbeforeunload = null;
   }
 
+  // Toggle custom date range visibility
   select.addEventListener('change', function () {
-    // 1) turn off "unsaved changes" protection just for this navigation
+    const customRange = document.getElementById('sla-custom-range');
+    if (this.value === 'custom') {
+      if (customRange) customRange.style.display = '';
+    } else if (customRange) {
+      customRange.style.display = 'none';
+    }
+
     disableAdminBeforeUnload();
 
-    // 2) rebuild URL with new sla_window
     const url = new URL(window.location.href);
     url.searchParams.set('sla_window', this.value);
-
-    // If you also have custom dates, keep them; if you want to clear for presets:
     if (this.value !== 'custom') {
       url.searchParams.delete('sla_start');
       url.searchParams.delete('sla_end');
     }
-
-    // 3) navigate without triggering the warning dialog
     window.location.href = url.toString();
   });
 })();
