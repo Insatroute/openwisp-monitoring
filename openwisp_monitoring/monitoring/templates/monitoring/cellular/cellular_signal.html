@@ -182,7 +182,7 @@
         return {
           timestamp: ts,
           m1: {
-            csq: coerceNum("{{ device_data.cellular.modem.csq|default:'—' }}"),
+            csq: coerceNum("{{ device_data.cellular.modem.signal|default:'—' }}"),
             rsrp: coerceNum("{{ device_data.cellular.modem.rsrp|default:'—' }}"),
             rsrq: coerceNum("{{ device_data.cellular.modem.rsrq|default:'—' }}"),
             rssi: coerceNum("{{ device_data.cellular.modem.rssi|default:'—' }}"),
