@@ -118,7 +118,7 @@ DEFAULT_METRICS = {
                 "query": chart_query["rtt"],
             },
         },
-        "alert_settings": {"operator": "<", "threshold": 1, "tolerance": 30},
+        "alert_settings": {"operator": "<", "threshold": 1, "tolerance": 10},
         "notification": {
             "problem": {
                 "verbose_name": "Ping PROBLEM",
