@@ -125,10 +125,12 @@ DEFAULT_METRICS = {
                 "verb": _("is not reachable"),
                 "level": "warning",
                 "email_subject": _(
-                    "[{site.name}] PROBLEM: {notification.target} {notification.verb}"
+                    '[{site.name}] Circuit ID: {notification.target.circuit_id_safe} – '
+                    '"{notification.target}" {notification.verb}'
                 ),
                 "message": _(
                     "The device [{notification.target}]({notification.target_link}) "
+                    "(Circuit ID: {notification.target.circuit_id_safe})"
                     "{notification.verb}."
                 ),
             },
