@@ -57,15 +57,15 @@
       <h4>Tunnels</h4>
       <div class="stats overview-stats">
         <div class="stat-item overview-stat-item">
-          <span class="badge badge-gray" id="spoke-total">0</span>
+          <span class="badge badge-gray" id="ipsec-total">0</span>
           <span class="card-label">Total</span>
         </div>
         <div class="stat-item overview-stat-item">
-          <span class="badge badge-green" id="spoke-active">0</span>
+          <span class="badge badge-green" id="ipsec-connected">0</span>
           <span class="card-label">Active</span>
         </div>
         <div class="stat-item overview-stat-item">
-          <span class="badge badge-yellow" id="spoke-pending">0</span>
+          <span class="badge badge-yellow" id="ipsec-disconnected">0</span>
           <span class="card-label">Pending</span>
         </div>
       </div>
@@ -715,9 +715,70 @@
     elems.pending.innerText = result.pending;
   }
 
+  async function fetchIpsecData() {
+  const elems = {
+    total: document.getElementById('ipsec-total'),
+    connected: document.getElementById('ipsec-connected'),
+    disconnected: document.getElementById('ipsec-disconnected'),
+  };
+
+  if (Object.values(elems).some(el => !el)) {
+    console.error('One or more IPSec DOM elements not found.');
+    return;
+  }
+
+  // Reset counters
+  Object.values(elems).forEach(el => el.innerText = '0');
+
+  // Fetch token
+  let token;
+  try {
+    token = await fetchAuthToken();
+  } catch (e) {
+    console.error('Token fetch failed', e);
+  }
+  if (!token) {
+    Object.values(elems).forEach(el => el.innerText = 'Auth error');
+    return;
+  }
+
+  // Fetch API
+  let json;
+  try {
+    const resp = await fetch(`${window.API_BASE_URL}/api/v1/monitoring/ipsec-tunnels-status/`, {
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': `Token ${token}`
+      }
+    });
+
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    json = await resp.json();
+  } catch (err) {
+    console.error('Error fetching IPSec data:', err);
+    Object.values(elems).forEach(el => el.innerText = '0');
+    return;
+  }
+
+  // Extract values
+  const summary = json.summary || {};
+  const result = {
+    total: summary.total || 0,
+    connected: summary.connected || 0,
+    disconnected: summary.disconnected || 0,
+  };
+
+  // Update UI
+  elems.total.innerText = result.total;
+  elems.connected.innerText = result.connected;
+  elems.disconnected.innerText = result.disconnected;
+}
+
+
   document.addEventListener('DOMContentLoaded', () => {
     fetchDeviceData();
     fetchSpokeData();
+    fetchIpsecData();
 
     setInterval(fetchDeviceData, 30000);
     setInterval(fetchSpokeData, 30000);
