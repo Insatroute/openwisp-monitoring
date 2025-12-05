@@ -83,4 +83,5 @@ urlpatterns = [
     path("api/v1/monitoring/wan-uplinks/", views_dashboard.wan_uplinks_all_devices),
     path("api/v1/monitoring/data-usage/", views_dashboard.data_usage_all_devices),
     path("api/v1/monitoring/mobile-distribution/", views_dashboard.mobile_distribution_all_devices),
+    path("api/v1/monitoring/ipsec-tunnels-status/", views_dashboard.ipsec_tunnels_status),
 ]

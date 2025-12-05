@@ -385,6 +385,52 @@ class MobileDistributionAllDevicesView(
             },
             "total_modems": total_modems,
         })
+        
+class IPSecTunnelsStatusView(ProtectedAPIMixin, FilterByOrganizationMembership, generics.GenericAPIView):
+    """
+    IPSec tunnel status for all devices in the user's organizations.
+    Manager-only access.
+    """
+
+    # NOTE: we can safely prefetch `monitoring`, NOT `device`
+    queryset = DeviceData.objects.select_related("monitoring").all()
+    organization_field = "organization"
+
+    def get(self, request, *args, **kwargs):
+        device_data_qs = self.get_queryset()
+
+        summary = {
+            "total": 0,
+            "connected": 0,
+            "disconnected": 0,
+        }
+        rows = []
+
+        for dd in device_data_qs:
+            # Get IPSec tunnel data from monitoring JSON
+            data = getattr(dd, "data_user_friendly", {}) or {}
+            ipsec_data = data.get("ipsec", {}).get("data", {}).get("tunnels", {}).get("tunnels", [])
+
+            for tunnel in ipsec_data:
+                tunnel_name = tunnel.get("name", "")
+                tunnel_id = tunnel.get("id", "")
+                tunnel_status = "disconnected" if tunnel.get("connected", "false") == "false" else "connected"
+                
+                summary["total"] += 1
+                summary[tunnel_status] += 1
+
+                # Collect relevant information
+                rows.append({
+                    "device_id": str(getattr(dd, "id", "")),
+                    "tunnel_name": tunnel_name,
+                    "tunnel_id": tunnel_id,
+                    "status": tunnel_status,
+                    "local_network": tunnel.get("local", ""),
+                    "remote_network": tunnel.get("remote", ""),
+                })
+
+        return Response({"summary": summary, "rows": rows})
+
 
 
 global_top_apps = GlobalTopAppsView.as_view()
@@ -392,4 +438,5 @@ global_top_devices = GlobalTopDevicesView.as_view()
 wan_uplinks_all_devices = WanUplinksAllDevicesView.as_view()
 data_usage_all_devices = DataUsageAllDevicesView.as_view()
 mobile_distribution_all_devices = MobileDistributionAllDevicesView.as_view()
+ipsec_tunnels_status = IPSecTunnelsStatusView.as_view()
 
