@@ -381,3 +381,75 @@ def mobile_distribution_all_devices(request):
         },
         "total_modems": total_modems
     })
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def global_all_apps(request):
+    """
+    API endpoint to return ALL applications across all devices.
+    Admin → all devices
+    Normal user → only organization devices
+    """
+ 
+    from openwisp_users.models import OrganizationUser
+    from collections import Counter
+ 
+    app_counter = Counter()
+ 
+    user = request.user
+ 
+    # ✅ Scope devices properly (admin vs org user)
+    if user.is_superuser:
+        device_qs = DeviceData.objects.all()
+    else:
+        org_ids = list(
+            OrganizationUser.objects
+            .filter(user=user)
+            .values_list("organization_id", flat=True)
+        )
+ 
+        device_qs = DeviceData.objects.filter(
+            device__organization_id__in=org_ids
+        )
+ 
+    # ✅ Aggregate apps across scoped devices
+    for device_data in device_qs:
+        data = device_data.data_user_friendly or {}
+        top_apps = (
+            data.get("realtimemonitor", {})
+            .get("real_time_traffic", {})
+            .get("data", {})
+            .get("talkers", {})
+            .get("top_apps", [])
+        )
+ 
+        for app in top_apps:
+            try:
+                app_counter[app["name"]] += int(app["value"] or 0)
+            except Exception:
+                pass
+ 
+    # ✅ Convert to list (NO LIMIT)
+    all_apps_list = []
+    for name, value in app_counter.items():
+ 
+        parts = name.split('.')
+        if len(parts) > 2:
+            name = '.'.join(parts[2:])
+        else:
+            name = parts[-1]
+ 
+        name = name.capitalize()
+ 
+        all_apps_list.append({
+            "name": name,
+            "value": value,
+        })
+ 
+    # ✅ Sort by total traffic DESC
+    all_apps_list.sort(key=lambda x: x["value"], reverse=True)
+ 
+    return Response({
+        "applications": all_apps_list
+    })
