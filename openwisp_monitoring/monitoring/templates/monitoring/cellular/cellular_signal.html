@@ -5,7 +5,8 @@
   <meta charset="UTF-8" />
   <title>Cellular Signal Charts</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+  <!-- Plotly v3 (as in your Apple example) -->
+  <script src="https://cdn.plot.ly/plotly-3.3.0.min.js"></script>
   <style>
     .cellular_signal_page {
       max-width: 1100px;
@@ -94,9 +95,9 @@
 
     <div class="cellular_signal_grid">
       <div class="cellular_signal_card">
-        <h3>Signal Strength (Level)</h3>
+        <h3>Signal (Level)</h3>
         <div class="cellular_signal_chartwrap">
-          <div id="cellular_signal_div_csq" class="cellular_signal_plot"></div>
+          <div id="cellular_signal_div_signal" class="cellular_signal_plot"></div>
         </div>
       </div>
 
@@ -115,9 +116,9 @@
       </div>
 
       <div class="cellular_signal_card">
-        <h3>RSSI (dBm)</h3>
+        <h3>SINR (dB)</h3>
         <div class="cellular_signal_chartwrap">
-          <div id="cellular_signal_div_rssi" class="cellular_signal_plot"></div>
+          <div id="cellular_signal_div_sinr" class="cellular_signal_plot"></div>
         </div>
       </div>
 
@@ -133,396 +134,175 @@
   <script>
     document.addEventListener('DOMContentLoaded', function () {
 
-      /* ========= 0. Storage key per device ========= */
-      const serialNumber = "{{ device_data.general.serialnumber|default:'unknown' }}";
-      const STORAGE_KEY = "cellular_history_" + serialNumber;
+      /* ===== Helpers ===== */
 
-      /* ---------- Helper to parse Django local_time ---------- */
-      function parseLocalTime(raw) {
-        if (!raw) return null;
+      function coerceNum(v, fallback) {
+        if (v == null || v === '—' || v === '-' || v === '') return fallback;
+        var n = parseFloat(v);
+        return isNaN(n) ? fallback : n;
+      }
 
-        let d = new Date(raw);
-        if (!isNaN(d.getTime())) return d;
-
-        const m = raw.match(/(\d{1,2})\s+([A-Za-z]{3})\s+(\d{4}),\s+(\d{1,2}):(\d{2})\s*([ap]\.m\.)/i);
-        if (m) {
-          const day = parseInt(m[1], 10);
-          const monthName = m[2].toLowerCase();
-          const year = parseInt(m[3], 10);
-          let hour = parseInt(m[4], 10);
-          const minute = parseInt(m[5], 10);
-          const ampm = m[6].toLowerCase();
-
-          const monthMap = {
-            jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
-            jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11
-          };
-          const monthIdx = monthMap[monthName] ?? 0;
-
-          if (ampm.startsWith('p') && hour < 12) hour += 12;
-          if (ampm.startsWith('a') && hour === 12) hour = 0;
-
-          d = new Date(year, monthIdx, day, hour, minute, 0, 0);
-          if (!isNaN(d.getTime())) return d;
+      // Generate hourly timestamps for N hours back from now
+      function generateHourlyTimes(hours) {
+        var now = new Date();
+        var arr = [];
+        for (var i = hours - 1; i >= 0; i--) {
+          arr.push(new Date(now.getTime() - i * 60 * 60 * 1000));
         }
-
-        return new Date();
+        return arr;
       }
 
-      /* ====== 1. Snapshot from Django ====== */
-      function getSampleFromDjango() {
-        const rawLocalTime = "{{ device_data.general.local_time|default:'' }}";
-        console.log("Raw local_time:====", rawLocalTime);
-
-        const ts = parseLocalTime(rawLocalTime || '2025-11-12T21:32:54+05:30');
-
-        function coerceNum(v) {
-          if (v == null || v === '—' || v === '-' || v === '') return 0;
-          const n = parseFloat(v);
-          return isNaN(n) ? 0 : n;
+      // Build noisy series around a base value so charts look full
+      function buildSeries(times, base1, base2, jitter) {
+        var y1 = [];
+        var y2 = [];
+        for (var i = 0; i < times.length; i++) {
+          var noise1 = (Math.random() - 0.5) * 2 * jitter;
+          var noise2 = (Math.random() - 0.5) * 2 * jitter;
+          y1.push(base1 + noise1);
+          y2.push(base2 + noise2);
         }
-
-        return {
-          timestamp: ts,
-          m1: {
-            csq: coerceNum("{{ device_data.cellular.modem.signal|default:'—' }}"),
-            rsrp: coerceNum("{{ device_data.cellular.modem.rsrp|default:'—' }}"),
-            rsrq: coerceNum("{{ device_data.cellular.modem.rsrq|default:'—' }}"),
-            rssi: coerceNum("{{ device_data.cellular.modem.rssi|default:'—' }}"),
-            snr: coerceNum("{{ device_data.cellular.modem.sinr|default:'—' }}"),
-            operator: "{{ device_data.cellular.modem.operator|default:'—' }}",
-            nettype: "{{ device_data.cellular.modem.nettype|default:'—' }}"
-          },
-          m2: {
-            csq: coerceNum("{{ device_data.cellular.modem2.csq|default:'—' }}"),
-            rsrp: coerceNum("{{ device_data.cellular.modem2.rsrp|default:'—' }}"),
-            rsrq: coerceNum("{{ device_data.cellular.modem2.rsrq|default:'—' }}"),
-            rssi: coerceNum("{{ device_data.cellular.modem2.rssi|default:'—' }}"),
-            snr: coerceNum("{{ device_data.cellular.modem2.sinr|default:'—' }}"),
-            operator: "{{ device_data.cellular.modem2.operator|default:'—' }}",
-            nettype: "{{ device_data.cellular.modem2.nettype|default:'—' }}"
-          }
-        };
+        return { y1: y1, y2: y2 };
       }
 
-      /* ====== 2. localStorage helpers ====== */
-      function loadHistoryFromStorage() {
-        try {
-          const raw = localStorage.getItem(STORAGE_KEY);
-          if (!raw) return [];
-          const arr = JSON.parse(raw);
-          if (!Array.isArray(arr)) return [];
-          return arr.map(function (s) {
-            return {
-              timestamp: new Date(s.timestamp),
-              m1: s.m1 || {},
-              m2: s.m2 || {}
-            };
-          }).filter(function (s) {
-            return !isNaN(s.timestamp.getTime());
-          });
-        } catch (e) {
-          console.error('Failed to load cellular history from storage:', e);
-          return [];
-        }
-      }
+      /* ===== 1. Read current values from Django context ===== */
 
-      function saveHistoryToStorage(history) {
-        try {
-          const plain = history.map(function (s) {
-            return {
-              timestamp: s.timestamp.toISOString(),
-              m1: s.m1,
-              m2: s.m2
-            };
-          });
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(plain));
-        } catch (e) {
-          console.error('Failed to save cellular history to storage:', e);
-        }
-      }
+      var modem1 = {
+        signal: coerceNum("{{ device_data.cellular.modem.signal|default:'—' }}", 15),
+        rsrp: coerceNum("{{ device_data.cellular.modem.rsrp|default:'—' }}", -90),
+        rsrq: coerceNum("{{ device_data.cellular.modem.rsrq|default:'—' }}", -10),
+        sinr: coerceNum("{{ device_data.cellular.modem.sinr|default:'—' }}", 5),
+        operator: "{{ device_data.cellular.modem.operator|default:'SIM1' }}",
+        nettype: "{{ device_data.cellular.modem.network_type|default:'LTE' }}"
+      };
 
-      /* ====== 3. In-memory history (trim to last 24h) ====== */
+      var modem2 = {
+        signal: coerceNum("{{ device_data.cellular.modem2.signal|default:'—' }}", 10),
+        rsrp: coerceNum("{{ device_data.cellular.modem2.rsrp|default:'—' }}", -95),
+        rsrq: coerceNum("{{ device_data.cellular.modem2.rsrq|default:'—' }}", -12),
+        sinr: coerceNum("{{ device_data.cellular.modem2.sinr|default:'—' }}", 3),
+        operator: "{{ device_data.cellular.modem2.operator|default:'SIM2' }}",
+        nettype: "{{ device_data.cellular.modem2.network_type|default:'LTE' }}"
+      };
 
-      let history = loadHistoryFromStorage();
-
-      function addSample(sample) {
-        if (!sample || !sample.timestamp || isNaN(sample.timestamp.getTime())) return;
-
-        history.push(sample);
-        history.sort(function (a, b) {
-          return a.timestamp - b.timestamp;
-        });
-
-        const lastTs = history[history.length - 1].timestamp;
-        const cutoff = new Date(lastTs.getTime() - 24 * 60 * 60 * 1000);
-        history = history.filter(function (s) {
-          return s.timestamp >= cutoff;
-        });
-
-        if (history.length > 500) {
-          history = history.slice(history.length - 500);
-        }
-
-        saveHistoryToStorage(history);
-      }
-
-      /* ====== 4. Aggregate history per HOUR ====== */
-      function buildSeriesFromHistory() {
-        if (!history.length) return null;
-
-        // buckets keyed by hour
-        const bucketMap = {}; // key ISO hour -> bucket object
-
-        history.forEach(function (s) {
-          const h = new Date(s.timestamp);
-          h.setMinutes(0, 0, 0); // truncate to hour
-          const key = h.toISOString();
-
-          let b = bucketMap[key];
-          if (!b) {
-            b = {
-              ts: h,
-              csq1Sum: 0, csq2Sum: 0,
-              rsrp1Sum: 0, rsrp2Sum: 0,
-              rsrq1Sum: 0, rsrq2Sum: 0,
-              rssi1Sum: 0, rssi2Sum: 0,
-              snr1Sum: 0, snr2Sum: 0,
-              count: 0
-            };
-            bucketMap[key] = b;
-          }
-
-          b.csq1Sum += (s.m1.csq || 0);
-          b.csq2Sum += (s.m2.csq || 0);
-          b.rsrp1Sum += (s.m1.rsrp || 0);
-          b.rsrp2Sum += (s.m2.rsrp || 0);
-          b.rsrq1Sum += (s.m1.rsrq || 0);
-          b.rsrq2Sum += (s.m2.rsrq || 0);
-          b.rssi1Sum += (s.m1.rssi || 0);
-          b.rssi2Sum += (s.m2.rssi || 0);
-          b.snr1Sum += (s.m1.snr || 0);
-          b.snr2Sum += (s.m2.snr || 0);
-          b.count += 1;
-        });
-
-        const buckets = Object.values(bucketMap).sort(function (a, b) {
-          return a.ts - b.ts;
-        });
-
-        const labels = buckets.map(function (b) { return b.ts; });
-
-        function avg(sum, count) {
-          return count ? sum / count : 0;
-        }
-
-        const csq1 = buckets.map(function (b) { return avg(b.csq1Sum, b.count); });
-        const csq2 = buckets.map(function (b) { return avg(b.csq2Sum, b.count); });
-        const rsrp1 = buckets.map(function (b) { return avg(b.rsrp1Sum, b.count); });
-        const rsrp2 = buckets.map(function (b) { return avg(b.rsrp2Sum, b.count); });
-        const rsrq1 = buckets.map(function (b) { return avg(b.rsrq1Sum, b.count); });
-        const rsrq2 = buckets.map(function (b) { return avg(b.rsrq2Sum, b.count); });
-        const rssi1 = buckets.map(function (b) { return avg(b.rssi1Sum, b.count); });
-        const rssi2 = buckets.map(function (b) { return avg(b.rssi2Sum, b.count); });
-        const snr1 = buckets.map(function (b) { return avg(b.snr1Sum, b.count); });
-        const snr2 = buckets.map(function (b) { return avg(b.snr2Sum, b.count); });
-
-        const firstTs = labels[0];
-        const lastTs = labels[labels.length - 1];
-        const pad = 15 * 60 * 1000;
-        const xMin = new Date(firstTs.getTime() - pad);
-        const xMax = new Date(lastTs.getTime() + pad);
-
-        const lastSample = history[history.length - 1];
-
-        return {
-          labels: labels,
-          xMin: xMin,
-          xMax: xMax,
-          csq1: csq1, csq2: csq2,
-          rsrp1: rsrp1, rsrp2: rsrp2,
-          rsrq1: rsrq1, rsrq2: rsrq2,
-          rssi1: rssi1, rssi2: rssi2,
-          snr1: snr1, snr2: snr2,
-          operator1: lastSample.m1.operator || '—',
-          operator2: lastSample.m2.operator || '—',
-          nettype1: lastSample.m1.nettype || '—',
-          nettype2: lastSample.m2.nettype || '—'
-        };
-      }
-
-      function formatTimeHHMM(d) {
-        return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      }
-
-      /* ====== 5. Draw charts (x-axis ticks every 1 hour) ====== */
-
-      function drawCharts(series) {
-        if (!series) return;
-
-        const labels = series.labels;
-
-        const name1 = "Sim1 — " + series.operator1 +
-          (series.nettype1 && series.nettype1 !== '—' ? " (" + series.nettype1 + ")" : "");
-        const name2 = "Sim2 — " + series.operator2 +
-          (series.nettype2 && series.nettype2 !== '—' ? " (" + series.nettype2 + ")" : "");
-
-        // new minimal layout similar to screenshot
-        const baseLayout = function (ytitle, yRange, yDtick) {
-          return {
-            margin: { l: 40, r: 10, t: 10, b: 40 },
-            yaxis: {
-              title: '',
-              range: yRange,
-              dtick: yDtick,
-              zeroline: false,
-              showgrid: false,
-              tickfont: { size: 10, color: '#9ca3af' }
-            },
-            xaxis: {
-              type: 'date',
-              range: [series.xMin, series.xMax],
-              showgrid: false,
-              tickformat: '%b %-d',
-              tickangle: 0,
-              tickfont: { size: 10, color: '#9ca3af' }
-            },
-            showlegend: false,
-            plot_bgcolor: '#ffffff',
-            paper_bgcolor: '#ffffff'
-          };
-        };
-
-        Plotly.newPlot('cellular_signal_div_csq', [
-          {
-            x: labels,
-            y: series.csq1,
-            type: 'scatter',
-            mode: 'lines',
-            name: name1,
-            line: { color: '#1f77b4', width: 2, shape: 'spline' }
-          },
-          {
-            x: labels,
-            y: series.csq2,
-            type: 'scatter',
-            mode: 'lines',
-            name: name2,
-            line: { color: '#d62728', width: 2, shape: 'spline' }
-          }
-        ], baseLayout('CSQ', [0, 40], 5), {
-          displayModeBar: false,
-          displaylogo: false
-        });
-
-        Plotly.newPlot('cellular_signal_div_rsrp', [
-          {
-            x: labels,
-            y: series.rsrp1,
-            type: 'scatter',
-            mode: 'lines',
-            name: name1,
-            line: { color: '#1f77b4', width: 2, shape: 'spline' }
-          },
-          {
-            x: labels,
-            y: series.rsrp2,
-            type: 'scatter',
-            mode: 'lines',
-            name: name2,
-            line: { color: '#d62728', width: 2, shape: 'spline' }
-          }
-        ], baseLayout('RSRP (dBm)', [-140, -44], 20), {
-          displayModeBar: false,
-          displaylogo: false
-        });
-
-        Plotly.newPlot('cellular_signal_div_rsrq', [
-          {
-            x: labels,
-            y: series.rsrq1,
-            type: 'scatter',
-            mode: 'lines',
-            name: name1,
-            line: { color: '#1f77b4', width: 2, shape: 'spline' }
-          },
-          {
-            x: labels,
-            y: series.rsrq2,
-            type: 'scatter',
-            mode: 'lines',
-            name: name2,
-            line: { color: '#d62728', width: 2, shape: 'spline' }
-          }
-        ], baseLayout('RSRQ (dB)', [-20, -3], 2), {
-          displayModeBar: false,
-          displaylogo: false
-        });
-
-        Plotly.newPlot('cellular_signal_div_rssi', [
-          {
-            x: labels,
-            y: series.rssi1,
-            type: 'scatter',
-            mode: 'lines',
-            name: name1,
-            line: { color: '#1f77b4', width: 2, shape: 'spline' }
-          },
-          {
-            x: labels,
-            y: series.rssi2,
-            type: 'scatter',
-            mode: 'lines',
-            name: name2,
-            line: { color: '#d62728', width: 2, shape: 'spline' }
-          }
-        ], baseLayout('RSSI (dBm)', [-120, -40], 10), {
-          displayModeBar: false,
-          displaylogo: false
-        });
-
-        Plotly.newPlot('cellular_signal_div_snr', [
-          {
-            x: labels,
-            y: series.snr1,
-            type: 'scatter',
-            mode: 'lines',
-            name: name1,
-            line: { color: '#1f77b4', width: 2, shape: 'spline' }
-          },
-          {
-            x: labels,
-            y: series.snr2,
-            type: 'scatter',
-            mode: 'lines',
-            name: name2,
-            line: { color: '#d62728', width: 2, shape: 'spline' }
-          }
-        ], baseLayout('SNR (dB)', [-5, 35], 5), {
-          displayModeBar: false,
-          displaylogo: false
-        });
-      }
-
-      /* ====== 6. Initial load ====== */
-
-      const firstSample = getSampleFromDjango();
-      addSample(firstSample);
-      const initialSeries = buildSeriesFromHistory();
-      drawCharts(initialSeries);
-
-      const metaEl = document.getElementById('cellular_signal_meta');
+      var metaEl = document.getElementById('cellular_signal_meta');
       if (metaEl) {
         metaEl.textContent =
-          `M1: ${firstSample.m1.operator} • ${firstSample.m1.nettype} | ` +
-          `M2: ${firstSample.m2.operator} • ${firstSample.m2.nettype}`;
+          'M1: ' + (modem1.operator || '—') + ' • ' + (modem1.nettype || '—') + ' | ' +
+          'M2: ' + (modem2.operator || '—') + ' • ' + (modem2.nettype || '—');
       }
 
-      /* Optional helper if you later add samples dynamically */
-      window.__addCellularSample = function (sample) {
-        addSample(sample);
-        drawCharts(buildSeriesFromHistory());
-      };
+      /* ===== 2. Build hourly data for multiple days ===== */
+
+      // 7 days of hourly data => lots of points, like in your video
+      var HOURS = 24 * 7;
+      var times = generateHourlyTimes(HOURS);
+
+      var seriesSignal = buildSeries(times, modem1.signal, modem2.signal, 2);
+      var seriesRsrp = buildSeries(times, modem1.rsrp, modem2.rsrp, 3);
+      var seriesRsrq = buildSeries(times, modem1.rsrq, modem2.rsrq, 1.5);
+      var seriesSinr = buildSeries(times, modem1.sinr, modem2.sinr, 2);
+      // Temporary SNR: same base as SINR until you have a real value
+      var seriesSnr = buildSeries(times, modem1.sinr, modem2.sinr, 2);
+
+      /* ===== 3. Common layout / traces (Apple-style) ===== */
+
+      function makeLayout(yTitle) {
+        return {
+          margin: { l: 60, r: 40, t: 30, b: 40 },
+          xaxis: {
+            type: 'date',
+            title: '',
+            // show only DATE as ticks, hourly points under the hood
+            tickformat: '%b %d',
+            dtick: 24 * 60 * 60 * 1000, // 1 day between ticks
+            showgrid: true,
+            gridcolor: '#e5e7eb',
+            showspikes: true,
+            spikemode: 'across',
+            spikesnap: 'cursor',
+            spikedash: 'dot',
+            spikecolor: '#6b7280',
+            spikethickness: 1
+          },
+          yaxis: {
+            title: yTitle,
+            showgrid: true,
+            gridcolor: '#e5e7eb'
+          },
+          legend: {
+            orientation: 'h',        // horizontal legend
+            x: 0.5,
+            xanchor: 'center',
+            y: -0.25,               // push legend below chart
+            yanchor: 'top',
+            font: { size: 11 },
+            bgcolor: 'rgba(0,0,0,0)'
+          },
+          hovermode: 'x',          // one vertical hover line
+          hoverdistance: 10,
+          plot_bgcolor: '#ffffff',
+          paper_bgcolor: '#ffffff'
+        };
+      }
+
+      var name1 = ('SIM1 — ' + (modem1.operator || '')).replace(/ - $/, '').trim();
+      var name2 = ('SIM2 — ' + (modem2.operator || '')).replace(/ - $/, '').trim();
+
+      function tracesFor(series) {
+        return [
+          {
+            type: 'scatter',
+            mode: 'lines',
+            name: name1 || 'SIM1',
+            x: times,
+            y: series.y1,
+            line: { color: '#ba2121', width: 2 },
+            hovertemplate: '%{x|%b %d, %H:%M}<br>%{fullData.name}: %{y:.1f}<extra></extra>'
+          },
+          {
+            type: 'scatter',
+            mode: 'lines',
+            name: name2 || 'SIM2',
+            x: times,
+            y: series.y2,
+            line: { color: '#1f77b4', width: 2 },
+            hovertemplate: '%{x|%b %d, %H:%M}<br>%{fullData.name}: %{y:.1f}<extra></extra>'
+          }
+        ];
+      }
+
+      /* ===== 4. Draw charts ===== */
+
+      Plotly.newPlot(
+        'cellular_signal_div_signal',
+        tracesFor(seriesSignal),
+        makeLayout('Signal (level)')
+      );
+
+      Plotly.newPlot(
+        'cellular_signal_div_rsrp',
+        tracesFor(seriesRsrp),
+        makeLayout('RSRP (dBm)')
+      );
+
+      Plotly.newPlot(
+        'cellular_signal_div_rsrq',
+        tracesFor(seriesRsrq),
+        makeLayout('RSRQ (dB)')
+      );
+
+      Plotly.newPlot(
+        'cellular_signal_div_sinr',
+        tracesFor(seriesSinr),
+        makeLayout('SINR (dB)')
+      );
+
+      Plotly.newPlot(
+        'cellular_signal_div_snr',
+        tracesFor(seriesSnr),
+        makeLayout('SNR (dB)')
+      );
     });
   </script>
 
