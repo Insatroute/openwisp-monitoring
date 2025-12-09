@@ -126,6 +126,13 @@
     height: 380px
   }
 
+  .device-heading {
+    display: flex;
+    justify-content: right;
+    font-size: 11px;
+    color: #6b7280;
+  }
+
   @media (max-width:900px) {
     .usage-grid {
       grid-template-columns: 1fr;
@@ -147,7 +154,7 @@
 {{ device_data|json_script:"device-usage-data" }}
 
 <div class="dashboard-contain">
-  <h1>Device Usage Information</h1>
+  <h1 class="device-heading">Device Usage Information</h1>
   <div id="apiError"></div>
 
   <div class="usage-grid">
