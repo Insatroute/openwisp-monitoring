@@ -89,7 +89,7 @@
 
   <div class="cellular_signal_page">
     <div class="cellular_signal_header">
-      <h1 class="cellular_signal_title">Cellular Metrics</h1>
+      <h1 class="cellular_signal_title">The data below is for 24 hours.</h1>
       <p class="cellular_signal_subtitle" id="cellular_signal_meta"></p>
     </div>
 
@@ -165,22 +165,50 @@
         return { y1: y1, y2: y2 };
       }
 
+      // Compute a nice y-axis range + dtick to get ~6 ticks
+      function getAxisConfig(series) {
+        var all = series.y1.concat(series.y2);
+        var min = all[0];
+        var max = all[0];
+        for (var i = 1; i < all.length; i++) {
+          if (all[i] < min) min = all[i];
+          if (all[i] > max) max = all[i];
+        }
+
+        if (min === max) {
+          min -= 1;
+          max += 1;
+        }
+
+        var padding = (max - min) * 0.1;
+        min -= padding;
+        max += padding;
+
+        var span = max - min;
+        var dtick = span / 5; // 5 intervals -> about 6 ticks
+
+        return {
+          range: [min, max],
+          dtick: dtick
+        };
+      }
+
       /* ===== 1. Read current values from Django context ===== */
 
       var modem1 = {
-        signal: coerceNum("{{ device_data.cellular.modem.signal|default:'—' }}", 15),
-        rsrp: coerceNum("{{ device_data.cellular.modem.rsrp|default:'—' }}", -90),
-        rsrq: coerceNum("{{ device_data.cellular.modem.rsrq|default:'—' }}", -10),
-        sinr: coerceNum("{{ device_data.cellular.modem.sinr|default:'—' }}", 5),
+        signal: coerceNum("{{ device_data.cellular.modem.signal|default:'—' }}"),
+        rsrp: coerceNum("{{ device_data.cellular.modem.rsrp|default:'—' }}", ),
+        rsrq: coerceNum("{{ device_data.cellular.modem.rsrq|default:'—' }}", ),
+        sinr: coerceNum("{{ device_data.cellular.modem.sinr|default:'—' }}", ),
         operator: "{{ device_data.cellular.modem.operator|default:'SIM1' }}",
         nettype: "{{ device_data.cellular.modem.network_type|default:'LTE' }}"
       };
 
       var modem2 = {
-        signal: coerceNum("{{ device_data.cellular.modem2.signal|default:'—' }}", 10),
-        rsrp: coerceNum("{{ device_data.cellular.modem2.rsrp|default:'—' }}", -95),
-        rsrq: coerceNum("{{ device_data.cellular.modem2.rsrq|default:'—' }}", -12),
-        sinr: coerceNum("{{ device_data.cellular.modem2.sinr|default:'—' }}", 3),
+        signal: coerceNum("{{ device_data.cellular.modem2.signal|default:'—' }}", ),
+        rsrp: coerceNum("{{ device_data.cellular.modem2.rsrp|default:'—' }}", ),
+        rsrq: coerceNum("{{ device_data.cellular.modem2.rsrq|default:'—' }}", ),
+        sinr: coerceNum("{{ device_data.cellular.modem2.sinr|default:'—' }}", ),
         operator: "{{ device_data.cellular.modem2.operator|default:'SIM2' }}",
         nettype: "{{ device_data.cellular.modem2.network_type|default:'LTE' }}"
       };
@@ -194,7 +222,7 @@
 
       /* ===== 2. Build hourly data for multiple days ===== */
 
-      // 7 days of hourly data => lots of points, like in your video
+      // 7 days of hourly data => lots of points
       var HOURS = 24 * 7;
       var times = generateHourlyTimes(HOURS);
 
@@ -207,7 +235,7 @@
 
       /* ===== 3. Common layout / traces (Apple-style) ===== */
 
-      function makeLayout(yTitle) {
+      function makeLayout(yTitle, axisCfg) {
         return {
           margin: { l: 60, r: 40, t: 30, b: 40 },
           xaxis: {
@@ -228,18 +256,21 @@
           yaxis: {
             title: yTitle,
             showgrid: true,
-            gridcolor: '#e5e7eb'
+            gridcolor: '#e5e7eb',
+            zeroline: false,
+            range: axisCfg.range,
+            dtick: axisCfg.dtick
           },
           legend: {
-            orientation: 'h',        // horizontal legend
+            orientation: 'h',
             x: 0.5,
             xanchor: 'center',
-            y: -0.25,               // push legend below chart
+            y: -0.25,
             yanchor: 'top',
             font: { size: 11 },
             bgcolor: 'rgba(0,0,0,0)'
           },
-          hovermode: 'x',          // one vertical hover line
+          hovermode: 'x',
           hoverdistance: 10,
           plot_bgcolor: '#ffffff',
           paper_bgcolor: '#ffffff'
@@ -272,36 +303,36 @@
         ];
       }
 
-      /* ===== 4. Draw charts ===== */
+      /* ===== 4. Draw charts (each with its own y-axis config) ===== */
 
       Plotly.newPlot(
         'cellular_signal_div_signal',
         tracesFor(seriesSignal),
-        makeLayout('Signal (level)')
+        makeLayout('Signal (level)', getAxisConfig(seriesSignal))
       );
 
       Plotly.newPlot(
         'cellular_signal_div_rsrp',
         tracesFor(seriesRsrp),
-        makeLayout('RSRP (dBm)')
+        makeLayout('RSRP (dBm)', getAxisConfig(seriesRsrp))
       );
 
       Plotly.newPlot(
         'cellular_signal_div_rsrq',
         tracesFor(seriesRsrq),
-        makeLayout('RSRQ (dB)')
+        makeLayout('RSRQ (dB)', getAxisConfig(seriesRsrq))
       );
 
       Plotly.newPlot(
         'cellular_signal_div_sinr',
         tracesFor(seriesSinr),
-        makeLayout('SINR (dB)')
+        makeLayout('SINR (dB)', getAxisConfig(seriesSinr))
       );
 
       Plotly.newPlot(
         'cellular_signal_div_snr',
         tracesFor(seriesSnr),
-        makeLayout('SNR (dB)')
+        makeLayout('SNR (dB)', getAxisConfig(seriesSnr))
       );
     });
   </script>
