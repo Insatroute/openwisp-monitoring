@@ -414,7 +414,7 @@ class IPSecTunnelsStatusView(ProtectedAPIMixin, FilterByOrganizationMembership, 
             for tunnel in ipsec_data:
                 tunnel_name = tunnel.get("name", "")
                 tunnel_id = tunnel.get("id", "")
-                tunnel_status = "disconnected" if tunnel.get("connected", "false") == "false" else "connected"
+                tunnel_status = "connected" if tunnel.get("connected", "true") == "true" else "disconnected"
                 
                 summary["total"] += 1
                 summary[tunnel_status] += 1
