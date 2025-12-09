@@ -367,25 +367,27 @@
         const name2 = "Sim2 — " + series.operator2 +
           (series.nettype2 && series.nettype2 !== '—' ? " (" + series.nettype2 + ")" : "");
 
+        // new minimal layout similar to screenshot
         const baseLayout = function (ytitle, yRange, yDtick) {
           return {
-            margin: { l: 60, r: 20, t: 50, b: 60 },
+            margin: { l: 40, r: 10, t: 10, b: 40 },
             yaxis: {
-              title: ytitle,
+              title: '',
               range: yRange,
               dtick: yDtick,
               zeroline: false,
-              gridcolor: '#e5e7eb'
+              showgrid: false,
+              tickfont: { size: 10, color: '#9ca3af' }
             },
             xaxis: {
               type: 'date',
               range: [series.xMin, series.xMax],
-              gridcolor: '#e5e7eb',
-              dtick: 3600000,              // 1 hour in ms
-              tickformat: '%H:%M\n%b %d',   // 00:00 + date
-              tickangle: 0
+              showgrid: false,
+              tickformat: '%b %-d',
+              tickangle: 0,
+              tickfont: { size: 10, color: '#9ca3af' }
             },
-            legend: { orientation: 'h', yanchor: 'bottom', y: 1.12, x: 0, xanchor: 'left' },
+            showlegend: false,
             plot_bgcolor: '#ffffff',
             paper_bgcolor: '#ffffff'
           };
@@ -396,19 +398,17 @@
             x: labels,
             y: series.csq1,
             type: 'scatter',
-            mode: 'lines+markers',
+            mode: 'lines',
             name: name1,
-            line: { color: '#ff7f0e', width: 3 },
-            marker: { size: 7 }
+            line: { color: '#1f77b4', width: 2, shape: 'spline' }
           },
           {
             x: labels,
             y: series.csq2,
             type: 'scatter',
-            mode: 'lines+markers',
+            mode: 'lines',
             name: name2,
-            line: { color: '#1f77b4', width: 3 },
-            marker: { size: 7 }
+            line: { color: '#d62728', width: 2, shape: 'spline' }
           }
         ], baseLayout('CSQ', [0, 40], 5), {
           displayModeBar: false,
@@ -420,19 +420,17 @@
             x: labels,
             y: series.rsrp1,
             type: 'scatter',
-            mode: 'lines+markers',
+            mode: 'lines',
             name: name1,
-            line: { color: '#ff7f0e' },
-            marker: { size: 6 }
+            line: { color: '#1f77b4', width: 2, shape: 'spline' }
           },
           {
             x: labels,
             y: series.rsrp2,
             type: 'scatter',
-            mode: 'lines+markers',
+            mode: 'lines',
             name: name2,
-            line: { color: '#1f77b4' },
-            marker: { size: 6 }
+            line: { color: '#d62728', width: 2, shape: 'spline' }
           }
         ], baseLayout('RSRP (dBm)', [-140, -44], 20), {
           displayModeBar: false,
@@ -444,19 +442,17 @@
             x: labels,
             y: series.rsrq1,
             type: 'scatter',
-            mode: 'lines+markers',
+            mode: 'lines',
             name: name1,
-            line: { color: '#ff7f0e' },
-            marker: { size: 6 }
+            line: { color: '#1f77b4', width: 2, shape: 'spline' }
           },
           {
             x: labels,
             y: series.rsrq2,
             type: 'scatter',
-            mode: 'lines+markers',
+            mode: 'lines',
             name: name2,
-            line: { color: '#1f77b4' },
-            marker: { size: 6 }
+            line: { color: '#d62728', width: 2, shape: 'spline' }
           }
         ], baseLayout('RSRQ (dB)', [-20, -3], 2), {
           displayModeBar: false,
@@ -468,19 +464,17 @@
             x: labels,
             y: series.rssi1,
             type: 'scatter',
-            mode: 'lines+markers',
+            mode: 'lines',
             name: name1,
-            line: { color: '#ff7f0e' },
-            marker: { size: 6 }
+            line: { color: '#1f77b4', width: 2, shape: 'spline' }
           },
           {
             x: labels,
             y: series.rssi2,
             type: 'scatter',
-            mode: 'lines+markers',
+            mode: 'lines',
             name: name2,
-            line: { color: '#1f77b4' },
-            marker: { size: 6 }
+            line: { color: '#d62728', width: 2, shape: 'spline' }
           }
         ], baseLayout('RSSI (dBm)', [-120, -40], 10), {
           displayModeBar: false,
@@ -492,19 +486,17 @@
             x: labels,
             y: series.snr1,
             type: 'scatter',
-            mode: 'lines+markers',
+            mode: 'lines',
             name: name1,
-            line: { color: '#ff7f0e' },
-            marker: { size: 6 }
+            line: { color: '#1f77b4', width: 2, shape: 'spline' }
           },
           {
             x: labels,
             y: series.snr2,
             type: 'scatter',
-            mode: 'lines+markers',
+            mode: 'lines',
             name: name2,
-            line: { color: '#1f77b4' },
-            marker: { size: 6 }
+            line: { color: '#d62728', width: 2, shape: 'spline' }
           }
         ], baseLayout('SNR (dB)', [-5, 35], 5), {
           displayModeBar: false,
