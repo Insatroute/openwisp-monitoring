@@ -1,4 +1,5 @@
 from collections import Counter
+from networkx import is_connected
 from swapper import load_model
 from rest_framework import generics
 from rest_framework.response import Response
@@ -414,7 +415,9 @@ class IPSecTunnelsStatusView(ProtectedAPIMixin, FilterByOrganizationMembership, 
             for tunnel in ipsec_data:
                 tunnel_name = tunnel.get("name", "")
                 tunnel_id = tunnel.get("id", "")
-                tunnel_status = "connected" if tunnel.get("connected", "true") == "true" else "disconnected"
+                is_connected = str(tunnel.get("connected", "false")).lower() == "true"
+                tunnel_status = "connected" if is_connected else "disconnected"
+
                 
                 summary["total"] += 1
                 summary[tunnel_status] += 1
