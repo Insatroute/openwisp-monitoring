@@ -53,7 +53,7 @@
     </div>
 
     <!-- Tunnels Card -->
-    <div class="card overview-card">
+    {% comment %} <div class="card overview-card">
       <h4>Tunnels</h4>
       <div class="stats overview-stats">
         <div class="stat-item overview-stat-item">
@@ -69,7 +69,7 @@
           <span class="card-label">Pending</span>
         </div>
       </div>
-    </div>
+    </div> {% endcomment %}
 
     <!-- Total Links Card -->
     <div class="card overview-card">
@@ -947,7 +947,7 @@
   .card-grid {
     display: grid;
     grid-gap: 20px;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     margin: 10px auto;
     padding: 10px 40px 10px 40px;
   }
