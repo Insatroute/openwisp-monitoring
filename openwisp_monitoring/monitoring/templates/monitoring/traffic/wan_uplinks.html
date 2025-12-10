@@ -557,11 +557,11 @@
                 <span class="wp-kp-arrows">
                   <span class="wp-kp-up">
                     <i></i>
-                    <span id="wp-tx-mbps-{{ iface.name }}">0</span> Mbit/s
+                    <span id="wp-tx-mbps-{{ iface.name }}">0</span>
                   </span>
                   <span class="wp-kp-down">
                     <i></i>
-                    <span id="wp-rx-mbps-{{ iface.name }}">0</span> Mbit/s
+                    <span id="wp-rx-mbps-{{ iface.name }}">0</span>
                   </span>
                 </span>
               </td>
@@ -793,82 +793,77 @@
      2) Parse iperf3 output
   ========================= */
   function parseIperfResult(output) {
-    const lines = output.split('\n');
-    let tx = null;
-    let rx = null;
-    let localIp = null;
+  const lines = output.split('\n');
+  let txText = null;
+  let rxText = null;
+  let localIp = null;
 
-    for (const line of lines) {
-      // get local IP once
-      if (!localIp) {
-        const ipMatch = line.match(/local\s+(\d+\.\d+\.\d+\.\d+)\s+port/);
-        if (ipMatch) {
-          localIp = ipMatch[1];
-        }
-      }
-
-      // [TX-C] ... sender
-      if (line.includes('[TX-C]') && line.includes('sender')) {
-        const m = line.match(/([\d.]+)\s+Mbits\/sec/);
-        if (m) tx = m[1];
-      }
-
-      // [RX-C] ... sender
-      if (line.includes('[RX-C]') && line.includes('sender')) {
-        const m = line.match(/([\d.]+)\s+Mbits\/sec/);
-        if (m) rx = m[1];
+  for (const line of lines) {
+    // local IP
+    if (!localIp) {
+      const ipMatch = line.match(/local\s+(\d+\.\d+\.\d+\.\d+)\s+port/);
+      if (ipMatch) {
+        localIp = ipMatch[1];
       }
     }
 
-    return { tx, rx, localIp };
+    // Match: "55.6 Kbits/sec", "4.33 Mbits/sec", "0.00 bits/sec", "1.2 Gbits/sec"
+    if (line.includes('[TX-C]') && line.includes('sender')) {
+      const m = line.match(/([\d.]+)\s+([KMG]?bits\/sec)/i);
+      if (m) {
+        txText = m[1] + ' ' + m[2];  // e.g. "55.6 Kbits/sec"
+      }
+    }
+
+    if (line.includes('[RX-C]') && line.includes('sender')) {
+      const m = line.match(/([\d.]+)\s+([KMG]?bits\/sec)/i);
+      if (m) {
+        rxText = m[1] + ' ' + m[2];  // e.g. "4.33 Mbits/sec"
+      }
+    }
   }
+
+  return { txText, rxText, localIp };
+}
+
+
 
   /* =========================
      3) Update uplink table
   ========================= */
-  function updateUplinkThroughputFromIperf(output) {
-    const result = parseIperfResult(output);
-    if (!result.tx && !result.rx) {
-      console.warn('iperf output parsed but no TX/RX Mbps found');
-      return;
-    }
+ function updateUplinkThroughputFromIperf(output) {
+  const result = parseIperfResult(output);
+  if (!result.txText && !result.rxText) return;
 
-    let targetRow = null;
+  let targetRow = null;
 
-    // Prefer row whose IPv4 matches "local x.x.x.x"
-    if (result.localIp) {
-      targetRow = document.querySelector('tr[data-ipv4="' + result.localIp + '"]');
-    }
+  if (result.localIp) {
+    targetRow = document.querySelector('tr[data-ipv4="' + result.localIp + '"]');
+  }
 
-    // Fallback: first uplink row
-    if (!targetRow) {
-      targetRow = document.querySelector('#wp-uplink-tbody tr[data-iface]');
-    }
-    if (!targetRow) {
-      console.warn('No uplink row found to update');
-      return;
-    }
+  if (!targetRow) {
+    targetRow = document.querySelector('#wp-uplink-tbody tr[data-iface]');
+  }
+  if (!targetRow) return;
 
-    var ifaceName = targetRow.getAttribute('data-iface');
-    if (!ifaceName) {
-      console.warn('Row has no data-iface attribute');
-      return;
-    }
+  var ifaceName = targetRow.getAttribute('data-iface');
+  if (!ifaceName) return;
 
-    if (result.tx != null) {
-      var txEl = document.getElementById('wp-tx-mbps-' + ifaceName);
-      if (txEl) {
-        txEl.textContent = result.tx;
-      }
-    }
-
-    if (result.rx != null) {
-      var rxEl = document.getElementById('wp-rx-mbps-' + ifaceName);
-      if (rxEl) {
-        rxEl.textContent = result.rx;
-      }
+  if (result.txText) {
+    var txEl = document.getElementById('wp-tx-mbps-' + ifaceName);
+    if (txEl) {
+      txEl.textContent = result.txText;   // e.g. "55.6 Kbits/sec"
     }
   }
+
+  if (result.rxText) {
+    var rxEl = document.getElementById('wp-rx-mbps-' + ifaceName);
+    if (rxEl) {
+      rxEl.textContent = result.rxText;   // e.g. "4.33 Mbits/sec"
+    }
+  }
+}
+
 
   /* =========================
      4) Call /command/ API and feed latest iperf
