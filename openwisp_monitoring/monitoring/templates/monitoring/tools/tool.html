@@ -1,0 +1,161 @@
+<div class="ow-tools-commands">
+  <button type="button" class="button ow-command-btn" data-command="custom">
+    Custom command
+  </button>
+
+  <button type="button" class="button ow-command-btn" data-command="reboot">
+    Reboot device
+  </button>
+
+  <button type="button" class="button ow-command-btn" data-command="change_password">
+    Change password
+  </button>
+
+  <button type="button" class="button ow-command-btn" data-command="ping">
+    Ping
+  </button>
+
+  <button type="button" class="button ow-command-btn" data-command="iperf3">
+    Iperf3 test
+  </button>
+</div>
+
+
+{% if last_command %}
+  <div id="ow-tools-results" class="ow-tools-results">
+    <div class="ow-tools-result-item">
+      <strong>Custom commands</strong>
+      <span class="ow-tools-result-status">
+        {{ last_command.status|upper }}
+      </span>
+
+      {# show loader only when status is in progress #}
+      {% if last_command.status == "IN-PROGRESS" %}
+        <span class="ow-tools-loader" aria-label="Running…"></span>
+      {% endif %}
+
+      <br>
+      <strong>Input:</strong> {{ last_command.input_data }}
+      <br>
+      <strong>Output:</strong>
+      <pre class="ow-tools-result-output">{{ last_command.output_data }}</pre>
+    </div>
+  </div>
+{% else %}
+  <div id="ow-tools-results" class="ow-tools-results ow-tools-results--empty">
+    <p id="ow-no-commands-text">
+      Click
+      <span class="ow-tools-link">Recent Commands</span>
+      to view full history of commands.
+    </p>
+  </div>
+
+  <script>
+    (function () {
+      var link = document.querySelector('#ow-no-commands-text .ow-tools-link');
+      if (!link) return;
+
+      link.addEventListener('click', function () {
+        // Look through ALL links and find the one whose text is "Recent Commands"
+        var anchors = document.querySelectorAll('a');
+        for (var i = 0; i < anchors.length; i++) {
+          if (anchors[i].textContent.trim() === 'Recent Commands') {
+            anchors[i].click();              // switch to that tab / follow link
+            // or: window.location.href = anchors[i].href;
+            break;
+          }
+        }
+      });
+    })();
+  </script>
+{% endif %}
+
+
+<style>
+  .ow-tools-link {
+    text-decoration: underline;
+    cursor: pointer;
+    font-weight: 600;
+    color: #e2802b;
+  }
+
+  .ow-tools-commands {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 10px 0 18px;
+  }
+
+  .ow-tools-commands .button {
+    min-width: 160px;
+    padding: 7px 12px;
+    font-size: 14px;
+  }
+
+  .ow-tools-results {
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 12px 16px;
+    background: #f9fafb;
+    font-size: 13px;
+  }
+
+  .ow-tools-result-item + .ow-tools-result-item {
+    border-top: 1px solid #e5e7eb;
+    margin-top: 8px;
+    padding-top: 8px;
+  }
+
+  .ow-tools-result-header {
+    display: flex;
+    gap: 8px;
+    align-items: baseline;
+    margin-bottom: 4px;
+  }
+
+  .ow-tools-result-type {
+    font-weight: 600;
+  }
+
+  .ow-tools-result-status {
+    font-size: 12px;
+    text-transform: uppercase;
+    margin-left: 4px;
+  }
+
+  .ow-tools-result-time {
+    margin-left: auto;
+    font-size: 11px;
+    color: #6b7280;
+  }
+
+  .ow-tools-result-label {
+    font-weight: 600;
+  }
+
+  .ow-tools-result-output {
+    white-space: pre-wrap;
+    font-family: monospace;
+    font-size: 12px;
+    margin: 4px 0 0;
+  }
+
+  /* LOADER for in-progress */
+  .ow-tools-loader {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    margin-left: 6px;
+    border-radius: 999px;
+    border: 2px solid rgba(226, 128, 43, 0.3);
+    border-top-color: #e2802b;
+    animation: ow-tools-spin 0.6s linear infinite;
+    vertical-align: -1px;
+  }
+
+  @keyframes ow-tools-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+</style>

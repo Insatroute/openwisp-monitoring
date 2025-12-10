@@ -324,6 +324,15 @@
 </div>
 {% endif %} {% endcomment %}
 
+{% if not add %}
+<div class="inline-group" id="ow-tools">
+  <fieldset class="module">
+    <h2>{% trans 'Tools' %}</h2>
+    {% include 'monitoring/tools/tool.html' %}
+  </fieldset>
+</div>
+{% endif %}
+
 <style>
   .change-form{
      margin: 0 !important;

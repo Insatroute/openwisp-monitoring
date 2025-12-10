@@ -101,6 +101,40 @@
     border-radius: 10px;
     background: #f9fafb;
   }
+    .wp-info-badge {
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    width:16px;
+    height:16px;
+    margin-left:6px;
+    border-radius:50%;
+    border:1px solid #1f2937;
+    font-size:11px;
+    font-weight:700;
+    color:#1f2937;
+    background:#f9fafb;
+    cursor:pointer;
+    position:relative;
+  }
+
+  .wp-info-badge:hover::after {
+    content:attr(data-tooltip);
+    position:absolute;
+    top:120%;
+    left:50%;
+    transform:translateX(-50%);
+    background:#0f172a;
+    color:#fff;
+    font-size:11px;
+    padding:4px 8px;
+    border-radius:6px;
+    white-space:nowrap;
+    box-shadow:0 4px 12px rgba(15,23,42,.35);
+    z-index:20;
+    text-transform: none;
+  }
+
 </style>
 
 {# ===== SVG symbols (prefixed ids) ===== #}
@@ -428,7 +462,23 @@
         <th>Uplink</th>
         <th>Interface IP/Mask</th>
         <th>Ping Destination</th>
-        <th>Throughput</th>
+        {% comment %} <th>
+          Throughput
+          <button
+            class="wp-info-badge"
+            id="wp-throughput-info"
+            data-tooltip="You can get latest throughput (Mbit/s) from the latest bandwidth by iperf3 run."
+          >i</button>
+        </th> {% endcomment %}
+        <th>
+          Throughput
+          <a
+            href="#"
+            class="wp-info-badge"
+            id="wp-throughput-info"
+            data-tooltip='Latest throughput (Mbit/s) from iperf3. Click "i" to open Tools.'
+          >i</a>
+        </th>
         <th>Latency</th>
         <th>Jitter</th>
         <th>Loss</th>
@@ -439,7 +489,16 @@
         {# Show only WAN interfaces OR mobile interfaces #}
         {% if iface.is_wan or iface.type == 'mobile' %}
           {% if iface.name|cut:'.' == iface.name and iface.name|cut:'-' == iface.name %}
-            <tr>
+            <tr
+              data-iface="{{ iface.name }}"
+              {% if iface.addresses %}
+                {% for addr in iface.addresses %}
+                  {% if addr.family|upper == "IPV4" %}
+                    data-ipv4="{{ addr.address }}"
+                  {% endif %}
+                {% endfor %}
+              {% endif %}
+            >
               <td class="wp-nowrap">
                 <span
                   class="wp-status-dot {% if iface.up %}wp-dot-green{% else %}wp-dot-gray{% endif %}"
@@ -496,8 +555,14 @@
 
               <td class="wp-nowrap">
                 <span class="wp-kp-arrows">
-                  <span class="wp-kp-up"><i></i>{{ iface.ping.throughput.tx_bytes|default:0|filesizeformat }}</span>
-                  <span class="wp-kp-down"><i></i>{{ iface.ping.throughput.rx_bytes|default:0|filesizeformat }}</span>
+                  <span class="wp-kp-up">
+                    <i></i>
+                    <span id="wp-tx-mbps-{{ iface.name }}">0</span> Mbit/s
+                  </span>
+                  <span class="wp-kp-down">
+                    <i></i>
+                    <span id="wp-rx-mbps-{{ iface.name }}">0</span> Mbit/s
+                  </span>
                 </span>
               </td>
 
@@ -688,3 +753,197 @@
   // var wifi = IFACES.find(i => i.name === 'wlan0');
   // wpSetState('wp-tile-wifi', !!(wifi && wifi.up));
 </script>
+
+<script>
+(function () {
+  // Make sure django.jQuery exists
+  if (typeof django === 'undefined' || !django.jQuery) {
+    console.error('django.jQuery not available');
+    return;
+  }
+  var $ = django.jQuery;
+
+  /* =========================
+     1) Get UUID from URL
+  ========================= */
+  if (!window.DEVICE_UUID) {
+    try {
+      const path = new URL(window.location.href, window.location.origin).pathname;
+      const match = path.match(/[0-9a-fA-F-]{36}/);
+      window.DEVICE_UUID = match ? match[0] : null;
+      if (!window.DEVICE_UUID) {
+        console.error('Device UUID not found in URL:', path);
+        return;
+      }
+    } catch (e) {
+      console.error('Error reading device UUID from URL', e);
+      return;
+    }
+  }
+
+  // Build command API URL on the SAME host as the page
+  // (avoids CORS issues, only the path is fixed)
+  var COMMAND_API_URL =
+    window.location.origin +
+    '/api/v1/controller/device/' +
+    window.DEVICE_UUID +
+    '/command/';
+
+  /* =========================
+     2) Parse iperf3 output
+  ========================= */
+  function parseIperfResult(output) {
+    const lines = output.split('\n');
+    let tx = null;
+    let rx = null;
+    let localIp = null;
+
+    for (const line of lines) {
+      // get local IP once
+      if (!localIp) {
+        const ipMatch = line.match(/local\s+(\d+\.\d+\.\d+\.\d+)\s+port/);
+        if (ipMatch) {
+          localIp = ipMatch[1];
+        }
+      }
+
+      // [TX-C] ... sender
+      if (line.includes('[TX-C]') && line.includes('sender')) {
+        const m = line.match(/([\d.]+)\s+Mbits\/sec/);
+        if (m) tx = m[1];
+      }
+
+      // [RX-C] ... sender
+      if (line.includes('[RX-C]') && line.includes('sender')) {
+        const m = line.match(/([\d.]+)\s+Mbits\/sec/);
+        if (m) rx = m[1];
+      }
+    }
+
+    return { tx, rx, localIp };
+  }
+
+  /* =========================
+     3) Update uplink table
+  ========================= */
+  function updateUplinkThroughputFromIperf(output) {
+    const result = parseIperfResult(output);
+    if (!result.tx && !result.rx) {
+      console.warn('iperf output parsed but no TX/RX Mbps found');
+      return;
+    }
+
+    let targetRow = null;
+
+    // Prefer row whose IPv4 matches "local x.x.x.x"
+    if (result.localIp) {
+      targetRow = document.querySelector('tr[data-ipv4="' + result.localIp + '"]');
+    }
+
+    // Fallback: first uplink row
+    if (!targetRow) {
+      targetRow = document.querySelector('#wp-uplink-tbody tr[data-iface]');
+    }
+    if (!targetRow) {
+      console.warn('No uplink row found to update');
+      return;
+    }
+
+    var ifaceName = targetRow.getAttribute('data-iface');
+    if (!ifaceName) {
+      console.warn('Row has no data-iface attribute');
+      return;
+    }
+
+    if (result.tx != null) {
+      var txEl = document.getElementById('wp-tx-mbps-' + ifaceName);
+      if (txEl) {
+        txEl.textContent = result.tx;
+      }
+    }
+
+    if (result.rx != null) {
+      var rxEl = document.getElementById('wp-rx-mbps-' + ifaceName);
+      if (rxEl) {
+        rxEl.textContent = result.rx;
+      }
+    }
+  }
+
+  /* =========================
+     4) Call /command/ API and feed latest iperf
+  ========================= */
+  function fetchLatestIperfFromApi() {
+    $.getJSON(COMMAND_API_URL, function (resp) {
+      // DRF-style pagination: {count, next, previous, results: [...]}
+      var commands = Array.isArray(resp) ? resp : (resp.results || []);
+      if (!commands.length) {
+        console.warn('No commands returned from', COMMAND_API_URL);
+        return;
+      }
+
+      // Find the most recent successful iperf command
+      var iperfCmd = commands.find(function (c) {
+        return (
+          c &&
+          typeof c.output === 'string' &&
+          c.output.indexOf('[TX-C]') !== -1 &&
+          c.output.indexOf('[RX-C]') !== -1
+        );
+      });
+
+      if (!iperfCmd) {
+        console.warn('No iperf command found in API response');
+        return;
+      }
+
+      // Debug: you can uncomment to verify
+      // console.log('Using iperf output from command:', iperfCmd);
+
+      updateUplinkThroughputFromIperf(iperfCmd.output);
+    }).fail(function (xhr, status, err) {
+      console.error('Failed to fetch command list from', COMMAND_API_URL, status || err);
+    });
+  }
+
+  // Run once on page load (and whenever you want to refresh)
+  $(function () {
+    fetchLatestIperfFromApi();
+    // Optional: refresh every minute
+    // setInterval(fetchLatestIperfFromApi, 60000);
+  });
+})();
+</script>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    var badge = document.getElementById('wp-throughput-info');
+    if (!badge) return;
+
+    // Get device UUID from current URL (same logic you showed)
+    var path = new URL(window.location.href, window.location.origin).pathname;
+    var match = path.match(/[0-9a-fA-F-]{36}/);
+    var deviceUuid = match ? match[0] : null;
+
+    badge.addEventListener('click', function (e) {
+      e.preventDefault();
+
+      if (!deviceUuid) {
+        console.error('Device UUID not found in URL, cannot build Tools URL');
+        return;
+      }
+
+      // Build the exact Tools tab URL:
+      // https://<host>/admin/config/device/<uuid>/change/#ow-tools
+      var toolsUrl =
+        window.location.origin +
+        '/admin/config/device/' +
+        deviceUuid +
+        '/change/#ow-tools';
+
+      window.location.href = toolsUrl;
+    });
+  });
+</script>
+
+
