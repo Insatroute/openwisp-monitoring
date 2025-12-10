@@ -1,11 +1,13 @@
 {% load i18n static %}
 <link rel="preconnect" href="https://cdn.jsdelivr.net" />
 <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+<!-- PDF export libs -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
 
 <style>
   .dashboard-contain {
-    /* max-width: 1200px; */
-    margin: 20px auto
+    margin: 20px auto;
   }
 
   #apiError {
@@ -16,14 +18,185 @@
     padding: 12px 16px;
     border-radius: 8px;
     margin-bottom: 20px;
-    font-size: 14px
+    font-size: 14px;
+  }
+
+  .top-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .usage-title {
+    font-size: 22px;
+    font-weight: 600;
+    margin: 0;
+  }
+
+  .top-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .export-buttons {
+    display: flex;
+    gap: 6px;
+  }
+
+  .export-btn {
+    border-radius: 4px;
+    padding: 6px 10px;
+    font-size: 12px;
+    cursor: pointer;
+    border: 1px solid #111827;
+    background: #111827;
+    color: #fff;
+  }
+
+  .export-btn.secondary {
+    background: #253a5d;
+    color: #fff;
+    border-color: #253a5d;
+  }
+
+  .export-btn:hover {
+    opacity: 0.9;
+  }
+
+  /* range dropdown */
+
+  .range-dropdown {
+    position: relative;
+    display: inline-block;
+  }
+
+  .range-toggle {
+    background: #253a5d;
+    color: #fff;
+    border: 1px solid #253a5d;
+    border-radius: 4px;
+    padding: 6px 12px;
+    font-size: 13px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .range-toggle .caret {
+    border-top: 4px solid #fff;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    width: 0;
+    height: 0;
+  }
+
+  .range-menu {
+    position: absolute;
+    right: 0;
+    top: 100%;
+    z-index: 1000;
+    min-width: 260px;
+    background: #fff;
+    border-radius: 4px;
+    border: 1px solid #d1d5db;
+    padding: 4px 0 8px;
+    margin-top: 4px;
+    list-style: none;
+    display: none;
+  }
+
+  .range-menu.show {
+    display: block;
+  }
+
+  .range-menu li {
+    padding: 6px 12px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+
+  .range-menu li:hover {
+    background: #f3f4f6;
+  }
+
+  .range-menu li.divider {
+    margin: 4px 0;
+    padding: 0;
+    border-top: 1px solid #e5e7eb;
+    cursor: default;
+  }
+
+  .range-menu li.custom-header {
+    cursor: default;
+    padding: 6px 12px;
+    background: #fee2e2;
+    color: #b91c1c;
+    font-weight: 600;
+  }
+
+  .range-menu li.custom-range-item {
+    cursor: default;
+  }
+
+  .custom-range {
+    padding: 8px 12px 4px;
+  }
+
+  .custom-range-label {
+    font-size: 11px;
+    color: #6b7280;
+    margin-bottom: 2px;
+  }
+
+  .custom-range input[type="datetime-local"] {
+    width: 100%;
+    box-sizing: border-box;
+    border-radius: 4px;
+    border: 1px solid #d1d5db;
+    padding: 4px 6px;
+    font-size: 12px;
+    margin-bottom: 6px;
+  }
+
+  .custom-range-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 4px;
+  }
+
+  .cr-btn {
+    border-radius: 16px;
+    border: 1px solid transparent;
+    padding: 4px 12px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+
+  .cr-cancel {
+    background: #e5e7eb;
+    border-color: #d1d5db;
+    color: #111827;
+  }
+
+  .cr-apply {
+    background: #111827;
+    border-color: #111827;
+    color: #fff;
   }
 
   .usage-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: 20px;
-    margin-bottom: 30px
+    margin-bottom: 30px;
   }
 
   .usage-section {
@@ -31,7 +204,7 @@
     border: 1px solid #e5e7eb;
     border-radius: 12px;
     padding: 20px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, .1)
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .1);
   }
 
   .section-title {
@@ -40,61 +213,61 @@
     color: #111827;
     margin-bottom: 16px;
     padding-bottom: 12px;
-    border-bottom: 2px solid #e5e7eb
+    border-bottom: 2px solid #e5e7eb;
   }
 
   #lastUpdated {
     font-size: 11px;
     color: #6b7280;
-    margin-left: 6px
+    margin-left: 6px;
   }
 
   .total-summary {
-    margin-bottom: 16px
+    margin-bottom: 16px;
   }
 
   .total-value {
     font-size: 28px;
     font-weight: 700;
     color: #059669;
-    margin-bottom: 6px
+    margin-bottom: 6px;
   }
 
   .total-stats {
     font-size: 13px;
     color: #6b7280;
-    line-height: 1.6
+    line-height: 1.6;
   }
 
   .interface-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 12px
+    gap: 12px;
   }
 
   .interface-card {
     background: #f9fafb;
     border: 1px solid #e5e7eb;
     border-radius: 8px;
-    padding: 12px
+    padding: 12px;
   }
 
   .interface-title {
     font-size: 13px;
     font-weight: 600;
     color: #374151;
-    margin-bottom: 6px
+    margin-bottom: 6px;
   }
 
   .interface-value {
     color: #111827;
-    margin-bottom: 4px
+    margin-bottom: 4px;
   }
 
   .interface-stats {
     font-size: 12px;
     color: #6b7280;
-    line-height: 1.5
+    line-height: 1.5;
   }
 
   .chart-container {
@@ -102,60 +275,97 @@
     border: 1px solid #e5e7eb;
     border-radius: 12px;
     padding: 20px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, .1)
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .1);
   }
 
   .chart-title-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px
+    gap: 12px;
   }
 
   .chart-title {
     font-size: 16px;
     font-weight: 700;
     color: #111827;
-    margin: 0
+    margin: 0;
   }
 
   #trafficCharts {
     width: 100%;
     max-width: 920px;
     margin: 0 auto;
-    height: 380px
-  }
-
-  .device-heading {
-    display: flex;
-    justify-content: right;
-    font-size: 11px;
-    color: #6b7280;
+    height: 380px;
   }
 
   @media (max-width:900px) {
     .usage-grid {
       grid-template-columns: 1fr;
-      gap: 16px
+      gap: 16px;
     }
 
     .interface-grid {
-      grid-template-columns: 1fr
+      grid-template-columns: 1fr;
     }
-  }
 
-  @media (min-width:901px) and (max-width:1200px) {
-    .usage-grid {
-      grid-template-columns: repeat(2, 1fr)
+    .top-row {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .top-controls {
+      width: 100%;
+      justify-content: space-between;
     }
   }
 </style>
 
-{{ device_data|json_script:"device-usage-data" }}
-
 <div class="dashboard-contain">
-  <h1 class="device-heading">The data below is for 24 hours.</h1>
   <div id="apiError"></div>
+
+  <div class="top-row">
+    <h1 class="usage-title">Device Usage Information</h1>
+
+    <div class="top-controls">
+      <div class="export-buttons">
+        <button type="button" class="export-btn secondary" id="exportExcelBtn">Export Excel</button>
+        <button type="button" class="export-btn" id="exportPdfBtn">Export PDF</button>
+      </div>
+
+      <div class="range-dropdown" id="rangeDropdown">
+        <button type="button" class="range-toggle" id="rangeToggle">
+          <span id="currentRangeLabel">Loading…</span>
+          <span class="caret"></span>
+        </button>
+        <ul class="range-menu" id="rangeMenu">
+          <li data-query="&time=1d">Last 1 Day</li>
+          <li data-query="&time=3d">Last 3 Days</li>
+          <li data-query="&time=7d">Last 7 Days</li>
+          <li data-query="&time=30d">Last 30 Days</li>
+          <li data-query="&time=365d">Last 365 Days</li>
+
+          <li class="divider"></li>
+
+          <li class="custom-header">Custom Range</li>
+          <li class="custom-range-item">
+            <div class="custom-range">
+              <div class="custom-range-label">From</div>
+              <input type="datetime-local" id="crStart">
+
+              <div class="custom-range-label">To</div>
+              <input type="datetime-local" id="crEnd">
+
+              <div class="custom-range-actions">
+                <button type="button" class="cr-btn cr-cancel" id="crCancel">Cancel</button>
+                <button type="button" class="cr-btn cr-apply" id="crApply">Apply</button>
+              </div>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
 
   <div class="usage-grid">
     <!-- Cellular -->
@@ -169,12 +379,12 @@
       </div>
       <div class="interface-grid">
         <div class="interface-card" id="modem1-card">
-          <div class="interface-title">SIM1:</div>
+          <div class="interface-title">SIM1 (modem):</div>
           <div class="interface-value">—</div>
           <div class="interface-stats">Upload: —<br>Download: —</div>
         </div>
         <div class="interface-card" id="modem2-card">
-          <div class="interface-title">SIM2:</div>
+          <div class="interface-title">SIM2 (modem2):</div>
           <div class="interface-value">—</div>
           <div class="interface-stats">Upload: —<br>Download: —</div>
         </div>
@@ -206,7 +416,7 @@
   <!-- Chart -->
   <div class="chart-container">
     <div class="chart-title-row">
-      <h3 class="chart-title">Data Usage Traffic</h3>
+      <h3 class="chart-title">Data Usage Traffic (Historical)</h3>
     </div>
     <div id="trafficCharts"></div>
   </div>
@@ -216,272 +426,789 @@
   (function () {
     'use strict';
 
-    /* ---------- Get your server-provided JSON ---------- */
-    const scriptEl = document.getElementById('device-usage-data');
-    let source = {};
-    try { source = scriptEl ? JSON.parse(scriptEl.textContent || '{}') : {}; } catch (_) { source = {}; }
-    console.log('DJ_Source_Usage: ========', source);
-    const ifaces = Array.isArray(source.interfaces) ? source.interfaces : [];
-    const general = source.general || {};
+    const DEVICE_UUID = '{{ device.id }}';
+    const API_BASE = window.location.origin;
+    const TIMEZONE = 'Asia/Calcutta';
 
-    /* ---------- Helpers ---------- */
-    const MB = 1024 * 1024;
-    const toMB = v => (Number(v) || 0) / MB;
+    // default range: last 1 day
+    let currentExtraQuery = '&time=1d';
 
-    // Format as MB or GB depending on size
-    function fmtData(mb) {
-      const v = Number(mb) || 0;
-      if (v >= 1024) {
-        return (v / 1024).toFixed(2) + ' GB';
-      }
-      return v.toFixed(2) + ' MB';
+    // server "now" derived from last sample
+    let serverLastDate = null; // YYYY-MM-DD
+    let serverLastTime = null; // HH:MM:SS
+
+    // date-wise daily usage for export
+    let currentDailyUsage = null; // { rangeLabel, rows: [...] }
+
+    /* ========= TIME HELPERS ========= */
+
+    function hhmmToSeconds(hm) {
+      if (!hm) return 0;
+      const [h, m] = hm.split(':').map(Number);
+      return (h || 0) * 3600 + (m || 0) * 60;
     }
 
-    // Accept both shapes:
-    // 1) statistics.rx_bytes / tx_bytes
-    // 2) statistics.rx.bytes / tx.bytes
-    function readStatsMB(iface) {
-      if (!iface || !iface.statistics) return { rxMB: 0, txMB: 0, totalMB: 0 };
-      const rx = (iface.statistics.rx_bytes != null)
-        ? iface.statistics.rx_bytes
-        : (iface.statistics.rx && iface.statistics.rx.bytes) || 0;
-      const tx = (iface.statistics.tx_bytes != null)
-        ? iface.statistics.tx_bytes
-        : (iface.statistics.tx && iface.statistics.tx.bytes) || 0;
-      const rxMB = toMB(rx);
-      const txMB = toMB(tx);
-      return { rxMB, txMB, totalMB: rxMB + txMB };
+    function hmsToSeconds(hms) {
+      if (!hms) return 0;
+      const [h, m, s] = hms.split(':').map(Number);
+      return (h || 0) * 3600 + (m || 0) * 60 + (s || 0);
     }
 
-    const get = (name) => ifaces.find(i => i && i.name === name);
-
-    function formatTimeLabel(iso) {
-      if (!iso) return new Date().toLocaleTimeString();
-      const d = new Date(iso);
-      if (isNaN(d.getTime())) return iso;
+    function secondsToHMS(sec) {
+      sec = Math.max(0, Math.floor(sec));
+      const h = Math.floor(sec / 3600);
+      const m = Math.floor((sec % 3600) / 60);
+      const s = sec % 60;
       const pad = n => n.toString().padStart(2, '0');
-      return pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+      return pad(h) + ':' + pad(m) + ':' + pad(s);
     }
 
-    // Round a date string to the beginning of the hour
-    function getHourStart(iso) {
-      const d = iso ? new Date(iso) : new Date();
-      if (isNaN(d.getTime())) return new Date();
-      return new Date(d.getFullYear(), d.getMonth(), d.getDate(), d.getHours(), 0, 0, 0);
+    /* ========= UNIT HELPERS (GB) ========= */
+
+    function chooseUnitFromGB(gbVal) {
+      const gb = Math.abs(Number(gbVal) || 0);
+      const mb = gb * 1024;
+      const kb = mb * 1024;
+
+      if (gb >= 1000) return 'TB';
+      if (mb >= 1000) return 'GB';
+      if (kb >= 1000) return 'MB';
+      return 'KB';
     }
 
-    function formatHourLabel(isoHour) {
-      const d = new Date(isoHour);
-      if (isNaN(d.getTime())) return isoHour;
-      const pad = n => n.toString().padStart(2, '0');
-      return pad(d.getHours()) + ':00';
+    function humanFromGB(gbVal) {
+      const unit = chooseUnitFromGB(gbVal);
+      const gb = Number(gbVal) || 0;
+      let value;
+      if (unit === 'TB') value = gb / 1000;
+      else if (unit === 'GB') value = gb;
+      else if (unit === 'MB') value = gb * 1024;
+      else value = gb * 1024 * 1024;
+      return { value, unit };
     }
 
-    /* ---------- Compute sections ---------- */
-
-    // Cellular: only interfaces with type "mobile" and name "modem" / "modem2"
-    const sim1Iface = ifaces.find(i => i && i.type === 'mobile' && i.name === 'modem');
-    const sim2Iface = ifaces.find(i => i && i.type === 'mobile' && i.name === 'modem2');
-    const sim1 = readStatsMB(sim1Iface);
-    const sim2 = readStatsMB(sim2Iface);
-
-    // Wired WANs: only interfaces with is_wan:true and role:"wan"
-    const wanIfaces = ifaces
-      .filter(i =>
-        i &&
-        i.type === 'ethernet' &&
-        i.role === 'wan' &&
-        i.is_wan === true
-      )
-      .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-
-    const wan1Iface = wanIfaces[0] || null;
-    const wan2Iface = wanIfaces[1] || null;
-
-    const wan1Stats = readStatsMB(wan1Iface);
-    const wan2Stats = readStatsMB(wan2Iface);
-
-    let wiredUp = wan1Stats.txMB + wan2Stats.txMB;
-    let wiredDown = wan1Stats.rxMB + wan2Stats.rxMB;
-
-    const cellularUp = sim1.txMB + sim2.txMB;
-    const cellularDown = sim1.rxMB + sim2.rxMB;
-
-    const lastUpdated = document.getElementById('lastUpdated');
-    if (lastUpdated) {
-      const label = general.local_time ? formatTimeLabel(general.local_time) : new Date().toLocaleTimeString();
-      lastUpdated.textContent = `(Updated: ${label})`;
+    function fmtGB(gbVal) {
+      const { value, unit } = humanFromGB(gbVal);
+      return value.toFixed(2) + ' ' + unit;
     }
 
-    const sim1Card = document.getElementById('modem1-card');
-    if (sim1Card) {
-      sim1Card.querySelector('.interface-value').textContent = fmtData(sim1.totalMB);
-      sim1Card.querySelector('.interface-stats').innerHTML =
-        `Upload: ${fmtData(sim1.txMB)}<br>Download: ${fmtData(sim1.rxMB)}`;
-    }
-
-    const sim2Card = document.getElementById('modem2-card');
-    if (sim2Card) {
-      sim2Card.querySelector('.interface-value').textContent = fmtData(sim2.totalMB);
-      sim2Card.querySelector('.interface-stats').innerHTML =
-        `Upload: ${fmtData(sim2.txMB)}<br>Download: ${fmtData(sim2.rxMB)}`;
-    }
-
-    const cellularSummary = document.getElementById('cellular-total-summary');
-    if (cellularSummary) {
-      const total = cellularUp + cellularDown;
-      cellularSummary.querySelector('.total-value').textContent = fmtData(total);
-      cellularSummary.querySelector('.total-stats').innerHTML =
-        `Upload: ${fmtData(cellularUp)}<br>Download: ${fmtData(cellularDown)}`;
-    }
-
-    // WAN1 card uses first WAN interface only (or 0 if none)
-    const eth0Card = document.getElementById('eth0-card');
-    if (eth0Card) {
-      const s = wan1Iface ? wan1Stats : { txMB: 0, rxMB: 0, totalMB: 0 };
-      eth0Card.querySelector('.interface-value').textContent = fmtData(s.totalMB);
-      eth0Card.querySelector('.interface-stats').innerHTML =
-        `Upload: ${fmtData(s.txMB)}<br>Download: ${fmtData(s.rxMB)}`;
-    }
-
-    // WAN2 card uses second WAN interface only (or 0 if it doesn't exist)
-    const eth1Card = document.getElementById('eth1-card');
-    if (eth1Card) {
-      const s = wan2Iface ? wan2Stats : { txMB: 0, rxMB: 0, totalMB: 0 };
-      eth1Card.querySelector('.interface-value').textContent = fmtData(s.totalMB);
-      eth1Card.querySelector('.interface-stats').innerHTML =
-        `Upload: ${fmtData(s.txMB)}<br>Download: ${fmtData(s.rxMB)}`;
-    }
-
-    const wiredSummary = document.getElementById('wired-total-summary');
-    if (wiredSummary) {
-      const total = wiredUp + wiredDown;
-      wiredSummary.querySelector('.total-value').textContent = fmtData(total);
-      wiredSummary.querySelector('.total-stats').innerHTML =
-        `Upload: ${fmtData(wiredUp)}<br>Download: ${fmtData(wiredDown)}`;
-    }
-
-    /* ---------- Build / store HOURLY history for chart (in MB) ---------- */
-    const totals = {
-      cellular: cellularUp + cellularDown,
-      wired: wiredUp + wiredDown
-    };
-
-    console.log('DJ_Totals_Usage: =======', totals);
-    console.log('DJ_General_Usage: add======', cellularUp + cellularDown, wiredUp + wiredDown);
-
-    const serial = general.serialnumber || 'default';
-    const HISTORY_KEY = 'device_usage_hourly_' + serial;
-    const MAX_HOURS = 50;
-
-    let hourly = [];
-    try {
-      hourly = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
-      if (!Array.isArray(hourly) || (hourly[0] && typeof hourly[0].hour === 'undefined')) {
-        hourly = [];
+    function factorFromGB(unit) {
+      switch (unit) {
+        case 'TB': return 1 / 1000;
+        case 'GB': return 1;
+        case 'MB': return 1024;
+        case 'KB': return 1024 * 1024;
+        default:   return 1;
       }
-    } catch (e) {
-      hourly = [];
     }
 
-    const hourStartDate = getHourStart(general.local_time);
-    const hourKey = hourStartDate.toISOString();
+    /* ========= GENERIC HELPERS ========= */
 
-    let bucket = hourly.find(h => h.hour === hourKey);
-    if (!bucket) {
-      bucket = {
-        hour: hourKey,
-        cellular: 0,
-        wired: 0
+    function showError(message) {
+      const el = document.getElementById('apiError');
+      if (!el) return;
+      el.style.display = 'block';
+      el.textContent = message;
+    }
+
+    function clearError() {
+      const el = document.getElementById('apiError');
+      if (!el) return;
+      el.style.display = 'none';
+      el.textContent = '';
+    }
+
+    function getChart(data, ifaceName) {
+      if (!data || !Array.isArray(data.charts)) return null;
+      const title = 'Traffic: ' + ifaceName;
+      return data.charts.find(c => c && c.title === title) || null;
+    }
+
+    function getSummaryGB(chart) {
+      if (!chart || !chart.summary) {
+        return { uploadGB: 0, downloadGB: 0, totalGB: 0 };
+      }
+      const up = Number(chart.summary.upload || 0);
+      const down = Number(chart.summary.download || 0);
+      return {
+        uploadGB: up,
+        downloadGB: down,
+        totalGB: up + down
       };
-      hourly.push(bucket);
-    }
-    bucket.cellular += totals.cellular;
-    bucket.wired += totals.wired;
-
-    hourly.sort((a, b) => new Date(a.hour) - new Date(b.hour));
-
-    if (hourly.length > MAX_HOURS) {
-      hourly = hourly.slice(hourly.length - MAX_HOURS);
     }
 
-    try {
-      localStorage.setItem(HISTORY_KEY, JSON.stringify(hourly));
-    } catch (e) {
-      console.warn('Unable to save hourly usage history:', e);
-    }
+    function getPerPointTotalsGB(chart, length) {
+      const result = new Array(length).fill(0);
+      if (!chart || !Array.isArray(chart.traces)) return result;
 
-    const labels = hourly.map(h => formatHourLabel(h.hour));
+      let download = [];
+      let upload = [];
 
-    let maxMB = 0;
-    hourly.forEach(h => {
-      maxMB = Math.max(maxMB, h.cellular, h.wired);
-    });
+      chart.traces.forEach(tr => {
+        if (!tr) return;
+        if (tr[0] === 'download') download = tr[1] || [];
+        if (tr[0] === 'upload')   upload   = tr[1] || [];
+      });
 
-    let unitLabel = 'MB';
-    let unitFactor = 1;
-    if (maxMB >= 1024) {
-      unitLabel = 'GB';
-      unitFactor = 1 / 1024;
-    }
-
-    const cellularSeries = hourly.map(h => h.cellular * unitFactor);
-    const wiredSeries = hourly.map(h => h.wired * unitFactor);
-
-    const traces = [
-      {
-        type: 'bar',
-        name: 'Cellular',
-        x: labels,
-        y: cellularSeries,
-        marker: { color: '#2ca02c' },
-        hovertemplate: `Cellular<br>Hour: %{x}<br>Total: %{y:.2f} ${unitLabel}<extra></extra>`
-      },
-      {
-        type: 'bar',
-        name: 'Wired',
-        x: labels,
-        y: wiredSeries,
-        marker: { color: '#ff7f0e' },
-        hovertemplate: `Wired<br>Hour: %{x}<br>Total: %{y:.2f} ${unitLabel}<extra></extra>`
+      for (let i = 0; i < length; i++) {
+        const dl = Number(download[i] || 0);
+        const ul = Number(upload[i] || 0);
+        result[i] = dl + ul;
       }
-    ];
-
-    const layout = {
-      autosize: true,
-      barmode: 'stack',
-      bargap: 0.7,
-      bargroupgap: 0.8,
-      margin: { l: 60, r: 20, t: 10, b: 60 },
-      xaxis: { title: 'Time (per hour)', automargin: true },
-      yaxis: { title: `${unitLabel} (hourly total)`, rangemode: 'tozero', automargin: true },
-      paper_bgcolor: 'rgba(0,0,0,0)',
-      plot_bgcolor: 'rgba(0,0,0,0)',
-      legend: { orientation: 'h', yanchor: 'top', y: -0.25, x: 0.5, xanchor: 'center' }
-    };
-
-    const trafficChartsEl = document.getElementById('trafficCharts');
-
-    Plotly.newPlot(trafficChartsEl, traces, layout, {
-      displaylogo: false,
-      responsive: true,
-      modeBarButtonsToRemove: ['select2d', 'lasso2d', 'autoScale2d'],
-      displayModeBar: false
-    });
-
-    /* ===== force Plotly to use the full card width ===== */
-    function resizeTrafficChart() {
-      if (!trafficChartsEl) return;
-      Plotly.Plots.resize(trafficChartsEl);
+      return result;
     }
 
-    // resize once after initial render (fixes 100% zoom issue)
-    setTimeout(resizeTrafficChart, 100);
+    function extractSeriesGB(chart, length) {
+      const up = new Array(length).fill(0);
+      const down = new Array(length).fill(0);
 
-    // keep reacting to window size / zoom changes
-    window.addEventListener('resize', resizeTrafficChart);
-    window.addEventListener('orientationchange', resizeTrafficChart);
-    /* ================================================ */
+      if (!chart || !Array.isArray(chart.traces)) {
+        return { upload: up, download: down };
+      }
 
+      let rawUp = [];
+      let rawDown = [];
+      chart.traces.forEach(tr => {
+        if (!tr) return;
+        if (tr[0] === 'upload')   rawUp   = tr[1] || [];
+        if (tr[0] === 'download') rawDown = tr[1] || [];
+      });
+
+      for (let i = 0; i < length; i++) {
+        up[i] = Number(rawUp[i] || 0);
+        down[i] = Number(rawDown[i] || 0);
+      }
+      return { upload: up, download: down };
+    }
+
+    function updateCard(cardId, totalGB, uploadGB, downloadGB) {
+      const card = document.getElementById(cardId);
+      if (!card) return;
+      const valueEl = card.querySelector('.interface-value');
+      const statsEl = card.querySelector('.interface-stats');
+
+      if (valueEl) valueEl.textContent = fmtGB(totalGB);
+      if (statsEl) {
+        statsEl.innerHTML =
+          'Upload: ' + fmtGB(uploadGB) + '<br>' +
+          'Download: ' + fmtGB(downloadGB);
+      }
+    }
+
+    function updateSummary(summaryId, totalGB, uploadGB, downloadGB) {
+      const block = document.getElementById(summaryId);
+      if (!block) return;
+      const valEl = block.querySelector('.total-value');
+      const statsEl = block.querySelector('.total-stats');
+
+      if (valEl) valEl.textContent = fmtGB(totalGB);
+      if (statsEl) {
+        statsEl.innerHTML =
+          'Upload: ' + fmtGB(uploadGB) + '<br>' +
+          'Download: ' + fmtGB(downloadGB);
+      }
+    }
+
+    function formatDateHuman(tsStr) {
+      if (!tsStr) return '';
+      const [datePart] = tsStr.split(' ');
+      const [y, m, d] = datePart.split('-').map(Number);
+      const dt = new Date(y, m - 1, d);
+      const fmt = new Intl.DateTimeFormat('en-GB', {
+        day: 'numeric', month: 'long', year: 'numeric'
+      });
+      return fmt.format(dt);
+    }
+
+    /* ========= CUSTOM RANGE LIMIT (PICKER MAX) ========= */
+
+    const crStartInput = document.getElementById('crStart');
+    const crEndInput   = document.getElementById('crEnd');
+
+    function applyCustomRangeMax() {
+      if (!crStartInput || !crEndInput) return;
+
+      let dateStr = serverLastDate;
+      let timeStr = serverLastTime;
+
+      if (!dateStr || !timeStr) {
+        const now = new Date();
+        dateStr = now.toISOString().slice(0, 10);
+        timeStr = now.toTimeString().slice(0, 8);
+      }
+
+      const maxVal = dateStr + 'T' + timeStr.slice(0, 5);
+      crStartInput.setAttribute('max', maxVal);
+      crEndInput.setAttribute('max', maxVal);
+    }
+
+    /* ========= BUILD DATE-WISE DAILY USAGE ========= */
+    // Uses traces for per-day rows, but FINAL TOTAL row is forced
+    // to match UI summary (modem/modem2/eth0/eth1 summaries).
+
+    function buildDailyUsage(
+      x,
+      modemChart,
+      modem2Chart,
+      eth0Chart,
+      eth1Chart,
+      modemSum,
+      modem2Sum,
+      eth0Sum,
+      eth1Sum,
+      cellularTotalGB,
+      wiredTotalGB
+    ) {
+      const n = x.length;
+      const sim1 = extractSeriesGB(modemChart, n);
+      const sim2 = extractSeriesGB(modem2Chart, n);
+      const wan1 = extractSeriesGB(eth0Chart, n);
+      const wan2 = extractSeriesGB(eth1Chart, n);
+
+      const days = {}; // date -> accumulators
+
+      for (let i = 0; i < n; i++) {
+        const ts = x[i] || '';
+        const day = ts.split(' ')[0];
+        if (!day) continue;
+
+        if (!days[day]) {
+          days[day] = {
+            sim1Up: 0, sim1Down: 0,
+            sim2Up: 0, sim2Down: 0,
+            wan1Up: 0, wan1Down: 0,
+            wan2Up: 0, wan2Down: 0
+          };
+        }
+        const d = days[day];
+        d.sim1Up   += sim1.upload[i];
+        d.sim1Down += sim1.download[i];
+        d.sim2Up   += sim2.upload[i];
+        d.sim2Down += sim2.download[i];
+        d.wan1Up   += wan1.upload[i];
+        d.wan1Down += wan1.download[i];
+        d.wan2Up   += wan2.upload[i];
+        d.wan2Down += wan2.download[i];
+      }
+
+      const dates = Object.keys(days).sort();
+      const rows = [];
+
+      dates.forEach(date => {
+        const d = days[date];
+        const sim1Total = d.sim1Up + d.sim1Down;
+        const sim2Total = d.sim2Up + d.sim2Down;
+        const cellTotal = sim1Total + sim2Total;
+
+        const wan1Total = d.wan1Up + d.wan1Down;
+        const wan2Total = d.wan2Up + d.wan2Down;
+        const wiredTotal = wan1Total + wan2Total;
+
+        const grandTotal = cellTotal + wiredTotal;
+
+        rows.push({
+          date,
+          sim1Up: d.sim1Up, sim1Down: d.sim1Down, sim1Total,
+          sim2Up: d.sim2Up, sim2Down: d.sim2Down, sim2Total,
+          cellTotal,
+          wan1Up: d.wan1Up, wan1Down: d.wan1Down, wan1Total,
+          wan2Up: d.wan2Up, wan2Down: d.wan2Down, wan2Total,
+          wiredTotal,
+          grandTotal,
+          isTotalRow: false
+        });
+      });
+
+      // FINAL TOTAL ROW: force it to match UI summary exactly (GB)
+      if (dates.length) {
+        const sim1UpAll   = modemSum.uploadGB;
+        const sim1DownAll = modemSum.downloadGB;
+        const sim1TotalAll = modemSum.totalGB;
+
+        const sim2UpAll   = modem2Sum.uploadGB;
+        const sim2DownAll = modem2Sum.downloadGB;
+        const sim2TotalAll = modem2Sum.totalGB;
+
+        const cellTotalAll = cellularTotalGB;
+
+        const wan1UpAll   = eth0Sum.uploadGB;
+        const wan1DownAll = eth0Sum.downloadGB;
+        const wan1TotalAll = eth0Sum.totalGB;
+
+        const wan2UpAll   = eth1Sum.uploadGB;
+        const wan2DownAll = eth1Sum.downloadGB;
+        const wan2TotalAll = eth1Sum.totalGB;
+
+        const wiredTotalAll = wiredTotalGB;
+        const grandTotalAll = cellularTotalGB + wiredTotalGB;
+
+        rows.push({
+          date: 'TOTAL',
+          sim1Up: sim1UpAll, sim1Down: sim1DownAll, sim1Total: sim1TotalAll,
+          sim2Up: sim2UpAll, sim2Down: sim2DownAll, sim2Total: sim2TotalAll,
+          cellTotal: cellTotalAll,
+          wan1Up: wan1UpAll, wan1Down: wan1DownAll, wan1Total: wan1TotalAll,
+          wan2Up: wan2UpAll, wan2Down: wan2DownAll, wan2Total: wan2TotalAll,
+          wiredTotal: wiredTotalAll,
+          grandTotal: grandTotalAll,
+          isTotalRow: true
+        });
+      }
+
+      return rows;
+    }
+
+    /* ========= MAIN RENDER ========= */
+
+    function renderMonitoring(data) {
+      const x = Array.isArray(data.x) ? data.x : [];
+      if (!x.length) {
+        showError('No historical traffic data available.');
+        return;
+      }
+
+      const pointsCount = x.length;
+      const firstTs = x[0];
+      const lastTs  = x[x.length - 1];
+
+      // derive server "now" from last timestamp
+      const lastParts = lastTs.split(' ');
+      if (lastParts.length >= 2) {
+        serverLastDate = lastParts[0];
+        serverLastTime = lastParts[1];
+        applyCustomRangeMax();
+      }
+
+      const rangeLabelEl = document.getElementById('currentRangeLabel');
+      const rangeLabelText =
+        formatDateHuman(firstTs) + ' – ' + formatDateHuman(lastTs);
+      if (rangeLabelEl) {
+        rangeLabelEl.textContent = rangeLabelText;
+      }
+
+      const lastUpdatedEl = document.getElementById('lastUpdated');
+      if (lastUpdatedEl) {
+        lastUpdatedEl.textContent = '(Updated: ' + lastTs + ')';
+      }
+
+      const modemChart  = getChart(data, 'modem');
+      const modem2Chart = getChart(data, 'modem2');
+      const eth0Chart   = getChart(data, 'eth0');
+      const eth1Chart   = getChart(data, 'eth1');
+
+      const modem  = getSummaryGB(modemChart);
+      const modem2 = getSummaryGB(modem2Chart);
+      const eth0   = getSummaryGB(eth0Chart);
+      const eth1   = getSummaryGB(eth1Chart);
+
+      // SIM cards
+      updateCard('modem1-card',
+        modem.totalGB, modem.uploadGB, modem.downloadGB);
+      updateCard('modem2-card',
+        modem2.totalGB, modem2.uploadGB, modem2.downloadGB);
+
+      // Cellular totals
+      const cellularUploadGB   = modem.uploadGB + modem2.uploadGB;
+      const cellularDownloadGB = modem.downloadGB + modem2.downloadGB;
+      const cellularTotalGB    = cellularUploadGB + cellularDownloadGB;
+
+      updateSummary('cellular-total-summary',
+        cellularTotalGB, cellularUploadGB, cellularDownloadGB);
+
+      // Wired totals
+      const wiredUploadGB   = eth0.uploadGB + eth1.uploadGB;
+      const wiredDownloadGB = eth0.downloadGB + eth1.downloadGB;
+      const wiredTotalGB    = wiredUploadGB + wiredDownloadGB;
+
+      updateSummary('wired-total-summary',
+        wiredTotalGB, wiredUploadGB, wiredDownloadGB);
+
+      updateCard('eth0-card',
+        eth0.totalGB, eth0.uploadGB, eth0.downloadGB);
+      updateCard('eth1-card',
+        eth1.totalGB, eth1.uploadGB, eth1.downloadGB);
+
+      // ===== date-wise daily usage for export (with UI-matching TOTAL) =====
+      const dailyRows = buildDailyUsage(
+        x, modemChart, modem2Chart, eth0Chart, eth1Chart,
+        modem, modem2, eth0, eth1,
+        cellularTotalGB, wiredTotalGB
+      );
+      currentDailyUsage = {
+        rangeLabel: rangeLabelText,
+        rows: dailyRows
+      };
+
+      // ===== chart series (base = GB) =====
+      const labels = x.map(ts => ts.slice(5)); // "MM-DD HH:MM..."
+
+      const modemSeries  = getPerPointTotalsGB(modemChart,  pointsCount);
+      const modem2Series = getPerPointTotalsGB(modem2Chart, pointsCount);
+      const eth0Series   = getPerPointTotalsGB(eth0Chart,   pointsCount);
+      const eth1Series   = getPerPointTotalsGB(eth1Chart,   pointsCount);
+
+      const cellularSeriesGB = [];
+      const wiredSeriesGB    = [];
+
+      for (let i = 0; i < pointsCount; i++) {
+        const c = (modemSeries[i]  || 0) + (modem2Series[i] || 0);
+        const w = (eth0Series[i]   || 0) + (eth1Series[i]   || 0);
+        cellularSeriesGB.push(c);
+        wiredSeriesGB.push(w);
+      }
+
+      const worstTotalGB = Math.max(
+        cellularTotalGB,
+        wiredTotalGB,
+        modem.totalGB,
+        modem2.totalGB,
+        eth0.totalGB,
+        eth1.totalGB
+      );
+
+      const axisUnit   = chooseUnitFromGB(worstTotalGB);
+      const axisFactor = factorFromGB(axisUnit);
+
+      const cellularSeries = cellularSeriesGB.map(v => (Number(v) || 0) * axisFactor);
+      const wiredSeries    = wiredSeriesGB.map(v    => (Number(v) || 0) * axisFactor);
+
+      const traces = [
+        {
+          type: 'bar',
+          name: 'Cellular',
+          x: labels,
+          y: cellularSeries,
+          marker: { color: '#2ca02c' },
+          hovertemplate:
+            'Cellular (modem + modem2)<br>Time: %{x}<br>Total: %{y:.4f} ' +
+            axisUnit + '<extra></extra>'
+        },
+        {
+          type: 'bar',
+          name: 'Wired',
+          x: labels,
+          y: wiredSeries,
+          marker: { color: '#ff7f0e' },
+          hovertemplate:
+            'Wired (eth0 + eth1)<br>Time: %{x}<br>Total: %{y:.4f} ' +
+            axisUnit + '<extra></extra>'
+        }
+      ];
+
+      const trafficChartsEl = document.getElementById('trafficCharts');
+      if (!trafficChartsEl) return;
+
+      const layout = {
+        autosize: true,
+        barmode: 'stack',
+        bargap: 0.7,
+        bargroupgap: 0.8,
+        margin: { l: 60, r: 20, t: 10, b: 80 },
+        xaxis: { title: 'Time', automargin: true },
+        yaxis: { title: axisUnit + ' (per sample)', rangemode: 'tozero', automargin: true },
+        paper_bgcolor: 'rgba(0,0,0,0)',
+        plot_bgcolor: 'rgba(0,0,0,0)',
+        legend: {
+          orientation: 'h',
+          yanchor: 'top',
+          y: -0.3,
+          x: 0.5,
+          xanchor: 'center'
+        }
+      };
+
+      Plotly.newPlot(trafficChartsEl, traces, layout, {
+        displaylogo: false,
+        responsive: true,
+        modeBarButtonsToRemove: ['select2d', 'lasso2d', 'autoScale2d'],
+        displayModeBar: false
+      });
+
+      function resizeTrafficChart() {
+        if (!trafficChartsEl) return;
+        Plotly.Plots.resize(trafficChartsEl);
+      }
+
+      setTimeout(resizeTrafficChart, 100);
+      window.addEventListener('resize', resizeTrafficChart);
+      window.addEventListener('orientationchange', resizeTrafficChart);
+    }
+
+    /* ========= FETCH ========= */
+
+    async function loadMonitoring() {
+      if (!DEVICE_UUID) {
+        showError('Device UUID is missing in template.');
+        return;
+      }
+
+      clearError();
+
+      const url = API_BASE +
+        '/api/v1/monitoring/device/' + encodeURIComponent(DEVICE_UUID) +
+        '/?timezone=' + encodeURIComponent(TIMEZONE) +
+        (currentExtraQuery || '');
+
+      try {
+        const resp = await fetch(url, {
+          method: 'GET',
+          credentials: 'same-origin'
+        });
+
+        if (!resp.ok) {
+          throw new Error('HTTP ' + resp.status);
+        }
+
+        const data = await resp.json();
+        console.log('Monitoring data:', data);
+        renderMonitoring(data);
+      } catch (err) {
+        console.error(err);
+        showError('Failed to load device usage data from monitoring API.');
+      }
+    }
+
+    /* ========= RANGE + CUSTOM RANGE ========= */
+
+    const rangeDropdown = document.getElementById('rangeDropdown');
+    const rangeToggle   = document.getElementById('rangeToggle');
+    const rangeMenu     = document.getElementById('rangeMenu');
+    const crApplyBtn    = document.getElementById('crApply');
+    const crCancelBtn   = document.getElementById('crCancel');
+
+    if (rangeToggle && rangeMenu && rangeDropdown) {
+      rangeToggle.addEventListener('click', function (e) {
+        e.stopPropagation();
+        rangeMenu.classList.toggle('show');
+      });
+
+      rangeMenu.addEventListener('click', function (e) {
+        const li = e.target.closest('li[data-query]');
+        if (!li) return;
+
+        const q = li.getAttribute('data-query') || '';
+        currentExtraQuery = q;
+        rangeMenu.classList.remove('show');
+        loadMonitoring();
+      });
+
+      document.addEventListener('click', function (e) {
+        if (!rangeDropdown.contains(e.target)) {
+          rangeMenu.classList.remove('show');
+        }
+      });
+    }
+
+    if (crApplyBtn) {
+      crApplyBtn.addEventListener('click', function () {
+        const startRaw = crStartInput.value;
+        const endRaw   = crEndInput.value;
+
+        if (!startRaw || !endRaw) {
+          alert('Please select both start and end for the custom range.');
+          return;
+        }
+
+        const [startDate, startTimeRaw] = startRaw.split('T');
+        const [endDateRaw, endTimeRaw]  = endRaw.split('T');
+
+        let sDate = startDate;
+        let eDate = endDateRaw;
+
+        // get server now (fallback to browser)
+        let limitDate = serverLastDate;
+        let limitTime = serverLastTime;
+        if (!limitDate || !limitTime) {
+          const now = new Date();
+          limitDate = now.toISOString().slice(0, 10);
+          limitTime = now.toTimeString().slice(0, 8);
+        }
+
+        // clamp end date to server date
+        if (eDate > limitDate) eDate = limitDate;
+
+        // validate after clamp
+        if (sDate > eDate) {
+          alert('Start date cannot be greater than end date.');
+          return;
+        }
+
+        // start time
+        let sTime = '00:00:00';
+        if (startTimeRaw) {
+          sTime = startTimeRaw + ':00';
+        }
+
+        // end time
+        let eTime;
+        if (eDate < limitDate) {
+          eTime = '23:59:59';
+        } else {
+          const userHM = endTimeRaw || '23:59';
+          const userSec = hhmmToSeconds(userHM);
+          const serverSec = hmsToSeconds(limitTime);
+          const clampedSec = Math.min(userSec, serverSec);
+          eTime = secondsToHMS(clampedSec);
+        }
+
+        const startApi = sDate + ' ' + sTime;
+        const endApi   = eDate + ' ' + eTime;
+
+        currentExtraQuery =
+          '&start=' + encodeURIComponent(startApi) +
+          '&end='   + encodeURIComponent(endApi);
+
+        rangeMenu.classList.remove('show');
+        loadMonitoring();
+      });
+    }
+
+    if (crCancelBtn) {
+      crCancelBtn.addEventListener('click', function () {
+        if (crStartInput) crStartInput.value = '';
+        if (crEndInput)   crEndInput.value   = '';
+        rangeMenu.classList.remove('show');
+      });
+    }
+
+    /* ========= EXPORTS (DATE-WISE, IN GB) ========= */
+
+    function exportExcel() {
+      if (!currentDailyUsage || !currentDailyUsage.rows) {
+        alert('No data available to export yet.');
+        return;
+      }
+
+      const header = [
+        'Date',
+        'SIM1 Upload (GB)', 'SIM1 Download (GB)', 'SIM1 Total (GB)',
+        'SIM2 Upload (GB)', 'SIM2 Download (GB)', 'SIM2 Total (GB)',
+        'Cellular Total (GB)',
+        'WAN1 Upload (GB)', 'WAN1 Download (GB)', 'WAN1 Total (GB)',
+        'WAN2 Upload (GB)', 'WAN2 Download (GB)', 'WAN2 Total (GB)',
+        'Wired Total (GB)',
+        'Grand Total (GB)'
+      ];
+
+      let csv = header.join(',') + '\n';
+
+      currentDailyUsage.rows.forEach(r => {
+        csv += [
+          r.date,
+          r.sim1Up.toFixed(3),
+          r.sim1Down.toFixed(3),
+          r.sim1Total.toFixed(3),
+          r.sim2Up.toFixed(3),
+          r.sim2Down.toFixed(3),
+          r.sim2Total.toFixed(3),
+          r.cellTotal.toFixed(3),
+          r.wan1Up.toFixed(3),
+          r.wan1Down.toFixed(3),
+          r.wan1Total.toFixed(3),
+          r.wan2Up.toFixed(3),
+          r.wan2Down.toFixed(3),
+          r.wan2Total.toFixed(3),
+          r.wiredTotal.toFixed(3),
+          r.grandTotal.toFixed(3)
+        ].join(',') + '\n';
+      });
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'device-usage-daily.csv';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    function exportPdf() {
+      if (!currentDailyUsage || !currentDailyUsage.rows) {
+        alert('No data available to export yet.');
+        return;
+      }
+      if (!window.jspdf || !window.jspdf.jsPDF) {
+        alert('PDF export library not loaded.');
+        return;
+      }
+
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ orientation: 'landscape' });
+
+      doc.setFontSize(14);
+      doc.text('Device Usage – Daily Summary', 14, 14);
+      doc.setFontSize(10);
+      if (currentDailyUsage.rangeLabel) {
+        doc.text('Range: ' + currentDailyUsage.rangeLabel, 14, 20);
+      }
+
+      const head = [[
+        'Date',
+        'SIM1 Up (GB)', 'SIM1 Down (GB)', 'SIM1 Total (GB)',
+        'SIM2 Up (GB)', 'SIM2 Down (GB)', 'SIM2 Total (GB)',
+        'Cell Total (GB)',
+        'WAN1 Up (GB)', 'WAN1 Down (GB)', 'WAN1 Total (GB)',
+        'WAN2 Up (GB)', 'WAN2 Down (GB)', 'WAN2 Total (GB)',
+        'Wired Total (GB)',
+        'Grand Total (GB)'
+      ]];
+
+      const body = currentDailyUsage.rows.map(r => [
+        r.date,
+        r.sim1Up.toFixed(3),
+        r.sim1Down.toFixed(3),
+        r.sim1Total.toFixed(3),
+        r.sim2Up.toFixed(3),
+        r.sim2Down.toFixed(3),
+        r.sim2Total.toFixed(3),
+        r.cellTotal.toFixed(3),
+        r.wan1Up.toFixed(3),
+        r.wan1Down.toFixed(3),
+        r.wan1Total.toFixed(3),
+        r.wan2Up.toFixed(3),
+        r.wan2Down.toFixed(3),
+        r.wan2Total.toFixed(3),
+        r.wiredTotal.toFixed(3),
+        r.grandTotal.toFixed(3)
+      ]);
+
+      const totalIndex = currentDailyUsage.rows.length - 1; // last row is TOTAL
+
+      doc.autoTable({
+        head,
+        body,
+        startY: 26,
+        styles: { fontSize: 7 },
+        columnStyles: {
+          3: { fontStyle: 'bold' },   // SIM1 Total
+          6: { fontStyle: 'bold' },   // SIM2 Total
+          7: { fontStyle: 'bold' },   // Cell Total
+          10: { fontStyle: 'bold' },  // WAN1 Total
+          13: { fontStyle: 'bold' },  // WAN2 Total
+          14: { fontStyle: 'bold' },  // Wired Total
+          15: { fontStyle: 'bold' }   // Grand Total
+        },
+        didParseCell(data) {
+          // make TOTAL row fully bold
+          if (data.row.index === totalIndex) {
+            data.cell.styles.fontStyle = 'bold';
+          }
+        }
+      });
+
+      doc.save('device-usage-daily.pdf');
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+      applyCustomRangeMax(); // initial guess; corrected once API responds
+      loadMonitoring();
+
+      const excelBtn = document.getElementById('exportExcelBtn');
+      const pdfBtn   = document.getElementById('exportPdfBtn');
+      if (excelBtn) excelBtn.addEventListener('click', exportExcel);
+      if (pdfBtn)   pdfBtn.addEventListener('click', exportPdf);
+    });
   })();
 </script>
