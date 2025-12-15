@@ -204,7 +204,7 @@
     border: 1px solid #e5e7eb;
     border-radius: 12px;
     padding: 20px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, .1);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   }
 
   .section-title {
@@ -223,20 +223,45 @@
   }
 
   .total-summary {
-    margin-bottom: 16px;
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 12px;
   }
 
   .total-value {
-    font-size: 28px;
+    font-size: 24px;
     font-weight: 700;
     color: #059669;
-    margin-bottom: 6px;
   }
 
   .total-stats {
     font-size: 13px;
     color: #6b7280;
-    line-height: 1.6;
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+
+  /* arrow + text */
+  .total-stat-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+  }
+
+  .total-stat-arrow {
+    font-size: 11px;
+    line-height: 1;
+  }
+
+  .total-stat-arrow.up {
+    color: #16a34a; /* green up */
+  }
+
+  .total-stat-arrow.down {
+    color: #16a34a; /* same green, pointing down */
+    transform: translateY(1px);
   }
 
   .interface-grid {
@@ -259,23 +284,56 @@
     margin-bottom: 6px;
   }
 
-  .interface-value {
-    color: #111827;
-    margin-bottom: 4px;
-  }
+  /* card total like screenshot */
+.interface-value {
+  font-size: 18px;
+  font-weight: 800;
+  color: #059669;
+  margin-bottom: 8px;
+}
 
-  .interface-stats {
-    font-size: 12px;
-    color: #6b7280;
-    line-height: 1.5;
-  }
+/* Sent/Received rows */
+.interface-stats {
+  font-size: 12px;
+  color: #6b7280;
+  line-height: 1.6;
+}
+
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.stat-label {
+  color: #6b7280;
+}
+
+.stat-val {
+  color: #111827;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.stat-arrow {
+  font-size: 11px;
+  line-height: 1;
+  color: #16a34a;
+  margin-left: 4px;
+}
+
+.stat-arrow.down {
+  transform: translateY(1px);
+}
+
 
   .chart-container {
     background: #fff;
     border: 1px solid #e5e7eb;
     border-radius: 12px;
     padding: 20px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, .1);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   }
 
   .chart-title-row {
@@ -291,15 +349,78 @@
     color: #111827;
     margin: 0;
   }
-
-  #trafficCharts {
-    width: 100%;
-    max-width: 920px;
-    margin: 0 auto;
-    height: 380px;
+  /* --- Generic panel style (like "Malware (by Hour)") --- */
+  .ow-panel {
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    background: #f9fafb;
+    overflow: hidden;
   }
 
-  @media (max-width:900px) {
+  .ow-panel-hd {
+    background: #f3f4f6;
+    border-bottom: 1px solid #e5e7eb;
+    padding: 8px 14px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #111827;
+  }
+
+  .ow-panel-bd {
+    background: #ffffff;
+    padding: 18px 18px 12px;
+  }
+  .svg-container{
+        width: 80% !important;
+
+  }
+
+  /* reuse panels for these sections */
+  .usage-section,
+  .chart-container {
+    box-shadow: none;
+    padding: 0;
+    border-radius: 10px;
+  }
+
+  .usage-section .section-title {
+    display: none;
+  }
+
+  .usage-panel-bd {
+    padding: 16px 18px 14px;
+  }
+
+  /* empty-state and chart */
+  .chart-empty {
+    display: none;
+    height: 260px;
+    font-size: 16px;
+    font-weight: 600;
+    color: #6b7280;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .chart-inner {
+    height: 260px;
+  }
+
+  .chart-caption {
+    margin-top: 10px;
+    font-size: 12px;
+    color: #6b7280;
+  }
+
+  #trafficCharts {
+    width: 100%; /* fill the whole panel width */
+    height: 320px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  @media (max-width: 900px) {
     .usage-grid {
       grid-template-columns: 1fr;
       gap: 16px;
@@ -329,8 +450,12 @@
 
     <div class="top-controls">
       <div class="export-buttons">
-        <button type="button" class="export-btn secondary" id="exportExcelBtn">Export Excel</button>
-        <button type="button" class="export-btn" id="exportPdfBtn">Export PDF</button>
+        <button type="button" class="export-btn secondary" id="exportExcelBtn">
+          Export Excel
+        </button>
+        <button type="button" class="export-btn" id="exportPdfBtn">
+          Export PDF
+        </button>
       </div>
 
       <div class="range-dropdown" id="rangeDropdown">
@@ -351,14 +476,18 @@
           <li class="custom-range-item">
             <div class="custom-range">
               <div class="custom-range-label">From</div>
-              <input type="datetime-local" id="crStart">
+              <input type="datetime-local" id="crStart" />
 
               <div class="custom-range-label">To</div>
-              <input type="datetime-local" id="crEnd">
+              <input type="datetime-local" id="crEnd" />
 
               <div class="custom-range-actions">
-                <button type="button" class="cr-btn cr-cancel" id="crCancel">Cancel</button>
-                <button type="button" class="cr-btn cr-apply" id="crApply">Apply</button>
+                <button type="button" class="cr-btn cr-cancel" id="crCancel">
+                  Cancel
+                </button>
+                <button type="button" class="cr-btn cr-apply" id="crApply">
+                  Apply
+                </button>
               </div>
             </div>
           </li>
@@ -369,69 +498,72 @@
 
   <div class="usage-grid">
     <!-- Cellular -->
-    <div class="usage-section">
-      <div class="section-title">
-        Cellular <span id="lastUpdated"></span>
-      </div>
-      <div class="total-summary" id="cellular-total-summary">
-        <div class="total-value">—</div>
-        <div class="total-stats">Upload: —<br>Download: —</div>
-      </div>
-      <div class="interface-grid">
-        <div class="interface-card" id="modem1-card">
-          <div class="interface-title">SIM1 (modem):</div>
-          <div class="interface-value">—</div>
-          <div class="interface-stats">Upload: —<br>Download: —</div>
+    <div class="ow-panel usage-section">
+      <div class="ow-panel-hd">Cellular <span id="lastUpdated"></span></div>
+      <div class="ow-panel-bd usage-panel-bd">
+        <div class="total-summary" id="cellular-total-summary">
+          <div class="total-value">—</div>
+          <div class="total-stats">Upload: —<br />Download: —</div>
         </div>
-        <div class="interface-card" id="modem2-card">
-          <div class="interface-title">SIM2 (modem2):</div>
-          <div class="interface-value">—</div>
-          <div class="interface-stats">Upload: —<br>Download: —</div>
+        <div class="interface-grid">
+          <div class="interface-card" id="modem1-card">
+            <div class="interface-title">SIM1 (modem):</div>
+            <div class="interface-value">—</div>
+            <div class="interface-stats">Upload: —<br />Download: —</div>
+          </div>
+          <div class="interface-card" id="modem2-card">
+            <div class="interface-title">SIM2 (modem2):</div>
+            <div class="interface-value">—</div>
+            <div class="interface-stats">Upload: —<br />Download: —</div>
+          </div>
         </div>
       </div>
     </div>
 
     <!-- Wired -->
-    <div class="usage-section">
-      <div class="section-title">Wired</div>
-      <div class="total-summary" id="wired-total-summary">
-        <div class="total-value">—</div>
-        <div class="total-stats">Upload: —<br>Download: —</div>
-      </div>
-      <div class="interface-grid">
-        <div class="interface-card" id="eth0-card">
-          <div class="interface-title">WAN1 (eth0):</div>
-          <div class="interface-value">—</div>
-          <div class="interface-stats">Upload: —<br>Download: —</div>
+    <div class="ow-panel usage-section">
+      <div class="ow-panel-hd">Wired</div>
+      <div class="ow-panel-bd usage-panel-bd">
+        <div class="total-summary" id="wired-total-summary">
+          <div class="total-value">—</div>
+          <div class="total-stats">Upload: —<br />Download: —</div>
         </div>
-        <div class="interface-card" id="eth1-card">
-          <div class="interface-title">WAN2 (eth1):</div>
-          <div class="interface-value">—</div>
-          <div class="interface-stats">Upload: —<br>Download: —</div>
+        <div class="interface-grid">
+          <div class="interface-card" id="eth0-card">
+            <div class="interface-title">eth0:</div>
+            <div class="interface-value">—</div>
+            <div class="interface-stats">Upload: —<br />Download: —</div>
+          </div>
+          <div class="interface-card" id="eth1-card">
+            <div class="interface-title">eth1:</div>
+            <div class="interface-value">—</div>
+            <div class="interface-stats">Upload: —<br />Download: —</div>
+          </div>
         </div>
       </div>
     </div>
   </div>
 
   <!-- Chart -->
-  <div class="chart-container">
-    <div class="chart-title-row">
-      <h3 class="chart-title">Data Usage Traffic (Historical)</h3>
+  <div class="ow-panel chart-container">
+    <div class="ow-panel-hd">Data Usage (by Time)</div>
+    <div class="ow-panel-bd">
+      <div id="trafficCharts" class="chart-inner"></div>
+      <div id="trafficEmpty" class="chart-empty">No usage data available</div>
     </div>
-    <div id="trafficCharts"></div>
   </div>
 </div>
 
 <script>
   (function () {
-    'use strict';
+    "use strict";
 
-    const DEVICE_UUID = '{{ device.id }}';
+    const DEVICE_UUID = "{{ device.id }}";
     const API_BASE = window.location.origin;
-    const TIMEZONE = 'Asia/Calcutta';
+    const TIMEZONE = "Asia/Calcutta";
 
     // default range: last 1 day
-    let currentExtraQuery = '&time=1d';
+    let currentExtraQuery = "&time=1d";
 
     // server "now" derived from last sample
     let serverLastDate = null; // YYYY-MM-DD
@@ -444,13 +576,13 @@
 
     function hhmmToSeconds(hm) {
       if (!hm) return 0;
-      const [h, m] = hm.split(':').map(Number);
+      const [h, m] = hm.split(":").map(Number);
       return (h || 0) * 3600 + (m || 0) * 60;
     }
 
     function hmsToSeconds(hms) {
       if (!hms) return 0;
-      const [h, m, s] = hms.split(':').map(Number);
+      const [h, m, s] = hms.split(":").map(Number);
       return (h || 0) * 3600 + (m || 0) * 60 + (s || 0);
     }
 
@@ -459,8 +591,8 @@
       const h = Math.floor(sec / 3600);
       const m = Math.floor((sec % 3600) / 60);
       const s = sec % 60;
-      const pad = n => n.toString().padStart(2, '0');
-      return pad(h) + ':' + pad(m) + ':' + pad(s);
+      const pad = (n) => n.toString().padStart(2, "0");
+      return pad(h) + ":" + pad(m) + ":" + pad(s);
     }
 
     /* ========= UNIT HELPERS (GB) ========= */
@@ -470,58 +602,63 @@
       const mb = gb * 1024;
       const kb = mb * 1024;
 
-      if (gb >= 1000) return 'TB';
-      if (mb >= 1000) return 'GB';
-      if (kb >= 1000) return 'MB';
-      return 'KB';
+      if (gb >= 1000) return "TB";
+      if (mb >= 1000) return "GB";
+      if (kb >= 1000) return "MB";
+      return "KB";
     }
 
     function humanFromGB(gbVal) {
       const unit = chooseUnitFromGB(gbVal);
       const gb = Number(gbVal) || 0;
       let value;
-      if (unit === 'TB') value = gb / 1000;
-      else if (unit === 'GB') value = gb;
-      else if (unit === 'MB') value = gb * 1024;
+      if (unit === "TB") value = gb / 1000;
+      else if (unit === "GB") value = gb;
+      else if (unit === "MB") value = gb * 1024;
       else value = gb * 1024 * 1024;
       return { value, unit };
     }
 
     function fmtGB(gbVal) {
       const { value, unit } = humanFromGB(gbVal);
-      return value.toFixed(2) + ' ' + unit;
+      return value.toFixed(2) + " " + unit;
     }
 
     function factorFromGB(unit) {
       switch (unit) {
-        case 'TB': return 1 / 1000;
-        case 'GB': return 1;
-        case 'MB': return 1024;
-        case 'KB': return 1024 * 1024;
-        default:   return 1;
+        case "TB":
+          return 1 / 1000;
+        case "GB":
+          return 1;
+        case "MB":
+          return 1024;
+        case "KB":
+          return 1024 * 1024;
+        default:
+          return 1;
       }
     }
 
     /* ========= GENERIC HELPERS ========= */
 
     function showError(message) {
-      const el = document.getElementById('apiError');
+      const el = document.getElementById("apiError");
       if (!el) return;
-      el.style.display = 'block';
+      el.style.display = "block";
       el.textContent = message;
     }
 
     function clearError() {
-      const el = document.getElementById('apiError');
+      const el = document.getElementById("apiError");
       if (!el) return;
-      el.style.display = 'none';
-      el.textContent = '';
+      el.style.display = "none";
+      el.textContent = "";
     }
 
     function getChart(data, ifaceName) {
       if (!data || !Array.isArray(data.charts)) return null;
-      const title = 'Traffic: ' + ifaceName;
-      return data.charts.find(c => c && c.title === title) || null;
+      const title = "Traffic: " + ifaceName;
+      return data.charts.find((c) => c && c.title === title) || null;
     }
 
     function getSummaryGB(chart) {
@@ -533,7 +670,7 @@
       return {
         uploadGB: up,
         downloadGB: down,
-        totalGB: up + down
+        totalGB: up + down,
       };
     }
 
@@ -544,10 +681,10 @@
       let download = [];
       let upload = [];
 
-      chart.traces.forEach(tr => {
+      chart.traces.forEach((tr) => {
         if (!tr) return;
-        if (tr[0] === 'download') download = tr[1] || [];
-        if (tr[0] === 'upload')   upload   = tr[1] || [];
+        if (tr[0] === "download") download = tr[1] || [];
+        if (tr[0] === "upload") upload = tr[1] || [];
       });
 
       for (let i = 0; i < length; i++) {
@@ -568,10 +705,10 @@
 
       let rawUp = [];
       let rawDown = [];
-      chart.traces.forEach(tr => {
+      chart.traces.forEach((tr) => {
         if (!tr) return;
-        if (tr[0] === 'upload')   rawUp   = tr[1] || [];
-        if (tr[0] === 'download') rawDown = tr[1] || [];
+        if (tr[0] === "upload") rawUp = tr[1] || [];
+        if (tr[0] === "download") rawDown = tr[1] || [];
       });
 
       for (let i = 0; i < length; i++) {
@@ -582,48 +719,73 @@
     }
 
     function updateCard(cardId, totalGB, uploadGB, downloadGB) {
-      const card = document.getElementById(cardId);
-      if (!card) return;
-      const valueEl = card.querySelector('.interface-value');
-      const statsEl = card.querySelector('.interface-stats');
+  const card = document.getElementById(cardId);
+  if (!card) return;
 
-      if (valueEl) valueEl.textContent = fmtGB(totalGB);
-      if (statsEl) {
-        statsEl.innerHTML =
-          'Upload: ' + fmtGB(uploadGB) + '<br>' +
-          'Download: ' + fmtGB(downloadGB);
-      }
-    }
+  const valueEl = card.querySelector(".interface-value");
+  const statsEl = card.querySelector(".interface-stats");
+
+  if (valueEl) valueEl.textContent = fmtGB(totalGB);
+
+  if (statsEl) {
+    statsEl.innerHTML = `
+      <div class="stat-row">
+        <span class="stat-label">Upload:</span>
+        <span class="stat-val">${fmtGB(uploadGB)} <span class="stat-arrow up">▲</span></span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Download:</span>
+        <span class="stat-val">${fmtGB(downloadGB)} <span class="stat-arrow down">▼</span></span>
+      </div>
+    `;
+  }
+}
+
 
     function updateSummary(summaryId, totalGB, uploadGB, downloadGB) {
       const block = document.getElementById(summaryId);
       if (!block) return;
-      const valEl = block.querySelector('.total-value');
-      const statsEl = block.querySelector('.total-stats');
 
-      if (valEl) valEl.textContent = fmtGB(totalGB);
+      const valEl = block.querySelector(".total-value");
+      const statsEl = block.querySelector(".total-stats");
+
+      if (valEl) {
+        valEl.textContent = fmtGB(totalGB);
+      }
+
       if (statsEl) {
         statsEl.innerHTML =
-          'Upload: ' + fmtGB(uploadGB) + '<br>' +
-          'Download: ' + fmtGB(downloadGB);
+          '<span class="total-stat-item">' +
+          '<span class="total-stat-arrow up">▲</span>' +
+          "Upload: " +
+          fmtGB(uploadGB) +
+          "</span>" +
+          "&nbsp;&nbsp;&nbsp;" +
+          '<span class="total-stat-item">' +
+          '<span class="total-stat-arrow down">▼</span>' +
+          "Download: " +
+          fmtGB(downloadGB) +
+          "</span>";
       }
     }
 
     function formatDateHuman(tsStr) {
-      if (!tsStr) return '';
-      const [datePart] = tsStr.split(' ');
-      const [y, m, d] = datePart.split('-').map(Number);
+      if (!tsStr) return "";
+      const [datePart] = tsStr.split(" ");
+      const [y, m, d] = datePart.split("-").map(Number);
       const dt = new Date(y, m - 1, d);
-      const fmt = new Intl.DateTimeFormat('en-GB', {
-        day: 'numeric', month: 'long', year: 'numeric'
+      const fmt = new Intl.DateTimeFormat("en-GB", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
       });
       return fmt.format(dt);
     }
 
     /* ========= CUSTOM RANGE LIMIT (PICKER MAX) ========= */
 
-    const crStartInput = document.getElementById('crStart');
-    const crEndInput   = document.getElementById('crEnd');
+    const crStartInput = document.getElementById("crStart");
+    const crEndInput = document.getElementById("crEnd");
 
     function applyCustomRangeMax() {
       if (!crStartInput || !crEndInput) return;
@@ -637,14 +799,17 @@
         timeStr = now.toTimeString().slice(0, 8);
       }
 
-      const maxVal = dateStr + 'T' + timeStr.slice(0, 5);
-      crStartInput.setAttribute('max', maxVal);
-      crEndInput.setAttribute('max', maxVal);
+      const maxVal = dateStr + "T" + timeStr.slice(0, 5);
+      crStartInput.setAttribute("max", maxVal);
+      crEndInput.setAttribute("max", maxVal);
     }
 
     /* ========= BUILD DATE-WISE DAILY USAGE ========= */
     // Uses traces for per-day rows, but FINAL TOTAL row is forced
     // to match UI summary (modem/modem2/eth0/eth1 summaries).
+    function round3(value) {
+      return Math.round((Number(value) || 0) * 1000) / 1000;
+    }
 
     function buildDailyUsage(
       x,
@@ -652,7 +817,7 @@
       modem2Chart,
       eth0Chart,
       eth1Chart,
-      modemSum,
+      modemSum, // kept for signature, not used now
       modem2Sum,
       eth0Sum,
       eth1Sum,
@@ -665,93 +830,168 @@
       const wan1 = extractSeriesGB(eth0Chart, n);
       const wan2 = extractSeriesGB(eth1Chart, n);
 
-      const days = {}; // date -> accumulators
+      const days = {}; // date -> raw accumulators (full precision)
 
       for (let i = 0; i < n; i++) {
-        const ts = x[i] || '';
-        const day = ts.split(' ')[0];
+        const ts = x[i] || "";
+        const day = ts.split(" ")[0];
         if (!day) continue;
 
         if (!days[day]) {
           days[day] = {
-            sim1Up: 0, sim1Down: 0,
-            sim2Up: 0, sim2Down: 0,
-            wan1Up: 0, wan1Down: 0,
-            wan2Up: 0, wan2Down: 0
+            sim1Up: 0,
+            sim1Down: 0,
+            sim2Up: 0,
+            sim2Down: 0,
+            wan1Up: 0,
+            wan1Down: 0,
+            wan2Up: 0,
+            wan2Down: 0,
           };
         }
         const d = days[day];
-        d.sim1Up   += sim1.upload[i];
+        d.sim1Up += sim1.upload[i];
         d.sim1Down += sim1.download[i];
-        d.sim2Up   += sim2.upload[i];
+        d.sim2Up += sim2.upload[i];
         d.sim2Down += sim2.download[i];
-        d.wan1Up   += wan1.upload[i];
+        d.wan1Up += wan1.upload[i];
         d.wan1Down += wan1.download[i];
-        d.wan2Up   += wan2.upload[i];
+        d.wan2Up += wan2.upload[i];
         d.wan2Down += wan2.download[i];
       }
 
       const dates = Object.keys(days).sort();
       const rows = [];
 
-      dates.forEach(date => {
+      // ---- build per-day rows with ROUNDING CONSISTENCY ----
+      dates.forEach((date) => {
         const d = days[date];
-        const sim1Total = d.sim1Up + d.sim1Down;
-        const sim2Total = d.sim2Up + d.sim2Down;
-        const cellTotal = sim1Total + sim2Total;
 
-        const wan1Total = d.wan1Up + d.wan1Down;
-        const wan2Total = d.wan2Up + d.wan2Down;
-        const wiredTotal = wan1Total + wan2Total;
+        const sim1Up = round3(d.sim1Up);
+        const sim1Down = round3(d.sim1Down);
+        const sim1Total = round3(sim1Up + sim1Down);
 
-        const grandTotal = cellTotal + wiredTotal;
+        const sim2Up = round3(d.sim2Up);
+        const sim2Down = round3(d.sim2Down);
+        const sim2Total = round3(sim2Up + sim2Down);
+
+        const cellUp = round3(sim1Up + sim2Up);
+        const cellDown = round3(sim1Down + sim2Down);
+        const cellTotal = round3(cellUp + cellDown);
+
+        const wan1Up = round3(d.wan1Up);
+        const wan1Down = round3(d.wan1Down);
+        const wan1Total = round3(wan1Up + wan1Down);
+
+        const wan2Up = round3(d.wan2Up);
+        const wan2Down = round3(d.wan2Down);
+        const wan2Total = round3(wan2Up + wan2Down);
+
+        const wiredUp = round3(wan1Up + wan2Up);
+        const wiredDown = round3(wan1Down + wan2Down);
+        const wiredTotal = round3(wiredUp + wiredDown);
+
+        const grandTotal = round3(cellTotal + wiredTotal);
 
         rows.push({
           date,
-          sim1Up: d.sim1Up, sim1Down: d.sim1Down, sim1Total,
-          sim2Up: d.sim2Up, sim2Down: d.sim2Down, sim2Total,
-          cellTotal,
-          wan1Up: d.wan1Up, wan1Down: d.wan1Down, wan1Total,
-          wan2Up: d.wan2Up, wan2Down: d.wan2Down, wan2Total,
+          sim1Up,
+          sim1Down,
+          sim1Total,
+          sim2Up,
+          sim2Down,
+          sim2Total,
+          cellTotal, // we store only total for cell; up/down are recomputed when exporting if needed
+          wan1Up,
+          wan1Down,
+          wan1Total,
+          wan2Up,
+          wan2Down,
+          wan2Total,
           wiredTotal,
           grandTotal,
-          isTotalRow: false
+          isTotalRow: false,
         });
       });
 
-      // FINAL TOTAL ROW: force it to match UI summary exactly (GB)
-      if (dates.length) {
-        const sim1UpAll   = modemSum.uploadGB;
-        const sim1DownAll = modemSum.downloadGB;
-        const sim1TotalAll = modemSum.totalGB;
+      // ---- build TOTAL row as sum of visible (already rounded) rows ----
+      if (rows.length) {
+        const totals = rows.reduce(
+          (acc, r) => {
+            acc.sim1Up += r.sim1Up;
+            acc.sim1Down += r.sim1Down;
+            acc.sim1Total += r.sim1Total;
+            acc.sim2Up += r.sim2Up;
+            acc.sim2Down += r.sim2Down;
+            acc.sim2Total += r.sim2Total;
+            acc.wan1Up += r.wan1Up;
+            acc.wan1Down += r.wan1Down;
+            acc.wan1Total += r.wan1Total;
+            acc.wan2Up += r.wan2Up;
+            acc.wan2Down += r.wan2Down;
+            acc.wan2Total += r.wan2Total;
+            return acc;
+          },
+          {
+            sim1Up: 0,
+            sim1Down: 0,
+            sim1Total: 0,
+            sim2Up: 0,
+            sim2Down: 0,
+            sim2Total: 0,
+            wan1Up: 0,
+            wan1Down: 0,
+            wan1Total: 0,
+            wan2Up: 0,
+            wan2Down: 0,
+            wan2Total: 0,
+          }
+        );
 
-        const sim2UpAll   = modem2Sum.uploadGB;
-        const sim2DownAll = modem2Sum.downloadGB;
-        const sim2TotalAll = modem2Sum.totalGB;
+        const sim1UpAll = round3(totals.sim1Up);
+        const sim1DownAll = round3(totals.sim1Down);
+        const sim1TotalAll = round3(totals.sim1Total);
 
-        const cellTotalAll = cellularTotalGB;
+        const sim2UpAll = round3(totals.sim2Up);
+        const sim2DownAll = round3(totals.sim2Down);
+        const sim2TotalAll = round3(totals.sim2Total);
 
-        const wan1UpAll   = eth0Sum.uploadGB;
-        const wan1DownAll = eth0Sum.downloadGB;
-        const wan1TotalAll = eth0Sum.totalGB;
+        const cellUpAll = round3(sim1UpAll + sim2UpAll);
+        const cellDownAll = round3(sim1DownAll + sim2DownAll);
+        const cellTotalAll = round3(cellUpAll + cellDownAll);
 
-        const wan2UpAll   = eth1Sum.uploadGB;
-        const wan2DownAll = eth1Sum.downloadGB;
-        const wan2TotalAll = eth1Sum.totalGB;
+        const wan1UpAll = round3(totals.wan1Up);
+        const wan1DownAll = round3(totals.wan1Down);
+        const wan1TotalAll = round3(totals.wan1Total);
 
-        const wiredTotalAll = wiredTotalGB;
-        const grandTotalAll = cellularTotalGB + wiredTotalGB;
+        const wan2UpAll = round3(totals.wan2Up);
+        const wan2DownAll = round3(totals.wan2Down);
+        const wan2TotalAll = round3(totals.wan2Total);
+
+        const wiredUpAll = round3(wan1UpAll + wan2UpAll);
+        const wiredDownAll = round3(wan1DownAll + wan2DownAll);
+        const wiredTotalAll = round3(wiredUpAll + wiredDownAll);
+
+        const grandTotalAll = round3(cellTotalAll + wiredTotalAll);
 
         rows.push({
-          date: 'TOTAL',
-          sim1Up: sim1UpAll, sim1Down: sim1DownAll, sim1Total: sim1TotalAll,
-          sim2Up: sim2UpAll, sim2Down: sim2DownAll, sim2Total: sim2TotalAll,
+          date: "TOTAL",
+          sim1Up: sim1UpAll,
+          sim1Down: sim1DownAll,
+          sim1Total: sim1TotalAll,
+          sim2Up: sim2UpAll,
+          sim2Down: sim2DownAll,
+          sim2Total: sim2TotalAll,
           cellTotal: cellTotalAll,
-          wan1Up: wan1UpAll, wan1Down: wan1DownAll, wan1Total: wan1TotalAll,
-          wan2Up: wan2UpAll, wan2Down: wan2DownAll, wan2Total: wan2TotalAll,
+          wan1Up: wan1UpAll,
+          wan1Down: wan1DownAll,
+          wan1Total: wan1TotalAll,
+          wan2Up: wan2UpAll,
+          wan2Down: wan2DownAll,
+          wan2Total: wan2TotalAll,
           wiredTotal: wiredTotalAll,
           grandTotal: grandTotalAll,
-          isTotalRow: true
+          isTotalRow: true,
         });
       }
 
@@ -762,97 +1002,127 @@
 
     function renderMonitoring(data) {
       const x = Array.isArray(data.x) ? data.x : [];
+
+      const chartDiv = document.getElementById("trafficCharts");
+      const emptyDiv = document.getElementById("trafficEmpty");
+
       if (!x.length) {
-        showError('No historical traffic data available.');
+        if (chartDiv) chartDiv.innerHTML = "";
+        if (emptyDiv) emptyDiv.style.display = "flex"; // show message
+        showError("No historical traffic data available.");
         return;
+      } else {
+        if (emptyDiv) emptyDiv.style.display = "none"; // hide message
       }
 
       const pointsCount = x.length;
       const firstTs = x[0];
-      const lastTs  = x[x.length - 1];
+      const lastTs = x[x.length - 1];
 
       // derive server "now" from last timestamp
-      const lastParts = lastTs.split(' ');
+      const lastParts = lastTs.split(" ");
       if (lastParts.length >= 2) {
         serverLastDate = lastParts[0];
         serverLastTime = lastParts[1];
         applyCustomRangeMax();
       }
 
-      const rangeLabelEl = document.getElementById('currentRangeLabel');
+      const rangeLabelEl = document.getElementById("currentRangeLabel");
       const rangeLabelText =
-        formatDateHuman(firstTs) + ' – ' + formatDateHuman(lastTs);
+        formatDateHuman(firstTs) + " – " + formatDateHuman(lastTs);
       if (rangeLabelEl) {
         rangeLabelEl.textContent = rangeLabelText;
       }
 
-      const lastUpdatedEl = document.getElementById('lastUpdated');
+      const lastUpdatedEl = document.getElementById("lastUpdated");
       if (lastUpdatedEl) {
-        lastUpdatedEl.textContent = '(Updated: ' + lastTs + ')';
+        lastUpdatedEl.textContent = "(Updated: " + lastTs + ")";
       }
 
-      const modemChart  = getChart(data, 'modem');
-      const modem2Chart = getChart(data, 'modem2');
-      const eth0Chart   = getChart(data, 'eth0');
-      const eth1Chart   = getChart(data, 'eth1');
+      const modemChart = getChart(data, "modem");
+      const modem2Chart = getChart(data, "modem2");
+      const eth0Chart = getChart(data, "eth0");
+      const eth1Chart = getChart(data, "eth1");
 
-      const modem  = getSummaryGB(modemChart);
+      const modem = getSummaryGB(modemChart);
       const modem2 = getSummaryGB(modem2Chart);
-      const eth0   = getSummaryGB(eth0Chart);
-      const eth1   = getSummaryGB(eth1Chart);
+      const eth0 = getSummaryGB(eth0Chart);
+      const eth1 = getSummaryGB(eth1Chart);
 
       // SIM cards
-      updateCard('modem1-card',
-        modem.totalGB, modem.uploadGB, modem.downloadGB);
-      updateCard('modem2-card',
-        modem2.totalGB, modem2.uploadGB, modem2.downloadGB);
+      updateCard(
+        "modem1-card",
+        modem.totalGB,
+        modem.uploadGB,
+        modem.downloadGB
+      );
+      updateCard(
+        "modem2-card",
+        modem2.totalGB,
+        modem2.uploadGB,
+        modem2.downloadGB
+      );
 
       // Cellular totals
-      const cellularUploadGB   = modem.uploadGB + modem2.uploadGB;
+      const cellularUploadGB = modem.uploadGB + modem2.uploadGB;
       const cellularDownloadGB = modem.downloadGB + modem2.downloadGB;
-      const cellularTotalGB    = cellularUploadGB + cellularDownloadGB;
+      const cellularTotalGB = cellularUploadGB + cellularDownloadGB;
 
-      updateSummary('cellular-total-summary',
-        cellularTotalGB, cellularUploadGB, cellularDownloadGB);
+      updateSummary(
+        "cellular-total-summary",
+        cellularTotalGB,
+        cellularUploadGB,
+        cellularDownloadGB
+      );
 
       // Wired totals
-      const wiredUploadGB   = eth0.uploadGB + eth1.uploadGB;
+      const wiredUploadGB = eth0.uploadGB + eth1.uploadGB;
       const wiredDownloadGB = eth0.downloadGB + eth1.downloadGB;
-      const wiredTotalGB    = wiredUploadGB + wiredDownloadGB;
+      const wiredTotalGB = wiredUploadGB + wiredDownloadGB;
 
-      updateSummary('wired-total-summary',
-        wiredTotalGB, wiredUploadGB, wiredDownloadGB);
+      updateSummary(
+        "wired-total-summary",
+        wiredTotalGB,
+        wiredUploadGB,
+        wiredDownloadGB
+      );
 
-      updateCard('eth0-card',
-        eth0.totalGB, eth0.uploadGB, eth0.downloadGB);
-      updateCard('eth1-card',
-        eth1.totalGB, eth1.uploadGB, eth1.downloadGB);
+      updateCard("eth0-card", eth0.totalGB, eth0.uploadGB, eth0.downloadGB);
+      updateCard("eth1-card", eth1.totalGB, eth1.uploadGB, eth1.downloadGB);
 
       // ===== date-wise daily usage for export (with UI-matching TOTAL) =====
       const dailyRows = buildDailyUsage(
-        x, modemChart, modem2Chart, eth0Chart, eth1Chart,
-        modem, modem2, eth0, eth1,
-        cellularTotalGB, wiredTotalGB
+        x,
+        modemChart,
+        modem2Chart,
+        eth0Chart,
+        eth1Chart,
+        modem,
+        modem2,
+        eth0,
+        eth1,
+        cellularTotalGB,
+        wiredTotalGB
       );
       currentDailyUsage = {
         rangeLabel: rangeLabelText,
-        rows: dailyRows
+        rows: dailyRows,
       };
 
       // ===== chart series (base = GB) =====
-      const labels = x.map(ts => ts.slice(5)); // "MM-DD HH:MM..."
+      const labels = x;
 
-      const modemSeries  = getPerPointTotalsGB(modemChart,  pointsCount);
+      const modemSeries = getPerPointTotalsGB(modemChart, pointsCount);
       const modem2Series = getPerPointTotalsGB(modem2Chart, pointsCount);
-      const eth0Series   = getPerPointTotalsGB(eth0Chart,   pointsCount);
-      const eth1Series   = getPerPointTotalsGB(eth1Chart,   pointsCount);
+      const eth0Series = getPerPointTotalsGB(eth0Chart, pointsCount);
+      const eth1Series = getPerPointTotalsGB(eth1Chart, pointsCount);
 
       const cellularSeriesGB = [];
-      const wiredSeriesGB    = [];
+      const wiredSeriesGB = [];
 
       for (let i = 0; i < pointsCount; i++) {
-        const c = (modemSeries[i]  || 0) + (modem2Series[i] || 0);
-        const w = (eth0Series[i]   || 0) + (eth1Series[i]   || 0);
+        const c = (modemSeries[i] || 0) + (modem2Series[i] || 0);
+        const w = (eth0Series[i] || 0) + (eth1Series[i] || 0);
         cellularSeriesGB.push(c);
         wiredSeriesGB.push(w);
       }
@@ -866,62 +1136,79 @@
         eth1.totalGB
       );
 
-      const axisUnit   = chooseUnitFromGB(worstTotalGB);
+      const axisUnit = chooseUnitFromGB(worstTotalGB);
       const axisFactor = factorFromGB(axisUnit);
 
-      const cellularSeries = cellularSeriesGB.map(v => (Number(v) || 0) * axisFactor);
-      const wiredSeries    = wiredSeriesGB.map(v    => (Number(v) || 0) * axisFactor);
+      const cellularSeries = cellularSeriesGB.map(
+        (v) => (Number(v) || 0) * axisFactor
+      );
+      const wiredSeries = wiredSeriesGB.map(
+        (v) => (Number(v) || 0) * axisFactor
+      );
 
       const traces = [
         {
-          type: 'bar',
-          name: 'Cellular',
+          type: "bar",
+          name: "Cellular",
           x: labels,
           y: cellularSeries,
-          marker: { color: '#2ca02c' },
+          marker: { color: "#2ca02c" },
           hovertemplate:
-            'Cellular (modem + modem2)<br>Time: %{x}<br>Total: %{y:.4f} ' +
-            axisUnit + '<extra></extra>'
+            "Cellular <br>Time: %{x}<br>Total: %{y:.2f} " +
+            axisUnit +
+            "<extra></extra>",
         },
         {
-          type: 'bar',
-          name: 'Wired',
+          type: "bar",
+          name: "Wired",
           x: labels,
           y: wiredSeries,
-          marker: { color: '#ff7f0e' },
+          marker: { color: "#ff7f0e" },
           hovertemplate:
-            'Wired (eth0 + eth1)<br>Time: %{x}<br>Total: %{y:.4f} ' +
-            axisUnit + '<extra></extra>'
-        }
+            "Wired <br>Time: %{x}<br>Total: %{y:.2f} " +
+            axisUnit +
+            "<extra></extra>",
+        },
       ];
 
-      const trafficChartsEl = document.getElementById('trafficCharts');
+      const trafficChartsEl = document.getElementById("trafficCharts");
       if (!trafficChartsEl) return;
+
+      const yLabel = "Data usage (" + axisUnit + ")";
 
       const layout = {
         autosize: true,
-        barmode: 'stack',
+        barmode: "stack",
         bargap: 0.7,
         bargroupgap: 0.8,
-        margin: { l: 60, r: 20, t: 10, b: 80 },
-        xaxis: { title: 'Time', automargin: true },
-        yaxis: { title: axisUnit + ' (per sample)', rangemode: 'tozero', automargin: true },
-        paper_bgcolor: 'rgba(0,0,0,0)',
-        plot_bgcolor: 'rgba(0,0,0,0)',
+        margin: { l: 80, r: 20, t: 10, b: 80 }, // a little more left space
+        xaxis: {
+          automargin: true,
+        },
+        yaxis: {
+          title: {
+            text: yLabel, // <- this is what will show (e.g. "Data usage (GB)")
+            standoff: 10, // small gap from the axis
+          },
+          rangemode: "tozero",
+          automargin: true,
+        },
+        paper_bgcolor: "rgba(0,0,0,0)",
+        plot_bgcolor: "rgba(0,0,0,0)",
         legend: {
-          orientation: 'h',
-          yanchor: 'top',
+          orientation: "h",
+          yanchor: "top",
           y: -0.3,
           x: 0.5,
-          xanchor: 'center'
-        }
+          xanchor: "center",
+        },
       };
 
       Plotly.newPlot(trafficChartsEl, traces, layout, {
         displaylogo: false,
         responsive: true,
-        modeBarButtonsToRemove: ['select2d', 'lasso2d', 'autoScale2d'],
-        displayModeBar: false
+        modeBarButtonsToRemove: ["select2d", "lasso2d", "autoScale2d"],
+        displayModeBar: false,
       });
 
       function resizeTrafficChart() {
@@ -930,87 +1217,90 @@
       }
 
       setTimeout(resizeTrafficChart, 100);
-      window.addEventListener('resize', resizeTrafficChart);
-      window.addEventListener('orientationchange', resizeTrafficChart);
+      window.addEventListener("resize", resizeTrafficChart);
+      window.addEventListener("orientationchange", resizeTrafficChart);
     }
 
     /* ========= FETCH ========= */
 
     async function loadMonitoring() {
       if (!DEVICE_UUID) {
-        showError('Device UUID is missing in template.');
+        showError("Device UUID is missing in template.");
         return;
       }
 
       clearError();
 
-      const url = API_BASE +
-        '/api/v1/monitoring/device/' + encodeURIComponent(DEVICE_UUID) +
-        '/?timezone=' + encodeURIComponent(TIMEZONE) +
-        (currentExtraQuery || '');
+      const url =
+        API_BASE +
+        "/api/v1/monitoring/device/" +
+        encodeURIComponent(DEVICE_UUID) +
+        "/?timezone=" +
+        encodeURIComponent(TIMEZONE) +
+        (currentExtraQuery || "");
 
       try {
         const resp = await fetch(url, {
-          method: 'GET',
-          credentials: 'same-origin'
+          method: "GET",
+          credentials: "same-origin",
         });
 
         if (!resp.ok) {
-          throw new Error('HTTP ' + resp.status);
+          throw new Error("HTTP " + resp.status);
         }
 
         const data = await resp.json();
-        console.log('Monitoring data:', data);
+        console.log("Monitoring data:", data);
         renderMonitoring(data);
       } catch (err) {
         console.error(err);
-        showError('Failed to load device usage data from monitoring API.');
+        showError("Failed to load device usage data from monitoring API.");
       }
     }
 
     /* ========= RANGE + CUSTOM RANGE ========= */
 
-    const rangeDropdown = document.getElementById('rangeDropdown');
-    const rangeToggle   = document.getElementById('rangeToggle');
-    const rangeMenu     = document.getElementById('rangeMenu');
-    const crApplyBtn    = document.getElementById('crApply');
-    const crCancelBtn   = document.getElementById('crCancel');
+    const rangeDropdown = document.getElementById("rangeDropdown");
+    const rangeToggle = document.getElementById("rangeToggle");
+    const rangeMenu = document.getElementById("rangeMenu");
+    const crApplyBtn = document.getElementById("crApply");
+    const crCancelBtn = document.getElementById("crCancel");
 
     if (rangeToggle && rangeMenu && rangeDropdown) {
-      rangeToggle.addEventListener('click', function (e) {
+      rangeToggle.addEventListener("click", function (e) {
         e.stopPropagation();
-        rangeMenu.classList.toggle('show');
+        rangeMenu.classList.toggle("show");
       });
 
-      rangeMenu.addEventListener('click', function (e) {
-        const li = e.target.closest('li[data-query]');
+      rangeMenu.addEventListener("click", function (e) {
+        const li = e.target.closest("li[data-query]");
         if (!li) return;
 
-        const q = li.getAttribute('data-query') || '';
+        const q = li.getAttribute("data-query") || "";
         currentExtraQuery = q;
-        rangeMenu.classList.remove('show');
+        rangeMenu.classList.remove("show");
         loadMonitoring();
       });
 
-      document.addEventListener('click', function (e) {
+      document.addEventListener("click", function (e) {
         if (!rangeDropdown.contains(e.target)) {
-          rangeMenu.classList.remove('show');
+          rangeMenu.classList.remove("show");
         }
       });
     }
 
     if (crApplyBtn) {
-      crApplyBtn.addEventListener('click', function () {
+      crApplyBtn.addEventListener("click", function () {
         const startRaw = crStartInput.value;
-        const endRaw   = crEndInput.value;
+        const endRaw = crEndInput.value;
 
         if (!startRaw || !endRaw) {
-          alert('Please select both start and end for the custom range.');
+          alert("Please select both start and end for the custom range.");
           return;
         }
 
-        const [startDate, startTimeRaw] = startRaw.split('T');
-        const [endDateRaw, endTimeRaw]  = endRaw.split('T');
+        const [startDate, startTimeRaw] = startRaw.split("T");
+        const [endDateRaw, endTimeRaw] = endRaw.split("T");
 
         let sDate = startDate;
         let eDate = endDateRaw;
@@ -1029,45 +1319,47 @@
 
         // validate after clamp
         if (sDate > eDate) {
-          alert('Start date cannot be greater than end date.');
+          alert("Start date cannot be greater than end date.");
           return;
         }
 
         // start time
-        let sTime = '00:00:00';
+        let sTime = "00:00:00";
         if (startTimeRaw) {
-          sTime = startTimeRaw + ':00';
+          sTime = startTimeRaw + ":00";
         }
 
         // end time
         let eTime;
         if (eDate < limitDate) {
-          eTime = '23:59:59';
+          eTime = "23:59:59";
         } else {
-          const userHM = endTimeRaw || '23:59';
+          const userHM = endTimeRaw || "23:59";
           const userSec = hhmmToSeconds(userHM);
           const serverSec = hmsToSeconds(limitTime);
           const clampedSec = Math.min(userSec, serverSec);
           eTime = secondsToHMS(clampedSec);
         }
 
-        const startApi = sDate + ' ' + sTime;
-        const endApi   = eDate + ' ' + eTime;
+        const startApi = sDate + " " + sTime;
+        const endApi = eDate + " " + eTime;
 
         currentExtraQuery =
-          '&start=' + encodeURIComponent(startApi) +
-          '&end='   + encodeURIComponent(endApi);
+          "&start=" +
+          encodeURIComponent(startApi) +
+          "&end=" +
+          encodeURIComponent(endApi);
 
-        rangeMenu.classList.remove('show');
+        rangeMenu.classList.remove("show");
         loadMonitoring();
       });
     }
 
     if (crCancelBtn) {
-      crCancelBtn.addEventListener('click', function () {
-        if (crStartInput) crStartInput.value = '';
-        if (crEndInput)   crEndInput.value   = '';
-        rangeMenu.classList.remove('show');
+      crCancelBtn.addEventListener("click", function () {
+        if (crStartInput) crStartInput.value = "";
+        if (crEndInput) crEndInput.value = "";
+        rangeMenu.classList.remove("show");
       });
     }
 
@@ -1075,49 +1367,132 @@
 
     function exportExcel() {
       if (!currentDailyUsage || !currentDailyUsage.rows) {
-        alert('No data available to export yet.');
+        alert("No data available to export yet.");
         return;
       }
 
-      const header = [
-        'Date',
-        'SIM1 Upload (GB)', 'SIM1 Download (GB)', 'SIM1 Total (GB)',
-        'SIM2 Upload (GB)', 'SIM2 Download (GB)', 'SIM2 Total (GB)',
-        'Cellular Total (GB)',
-        'WAN1 Upload (GB)', 'WAN1 Download (GB)', 'WAN1 Total (GB)',
-        'WAN2 Upload (GB)', 'WAN2 Download (GB)', 'WAN2 Total (GB)',
-        'Wired Total (GB)',
-        'Grand Total (GB)'
+      const rows = currentDailyUsage.rows;
+      if (!rows.length) {
+        alert("No data available to export yet.");
+        return;
+      }
+
+      const totalIndex = rows.length - 1;
+
+      // ----- 2-row header, same structure as PDF -----
+      const header1 = [
+        "Date",
+        "SIM1 (GB)",
+        "",
+        "",
+        "SIM2 (GB)",
+        "",
+        "",
+        "Cellular Total (GB)",
+        "",
+        "",
+        "WAN1 (GB)",
+        "",
+        "",
+        "WAN2 (GB)",
+        "",
+        "",
+        "Wired Total (GB)",
+        "",
+        "",
+        "Grand Total (GB)",
       ];
 
-      let csv = header.join(',') + '\n';
+      const header2 = [
+        "",
+        "Up",
+        "Down",
+        "Total", // SIM1
+        "Up",
+        "Down",
+        "Total", // SIM2
+        "Up",
+        "Down",
+        "Total", // Cellular
+        "Up",
+        "Down",
+        "Total", // WAN1
+        "Up",
+        "Down",
+        "Total", // WAN2
+        "Up",
+        "Down",
+        "Total", // Wired
+        "Total", // Grand total
+      ];
 
-      currentDailyUsage.rows.forEach(r => {
-        csv += [
-          r.date,
-          r.sim1Up.toFixed(3),
-          r.sim1Down.toFixed(3),
-          r.sim1Total.toFixed(3),
-          r.sim2Up.toFixed(3),
-          r.sim2Down.toFixed(3),
-          r.sim2Total.toFixed(3),
-          r.cellTotal.toFixed(3),
-          r.wan1Up.toFixed(3),
-          r.wan1Down.toFixed(3),
-          r.wan1Total.toFixed(3),
-          r.wan2Up.toFixed(3),
-          r.wan2Down.toFixed(3),
-          r.wan2Total.toFixed(3),
-          r.wiredTotal.toFixed(3),
-          r.grandTotal.toFixed(3)
-        ].join(',') + '\n';
+      let csv = header1.join(",") + "\n" + header2.join(",") + "\n";
+
+      rows.forEach((r, idx) => {
+        // r.sim1Up etc are already rounded to 3 decimals by buildDailyUsage
+        const sim1Up = r.sim1Up;
+        const sim1Down = r.sim1Down;
+        const sim1Tot = r.sim1Total;
+
+        const sim2Up = r.sim2Up;
+        const sim2Down = r.sim2Down;
+        const sim2Tot = r.sim2Total;
+
+        // derive cellular/wired Up & Down from SIM/WAN fields
+        const cellUp = sim1Up + sim2Up;
+        const cellDown = sim1Down + sim2Down;
+        const cellTot = cellUp + cellDown;
+
+        const wan1Up = r.wan1Up;
+        const wan1Down = r.wan1Down;
+        const wan1Tot = r.wan1Total;
+
+        const wan2Up = r.wan2Up;
+        const wan2Down = r.wan2Down;
+        const wan2Tot = r.wan2Total;
+
+        const wiredUp = wan1Up + wan2Up;
+        const wiredDown = wan1Down + wan2Down;
+        const wiredTot = wiredUp + wiredDown;
+
+        const grandTot = cellTot + wiredTot; // should match r.grandTotal
+
+        csv +=
+          [
+            r.date,
+            sim1Up.toFixed(3),
+            sim1Down.toFixed(3),
+            sim1Tot.toFixed(3),
+
+            sim2Up.toFixed(3),
+            sim2Down.toFixed(3),
+            sim2Tot.toFixed(3),
+
+            cellUp.toFixed(3),
+            cellDown.toFixed(3),
+            cellTot.toFixed(3),
+
+            wan1Up.toFixed(3),
+            wan1Down.toFixed(3),
+            wan1Tot.toFixed(3),
+
+            wan2Up.toFixed(3),
+            wan2Down.toFixed(3),
+            wan2Tot.toFixed(3),
+
+            wiredUp.toFixed(3),
+            wiredDown.toFixed(3),
+            wiredTot.toFixed(3),
+
+            grandTot.toFixed(3),
+          ].join(",") + "\n";
       });
 
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
-      a.download = 'device-usage-daily.csv';
+      a.download = "device-usage-daily-detailed.csv";
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -1126,89 +1501,246 @@
 
     function exportPdf() {
       if (!currentDailyUsage || !currentDailyUsage.rows) {
-        alert('No data available to export yet.');
+        alert("No data available to export yet.");
         return;
       }
       if (!window.jspdf || !window.jspdf.jsPDF) {
-        alert('PDF export library not loaded.');
+        alert("PDF export library not loaded.");
         return;
       }
 
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF({ orientation: 'landscape' });
-
-      doc.setFontSize(14);
-      doc.text('Device Usage – Daily Summary', 14, 14);
-      doc.setFontSize(10);
-      if (currentDailyUsage.rangeLabel) {
-        doc.text('Range: ' + currentDailyUsage.rangeLabel, 14, 20);
+      const rows = currentDailyUsage.rows;
+      if (!rows.length) {
+        alert("No data available to export yet.");
+        return;
       }
 
-      const head = [[
-        'Date',
-        'SIM1 Up (GB)', 'SIM1 Down (GB)', 'SIM1 Total (GB)',
-        'SIM2 Up (GB)', 'SIM2 Down (GB)', 'SIM2 Total (GB)',
-        'Cell Total (GB)',
-        'WAN1 Up (GB)', 'WAN1 Down (GB)', 'WAN1 Total (GB)',
-        'WAN2 Up (GB)', 'WAN2 Down (GB)', 'WAN2 Total (GB)',
-        'Wired Total (GB)',
-        'Grand Total (GB)'
-      ]];
+      const totalIndex = rows.length - 1;
+      const dayRows = rows.slice(0, totalIndex); // all rows except TOTAL
 
-      const body = currentDailyUsage.rows.map(r => [
-        r.date,
-        r.sim1Up.toFixed(3),
-        r.sim1Down.toFixed(3),
-        r.sim1Total.toFixed(3),
-        r.sim2Up.toFixed(3),
-        r.sim2Down.toFixed(3),
-        r.sim2Total.toFixed(3),
-        r.cellTotal.toFixed(3),
-        r.wan1Up.toFixed(3),
-        r.wan1Down.toFixed(3),
-        r.wan1Total.toFixed(3),
-        r.wan2Up.toFixed(3),
-        r.wan2Down.toFixed(3),
-        r.wan2Total.toFixed(3),
-        r.wiredTotal.toFixed(3),
-        r.grandTotal.toFixed(3)
-      ]);
+      // ---- sum helper over daily rows ----
+      function sumField(field) {
+        return dayRows.reduce((acc, r) => acc + (Number(r[field]) || 0), 0);
+      }
 
-      const totalIndex = currentDailyUsage.rows.length - 1; // last row is TOTAL
+      // build an object with true totals from daily rows
+      const totals = {
+        sim1Up: sumField("sim1Up"),
+        sim1Down: sumField("sim1Down"),
+        sim1Total: sumField("sim1Total"),
+        sim2Up: sumField("sim2Up"),
+        sim2Down: sumField("sim2Down"),
+        sim2Total: sumField("sim2Total"),
+        wan1Up: sumField("wan1Up"),
+        wan1Down: sumField("wan1Down"),
+        wan1Total: sumField("wan1Total"),
+        wan2Up: sumField("wan2Up"),
+        wan2Down: sumField("wan2Down"),
+        wan2Total: sumField("wan2Total"),
+      };
+
+      // JS PDF setup (same as before)
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ orientation: "landscape" });
+
+      doc.setFontSize(14);
+      doc.text("Device Usage – Daily Summary", 14, 14);
+
+      doc.setFontSize(10);
+      if (currentDailyUsage.rangeLabel) {
+        doc.text("Range: " + currentDailyUsage.rangeLabel, 14, 20);
+      }
+
+      doc.setFontSize(9);
+      doc.text(
+        "SIM1/SIM2 are cellular, WAN1/WAN2 are wired. All values in GB, rounded to 3 decimals.",
+        14,
+        26
+      );
+
+      const head = [
+        [
+          { content: "Date", rowSpan: 2 },
+
+          { content: "SIM1 (GB)", colSpan: 3, styles: { halign: "center" } },
+          { content: "SIM2 (GB)", colSpan: 3, styles: { halign: "center" } },
+          {
+            content: "Cellular Total (GB)",
+            colSpan: 3,
+            styles: { halign: "center" },
+          },
+
+          { content: "WAN1 (GB)", colSpan: 3, styles: { halign: "center" } },
+          { content: "WAN2 (GB)", colSpan: 3, styles: { halign: "center" } },
+          {
+            content: "Wired Total (GB)",
+            colSpan: 3,
+            styles: { halign: "center" },
+          },
+
+          {
+            content: "Grand Total (GB)",
+            rowSpan: 2,
+            styles: { halign: "center" },
+          },
+        ],
+        [
+          "Up",
+          "Down",
+          "Total", // SIM1
+          "Up",
+          "Down",
+          "Total", // SIM2
+          "Up",
+          "Down",
+          "Total", // Cellular
+          "Up",
+          "Down",
+          "Total", // WAN1
+          "Up",
+          "Down",
+          "Total", // WAN2
+          "Up",
+          "Down",
+          "Total", // Wired
+        ],
+      ];
+
+      // ---- BODY: use per-day values, but LAST ROW = SUM of above ----
+      const body = rows.map((r, idx) => {
+        const isTotal = idx === totalIndex;
+        const src = isTotal ? totals : r; // where to read interface fields
+
+        const cellUp = src.sim1Up + src.sim2Up;
+        const cellDown = src.sim1Down + src.sim2Down;
+        const cellTot = cellUp + cellDown;
+
+        const wiredUp = src.wan1Up + src.wan2Up;
+        const wiredDown = src.wan1Down + src.wan2Down;
+        const wiredTot = wiredUp + wiredDown;
+
+        const grandTot = cellTot + wiredTot;
+
+        return [
+          r.date, // 'TOTAL' is already set on last row
+
+          src.sim1Up.toFixed(3),
+          src.sim1Down.toFixed(3),
+          src.sim1Total.toFixed(3),
+
+          src.sim2Up.toFixed(3),
+          src.sim2Down.toFixed(3),
+          src.sim2Total.toFixed(3),
+
+          cellUp.toFixed(3),
+          cellDown.toFixed(3),
+          cellTot.toFixed(3),
+
+          src.wan1Up.toFixed(3),
+          src.wan1Down.toFixed(3),
+          src.wan1Total.toFixed(3),
+
+          src.wan2Up.toFixed(3),
+          src.wan2Down.toFixed(3),
+          src.wan2Total.toFixed(3),
+
+          wiredUp.toFixed(3),
+          wiredDown.toFixed(3),
+          wiredTot.toFixed(3),
+
+          grandTot.toFixed(3),
+        ];
+      });
+
+      // column groups etc – **same as you already have now**
+      const simCols = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+      const wanCols = [10, 11, 12, 13, 14, 15, 16, 17, 18];
+      const separatorCols = [3, 6, 12, 15];
+
+      const SIM_HEADER_DARK = [75, 85, 99];
+      const SIM_BODY_LIGHT = [229, 231, 235];
+      const WAN_HEADER_DARK = [180, 83, 9];
+      const WAN_BODY_LIGHT = [254, 243, 199];
+      const OTHER_HEADER_DARK = [55, 65, 81];
+      const OTHER_BODY_LIGHT = [243, 244, 246];
+      const OTHER_BODY_TOTAL = [229, 231, 235];
 
       doc.autoTable({
         head,
         body,
-        startY: 26,
-        styles: { fontSize: 7 },
-        columnStyles: {
-          3: { fontStyle: 'bold' },   // SIM1 Total
-          6: { fontStyle: 'bold' },   // SIM2 Total
-          7: { fontStyle: 'bold' },   // Cell Total
-          10: { fontStyle: 'bold' },  // WAN1 Total
-          13: { fontStyle: 'bold' },  // WAN2 Total
-          14: { fontStyle: 'bold' },  // Wired Total
-          15: { fontStyle: 'bold' }   // Grand Total
+        startY: 32,
+        styles: {
+          fontSize: 7,
+          cellPadding: 2,
+        },
+        headStyles: {
+          fillColor: OTHER_HEADER_DARK,
+          textColor: 255,
+          halign: "center",
+          valign: "middle",
         },
         didParseCell(data) {
-          // make TOTAL row fully bold
-          if (data.row.index === totalIndex) {
-            data.cell.styles.fontStyle = 'bold';
+          const col = data.column.index;
+
+          // HEADER COLORS
+          if (data.section === "head") {
+            if (simCols.includes(col)) {
+              data.cell.styles.fillColor = SIM_HEADER_DARK;
+            } else if (wanCols.includes(col)) {
+              data.cell.styles.fillColor = WAN_HEADER_DARK;
+            } else {
+              data.cell.styles.fillColor = OTHER_HEADER_DARK;
+            }
+            data.cell.styles.textColor = 255;
           }
-        }
+
+          // BODY COLORS
+          if (data.section === "body") {
+            const isTotalRow = data.row.index === totalIndex;
+
+            if (simCols.includes(col)) {
+              data.cell.styles.fillColor = SIM_BODY_LIGHT;
+            } else if (wanCols.includes(col)) {
+              data.cell.styles.fillColor = WAN_BODY_LIGHT;
+            } else {
+              data.cell.styles.fillColor = isTotalRow
+                ? OTHER_BODY_TOTAL
+                : OTHER_BODY_LIGHT;
+            }
+
+            if (isTotalRow) {
+              data.cell.styles.fontStyle = "bold";
+            }
+          }
+        },
+        didDrawCell(data) {
+          const col = data.column.index;
+          if (!separatorCols.includes(col)) return;
+
+          if (data.section === "head" || data.section === "body") {
+            const doc = data.doc;
+            const x = data.cell.x + data.cell.width;
+            const yTop = data.cell.y;
+            const yBottom = data.cell.y + data.cell.height;
+
+            doc.setLineWidth(0.2);
+            doc.setDrawColor(148, 163, 184);
+            doc.line(x, yTop, x, yBottom);
+          }
+        },
       });
 
-      doc.save('device-usage-daily.pdf');
+      doc.save("device-usage-daily-detailed.pdf");
     }
 
-    document.addEventListener('DOMContentLoaded', function () {
+    document.addEventListener("DOMContentLoaded", function () {
       applyCustomRangeMax(); // initial guess; corrected once API responds
       loadMonitoring();
 
-      const excelBtn = document.getElementById('exportExcelBtn');
-      const pdfBtn   = document.getElementById('exportPdfBtn');
-      if (excelBtn) excelBtn.addEventListener('click', exportExcel);
-      if (pdfBtn)   pdfBtn.addEventListener('click', exportPdf);
+      const excelBtn = document.getElementById("exportExcelBtn");
+      const pdfBtn = document.getElementById("exportPdfBtn");
+      if (excelBtn) excelBtn.addEventListener("click", exportExcel);
+      if (pdfBtn) pdfBtn.addEventListener("click", exportPdf);
     });
   })();
 </script>
