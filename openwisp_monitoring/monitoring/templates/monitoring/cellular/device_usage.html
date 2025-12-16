@@ -1,24 +1,16 @@
 {% load i18n static %}
 <link rel="preconnect" href="https://cdn.jsdelivr.net" />
+{% comment %}
 <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+{% endcomment %}
+<script src="https://cdn.plot.ly/plotly-3.3.0.min.js"></script>
 <!-- PDF export libs -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
 
 <style>
   .dashboard-contain {
-    margin: 20px auto;
-  }
-
-  #apiError {
-    display: none;
-    color: #b91c1c;
-    background: #fee2e2;
-    border: 1px solid #fecaca;
-    padding: 12px 16px;
-    border-radius: 8px;
-    margin-bottom: 20px;
-    font-size: 14px;
+    margin: 16px auto;
   }
 
   .top-row {
@@ -31,9 +23,10 @@
   }
 
   .usage-title {
-    font-size: 22px;
+    font-size: 18px;
     font-weight: 600;
     margin: 0;
+    color: #666;
   }
 
   .top-controls {
@@ -230,7 +223,7 @@
   }
 
   .total-value {
-    font-size: 24px;
+    font-size: 20px;
     font-weight: 700;
     color: #059669;
   }
@@ -271,7 +264,7 @@
   }
 
   .interface-card {
-    background: #f9fafb;
+    background: #f8f8f8;
     border: 1px solid #e5e7eb;
     border-radius: 8px;
     padding: 12px;
@@ -282,51 +275,51 @@
     font-weight: 600;
     color: #374151;
     margin-bottom: 6px;
+    justify-content: space-between;
   }
 
   /* card total like screenshot */
-.interface-value {
-  font-size: 18px;
-  font-weight: 800;
-  color: #059669;
-  margin-bottom: 8px;
-}
+  .interface-value {
+    font-size: 16px;
+    font-weight: 600;
+    color: #059669;
+    margin-bottom: 8px;
+  }
 
-/* Sent/Received rows */
-.interface-stats {
-  font-size: 12px;
-  color: #6b7280;
-  line-height: 1.6;
-}
+  /* Sent/Received rows */
+  .interface-stats {
+    font-size: 12px;
+    color: #6b7280;
+    line-height: 1.6;
+  }
 
-.stat-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 10px;
-}
+  .stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+  }
 
-.stat-label {
-  color: #6b7280;
-}
+  .stat-label {
+    color: #6b7280;
+  }
 
-.stat-val {
-  color: #111827;
-  font-weight: 600;
-  white-space: nowrap;
-}
+  .stat-val {
+    color: #111827;
+    font-weight: 600;
+    white-space: nowrap;
+  }
 
-.stat-arrow {
-  font-size: 11px;
-  line-height: 1;
-  color: #16a34a;
-  margin-left: 4px;
-}
+  .stat-arrow {
+    font-size: 11px;
+    line-height: 1;
+    color: #16a34a;
+    margin-left: 4px;
+  }
 
-.stat-arrow.down {
-  transform: translateY(1px);
-}
-
+  .stat-arrow.down {
+    transform: translateY(1px);
+  }
 
   .chart-container {
     background: #fff;
@@ -358,21 +351,19 @@
   }
 
   .ow-panel-hd {
-    background: #f3f4f6;
-    border-bottom: 1px solid #e5e7eb;
-    padding: 8px 14px;
-    font-size: 14px;
+    padding: 10px 14px;
+    color: #1f2937;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     font-weight: 600;
-    color: #111827;
+    background-color: #f3f4f6;
   }
 
   .ow-panel-bd {
     background: #ffffff;
-    padding: 18px 18px 12px;
-  }
-  .svg-container{
-        width: 80% !important;
-
+    padding: 2px;
   }
 
   /* reuse panels for these sections */
@@ -388,13 +379,12 @@
   }
 
   .usage-panel-bd {
-    padding: 16px 18px 14px;
+    padding: 14px;
   }
 
   /* empty-state and chart */
   .chart-empty {
     display: none;
-    height: 260px;
     font-size: 16px;
     font-weight: 600;
     color: #6b7280;
@@ -418,6 +408,17 @@
     height: 320px;
     max-width: 1100px;
     margin: 0 auto;
+  }
+  .interface-row {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    justify-content: space-between;
+  }
+  .last-updated {
+    font-size: 12px;
+    color: #6b7280;
+    font-weight: 400;
   }
 
   @media (max-width: 900px) {
@@ -446,7 +447,7 @@
   <div id="apiError"></div>
 
   <div class="top-row">
-    <h1 class="usage-title">Device Usage Information</h1>
+    <h1 class="usage-title">Device Usage</h1>
 
     <div class="top-controls">
       <div class="export-buttons">
@@ -499,22 +500,33 @@
   <div class="usage-grid">
     <!-- Cellular -->
     <div class="ow-panel usage-section">
-      <div class="ow-panel-hd">Cellular <span id="lastUpdated"></span></div>
+      <div class="ow-panel-hd">
+        Cellular
+        <span class="last-updated">
+          Last Updated: {% if device_data.general.local_time %} 
+          {{ device_data.general.local_time }} {% else %} - {% endif %}
+        </span>
+      </div>
+
       <div class="ow-panel-bd usage-panel-bd">
         <div class="total-summary" id="cellular-total-summary">
-          <div class="total-value">—</div>
-          <div class="total-stats">Upload: —<br />Download: —</div>
+          <div class="total-value">-</div>
+          <div class="total-stats">Upload: -<br />Download: -</div>
         </div>
         <div class="interface-grid">
           <div class="interface-card" id="modem1-card">
-            <div class="interface-title">SIM1 (modem):</div>
-            <div class="interface-value">—</div>
-            <div class="interface-stats">Upload: —<br />Download: —</div>
+            <div class="interface-row">
+              <div class="interface-title">SIM1 (modem):</div>
+              <div class="interface-value">-</div>
+            </div>
+            <div class="interface-stats">Upload: -<br />Download: -</div>
           </div>
           <div class="interface-card" id="modem2-card">
-            <div class="interface-title">SIM2 (modem2):</div>
-            <div class="interface-value">—</div>
-            <div class="interface-stats">Upload: —<br />Download: —</div>
+            <div class="interface-row">
+              <div class="interface-title">SIM2 (modem2):</div>
+              <div class="interface-value">-</div>
+            </div>
+            <div class="interface-stats">Upload: -<br />Download: -</div>
           </div>
         </div>
       </div>
@@ -522,22 +534,32 @@
 
     <!-- Wired -->
     <div class="ow-panel usage-section">
-      <div class="ow-panel-hd">Wired</div>
+      <div class="ow-panel-hd">
+        Wired
+        <span class="last-updated">
+          Last Updated: {% if device_data.general.local_time %}
+          {{ device_data.general.local_time }} {% else %} - {% endif %}
+        </span>
+      </div>
       <div class="ow-panel-bd usage-panel-bd">
         <div class="total-summary" id="wired-total-summary">
-          <div class="total-value">—</div>
-          <div class="total-stats">Upload: —<br />Download: —</div>
+          <div class="total-value">-</div>
+          <div class="total-stats">Upload: -<br />Download: -</div>
         </div>
         <div class="interface-grid">
           <div class="interface-card" id="eth0-card">
-            <div class="interface-title">eth0:</div>
-            <div class="interface-value">—</div>
-            <div class="interface-stats">Upload: —<br />Download: —</div>
+            <div class="interface-row">
+              <div class="interface-title">eth0:</div>
+              <div class="interface-value">-</div>
+            </div>
+            <div class="interface-stats">Upload: -<br />Download: -</div>
           </div>
           <div class="interface-card" id="eth1-card">
-            <div class="interface-title">eth1:</div>
-            <div class="interface-value">—</div>
-            <div class="interface-stats">Upload: —<br />Download: —</div>
+            <div class="interface-row">
+              <div class="interface-title">eth1:</div>
+              <div class="interface-value">-</div>
+            </div>
+            <div class="interface-stats">Upload: -<br />Download: -</div>
           </div>
         </div>
       </div>
@@ -546,10 +568,16 @@
 
   <!-- Chart -->
   <div class="ow-panel chart-container">
-    <div class="ow-panel-hd">Data Usage (by Time)</div>
+    <div class="ow-panel-hd">
+      Data Usage Traffic
+      <span class="last-updated">
+        Last Updated: {% if device_data.general.local_time %}
+        {{ device_data.general.local_time }} {% else %} - {% endif %}
+      </span>
+    </div>
     <div class="ow-panel-bd">
-      <div id="trafficCharts" class="chart-inner"></div>
       <div id="trafficEmpty" class="chart-empty">No usage data available</div>
+      <div id="trafficCharts" class="chart-inner"></div>
     </div>
   </div>
 </div>
@@ -719,28 +747,31 @@
     }
 
     function updateCard(cardId, totalGB, uploadGB, downloadGB) {
-  const card = document.getElementById(cardId);
-  if (!card) return;
+      const card = document.getElementById(cardId);
+      if (!card) return;
 
-  const valueEl = card.querySelector(".interface-value");
-  const statsEl = card.querySelector(".interface-stats");
+      const valueEl = card.querySelector(".interface-value");
+      const statsEl = card.querySelector(".interface-stats");
 
-  if (valueEl) valueEl.textContent = fmtGB(totalGB);
+      if (valueEl) valueEl.textContent = fmtGB(totalGB);
 
-  if (statsEl) {
-    statsEl.innerHTML = `
+      if (statsEl) {
+        statsEl.innerHTML = `
       <div class="stat-row">
         <span class="stat-label">Upload:</span>
-        <span class="stat-val">${fmtGB(uploadGB)} <span class="stat-arrow up">▲</span></span>
+        <span class="stat-val">${fmtGB(
+          uploadGB
+        )} <span class="stat-arrow up">▲</span></span>
       </div>
       <div class="stat-row">
         <span class="stat-label">Download:</span>
-        <span class="stat-val">${fmtGB(downloadGB)} <span class="stat-arrow down">▼</span></span>
+        <span class="stat-val">${fmtGB(
+          downloadGB
+        )} <span class="stat-arrow down">▼</span></span>
       </div>
     `;
-  }
-}
-
+      }
+    }
 
     function updateSummary(summaryId, totalGB, uploadGB, downloadGB) {
       const block = document.getElementById(summaryId);
@@ -1009,7 +1040,6 @@
       if (!x.length) {
         if (chartDiv) chartDiv.innerHTML = "";
         if (emptyDiv) emptyDiv.style.display = "flex"; // show message
-        showError("No historical traffic data available.");
         return;
       } else {
         if (emptyDiv) emptyDiv.style.display = "none"; // hide message
@@ -1146,69 +1176,106 @@
         (v) => (Number(v) || 0) * axisFactor
       );
 
+      function downsample(x, yA, yB, maxPoints) {
+        const n = x.length;
+        if (n <= maxPoints) return { x, yA, yB };
+
+        const step = Math.ceil(n / maxPoints);
+        const xx = [],
+          a = [],
+          b = [];
+
+        for (let i = 0; i < n; i += step) {
+          xx.push(x[i]);
+          a.push(yA[i]);
+          b.push(yB[i]);
+        }
+        return { x: xx, yA: a, yB: b };
+      }
+
+      // Make x valid dates for Plotly (if you have "YYYY-MM-DD HH:MM:SS")
+      const xISO = labels.map((ts) => ts.replace(" ", "T"));
+
+      // Bars (already in axisUnit, like you do with axisFactor)
+      const cellular = cellularSeries;
+      const wired = wiredSeries;
+
+      // Total line
+      const total = cellular.map(
+        (v, i) => (Number(v) || 0) + (Number(wired[i]) || 0)
+      );
+
       const traces = [
         {
           type: "bar",
           name: "Cellular",
-          x: labels,
-          y: cellularSeries,
-          marker: { color: "#2ca02c" },
-          hovertemplate:
-            "Cellular <br>Time: %{x}<br>Total: %{y:.2f} " +
-            axisUnit +
-            "<extra></extra>",
+          x: xISO,
+          y: cellular,
+          hovertemplate: "Cellular: %{y:.2f} " + axisUnit + "<extra></extra>",
         },
         {
           type: "bar",
           name: "Wired",
-          x: labels,
-          y: wiredSeries,
-          marker: { color: "#ff7f0e" },
-          hovertemplate:
-            "Wired <br>Time: %{x}<br>Total: %{y:.2f} " +
-            axisUnit +
-            "<extra></extra>",
+          x: xISO,
+          y: wired,
+          hovertemplate: "Wired: %{y:.2f} " + axisUnit + "<extra></extra>",
+        },
+        {
+          type: "scatter",
+          mode: "lines+markers",
+          name: "Total",
+          x: xISO,
+          y: total,
+          line: { width: 2, color: "#6b7280" },
+          marker: { size: 5, color: "#6b7280" },
+          hovertemplate: "Total: %{y:.2f} " + axisUnit + "<extra></extra>",
         },
       ];
 
-      const trafficChartsEl = document.getElementById("trafficCharts");
-      if (!trafficChartsEl) return;
-
-      const yLabel = "Data usage (" + axisUnit + ")";
-
       const layout = {
-        autosize: true,
         barmode: "stack",
-        bargap: 0.7,
-        bargroupgap: 0.8,
-        margin: { l: 80, r: 20, t: 10, b: 80 }, // a little more left space
+        bargap: 0.4,
+
+        // ✅ give space on left so title is visible
+        margin: { l: 85, r: 20, t: 10, b: 60 },
+
+        hovermode: "x unified",
+
         xaxis: {
-          automargin: true,
+          type: "date",
+          tickformat: "%H:%M<br>%b %d, %Y",
+          nticks: 8,
+          showgrid: false,
+          showspikes: true,
+          spikemode: "across",
+          spikesnap: "cursor",
+          spikedash: "dot",
+          spikecolor: "#111827",
+          spikethickness: 1,
         },
+
         yaxis: {
           title: {
-            text: yLabel, // <- this is what will show (e.g. "Data usage (GB)")
-            standoff: 10, // small gap from the axis
+            // ✅ left label
+            text: "Data usage (" + axisUnit + ")",
+            standoff: 15,
           },
           rangemode: "tozero",
-          automargin: true,
+          showgrid: true,
+          gridcolor: "#e5e7eb",
+          zeroline: false,
+          automargin: true, // ✅ helps when label is long
         },
-        paper_bgcolor: "rgba(0,0,0,0)",
-        plot_bgcolor: "rgba(0,0,0,0)",
-        legend: {
-          orientation: "h",
-          yanchor: "top",
-          y: -0.3,
-          x: 0.5,
-          xanchor: "center",
-        },
+
+        legend: { orientation: "h", x: 0.5, xanchor: "center", y: -0.25 },
+        paper_bgcolor: "#ffffff",
+        plot_bgcolor: "#ffffff",
       };
 
-      Plotly.newPlot(trafficChartsEl, traces, layout, {
-        displaylogo: false,
+      Plotly.newPlot("trafficCharts", traces, layout, {
         responsive: true,
-        modeBarButtonsToRemove: ["select2d", "lasso2d", "autoScale2d"],
-        displayModeBar: false,
+        displaylogo: false,
+        displayModeBar: true, // like your screenshot toolbar
       });
 
       function resizeTrafficChart() {
