@@ -312,10 +312,11 @@
   async function fetchInterfacesSummary() {
     const path = window.location.pathname;
     const match = path.match(/[0-9a-fA-F-]{36}/);
-    const DEVICE_UUID = match ? match[0] : 'b5224a8d-ee4c-44a3-a7b0-5f30fac484b9';
+    const DEVICE_UUID = match[0];
+    console.log('Detected DEVICE_UUID for interfaces-summary:====', DEVICE_UUID);
 
-    const base = window.API_BASE_URL || 'https://controller.nexapp.co.in';
-    const url = `${base}/api/v1/monitoring/device/${DEVICE_UUID}/interfaces-summary/`;
+    const API_BASE = window.location.origin;
+    const url = `${API_BASE}/api/v1/monitoring/device/${DEVICE_UUID}/interfaces-summary/`;
 
     let token = null;
     try {
@@ -338,8 +339,8 @@
   /* ================== NEW: FETCH MOBILE-DISTRIBUTION FOR CARRIER + NETWORK ================== */
 
   async function fetchMobileDistribution() {
-    const base = window.API_BASE_URL || 'https://controller.nexapp.co.in';
-    const url = `${base}/api/v1/monitoring/mobile-distribution/`;
+    const API_BASE = window.location.origin;
+    const url = `${API_BASE}/api/v1/monitoring/mobile-distribution/`;
 
     let token = null;
     try {
