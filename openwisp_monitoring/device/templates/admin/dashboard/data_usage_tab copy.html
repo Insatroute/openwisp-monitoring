@@ -1,0 +1,711 @@
+{% load static %}
+
+<link rel="preconnect" href="https://cdn.jsdelivr.net" />
+<script src="https://cdn.plot.ly/plotly-3.3.0.min.js"></script>
+
+<div class="dux-wrap">
+  <!-- ================= SUMMARY ================= -->
+  <div class="dux-summary">
+    <div class="dux-summary-hd">
+      <h4 class="dux-title">Summary (All Devices)</h4>
+      <div class="dux-meta">
+        <span id="dux-last-updated" class="dux-last-updated">—</span>
+      </div>
+    </div>
+
+    <div class="dux-summary-grid">
+      <!-- Total -->
+      <div class="dux-summary-card">
+        <div class="dux-summary-label">Total Data Usage</div>
+        <div class="dux-summary-main">
+          <span id="dux-total-value" class="dux-summary-value">0.00</span>
+          <span id="dux-total-unit" class="dux-summary-unit">GB</span>
+        </div>
+        <div class="dux-summary-metrics">
+          <div class="dux-metric">
+            <span class="dux-metric-label">Sent:</span>
+            <span id="dux-total-sent" class="dux-metric-value">0.00 GB</span>
+          </div>
+          <div class="dux-metric">
+            <span class="dux-metric-label">Received:</span>
+            <span id="dux-total-recv" class="dux-metric-value">0.00 GB</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cellular -->
+      <div class="dux-summary-card">
+        <div class="dux-summary-label">Cellular</div>
+        <div class="dux-summary-main">
+          <span id="dux-cell-value" class="dux-summary-value">0.00</span>
+          <span id="dux-cell-unit" class="dux-summary-unit">GB</span>
+        </div>
+        <div class="dux-summary-metrics">
+          <div class="dux-metric">
+            <span class="dux-metric-label">Sent:</span>
+            <span id="dux-cell-sent" class="dux-metric-value">0.00 GB</span>
+          </div>
+          <div class="dux-metric">
+            <span class="dux-metric-label">Received:</span>
+            <span id="dux-cell-recv" class="dux-metric-value">0.00 GB</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Wired -->
+      <div class="dux-summary-card">
+        <div class="dux-summary-label">Wired</div>
+        <div class="dux-summary-main">
+          <span id="dux-wired-value" class="dux-summary-value">0.00</span>
+          <span id="dux-wired-unit" class="dux-summary-unit">GB</span>
+        </div>
+        <div class="dux-summary-metrics">
+          <div class="dux-metric">
+            <span class="dux-metric-label">Sent:</span>
+            <span id="dux-wired-sent" class="dux-metric-value">0.00 GB</span>
+          </div>
+          <div class="dux-metric">
+            <span class="dux-metric-label">Received:</span>
+            <span id="dux-wired-recv" class="dux-metric-value">0.00 GB</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="dux-warn" class="dux-warn" style="display:none;"></div>
+  </div>
+
+  <!-- ================= CHARTS ================= -->
+  <div class="dux-grid">
+    <!-- Top Apps -->
+    <div class="dux-card">
+      <div class="dux-card-hd">
+        <h4 class="dux-card-title">Top Applications</h4>
+      </div>
+
+      <div class="dux-chart">
+        <div id="dux-loader-apps" class="dux-loader" style="display:none;">Loading…</div>
+        <div id="dux-plot-apps" class="dux-plot"></div>
+      </div>
+    </div>
+
+    <!-- Top Branches -->
+    <div class="dux-card">
+      <div class="dux-card-hd">
+        <h4 class="dux-card-title">Top Branches</h4>
+      </div>
+
+      <div class="dux-chart">
+        <div id="dux-loader-branches" class="dux-loader" style="display:none;">Loading…</div>
+        <div id="dux-plot-branches" class="dux-plot"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  // =============================
+  // CONFIG
+  // =============================
+  const API_BASE = window.location.origin;
+  const DEVICES_LIST_URL = `${API_BASE}/api/v1/controller/device/`;
+  const MONITORING_URL = (id) => `${API_BASE}/api/v1/monitoring/device/${encodeURIComponent(id)}/`;
+  const TOP_APPS_URL = `${API_BASE}/api/v1/monitoring/global-top-apps/`;
+
+  const REFRESH_MS = 5 * 60 * 1000; // 5 min
+
+  const MOBILE_IFACES = ["modem", "modem2"];
+  const ETH_IFACES = ["eth0","eth1","eth2","eth3","eth4","eth5"];
+
+  // =============================
+  // SAFE FETCH HELPERS
+  // =============================
+  async function fetchJson(url) {
+    const resp = await fetch(url, {
+      method: "GET",
+      credentials: "same-origin",
+      headers: { Accept: "application/json" },
+    });
+    const json = await resp.json().catch(() => null);
+    if (!resp.ok) {
+      const msg = json?.detail || json?.message || `HTTP ${resp.status}`;
+      throw new Error(msg);
+    }
+    return json;
+  }
+
+  async function fetchAllDevices() {
+    let url = DEVICES_LIST_URL;
+    const all = [];
+    while (url) {
+      const page = await fetchJson(url);
+      const rows = Array.isArray(page?.results) ? page.results : [];
+      all.push(...rows);
+      url = page?.next || null;
+    }
+    return all
+      .map(d => ({ id: String(d.id), name: d.name || String(d.id) }))
+      .filter(d => d.id);
+  }
+
+  async function mapLimit(items, limit, mapper) {
+    const results = new Array(items.length);
+    let i = 0;
+
+    async function worker() {
+      while (i < items.length) {
+        const idx = i++;
+        try {
+          const value = await mapper(items[idx], idx);
+          results[idx] = { ok: true, value };
+        } catch (err) {
+          results[idx] = { ok: false, error: String(err?.message || err) };
+        }
+      }
+    }
+
+    await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+    return results;
+  }
+
+  // =============================
+  // BYTES / UNITS
+  // =============================
+  function formatBytes(bytes) {
+    bytes = Number(bytes) || 0;
+    const units = ["B", "KB", "MB", "GB", "TB"];
+    let i = 0;
+    let val = bytes;
+    while (val >= 1024 && i < units.length - 1) {
+      val /= 1024;
+      i++;
+    }
+    return { value: val.toFixed(2), unit: units[i] };
+  }
+
+  function formatBytesForLabel(bytes) {
+    bytes = Number(bytes) || 0;
+    const KB = 1024, MB = KB * 1024, GB = MB * 1024, TB = GB * 1024;
+    if (bytes >= TB) return (bytes / TB).toFixed(2) + " TB";
+    if (bytes >= GB) return (bytes / GB).toFixed(2) + " GB";
+    if (bytes >= MB) return (bytes / MB).toFixed(2) + " MB";
+    if (bytes >= KB) return (bytes / KB).toFixed(2) + " KB";
+    return bytes.toFixed(0) + " B";
+  }
+
+  function getChartUnitScale(bytesArr) {
+    const maxBytes = Math.max(...bytesArr.map(v => Number(v) || 0), 0);
+    const KB = 1024, MB = KB * 1024, GB = MB * 1024, TB = GB * 1024;
+    if (maxBytes >= TB) return { unit: "TB", div: TB };
+    if (maxBytes >= GB) return { unit: "GB", div: GB };
+    if (maxBytes >= MB) return { unit: "MB", div: MB };
+    return { unit: "KB", div: KB };
+  }
+
+  // =============================
+  // UI (NO FLICKER)
+  // =============================
+  function setText(id, text) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = text;
+  }
+
+  function setLoading(id, show) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.style.display = show ? "flex" : "none";
+  }
+
+  function setWarn(msg) {
+    const el = document.getElementById("dux-warn");
+    if (!el) return;
+    if (!msg) {
+      el.style.display = "none";
+      el.textContent = "";
+      return;
+    }
+    el.style.display = "block";
+    el.textContent = msg;
+  }
+
+  function paintSummary(prefix, totalBytes, sentBytes, recvBytes) {
+    const t = formatBytes(totalBytes);
+    const s = formatBytes(sentBytes);
+    const r = formatBytes(recvBytes);
+
+    setText(`dux-${prefix}-value`, t.value);
+    setText(`dux-${prefix}-unit`, t.unit);
+    setText(`dux-${prefix}-sent`, `${s.value} ${s.unit}`);
+    setText(`dux-${prefix}-recv`, `${r.value} ${r.unit}`);
+  }
+
+  // =============================
+  // PLOTLY EMPTY (NO innerHTML RESET)
+  // =============================
+  function plotlyShowMessage(plotId, message) {
+    const el = document.getElementById(plotId);
+    if (!el) return;
+
+    Plotly.react(
+      el,
+      [],
+      {
+        autosize: true,
+        paper_bgcolor: "#ffffff",
+        plot_bgcolor: "#ffffff",
+        margin: { l: 40, r: 20, t: 10, b: 30 },
+        xaxis: { visible: false },
+        yaxis: { visible: false },
+        annotations: [
+          {
+            text: message,
+            x: 0.5,
+            y: 0.5,
+            xref: "paper",
+            yref: "paper",
+            showarrow: false,
+            font: { size: 14, color: "#6b7280" },
+          },
+        ],
+      },
+      { responsive: true, displaylogo: false, displayModeBar: false }
+    );
+
+    requestAnimationFrame(() => { try { Plotly.Plots.resize(el); } catch (e) {} });
+    setTimeout(() => { try { Plotly.Plots.resize(el); } catch (e) {} }, 250);
+  }
+
+  // =============================
+  // PLOTLY H-BAR (COMPACT + RESPONSIVE)
+  // =============================
+  function renderPlotlyHBar(plotId, labels, bytesArr, emptyMessage) {
+    const el = document.getElementById(plotId);
+    if (!el) return false;
+
+    const rows = labels
+      .map((l, i) => ({ label: String(l ?? "").trim(), bytes: Number(bytesArr[i]) || 0 }))
+      .filter(r => r.label)
+      .sort((a, b) => b.bytes - a.bytes);
+
+    if (!rows.length || rows.every(r => r.bytes <= 0)) {
+      plotlyShowMessage(plotId, emptyMessage || "No data available.");
+      return true; // chart updated (to message)
+    }
+
+    const y = rows.map(r => r.label);
+    const bytes = rows.map(r => r.bytes);
+
+    const { unit, div } = getChartUnitScale(bytes);
+    const x = bytes.map(b => +(b / div).toFixed(2));
+    const maxX = Math.max(...x, 0);
+    const xMaxPad = maxX > 0 ? maxX * 1.15 : 1;
+
+    const maxLen = y.reduce((m, s) => Math.max(m, (s || "").length), 0);
+    const leftMargin = Math.min(230, Math.max(95, Math.floor(maxLen * 6.8)));
+
+    const annotations = rows.map((r, i) => ({
+      x: x[i],
+      y: y[i],
+      xref: "x",
+      yref: "y",
+      text: formatBytesForLabel(r.bytes),
+      showarrow: false,
+      xanchor: "left",
+      yanchor: "middle",
+      xshift: 6,
+      font: { size: 11, color: "#374151" },
+      cliponaxis: false,
+    }));
+
+    Plotly.react(
+      el,
+      [{
+        type: "bar",
+        orientation: "h",
+        y,
+        x,
+        hovertemplate: "%{y}<br>%{x:.2f} " + unit + "<extra></extra>",
+        marker: { line: { width: 0 } },
+      }],
+      {
+        autosize: true,
+        paper_bgcolor: "#ffffff",
+        plot_bgcolor: "#ffffff",
+        showlegend: false,
+        bargap: 0.72,
+        margin: { l: leftMargin, r: 28, t: 8, b: 34 },
+        xaxis: {
+          range: [0, xMaxPad],
+          ticksuffix: " " + unit,
+          tickfont: { size: 11, color: "#6b7280" },
+          gridcolor: "#e5e7eb",
+          zeroline: false,
+          fixedrange: true,
+        },
+        yaxis: {
+          type: "category",
+          autorange: "reversed",
+          tickfont: { size: 11, color: "#374151" },
+          showgrid: false,
+          fixedrange: true,
+        },
+        annotations,
+      },
+      { responsive: true, displaylogo: false, displayModeBar: false }
+    );
+
+    requestAnimationFrame(() => { try { Plotly.Plots.resize(el); } catch (e) {} });
+    setTimeout(() => { try { Plotly.Plots.resize(el); } catch (e) {} }, 250);
+    setTimeout(() => { try { Plotly.Plots.resize(el); } catch (e) {} }, 900);
+
+    return true;
+  }
+
+  // =============================
+  // MONITORING FILTER (YOUR RULES)
+  // =============================
+  function getChartByIface(monitoringData, ifaceName) {
+    const charts = Array.isArray(monitoringData?.charts) ? monitoringData.charts : [];
+    const title = "Traffic: " + ifaceName;
+    return charts.find(c => c && c.title === title) || null;
+  }
+
+  // In your shared code: summary.upload/download are in GB
+  function getSummaryGB(chart) {
+    const up = Number(chart?.summary?.upload || 0);
+    const down = Number(chart?.summary?.download || 0);
+    return { upGB: up, downGB: down };
+  }
+
+  function gbToBytes(gb) {
+    return (Number(gb) || 0) * 1024 * 1024 * 1024;
+  }
+
+  function computeDeviceTotalsFromMonitoring(monitoringPayload) {
+    // Mobile: modem + modem2
+    const m1 = getSummaryGB(getChartByIface(monitoringPayload, "modem"));
+    const m2 = getSummaryGB(getChartByIface(monitoringPayload, "modem2"));
+
+    const cellUpGB = m1.upGB + m2.upGB;
+    const cellDownGB = m1.downGB + m2.downGB;
+
+    // Ethernet: eth0..eth5
+    let ethUpGB = 0;
+    let ethDownGB = 0;
+    for (const ifn of ETH_IFACES) {
+      const e = getSummaryGB(getChartByIface(monitoringPayload, ifn));
+      ethUpGB += e.upGB;
+      ethDownGB += e.downGB;
+    }
+
+    const cellular = { sent: gbToBytes(cellUpGB), recv: gbToBytes(cellDownGB) };
+    const wired = { sent: gbToBytes(ethUpGB), recv: gbToBytes(ethDownGB) };
+    const total = { sent: cellular.sent + wired.sent, recv: cellular.recv + wired.recv };
+
+    return {
+      total: { ...total, total: total.sent + total.recv },
+      cellular: { ...cellular, total: cellular.sent + cellular.recv },
+      wired: { ...wired, total: wired.sent + wired.recv },
+    };
+  }
+
+  function computeTopBranches(devTotals, topN) {
+    const rows = devTotals
+      .filter(d => d.ok && d.totals && (d.totals.total?.total || 0) > 0)
+      .map(d => ({ name: d.name, bytes: Number(d.totals.total.total) || 0 }))
+      .sort((a, b) => b.bytes - a.bytes)
+      .slice(0, topN || 10);
+
+    return { labels: rows.map(r => r.name), bytes: rows.map(r => r.bytes) };
+  }
+
+  // =============================
+  // REFRESH: TOP APPS (KEEP OLD IF FAIL)
+  // =============================
+  let lastAppsGood = false;
+
+  async function refreshTopApps() {
+    setLoading("dux-loader-apps", true);
+
+    try {
+      const resp = await fetch(TOP_APPS_URL, {
+        headers: { Accept: "application/json" },
+        credentials: "include",
+      });
+      const json = await resp.json().catch(() => null);
+
+      if (!resp.ok) {
+        // do NOT blank UI; if we have old chart, keep it
+        if (!lastAppsGood) {
+          const msg =
+            resp.status === 401 ? "You are not authenticated. Please log in to see top applications." :
+            resp.status === 403 ? (json?.detail || "You do not have permission to view top applications.") :
+            resp.status === 404 ? "Top application data is not available." :
+            (json?.message || "Unable to load top applications.");
+          plotlyShowMessage("dux-plot-apps", msg);
+        }
+        return;
+      }
+
+      const rows = Array.isArray(json?.top_10_apps) ? json.top_10_apps : [];
+      const labels = rows.map(r => String(r.label ?? ""));
+      const bytes = rows.map(r => Number(r.traffic) || 0);
+
+      renderPlotlyHBar("dux-plot-apps", labels, bytes, json?.message || "No application traffic data available.");
+      lastAppsGood = true;
+
+    } catch (e) {
+      console.error("Top apps error:", e);
+      if (!lastAppsGood) {
+        plotlyShowMessage("dux-plot-apps", "Unable to load top applications.");
+      }
+    } finally {
+      setLoading("dux-loader-apps", false);
+    }
+  }
+
+  // =============================
+  // REFRESH: ALL DEVICES (SUMMARY + TOP BRANCHES)
+  // =============================
+  let lastBranchesGood = false;
+
+  async function refreshAllDevices() {
+    setLoading("dux-loader-branches", true);
+    setWarn("");
+
+    try {
+      const devices = await fetchAllDevices();
+
+      if (!devices.length) {
+        if (!lastBranchesGood) plotlyShowMessage("dux-plot-branches", "No devices found.");
+        return;
+      }
+
+      // fetch monitoring (limit concurrency)
+      const monRes = await mapLimit(devices, 6, async (dev) => {
+        const mon = await fetchJson(MONITORING_URL(dev.id));
+        return { id: dev.id, name: dev.name, mon };
+      });
+
+      const devRows = monRes.map((r, idx) => {
+        const dev = devices[idx];
+        if (!r.ok) return { id: dev.id, name: dev.name, ok: false, error: r.error, totals: null };
+        const totals = computeDeviceTotalsFromMonitoring(r.value.mon);
+        return { id: dev.id, name: dev.name, ok: true, totals };
+      });
+
+      const failed = devRows.filter(d => !d.ok);
+      if (failed.length) {
+        setWarn(`Warning: ${failed.length} device(s) failed to load. Totals use remaining devices.`);
+      }
+
+      // aggregate summary
+      const agg = {
+        total:   { sent: 0, recv: 0, total: 0 },
+        cellular:{ sent: 0, recv: 0, total: 0 },
+        wired:   { sent: 0, recv: 0, total: 0 },
+      };
+
+      for (const d of devRows) {
+        if (!d.ok || !d.totals) continue;
+
+        agg.total.sent += d.totals.total.sent || 0;
+        agg.total.recv += d.totals.total.recv || 0;
+        agg.total.total += d.totals.total.total || 0;
+
+        agg.cellular.sent += d.totals.cellular.sent || 0;
+        agg.cellular.recv += d.totals.cellular.recv || 0;
+        agg.cellular.total += d.totals.cellular.total || 0;
+
+        agg.wired.sent += d.totals.wired.sent || 0;
+        agg.wired.recv += d.totals.wired.recv || 0;
+        agg.wired.total += d.totals.wired.total || 0;
+      }
+
+      paintSummary("total", agg.total.total, agg.total.sent, agg.total.recv);
+      paintSummary("cell", agg.cellular.total, agg.cellular.sent, agg.cellular.recv);
+      paintSummary("wired", agg.wired.total, agg.wired.sent, agg.wired.recv);
+
+      // top branches chart
+      const top = computeTopBranches(devRows, 10);
+      renderPlotlyHBar("dux-plot-branches", top.labels, top.bytes, "No device traffic data available.");
+      lastBranchesGood = true;
+
+      // last updated label
+      const now = new Date();
+      setText("dux-last-updated", "Last refreshed: " + now.toLocaleString());
+
+    } catch (e) {
+      console.error("All devices error:", e);
+      // keep old UI if we already had good chart
+      if (!lastBranchesGood) {
+        plotlyShowMessage("dux-plot-branches", "Unable to load top branches.");
+      }
+      setWarn("Unable to refresh all devices data. Showing previous charts.");
+    } finally {
+      setLoading("dux-loader-branches", false);
+    }
+  }
+
+  // =============================
+  // RESIZE (BIND ONCE)
+  // =============================
+  let resizeBound = false;
+  function bindResizeOnce() {
+    if (resizeBound) return;
+    resizeBound = true;
+
+    const doResize = () => {
+      const a = document.getElementById("dux-plot-apps");
+      const b = document.getElementById("dux-plot-branches");
+      if (a) { try { Plotly.Plots.resize(a); } catch (e) {} }
+      if (b) { try { Plotly.Plots.resize(b); } catch (e) {} }
+    };
+
+    window.addEventListener("resize", doResize);
+    window.addEventListener("orientationchange", doResize);
+
+    try {
+      const ro = new ResizeObserver(doResize);
+      const a = document.getElementById("dux-plot-apps");
+      const b = document.getElementById("dux-plot-branches");
+      if (a) ro.observe(a);
+      if (b) ro.observe(b);
+    } catch (e) {}
+
+    // one extra kick for admin tabs / hidden render
+    setTimeout(doResize, 350);
+    setTimeout(doResize, 1200);
+  }
+
+  // =============================
+  // INIT
+  // =============================
+  document.addEventListener("DOMContentLoaded", () => {
+    // draw initial empty placeholders (stable card height)
+    plotlyShowMessage("dux-plot-apps", "Loading…");
+    plotlyShowMessage("dux-plot-branches", "Loading…");
+
+    bindResizeOnce();
+
+    refreshTopApps();
+    refreshAllDevices();
+
+    setInterval(refreshTopApps, REFRESH_MS);
+    setInterval(refreshAllDevices, REFRESH_MS);
+  });
+
+})();
+</script>
+
+<style>
+  /* ===== Namespaced UI (no overrides) ===== */
+  .dux-wrap { padding-top: 6px; }
+
+  .dux-summary { padding: 20px 40px 10px 40px; }
+  .dux-summary-hd {
+    display:flex; align-items:center; justify-content:space-between;
+    gap: 12px; margin-bottom: 10px;
+  }
+  .dux-title {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 700;
+    color: #374151;
+  }
+  .dux-meta { display:flex; align-items:center; gap: 10px; }
+  .dux-last-updated { font-size: 12px; color: #6b7280; }
+
+  .dux-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(160px, 1fr));
+    gap: 20px;
+    background: #fff;
+    border: 1px solid #f1f5f9;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    padding: 16px 18px;
+  }
+
+  .dux-summary-card { padding: 4px 10px; border-right: 1px solid #e5e7eb; }
+  .dux-summary-card:last-child { border-right: none; }
+
+  .dux-summary-label { font-size: 12px; color: #6b7280; margin-bottom: 6px; }
+  .dux-summary-main { display:flex; align-items:baseline; gap: 6px; margin-bottom: 8px; }
+  .dux-summary-value { font-size: 22px; font-weight: 800; color: #111827; letter-spacing: .2px; }
+  .dux-summary-unit { font-size: 11px; font-weight: 700; color: #6b7280; }
+
+  .dux-summary-metrics { font-size: 11px; color: #4b5563; }
+  .dux-metric { display:flex; gap: 6px; line-height: 1.35; }
+  .dux-metric-label { color: #6b7280; }
+  .dux-metric-value { color: #16a34a; font-weight: 600; }
+
+  .dux-warn { margin-top: 10px; font-size: 12px; color: #b45309; }
+
+  .dux-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+    padding: 10px 40px 18px 40px;
+  }
+
+  .dux-card {
+    background: #fff;
+    border: 1px solid #f1f5f9;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+    padding: 14px 14px 10px 14px;
+  }
+
+  .dux-card-hd { margin-bottom: 8px; }
+  .dux-card-title { margin: 0; font-size: 13px; font-weight: 700; color: #374151; }
+
+  .dux-chart {
+    position: relative;
+    width: 100%;
+    height: 270px;          /* stable height (important for Plotly) */
+    border-radius: 10px;
+    overflow: hidden;       /* no overflow labels */
+    background: #fff;
+  }
+
+  .dux-plot {
+    width: 100%;
+    height: 270px;          /* fixed height so Plotly never renders 0px */
+  }
+  .dux-plot > div { height: 100% !important; }
+
+  .dux-loader {
+    position: absolute;
+    inset: 0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size: 13px;
+    color: #6b7280;
+    background: rgba(255,255,255,0.65);
+    z-index: 10;
+    pointer-events: none; /* no UI change */
+  }
+
+  @media (max-width: 1280px) {
+    .dux-summary-grid { grid-template-columns: repeat(2, minmax(180px, 1fr)); }
+    .dux-summary-card { border-right: none; border-bottom: 1px solid #e5e7eb; padding-bottom: 10px; }
+    .dux-summary-card:last-child { border-bottom: none; }
+  }
+
+  @media (max-width: 1024px) {
+    .dux-grid { grid-template-columns: 1fr; }
+  }
+
+  @media (max-width: 600px) {
+    .dux-summary, .dux-grid { padding: 10px 16px; }
+    .dux-summary-grid { grid-template-columns: 1fr; padding: 12px; }
+    .dux-summary-card { border-right: none; border-bottom: 1px solid #e5e7eb; padding-bottom: 8px; }
+    .dux-summary-card:last-child { border-bottom: none; }
+    .dux-chart, .dux-plot { height: 230px; }
+  }
+</style>

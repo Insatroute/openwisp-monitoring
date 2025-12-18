@@ -444,8 +444,6 @@
 </style>
 
 <div class="dashboard-contain">
-  <div id="apiError"></div>
-
   <div class="top-row">
     <h1 class="usage-title">Device Usage</h1>
 
@@ -1237,7 +1235,7 @@
         bargap: 0.4,
 
         // ✅ give space on left so title is visible
-        margin: { l: 85, r: 20, t: 10, b: 60 },
+        margin: { l: 60, r: 20, t: 40, b: 60 },
 
         hovermode: "x unified",
 
@@ -1272,20 +1270,24 @@
         plot_bgcolor: "#ffffff",
       };
 
-      Plotly.newPlot("trafficCharts", traces, layout, {
+      const trafficChartsEl = document.getElementById("trafficCharts");
+      if (!trafficChartsEl) return;
+
+      Plotly.newPlot(trafficChartsEl, traces, layout, {
         responsive: true,
         displaylogo: false,
-        displayModeBar: true, // like your screenshot toolbar
+        displayModeBar: true,
+      }).then(() => {
+        const resizeTrafficChart = () => Plotly.Plots.resize(trafficChartsEl);
+
+        // ✅ fixes "wrong on first load, correct after resize"
+        requestAnimationFrame(resizeTrafficChart);
+        setTimeout(resizeTrafficChart, 250);
+
+        window.addEventListener("resize", resizeTrafficChart);
+        window.addEventListener("orientationchange", resizeTrafficChart);
       });
 
-      function resizeTrafficChart() {
-        if (!trafficChartsEl) return;
-        Plotly.Plots.resize(trafficChartsEl);
-      }
-
-      setTimeout(resizeTrafficChart, 100);
-      window.addEventListener("resize", resizeTrafficChart);
-      window.addEventListener("orientationchange", resizeTrafficChart);
     }
 
     /* ========= FETCH ========= */

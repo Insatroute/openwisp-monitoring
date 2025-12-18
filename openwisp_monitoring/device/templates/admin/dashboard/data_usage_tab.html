@@ -1,1094 +1,1001 @@
 {% load static %}
 
-<!-- Chart.js v3+ -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+<!-- Plotly 3.3.0 -->
+<script src="https://cdn.plot.ly/plotly-3.3.0.min.js"></script>
 
-<div class="home-datausage-wrap">
+<div class="owdu-wrap">
+  <!-- ================= SUMMARY ROW ================= -->
+  <div class="owdu-summary-section">
+    {% comment %}
+    <h4 class="owdu-summary-title">Summary (All Devices)</h4>
+    {% endcomment %}
 
-    <!-- ================= SUMMARY ROW ================= -->
-    <div class="home-datausage-summary-section">
-        <h4 class="home-datausage-summary-title">Summary</h4>
-
-        <div class="home-datausage-summary-grid">
-            <!-- Total Data Usage -->
-            <div class="home-datausage-summary-card">
-                <div class="home-datausage-summary-label">Total Data Usage</div>
-                <div class="home-datausage-summary-main">
-                    <span id="home-datausage-total-value" class="home-datausage-summary-value">0.00</span>
-                    <span id="home-datausage-total-unit" class="home-datausage-summary-unit">GB</span>
-                </div>
-                <div class="home-datausage-summary-metrics">
-                    <div class="home-datausage-summary-metric">
-                        <span class="home-datausage-summary-metric-label">Sent:</span>
-                        <span id="home-datausage-total-sent" class="home-datausage-summary-metric-value">0.00 GB</span>
-                    </div>
-                    <div class="home-datausage-summary-metric">
-                        <span class="home-datausage-summary-metric-label">Received:</span>
-                        <span id="home-datausage-total-recv" class="home-datausage-summary-metric-value">0.00 GB</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Cellular -->
-            <div class="home-datausage-summary-card">
-                <div class="home-datausage-summary-label">Cellular</div>
-                <div class="home-datausage-summary-main">
-                    <span id="home-datausage-cellular-value" class="home-datausage-summary-value">0.00</span>
-                    <span id="home-datausage-cellular-unit" class="home-datausage-summary-unit">GB</span>
-                </div>
-                <div class="home-datausage-summary-metrics">
-                    <div class="home-datausage-summary-metric">
-                        <span class="home-datausage-summary-metric-label">Sent:</span>
-                        <span id="home-datausage-cellular-sent" class="home-datausage-summary-metric-value">0.00
-                            GB</span>
-                    </div>
-                    <div class="home-datausage-summary-metric">
-                        <span class="home-datausage-summary-metric-label">Received:</span>
-                        <span id="home-datausage-cellular-recv" class="home-datausage-summary-metric-value">0.00
-                            GB</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Wired -->
-            <div class="home-datausage-summary-card">
-                <div class="home-datausage-summary-label">Wired</div>
-                <div class="home-datausage-summary-main">
-                    <span id="home-datausage-wired-value" class="home-datausage-summary-value">0.00</span>
-                    <span id="home-datausage-wired-unit" class="home-datausage-summary-unit">GB</span>
-                </div>
-                <div class="home-datausage-summary-metrics">
-                    <div class="home-datausage-summary-metric">
-                        <span class="home-datausage-summary-metric-label">Sent:</span>
-                        <span id="home-datausage-wired-sent" class="home-datausage-summary-metric-value">0.00 GB</span>
-                    </div>
-                    <div class="home-datausage-summary-metric">
-                        <span class="home-datausage-summary-metric-label">Received:</span>
-                        <span id="home-datausage-wired-recv" class="home-datausage-summary-metric-value">0.00 GB</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Wireless -->
-            <!-- <div class="home-datausage-summary-card">
-                <div class="home-datausage-summary-label">Wireless</div>
-                <div class="home-datausage-summary-main">
-                    <span id="home-datausage-wireless-value" class="home-datausage-summary-value">0.00</span>
-                    <span id="home-datausage-wireless-unit" class="home-datausage-summary-unit">GB</span>
-                </div>
-                <div class="home-datausage-summary-metrics">
-                    <div class="home-datausage-summary-metric">
-                        <span class="home-datausage-summary-metric-label">Sent:</span>
-                        <span id="home-datausage-wireless-sent" class="home-datausage-summary-metric-value">0.00
-                            GB</span>
-                    </div>
-                    <div class="home-datausage-summary-metric">
-                        <span class="home-datausage-summary-metric-label">Received:</span>
-                        <span id="home-datausage-wireless-recv" class="home-datausage-summary-metric-value">0.00
-                            GB</span>
-                    </div>
-                </div>
-            </div> -->
+    <div class="owdu-summary-grid">
+      <!-- Total -->
+      <div class="owdu-summary-card">
+        <div class="owdu-summary-label">Total Data Usage</div>
+        <div class="owdu-summary-main">
+          <span id="owdu-total-value" class="owdu-summary-value">0.00</span>
+          <span id="owdu-total-unit" class="owdu-summary-unit">GB</span>
         </div>
+        <div class="owdu-summary-metrics">
+          <div class="owdu-metric-row">
+            <span class="owdu-metric-label">Upload:</span>
+            <span class="owdu-metric-arrow owdu-up">▲</span>
+            <span id="owdu-total-sent" class="owdu-metric-value">0.00 GB</span>
+          </div>
+
+          <div class="owdu-metric-row">
+            <span class="owdu-metric-label">Download:</span>
+            <span class="owdu-metric-arrow owdu-down">▼</span>
+            <span id="owdu-total-recv" class="owdu-metric-value">0.00 GB</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cellular -->
+      <div class="owdu-summary-card">
+        <div class="owdu-summary-label">Cellular</div>
+        <div class="owdu-summary-main">
+          <span id="owdu-cellular-value" class="owdu-summary-value">0.00</span>
+          <span id="owdu-cellular-unit" class="owdu-summary-unit">GB</span>
+        </div>
+        <div class="owdu-summary-metrics">
+          <div class="owdu-metric-row">
+            <span class="owdu-metric-label">Upload:</span>
+            <span class="owdu-metric-arrow owdu-up">▲</span>
+            <span id="owdu-cellular-sent" class="owdu-metric-value"
+              >0.00 GB</span
+            >
+          </div>
+
+          <div class="owdu-metric-row">
+            <span class="owdu-metric-label">Download:</span>
+            <span class="owdu-metric-arrow owdu-down">▼</span>
+            <span id="owdu-cellular-recv" class="owdu-metric-value"
+              >0.00 GB</span
+            >
+          </div>
+        </div>
+      </div>
+
+      <!-- Wired -->
+      <div class="owdu-summary-card">
+        <div class="owdu-summary-label">Wired</div>
+        <div class="owdu-summary-main">
+          <span id="owdu-wired-value" class="owdu-summary-value">0.00</span>
+          <span id="owdu-wired-unit" class="owdu-summary-unit">GB</span>
+        </div>
+        <div class="owdu-summary-metrics">
+          <div class="owdu-metric-row">
+            <span class="owdu-metric-label">Upload:</span>
+            <span class="owdu-metric-arrow owdu-up">▲</span>
+            <span id="owdu-wired-sent" class="owdu-metric-value">0.00 GB</span>
+          </div>
+
+          <div class="owdu-metric-row">
+            <span class="owdu-metric-label">Download:</span>
+            <span class="owdu-metric-arrow owdu-down">▼</span>
+            <span id="owdu-wired-recv" class="owdu-metric-value">0.00 GB</span>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <!-- ================= GRAPHS ROW ================= -->
-    <div class="home-datausage-graph-grid">
-        <!-- Top Applications -->
-        <div class="home-datausage-card home-datausage-top-apps">
-            <h4><span>Top Applications</span></h4>
-            <div class="home-datausage-chart-container" id="top-apps-chart-container">
-                <div id="chart-loading" class="home-datausage-loading-text">Loading…</div>
-                <canvas id="topAppsChart"></canvas>
-            </div>
-        </div>
+    <div id="owdu-warn" class="owdu-warn" style="display: none"></div>
+  </div>
 
-        <!-- Top Branches -->
-        <div class="home-datausage-card home-datausage-top-branches">
-            <h4><span>Top Branches</span></h4>
-            <div class="home-datausage-chart-container" id="top-devices-chart-container">
-                <div id="chart-loading-devices" class="home-datausage-loading-text">Loading…</div>
-                <canvas id="topDevicesChart"></canvas>
-            </div>
+  <!-- ================= GRAPHS ROW ================= -->
+  <div class="owdu-graph-grid">
+    <!-- Top Applications -->
+    <div class="owdu-card">
+      <div class="owdu-card-hd">Top Applications</div>
+      <div class="owdu-card-bd">
+        <div class="owdu-chart-container">
+          <div id="owdu-loading-apps" class="owdu-loading">Loading…</div>
+          <div id="owdu-top-apps" class="owdu-plot"></div>
         </div>
+      </div>
     </div>
 
-    <!-- ===== data-usage distribution cards ===== -->
-    <!-- (kept commented out as in original) -->
-
+    <!-- Top Branches -->
+    <div class="owdu-card">
+      <div class="owdu-card-hd">Top Branches</div>
+      <div class="owdu-card-bd">
+        <div class="owdu-chart-container">
+          <div id="owdu-loading-branches" class="owdu-loading">Loading…</div>
+          <div id="owdu-top-branches" class="owdu-plot"></div>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
-    /* ---------- Helper: create canvas inside the existing divs ---------- */
-    function ensureCanvasInside(containerId, canvasId) {
-        const container = document.getElementById(containerId);
-        if (!container) return null;
+  (function () {
+    "use strict";
 
-        let canvas = container.querySelector('canvas');
-        if (!canvas) {
-            canvas = document.createElement('canvas');
-            canvas.id = canvasId;
-            container.innerHTML = '';
-            container.appendChild(canvas);
-        }
-        return canvas;
-    }
-
-    /* ---------- Helper: render horizontal bar chart (like Top Applications) ---------- */
-    function renderGroupBarChart({ containerId, canvasId, labels, values, sortDirection }) {
-        const container = document.getElementById(containerId);
-        if (!container) return;
-
-        if (!Array.isArray(labels) || !labels.length || !Array.isArray(values) || !values.length) {
-            container.innerHTML = '<div class="home-datausage-loading-text">No Data</div>';
-            return;
-        }
-
-        const rows = labels.map((label, i) => ({
-            label: String(label ?? ''),
-            value: Number(values[i]) || 0
-        }));
-
-        // sortDirection: 'desc' → highest to lowest, 'asc' → lowest to highest
-        rows.sort((a, b) => sortDirection === 'asc' ? a.value - b.value : b.value - a.value);
-
-        const sortedLabels = rows.map(r => r.label);
-        const sortedValues = rows.map(r => r.value);
-
-        const canvas = ensureCanvasInside(containerId, canvasId);
-        if (!canvas) return;
-
-        const existing = Chart.getChart(canvasId);
-        if (existing) existing.destroy();
-
-        const ctx = canvas.getContext('2d');
-
-        new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: sortedLabels,
-                datasets: [{
-                    data: sortedValues,
-                    backgroundColor: '#00acea',
-                    borderRadius: 10,
-                    barPercentage: 0.5,
-                    categoryPercentage: 0.5,
-                    barThickness: 8,
-                }]
-            },
-            options: {
-                indexAxis: 'y',
-                layout: { padding: { right: 60 } },
-                scales: {
-                    x: {
-                        beginAtZero: true,
-                        grid: { display: false },
-                        ticks: {
-                            callback: (v) => `${v} GB`
-                        }
-                    },
-                    y: {
-                        grid: { display: false },
-                        ticks: {
-                            font: { size: 12, weight: '500' }
-                        }
-                    }
-                },
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        callbacks: {
-                            label: (ctx) => ` ${ctx.parsed.x.toFixed(2)} GB`
-                        }
-                    },
-                    datalabels: {
-                        anchor: 'end',
-                        align: 'end',
-                        offset: 6,
-                        formatter: (v) => `${v.toFixed(2)} GB`,
-                        font: { weight: '500', size: 10 }
-                    }
-                },
-                responsive: true,
-                maintainAspectRatio: false
-            }
-        });
-    }
-
-</script>
-
-<script>
     window.OW_HIDE_CHARTS = true;
 
-    console.log('Data usage tab script loaded, OW_HIDE_CHARTS set to true.=====', window.OW_HIDE_CHARTS);
+    const API_BASE = window.location.origin;
+    const DEVICES_LIST_URL = `${API_BASE}/api/v1/controller/device/`;
 
-    // helper to format bytes into KB / MB / GB / TB for cards (summary)
+    const MOBILE_IFACES = ["modem", "modem2"];
+    const ETH_IFACES = ["eth0", "eth1", "eth2", "eth3", "eth4", "eth5"];
+
+    const REFRESH_MS = 300000; // 5 minutes
+    const TOP_ROWS = 10;
+    const FETCH_CONCURRENCY = 6;
+
+    let isRefreshingAll = false;
+    let isRefreshingApps = false;
+
+    /* =========================
+     * Plotly sizing fixes (ADMIN TAB SAFE)
+     * ========================= */
+    function owduHardResize(plotId) {
+      const el = document.getElementById(plotId);
+      if (!el) return;
+
+      const w = el.clientWidth || 0;
+      const h = el.clientHeight || 0;
+      if (!w || !h) return;
+
+      try {
+        Plotly.relayout(el, { width: w, height: h });
+        Plotly.Plots.resize(el);
+      } catch (e) {}
+    }
+
+    function owduResizeBurst(plotId) {
+      owduHardResize(plotId);
+      requestAnimationFrame(() => owduHardResize(plotId));
+      setTimeout(() => owduHardResize(plotId), 200);
+      setTimeout(() => owduHardResize(plotId), 800);
+    }
+
+    function owduAttachResizeObserver(plotId) {
+      const el = document.getElementById(plotId);
+      if (!el || el.__owduRO) return;
+
+      try {
+        el.__owduRO = new ResizeObserver(() => owduHardResize(plotId));
+        el.__owduRO.observe(el);
+      } catch (e) {}
+    }
+
+    /* =========================
+     * Rounded bar fallback (works even if cornerradius unsupported)
+     * ========================= */
+    function owduRoundBars(plotId, radiusPx) {
+      const el = document.getElementById(plotId);
+      if (!el) return;
+
+      // Plotly bars are SVG <path> inside .barlayer
+      const paths = el.querySelectorAll(".barlayer path");
+      if (!paths.length) return;
+
+      const r = Math.max(0, Number(radiusPx) || 0);
+
+      paths.forEach((p) => {
+        try {
+          // clipPath approach doesn't work well with Plotly; use SVG path rounding trick:
+          // We can’t reliably rewrite all path commands, but we can fake rounded ends by
+          // applying stroke-linecap on a slightly thicker stroke overlay.
+          // Easiest stable approach: set rx/ry not available on <path>, so we do:
+          // - Add stroke same as fill, and stroke-linecap round
+          const fill = p.getAttribute("fill");
+          if (!fill || fill === "none") return;
+
+          p.style.stroke = fill;
+          p.style.strokeWidth = `${Math.max(1, r)}px`;
+          p.style.strokeLinecap = "round";
+          p.style.paintOrder = "stroke fill";
+        } catch (e) {}
+      });
+    }
+
+    /* =========================
+     * Fetch helpers
+     * ========================= */
+    async function fetchJson(url) {
+      const resp = await fetch(url, {
+        method: "GET",
+        credentials: "same-origin",
+        headers: { Accept: "application/json" },
+      });
+      const json = await resp.json().catch(() => null);
+      if (!resp.ok) {
+        const msg = json?.detail || json?.message || `HTTP ${resp.status}`;
+        throw new Error(msg);
+      }
+      return json;
+    }
+
+    async function fetchAllDevices() {
+      let url = DEVICES_LIST_URL;
+      const all = [];
+
+      while (url) {
+        const page = await fetchJson(url);
+        const rows = Array.isArray(page?.results) ? page.results : [];
+        all.push(...rows);
+        url = page?.next || null;
+      }
+
+      return all
+        .map((d) => ({ id: String(d.id), name: d.name || String(d.id) }))
+        .filter((d) => d.id);
+    }
+
+    async function fetchMonitoringForDevice(deviceId) {
+      return fetchJson(
+        `${API_BASE}/api/v1/monitoring/device/${encodeURIComponent(deviceId)}/`
+      );
+    }
+
+    async function mapLimit(items, limit, mapper) {
+      const results = new Array(items.length);
+      let i = 0;
+
+      async function worker() {
+        while (i < items.length) {
+          const idx = i++;
+          try {
+            const value = await mapper(items[idx], idx);
+            results[idx] = { ok: true, value };
+          } catch (err) {
+            results[idx] = { ok: false, error: String(err?.message || err) };
+          }
+        }
+      }
+
+      await Promise.all(
+        Array.from({ length: Math.min(limit, items.length) }, () => worker())
+      );
+      return results;
+    }
+
+    /* =========================
+     * Bytes & units
+     * ========================= */
     function formatBytes(bytes) {
-        if (!bytes || bytes < 0) {
-            return { value: '0.00', unit: 'KB' }; // default
-        }
-        const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-        let value = Number(bytes);
-        let i = 0;
-        while (value >= 1024 && i < units.length - 1) {
-            value = value / 1024;
-            i++;
-        }
-        return { value: value.toFixed(2), unit: units[i] };
+      if (!bytes || bytes < 0) return { value: "0.00", unit: "KB" };
+      const units = ["B", "KB", "MB", "GB", "TB"];
+      let v = Number(bytes);
+      let i = 0;
+      while (v >= 1024 && i < units.length - 1) {
+        v /= 1024;
+        i++;
+      }
+      return { value: v.toFixed(2), unit: units[i] };
     }
 
-    async function fetchAndDisplaySummary() {
-        try {
-            const resp = await fetch("https://controller.nexapp.co.in/api/v1/monitoring/data-usage/", {
-                headers: { accept: "application/json" }
-            });
-
-            if (!resp.ok) throw new Error("HTTP " + resp.status);
-
-            const data = await resp.json();
-
-            /* ===== TOTAL ===== */
-            const totalTotal = formatBytes(data.total.total);
-            const totalSent = formatBytes(data.total.sent);
-            const totalRecv = formatBytes(data.total.received);
-
-            document.getElementById("home-datausage-total-value").innerText = totalTotal.value;
-            document.getElementById("home-datausage-total-unit").innerText = totalTotal.unit;
-            document.getElementById("home-datausage-total-sent").innerText = `${totalSent.value} ${totalSent.unit}`;
-            document.getElementById("home-datausage-total-recv").innerText = `${totalRecv.value} ${totalRecv.unit}`;
-
-            /* ===== CELLULAR ===== */
-            const cellTotal = formatBytes(data.cellular.total);
-            const cellSent = formatBytes(data.cellular.sent);
-            const cellRecv = formatBytes(data.cellular.received);
-
-            document.getElementById("home-datausage-cellular-value").innerText = cellTotal.value;
-            document.getElementById("home-datausage-cellular-unit").innerText = cellTotal.unit;
-            document.getElementById("home-datausage-cellular-sent").innerText = `${cellSent.value} ${cellSent.unit}`;
-            document.getElementById("home-datausage-cellular-recv").innerText = `${cellRecv.value} ${cellRecv.unit}`;
-
-            /* ===== WIRED ===== */
-            const wiredTotal = formatBytes(data.wired.total);
-            const wiredSent = formatBytes(data.wired.sent);
-            const wiredRecv = formatBytes(data.wired.received);
-
-            document.getElementById("home-datausage-wired-value").innerText = wiredTotal.value;
-            document.getElementById("home-datausage-wired-unit").innerText = wiredTotal.unit;
-            document.getElementById("home-datausage-wired-sent").innerText = `${wiredSent.value} ${wiredSent.unit}`;
-            document.getElementById("home-datausage-wired-recv").innerText = `${wiredRecv.value} ${wiredRecv.unit}`;
-
-            /* ===== WIRELESS ===== */
-            const wirelessTotal = formatBytes(data.wireless.total);
-            const wirelessSent = formatBytes(data.wireless.sent);
-            const wirelessRecv = formatBytes(data.wireless.received);
-
-            document.getElementById("home-datausage-wireless-value").innerText = wirelessTotal.value;
-            document.getElementById("home-datausage-wireless-unit").innerText = wirelessTotal.unit;
-            document.getElementById("home-datausage-wireless-sent").innerText = `${wirelessSent.value} ${wirelessSent.unit}`;
-            document.getElementById("home-datausage-wireless-recv").innerText = `${wirelessRecv.value} ${wirelessRecv.unit}`;
-
-        } catch (e) {
-            console.error("Summary load error:", e);
-        }
-    }
-
-    document.addEventListener("DOMContentLoaded", () => {
-        fetchAndDisplaySummary();
-        setInterval(fetchAndDisplaySummary, 30000);
-    });
-
-    /* ================== FETCH INTERFACES-SUMMARY (unchanged, kept for fallback) ================== */
-
-    async function fetchInterfacesSummaryForDataUsage() {
-        const path = window.location.pathname;
-        const match = path.match(/[0-9a-fA-F-]{36}/);
-        const DEVICE_UUID = match ? match[0] : 'b5224a8d-ee4c-44a3-a7b0-5f30fac484b9';
-
-        const base = window.API_BASE_URL || 'https://controller.nexapp.co.in';
-        const url = `${base}/api/v1/monitoring/device/${DEVICE_UUID}/interfaces-summary/`;
-
-        let token = null;
-        try {
-            token = await fetchAuthToken();
-        } catch (e) {
-            console.warn('fetchAuthToken error for interfaces-summary:', e);
-        }
-
-        const headers = { 'Accept': 'application/json' };
-        if (token) headers['Authorization'] = `Token ${token}`;
-
-        const resp = await fetch(url, { headers });
-        console.log('datausage interfaces-summary response:===', resp);
-        if (!resp.ok) {
-            throw new Error(`interfaces-summary HTTP ${resp.status}`);
-        }
-        return resp.json();
-    }
-
-    /* ================== FETCH MOBILE-DISTRIBUTION FOR DATA USAGE ================== */
-
-    async function fetchMobileDistributionForDataUsage() {
-        const base = window.API_BASE_URL || 'https://controller.nexapp.co.in';
-        const url = `${base}/api/v1/monitoring/mobile-distribution/`;
-
-        let token = null;
-        try {
-            token = await fetchAuthToken();
-        } catch (e) {
-            console.warn('fetchAuthToken error for mobile-distribution:', e);
-        }
-
-        const headers = { 'Accept': 'application/json' };
-        if (token) headers['Authorization'] = `Token ${token}`;
-
-        const resp = await fetch(url, { headers });
-        console.log('datausage mobile-distribution response:===', resp);
-        if (!resp.ok) {
-            throw new Error(`mobile-distribution HTTP ${resp.status}`);
-        }
-        return resp.json();
-    }
-
-    /* ================== INIT DATA USAGE GROUP BAR CHARTS ================== */
-
-    async function initDataUsageDistributionChartsFromApi() {
-        let mobileDist = {};
-
-        // we keep interfaces-summary fetch in case you want to reuse it later
-        try {
-            const ifSummary = await fetchInterfacesSummaryForDataUsage();
-            console.log('DataUsage: interfaces-summary:====', ifSummary);
-        } catch (e) {
-            console.error('DataUsage: Error fetching interfaces-summary:', e);
-        }
-
-        try {
-            mobileDist = await fetchMobileDistributionForDataUsage();
-            console.log('DataUsage: mobile-distribution:====', mobileDist);
-        } catch (e) {
-            console.error('DataUsage: Error fetching mobile-distribution:', e);
-            mobileDist = {};
-        }
-
-        /* ----- Top Group (carrier) – highest → lowest ----- */
-        let carrierLabels = [];
-        let carrierValues = [];
-
-        if (
-            mobileDist &&
-            mobileDist.carrier &&
-            Array.isArray(mobileDist.carrier.labels) &&
-            Array.isArray(mobileDist.carrier.data) &&
-            mobileDist.carrier.labels.length
-        ) {
-            carrierLabels = mobileDist.carrier.labels;
-            carrierValues = mobileDist.carrier.data;
-        }
-
-        /* ----- Least Group (network) – lowest → highest ----- */
-        let networkLabels = [];
-        let networkValues = [];
-
-        if (
-            mobileDist &&
-            mobileDist.network &&
-            Array.isArray(mobileDist.network.labels) &&
-            Array.isArray(mobileDist.network.data) &&
-            mobileDist.network.labels.length
-        ) {
-            networkLabels = mobileDist.network.labels;
-            networkValues = mobileDist.network.data;
-        }
-
-        // Render bar charts
-        renderGroupBarChart({
-            containerId: 'DataUsage-Carrier-Distribution-chart',
-            canvasId: 'datausageTopGroupChart',
-            labels: carrierLabels,
-            values: carrierValues,
-            sortDirection: 'desc'  // highest → lowest
-        });
-
-        renderGroupBarChart({
-            containerId: 'DataUsage-Network-Distribution-chart',
-            canvasId: 'datausageLeastGroupChart',
-            labels: networkLabels,
-            values: networkValues,
-            sortDirection: 'asc'   // lowest → highest
-        });
-    }
-
-    if (document.readyState === 'complete' || document.readyState === 'interactive') {
-        initDataUsageDistributionChartsFromApi();
-    } else {
-        document.addEventListener('DOMContentLoaded', initDataUsageDistributionChartsFromApi);
-    }
-
-    // old Plotly resize hook left in place but it does nothing now (Plotly undefined)
-    window.addEventListener('resize', function () {
-        if (typeof Plotly === 'undefined') return;
-        [
-            'DataUsage-Carrier-Distribution-chart',
-            'DataUsage-Network-Distribution-chart',
-            'DataUsage-Interface-Distribution-chart'
-        ].forEach(function (id) {
-            var el = document.getElementById(id);
-            if (el) {
-                try { Plotly.Plots.resize(el); } catch (e) { }
-            }
-        });
-    });
-</script>
-
-<script>
-    Chart.register(ChartDataLabels);
-
-    // ---------- helper: show centered empty-message like "No malware data available" ----------
-    function showEmptyChartMessage(containerId, message) {
-        const container = document.getElementById(containerId);
-        if (!container) return;
-
-        // destroy existing chart if any
-        const canvas = container.querySelector('canvas');
-        if (canvas) {
-            const existing = Chart.getChart(canvas.id);
-            if (existing) existing.destroy();
-        }
-
-        container.innerHTML = `<div class="empty-chart-message">${message}</div>`;
-    }
-
-    // ---------- helper: make sure we have a canvas inside the container ----------
-    function ensureCanvas(containerId, canvasId) {
-        const container = document.getElementById(containerId);
-        if (!container) return null;
-
-        let canvas = container.querySelector(`#${canvasId}`);
-        if (!canvas) {
-            container.innerHTML = '';
-            canvas = document.createElement('canvas');
-            canvas.id = canvasId;
-            container.appendChild(canvas);
-        }
-        return canvas;
-    }
-
-    // ---------- helper: choose common unit for a set of byte values (for charts) ----------
-    // Start from KB, then go to MB, GB, TB if max > 1024 of the previous unit
-    function getChartUnitScale(byteArray) {
-        const maxBytes = Math.max(...byteArray, 0);
-        const KB = 1024;
-        const MB = KB * 1024;
-        const GB = MB * 1024;
-        const TB = GB * 1024;
-
-        if (maxBytes <= 0) {
-            console.log('Determined chart unit scale:===== KB for max bytes:', maxBytes);
-            return { unit: 'KB', divisor: KB };
-        }
-
-        let unit = 'KB';
-        let divisor = KB;
-
-        if (maxBytes >= MB && maxBytes < GB) {
-            unit = 'MB';
-            divisor = MB;
-        } else if (maxBytes >= GB && maxBytes < TB) {
-            unit = 'GB';
-            divisor = GB;
-        } else if (maxBytes >= TB) {
-            unit = 'TB';
-            divisor = TB;
-        }
-
-        console.log('Determined chart unit scale:=====', unit, 'for max bytes:', maxBytes);
-        return { unit, divisor };
-    }
-
-    // ---------- helper: per-value label with best unit (KB/MB/GB/TB) ----------
     function formatBytesForLabel(bytes) {
-        const KB = 1024;
-        const MB = KB * 1024;
-        const GB = MB * 1024;
-        const TB = GB * 1024;
-
-        if (bytes >= TB) return (bytes / TB).toFixed(2) + ' TB';
-        if (bytes >= GB) return (bytes / GB).toFixed(2) + ' GB';
-        if (bytes >= MB) return (bytes / MB).toFixed(2) + ' MB';
-        if (bytes >= KB) return (bytes / KB).toFixed(2) + ' KB';
-        return bytes.toFixed(2) + ' B';
+      const KB = 1024,
+        MB = KB * 1024,
+        GB = MB * 1024,
+        TB = GB * 1024;
+      bytes = Number(bytes) || 0;
+      if (bytes >= TB) return (bytes / TB).toFixed(2) + " TB";
+      if (bytes >= GB) return (bytes / GB).toFixed(2) + " GB";
+      if (bytes >= MB) return (bytes / MB).toFixed(2) + " MB";
+      if (bytes >= KB) return (bytes / KB).toFixed(2) + " KB";
+      return bytes.toFixed(2) + " B";
     }
 
-    /* ========== TOP APPLICATIONS (from device_map, adapted to this DOM) ========== */
-    async function fetchAndDisplayTopAppsChart() {
-        const containerId = 'top-apps-chart-container';
-        const loadingEl = document.getElementById('chart-loading');
-
-        if (loadingEl) {
-            loadingEl.style.display = 'block';
-            loadingEl.textContent = 'Loading...';
-        }
-
-        try {
-            const response = await fetch('https://controller.nexapp.co.in/api/v1/monitoring/global-top-apps/', {
-                headers: { 'accept': 'application/json' },
-                credentials: 'include'   // important when behind login
-            });
-
-            let data = null;
-            try {
-                data = await response.json();
-            } catch (_) {
-                data = null;
-            }
-
-            if (!response.ok) {
-                let msg;
-                if (response.status === 401) {
-                    msg = 'You are not authenticated. Please log in to see top applications.';
-                } else if (response.status === 403) {
-                    msg = data?.detail || 'You do not have permission to view top applications.';
-                } else if (response.status === 404) {
-                    msg = 'Top application data is not available.';
-                } else {
-                    msg = data?.message || `Unable to load top applications.`;
-                }
-                showEmptyChartMessage(containerId, msg);
-                if (loadingEl) loadingEl.style.display = 'none';
-                return;
-            }
-
-            const topApps = Array.isArray(data?.top_10_apps) ? data.top_10_apps : [];
-            const backendMsg = data?.message || null;
-
-            // If no apps at all -> show friendly message and bail
-            if (!topApps.length) {
-                showEmptyChartMessage(containerId, backendMsg || 'No application traffic data available.');
-                if (loadingEl) loadingEl.style.display = 'none';
-                return;
-            }
-
-            // Prepare labels and raw byte values
-            const labels = topApps.map(item => String(item.label ?? ''));
-            const bytesArray = topApps.map(item => Number(item.traffic) || 0);
-
-            // If all traffic is zero, treat as "no data"
-            const allZero = bytesArray.every(v => !v || v <= 0);
-            if (allZero) {
-                showEmptyChartMessage(containerId, backendMsg || 'No application traffic data available.');
-                if (loadingEl) loadingEl.style.display = 'none';
-                return;
-            }
-
-            // Decide common unit for this chart based on max bytes
-            const { unit, divisor } = getChartUnitScale(bytesArray);
-            const valuesScaled = bytesArray.map(b => +(b / divisor).toFixed(2));
-
-            // Ensure canvas exists (handles previous empty-state where we replaced innerHTML)
-            const canvas = ensureCanvas(containerId, 'topAppsChart');
-            if (!canvas) return;
-
-            // Destroy old chart if exists
-            const existingChart = Chart.getChart('topAppsChart');
-            if (existingChart) existingChart.destroy();
-
-            const ctx = canvas.getContext('2d');
-
-            new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels,
-                    datasets: [
-                        {
-                            data: valuesScaled,
-                            backgroundColor: '#60a5fa',
-                            borderRadius: 8,
-                            barPercentage: 0.5,
-                            categoryPercentage: 0.5,
-                            barThickness: 12,
-                            stack: 'stack0',
-                            order: 2
-                        }
-                    ]
-                },
-                options: {
-                    indexAxis: 'y', // horizontal bars
-                    layout: { padding: { left: 16, right: 60, top: 10, bottom: 10 } },
-                    scales: {
-                        x: {
-                            beginAtZero: true,
-                            grid: {
-                                display: true,
-                                color: '#e5e7eb'
-                            },
-                            ticks: {
-                                callback: (val) => `${val} ${unit}`,
-                                font: { size: 11 }
-                            }
-                        },
-                        y: {
-                            grid: { display: false },
-                            ticks: {
-                                font: { size: 12, weight: '500' }
-                            }
-                        }
-                    },
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            callbacks: {
-                                label: (ctx) => {
-                                    const idx = ctx.dataIndex;
-                                    const bytes = bytesArray[idx] || 0;
-                                    return ' ' + formatBytesForLabel(bytes);
-                                }
-                            }
-                        },
-                        datalabels: {
-                            anchor: 'end',
-                            align: 'end',
-                            offset: 6,
-                            formatter: (val, ctx) => {
-                                const idx = ctx.dataIndex;
-                                const bytes = bytesArray[idx] || 0;
-                                return formatBytesForLabel(bytes);
-                            },
-                            font: { weight: '500', size: 10 },
-                            color: '#374151'
-                        }
-                    },
-                    responsive: true,
-                    maintainAspectRatio: false
-                }
-            });
-
-        } catch (error) {
-            console.error('Error fetching global top apps:', error);
-            showEmptyChartMessage('top-apps-chart-container', 'Unable to load top applications.');
-        } finally {
-            if (loadingEl) loadingEl.style.display = 'none';
-        }
+    function getChartUnitScale(byteArray) {
+      const maxBytes = Math.max(...byteArray.map((v) => Number(v) || 0), 0);
+      const KB = 1024,
+        MB = KB * 1024,
+        GB = MB * 1024,
+        TB = GB * 1024;
+      if (maxBytes <= 0) return { unit: "KB", divisor: KB };
+      if (maxBytes >= TB) return { unit: "TB", divisor: TB };
+      if (maxBytes >= GB) return { unit: "GB", divisor: GB };
+      if (maxBytes >= MB) return { unit: "MB", divisor: MB };
+      return { unit: "KB", divisor: KB };
     }
 
-    /* ========== TOP DEVICES (global-top-devices) ========== */
-    async function fetchAndDisplayTopDevicesChart() {
-
-        const containerId = 'top-devices-chart-container';
-        const loader = document.getElementById('chart-loading-devices');
-
-        if (loader) {
-            loader.style.display = 'block';
-            loader.textContent = 'Loading...';
-        }
-
-        try {
-            const base = window.API_BASE_URL || 'https://controller.nexapp.co.in';
-            const resp = await fetch(`${base}/api/v1/monitoring/global-top-devices/`, {
-                credentials: 'include'
-            });
-
-            let json = null;
-            try { json = await resp.json(); } catch (_) { json = null; }
-
-            if (!resp.ok) {
-                let msg;
-                if (resp.status === 401) {
-                    msg = 'You are not authenticated. Please log in to see top devices.';
-                } else if (resp.status === 403) {
-                    msg = json?.detail || 'You do not have permission to view top devices.';
-                } else {
-                    msg = json?.message || 'Unable to load top devices.';
-                }
-                showEmptyChartMessage(containerId, msg);
-                return;
-            }
-
-            const rows = json.top_10_devices || [];
-
-            if (!rows.length) {
-                showEmptyChartMessage(containerId, 'No device traffic data available.');
-                return;
-            }
-
-            const bytesArray = rows.map(r => Number(r.total_bytes) || 0);
-            const allZero = bytesArray.every(v => !v || v <= 0);
-            if (allZero) {
-                showEmptyChartMessage(containerId, 'No device traffic data available.');
-                return;
-            }
-
-            const labels = rows.map(r => r.name || r.device_id);
-
-            // Decide common unit for this chart
-            const { unit, divisor } = getChartUnitScale(bytesArray);
-            const valuesScaled = bytesArray.map(b => +(b / divisor).toFixed(2));
-
-            const canvas = ensureCanvas(containerId, 'topDevicesChart');
-            if (!canvas) return;
-
-            const existing = Chart.getChart('topDevicesChart');
-            if (existing) existing.destroy();
-
-            const ctx = canvas.getContext('2d');
-            new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels,
-                    datasets: [{
-                        data: valuesScaled,
-                        backgroundColor: '#60a5fa',
-                        borderRadius: 8,
-                        barThickness: 12,
-                        barPercentage: 0.5,
-                        categoryPercentage: 0.5
-                    }]
-                },
-                options: {
-                    indexAxis: 'y',
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    layout: { padding: { left: 16, right: 60, top: 10, bottom: 10 } },
-                    scales: {
-                        x: {
-                            beginAtZero: true,
-                            grid: { display: true, color: '#e5e7eb' },
-                            ticks: {
-                                callback: (v) => `${v} ${unit}`,
-                                font: { size: 11 }
-                            }
-                        },
-                        y: {
-                            grid: { display: false },
-                            ticks: { font: { size: 12, weight: '500' } }
-                        }
-                    },
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            callbacks: {
-                                label: (ctx) => {
-                                    const idx = ctx.dataIndex;
-                                    const bytes = bytesArray[idx] || 0;
-                                    return ' ' + formatBytesForLabel(bytes);
-                                }
-                            }
-                        },
-                        datalabels: {
-                            anchor: 'end',
-                            align: 'end',
-                            offset: 6,
-                            formatter: (val, ctx) => {
-                                const idx = ctx.dataIndex;
-                                const bytes = bytesArray[idx] || 0;
-                                return formatBytesForLabel(bytes);
-                            },
-                            font: { weight: '500', size: 10 },
-                            color: '#374151'
-                        }
-                    }
-                }
-            });
-
-        } catch (e) {
-            console.error('Top Devices error:', e);
-            showEmptyChartMessage(containerId, 'Unable to load top devices.');
-        } finally {
-            if (loader) loader.style.display = 'none';
-        }
+    function gbToBytes(gb) {
+      return (Number(gb) || 0) * 1024 * 1024 * 1024;
     }
 
-    document.addEventListener('DOMContentLoaded', () => {
-        fetchAndDisplayTopAppsChart();
-        fetchAndDisplayTopDevicesChart();
+    function paintSummary(prefix, totalBytes, sentBytes, recvBytes) {
+      const t = formatBytes(totalBytes);
+      const s = formatBytes(sentBytes);
+      const r = formatBytes(recvBytes);
 
-        setInterval(fetchAndDisplayTopAppsChart, 30000);
-        setInterval(fetchAndDisplayTopDevicesChart, 30000);
+      document.getElementById(`owdu-${prefix}-value`).innerText = t.value;
+      document.getElementById(`owdu-${prefix}-unit`).innerText = t.unit;
+      document.getElementById(
+        `owdu-${prefix}-sent`
+      ).innerText = `${s.value} ${s.unit}`;
+      document.getElementById(
+        `owdu-${prefix}-recv`
+      ).innerText = `${r.value} ${r.unit}`;
+    }
+
+    /* =========================
+     * UI helpers
+     * ========================= */
+    function setLoading(elId, show, text) {
+      const el = document.getElementById(elId);
+      if (!el) return;
+      el.style.display = show ? "flex" : "none";
+      if (text) el.textContent = text;
+    }
+
+    function showEmptyOverlay(plotId, message) {
+      const el = document.getElementById(plotId);
+      if (!el) return;
+      let overlay = el.querySelector(".owdu-empty-overlay");
+      if (!overlay) {
+        overlay = document.createElement("div");
+        overlay.className = "owdu-empty-overlay";
+        el.appendChild(overlay);
+      }
+      overlay.textContent = message || "No data available.";
+      overlay.style.display = "flex";
+    }
+
+    function hideEmptyOverlay(plotId) {
+      const el = document.getElementById(plotId);
+      if (!el) return;
+      const overlay = el.querySelector(".owdu-empty-overlay");
+      if (overlay) overlay.style.display = "none";
+    }
+
+    /* =========================
+     * Monitoring parsing (ONLY /monitoring/device/<id>/)
+     * ========================= */
+    function getChartByIface(monitoringData, ifaceName) {
+      const charts = Array.isArray(monitoringData?.charts)
+        ? monitoringData.charts
+        : [];
+      const wanted = `traffic: ${String(ifaceName).toLowerCase()}`;
+
+      return (
+        charts.find((c) => {
+          const t = String(c?.title || "")
+            .toLowerCase()
+            .replace(/\s+/g, " ")
+            .trim();
+          return t === wanted;
+        }) || null
+      );
+    }
+
+    function getSummaryGBFromChart(chart) {
+      const up = Number(chart?.summary?.upload || 0);
+      const down = Number(chart?.summary?.download || 0);
+      return { upGB: up, downGB: down };
+    }
+
+    function computeDeviceTotalsBytesFromMonitoring(monitoringPayload) {
+      let cellularUpGB = 0,
+        cellularDownGB = 0;
+      for (const n of MOBILE_IFACES) {
+        const s = getSummaryGBFromChart(getChartByIface(monitoringPayload, n));
+        cellularUpGB += s.upGB;
+        cellularDownGB += s.downGB;
+      }
+
+      let wiredUpGB = 0,
+        wiredDownGB = 0;
+      for (const n of ETH_IFACES) {
+        const s = getSummaryGBFromChart(getChartByIface(monitoringPayload, n));
+        wiredUpGB += s.upGB;
+        wiredDownGB += s.downGB;
+      }
+
+      const cellular = {
+        sent: gbToBytes(cellularUpGB),
+        recv: gbToBytes(cellularDownGB),
+      };
+      const wired = {
+        sent: gbToBytes(wiredUpGB),
+        recv: gbToBytes(wiredDownGB),
+      };
+      const total = {
+        sent: cellular.sent + wired.sent,
+        recv: cellular.recv + wired.recv,
+      };
+
+      return {
+        total: { ...total, total: total.sent + total.recv },
+        cellular: { ...cellular, total: cellular.sent + cellular.recv },
+        wired: { ...wired, total: wired.sent + wired.recv },
+      };
+    }
+
+    /* =========================
+     * Plotly compact horizontal bar
+     * - ALWAYS reserve 10 rows
+     * - stable thickness (no fat bars)
+     * - rounded corners
+     * - safe resize
+     * ========================= */
+    function renderPlotlyHBarCompact(plotId, labels, bytesArray, emptyMessage) {
+      const el = document.getElementById(plotId);
+      if (!el) return;
+
+      const rows = (labels || [])
+        .map((l, i) => ({
+          label: String(l ?? "").trim(),
+          bytes: Number(bytesArray?.[i]) || 0,
+        }))
+        .filter((r) => r.label)
+        .sort((a, b) => b.bytes - a.bytes)
+        .slice(0, TOP_ROWS);
+
+      if (!rows.length || rows.every((r) => r.bytes <= 0)) {
+        showEmptyOverlay(plotId, emptyMessage || "No data available.");
+        return;
+      }
+      hideEmptyOverlay(plotId);
+
+      // pad to TOP_ROWS with blanks (keeps same vertical spacing)
+      const padded = rows.slice();
+      while (padded.length < TOP_ROWS) padded.push({ label: "", bytes: 0 });
+
+      const bytesAll = padded.map((r) => r.bytes);
+      const { unit, divisor } = getChartUnitScale(bytesAll);
+      const xAll = bytesAll.map((b) => +(b / divisor).toFixed(2));
+
+      const maxX = Math.max(...xAll, 0);
+      const xMaxPad = maxX > 0 ? maxX * 1.15 : 1;
+
+      // numeric Y axis always 0..9
+      const yAll = Array.from({ length: TOP_ROWS }, (_, i) => i);
+
+      // labels only on ticks; blanks for padded rows
+      const tickvals = yAll;
+      const ticktext = padded.map((r) => r.label || "");
+
+      // left margin based on real labels
+      const maxLen = rows.reduce(
+        (m, r) => Math.max(m, (r.label || "").length),
+        0
+      );
+      const leftMargin = Math.min(260, Math.max(120, Math.floor(maxLen * 7.2)));
+
+      const customdata = padded.map((r) => r.label || "");
+      const annotations = rows.map((r, i) => ({
+        x: xAll[i],
+        y: yAll[i],
+        xref: "x",
+        yref: "y",
+        text: formatBytesForLabel(r.bytes),
+        showarrow: false,
+        xanchor: "left",
+        yanchor: "middle",
+        xshift: 8,
+        font: { size: 11, color: "#374151" },
+        cliponaxis: false,
+      }));
+
+      Plotly.react(
+        el,
+        [
+          {
+            type: "bar",
+            orientation: "h",
+            x: xAll,
+            y: yAll,
+            //customdata,
+            //hovertemplate: "%{customdata}<br>%{x:.2f} " + unit + "<extra></extra>",
+            marker: {
+              line: { width: 0 },
+              // may work depending on Plotly build
+              cornerradius: 30,
+            },
+            width: 0.55, // ✅ fixed thickness
+          },
+        ],
+        {
+          autosize: true,
+          paper_bgcolor: "#ffffff",
+          plot_bgcolor: "#ffffff",
+          showlegend: false,
+          margin: { l: leftMargin, r: 40, t: 8, b: 34 },
+
+          xaxis: {
+            range: [0, xMaxPad],
+            ticksuffix: " " + unit,
+            tickfont: { size: 11, color: "#6b7280" },
+            gridcolor: "#e5e7eb",
+            zeroline: true,
+            zerolinecolor: "#e5e7eb", // ✅ light zero line
+            zerolinewidth: 1,
+            fixedrange: true,
+            tick0: 0,
+          },
+
+          yaxis: {
+            autorange: "reversed",
+            showgrid: false,
+            fixedrange: true,
+            tickmode: "array",
+            tickvals,
+            ticktext,
+            tickfont: { size: 11, color: "#374151" },
+            range: [-0.5, TOP_ROWS - 0.5], // ✅ always show 10 slots
+            ticklabelstandoff: 10,
+          },
+
+          annotations,
+        },
+        { responsive: true, displaylogo: false, displayModeBar: false }
+      ).then(() => {
+        // ✅ fix Plotly auto width/height issues
+        owduAttachResizeObserver(plotId);
+        owduResizeBurst(plotId);
+
+        // ✅ rounded ends fallback (if cornerradius not applied)
+        setTimeout(() => owduRoundBars(plotId, 8), 0);
+        setTimeout(() => owduRoundBars(plotId, 8), 250);
+      });
+    }
+
+    /* =========================
+     * Top Branches = Top devices by total
+     * ========================= */
+    function computeTopBranches(devicesTotals, topN) {
+      const rows = devicesTotals
+        // keep devices that loaded, even if bytes = 0
+        .filter((d) => d.ok && d.totals)
+        .map((d) => ({
+          name: d.name,
+          bytes: Number(d.totals.total?.total || 0),
+        }))
+        // sort (traffic devices on top, zeros at bottom)
+        .sort((a, b) => b.bytes - a.bytes)
+        .slice(0, topN || TOP_ROWS);
+
+      return {
+        labels: rows.map((r) => r.name),
+        bytes: rows.map((r) => r.bytes),
+      };
+    }
+
+    /* =========================
+     * Top Apps (UNCHANGED API)
+     * ========================= */
+    async function refreshTopApps() {
+      if (isRefreshingApps) return;
+      isRefreshingApps = true;
+
+      setLoading("owdu-loading-apps", true, "Loading…");
+      try {
+        const resp = await fetch(
+          `${API_BASE}/api/v1/monitoring/global-top-apps/`,
+          {
+            headers: { Accept: "application/json" },
+            credentials: "include",
+          }
+        );
+        const json = await resp.json().catch(() => null);
+
+        if (!resp.ok) {
+          const msg =
+            resp.status === 401
+              ? "You are not authenticated. Please log in."
+              : resp.status === 403
+              ? json?.detail || "Permission denied."
+              : resp.status === 404
+              ? "Top application data not available."
+              : json?.message || "Unable to load top applications.";
+          showEmptyOverlay("owdu-top-apps", msg);
+          return;
+        }
+
+        const rows = Array.isArray(json?.top_10_apps) ? json.top_10_apps : [];
+        if (!rows.length) {
+          showEmptyOverlay(
+            "owdu-top-apps",
+            json?.message || "No application traffic data available."
+          );
+          return;
+        }
+
+        const labels = rows.map((r) => String(r.label ?? ""));
+        const bytes = rows.map((r) => Number(r.traffic) || 0);
+
+        renderPlotlyHBarCompact(
+          "owdu-top-apps",
+          labels,
+          bytes,
+          "No application traffic data available."
+        );
+      } catch (e) {
+        console.error("Top apps error:", e);
+        showEmptyOverlay("owdu-top-apps", "Unable to load top applications.");
+      } finally {
+        setLoading("owdu-loading-apps", false);
+        isRefreshingApps = false;
+      }
+    }
+
+    /* =========================
+     * Summary + Top Branches (All Devices)
+     * ========================= */
+    async function refreshAllDevices() {
+      if (isRefreshingAll) return;
+      isRefreshingAll = true;
+
+      setLoading("owdu-loading-branches", true, "Loading…");
+      const warnEl = document.getElementById("owdu-warn");
+      if (warnEl) {
+        warnEl.style.display = "none";
+        warnEl.textContent = "";
+      }
+
+      try {
+        const devices = await fetchAllDevices();
+
+        const monitoringRes = await mapLimit(
+          devices,
+          FETCH_CONCURRENCY,
+          async (dev) => {
+            const data = await fetchMonitoringForDevice(dev.id);
+            return { id: dev.id, name: dev.name, data };
+          }
+        );
+
+        const devicesTotals = monitoringRes.map((r, idx) => {
+          const dev = devices[idx];
+          if (!r.ok) {
+            return {
+              id: dev.id,
+              name: dev.name,
+              ok: false,
+              error: r.error,
+              totals: null,
+            };
+          }
+          const totals = computeDeviceTotalsBytesFromMonitoring(r.value.data);
+          return { id: dev.id, name: dev.name, ok: true, totals };
+        });
+
+        const failed = devicesTotals.filter((d) => !d.ok);
+        if (failed.length && warnEl) {
+          warnEl.style.display = "block";
+          warnEl.textContent = `Warning: ${failed.length} device(s) failed to load. Totals use remaining devices.`;
+        }
+
+        const agg = {
+          total: { sent: 0, recv: 0, total: 0 },
+          cellular: { sent: 0, recv: 0, total: 0 },
+          wired: { sent: 0, recv: 0, total: 0 },
+        };
+
+        for (const d of devicesTotals) {
+          if (!d.ok || !d.totals) continue;
+
+          agg.total.sent += d.totals.total.sent || 0;
+          agg.total.recv += d.totals.total.recv || 0;
+          agg.total.total += d.totals.total.total || 0;
+
+          agg.cellular.sent += d.totals.cellular.sent || 0;
+          agg.cellular.recv += d.totals.cellular.recv || 0;
+          agg.cellular.total += d.totals.cellular.total || 0;
+
+          agg.wired.sent += d.totals.wired.sent || 0;
+          agg.wired.recv += d.totals.wired.recv || 0;
+          agg.wired.total += d.totals.wired.total || 0;
+        }
+
+        paintSummary("total", agg.total.total, agg.total.sent, agg.total.recv);
+        paintSummary(
+          "cellular",
+          agg.cellular.total,
+          agg.cellular.sent,
+          agg.cellular.recv
+        );
+        paintSummary("wired", agg.wired.total, agg.wired.sent, agg.wired.recv);
+
+        const top = computeTopBranches(devicesTotals, TOP_ROWS);
+        renderPlotlyHBarCompact(
+          "owdu-top-branches",
+          top.labels,
+          top.bytes,
+          "No branch traffic data available."
+        );
+      } catch (e) {
+        console.error("All devices error:", e);
+        showEmptyOverlay("owdu-top-branches", "Unable to load top branches.");
+      } finally {
+        setLoading("owdu-loading-branches", false);
+        isRefreshingAll = false;
+      }
+    }
+
+    /* =========================
+     * Init
+     * ========================= */
+    document.addEventListener("DOMContentLoaded", () => {
+      // attach observer early (helps admin tabs)
+      owduAttachResizeObserver("owdu-top-apps");
+      owduAttachResizeObserver("owdu-top-branches");
+
+      refreshTopApps();
+      refreshAllDevices();
+
+      setInterval(refreshTopApps, REFRESH_MS);
+      setInterval(refreshAllDevices, REFRESH_MS);
     });
+
+    window.addEventListener("resize", () => {
+      owduHardResize("owdu-top-apps");
+      owduHardResize("owdu-top-branches");
+    });
+  })();
 </script>
 
-
 <style>
-    /* ===== DATA USAGE mini donut cards (copies of overview styles with new names) ===== */
+  .owdu-wrap {
+    padding-top: 4px;
+  }
 
-    .datausage-distribution-row {
-        margin: 0 auto;
-        padding: 10px clamp(8px, 3vw, 32px);
-        box-sizing: border-box;
+  /* ===== SUMMARY ===== */
+  .owdu-summary-section {
+    padding: 10px 40px 10px 40px;
+  }
+  .owdu-summary-title {
+    margin: 0 0 8px 0;
+    font-size: 14px;
+    font-weight: 700;
+    color: #374151;
+  }
+
+  .owdu-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(160px, 1fr));
+    gap: 20px;
+    background-color: #ffffff;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    padding: 12px;
+    border: 1px solid #f1f5f9;
+  }
+
+  .owdu-summary-card {
+    padding: 4px 10px;
+    border-right: 1px solid #e5e7eb;
+  }
+  .owdu-summary-card:last-child {
+    border-right: none;
+  }
+
+  .owdu-summary-label {
+    font-size: 12px;
+    color: #6b7280;
+    margin-bottom: 6px;
+  }
+  .owdu-summary-main {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+  .owdu-summary-value {
+    font-size: 22px;
+    font-weight: 800;
+    color: #111827;
+    letter-spacing: 0.2px;
+  }
+  .owdu-summary-unit {
+    font-size: 11px;
+    font-weight: 700;
+    color: #6b7280;
+  }
+
+  .owdu-summary-metrics {
+    font-size: 11px;
+    color: #4b5563;
+  }
+  .owdu-summary-metric {
+    display: flex;
+    gap: 6px;
+    line-height: 1.35;
+  }
+  .owdu-summary-metric-label {
+    color: #6b7280;
+  }
+  .owdu-summary-metric-value {
+    color: #16a34a;
+    font-weight: 600;
+  }
+
+  .owdu-warn {
+    margin-top: 10px;
+    font-size: 12px;
+    color: #b45309;
+  }
+
+  /* ===== CHART CARDS ===== */
+  .owdu-graph-grid {
+    display: grid;
+    grid-gap: 20px;
+    grid-template-columns: repeat(2, 1fr);
+    margin: 0 auto;
+    padding: 10px 40px 10px 40px;
+  }
+
+  .owdu-card {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    overflow: hidden; /* IMPORTANT: header + body stay inside rounded corners */
+    padding: 0; /* IMPORTANT: removes “strip” spacing */
+  }
+
+  .owdu-card-hd {
+    background: #f3f4f6;
+    padding: 8px 12px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #111827;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  .owdu-card-bd {
+    padding: 12px 0px 4px 0px; /* plot padding */
+    background: #ffffff;
+  }
+
+  .owdu-card-title {
+    margin: 0 0 8px 0;
+    font-size: 13px;
+    font-weight: 700;
+    color: #374151;
+  }
+
+  /* IMPORTANT: Plotly needs REAL HEIGHT */
+  /* Card sets height */
+  .owdu-chart-container {
+    position: relative;
+    width: 100%;
+    height: 270px; /* keep stable height (recommended for Plotly) */
+    overflow: hidden;
+    border-radius: 10px;
+  }
+
+  /* Plot div fills the container */
+  .owdu-plot {
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Plotly internals must also fill */
+  .owdu-plot .js-plotly-plot,
+  .owdu-plot .plot-container,
+  .owdu-plot .svg-container {
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  .owdu-plot > div {
+    height: 100% !important;
+  }
+  .owdu-arrow {
+    font-size: 11px;
+    font-weight: 800;
+    margin-left: 4px;
+    color: #16a34a;
+    line-height: 1;
+  }
+
+  .owdu-arrow-down {
+    transform: translateY(1px);
+    display: inline-block;
+  }
+
+  .owdu-loading {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    color: #6b7280;
+    background: rgba(255, 255, 255, 0.72);
+    z-index: 5;
+  }
+  /* Upload/Download aligned rows */
+  .owdu-metric-row {
+    display: grid;
+    grid-template-columns: 74px 14px 1fr; /* label | arrow | value */
+    align-items: center;
+    column-gap: 6px;
+    line-height: 1.35;
+    font-size: 11px;
+  }
+
+  .owdu-metric-label {
+    color: #6b7280;
+    white-space: nowrap;
+  }
+
+  .owdu-metric-arrow {
+    font-size: 11px;
+    line-height: 1;
+    transform: translateY(-0.5px); /* visually centers arrow */
+    white-space: nowrap;
+  }
+
+  .owdu-metric-arrow.owdu-up {
+    color: #16a34a;
+  }
+  .owdu-metric-arrow.owdu-down {
+    color: #16a34a;
+  }
+
+  .owdu-metric-value {
+    color: #16a34a;
+    font-weight: 700;
+    white-space: nowrap; /* keeps value on one line */
+    text-align: left;
+  }
+
+  /* overlay empty state (doesn't remove plot -> prevents blank flash) */
+  .owdu-empty-overlay {
+    position: absolute;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 16px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #6b7280;
+    background: rgba(255, 255, 255, 0.86);
+    z-index: 4;
+  }
+
+  @media (max-width: 1280px) {
+    .owdu-summary-grid {
+      grid-template-columns: repeat(2, minmax(180px, 1fr));
     }
-
-    .datausage-distribution-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-        gap: 22px;
+    .owdu-summary-card {
+      border-right: none;
+      border-bottom: 1px solid #e5e7eb;
+      padding-bottom: 10px;
     }
-
-    .datausage-mini-card {
-        background: #fff;
-        border: 1px solid #e5e7eb;
-        border-radius: 12px;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, .1);
-        padding: 14px;
-        height: 280px;
-        box-sizing: border-box;
+    .owdu-summary-card:last-child {
+      border-bottom: none;
     }
+  }
 
-    .datausage-mini-title {
-        text-align: center;
-        margin: 0 0 8px 0;
-        font-size: 13px;
-        font-weight: 480;
-        color: #2b2f36;
+  @media (max-width: 1024px) {
+    .owdu-graph-grid {
+      grid-template-columns: 1fr;
     }
+  }
 
-    .datausage-mini-inner {
-        margin-top: 30px;
-        background: #fbfbfb;
-        border-radius: 12px;
-        height: 150px;
-        overflow: hidden;
-        position: relative;
+  @media (max-width: 600px) {
+    .owdu-summary-section,
+    .owdu-graph-grid {
+      padding: 10px 16px;
     }
-
-    .datausage-mini-plot {
-        position: absolute;
-        inset: 0;
-        width: 100%;
-        height: 100%;
+    .owdu-summary-grid {
+      grid-template-columns: 1fr;
+      padding: 12px 12px;
     }
-
-    .datausage-mini-legend {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 8px 6px 2px 6px;
-        gap: 10px;
+    .owdu-summary-card {
+      border-right: none;
+      border-bottom: 1px solid #e5e7eb;
+      padding-bottom: 8px;
     }
-
-    .legend-item {
-        display: inline-flex;
-        align-items: center;
-        font-size: 12px;
-        color: #374151;
-        white-space: nowrap;
-        cursor: pointer;
-        user-select: none;
-        transition: opacity .15s ease, color .15s ease;
+    .owdu-summary-card:last-child {
+      border-bottom: none;
     }
-
-    .legend-item.is-off {
-        opacity: .45;
-        text-decoration: line-through;
+    .owdu-chart-container,
+    .owdu-plot {
+      height: 240px;
     }
-
-    .legend-swatch {
-        width: 12px;
-        height: 12px;
-        margin-right: 6px;
-        background: #353c44;
-        flex: 0 0 auto;
-    }
-
-    @media screen and (max-width: 768px) {
-        .datausage-distribution-grid {
-            grid-template-columns: 1fr;
-        }
-    }
-</style>
-
-
-<style>
-    .home-datausage-wrap {
-        padding-top: 4px;
-    }
-
-    /* ====== SUMMARY ROW ====== */
-
-    .home-datausage-summary-section {
-        padding: 25px 40px 10px 40px;
-    }
-
-    .home-datausage-summary-title {
-        margin: 0 0 6px 0;
-        font-size: 14px;
-        font-weight: 600;
-        color: #4b5563;
-    }
-
-    .home-datausage-summary-grid {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(160px, 1fr));
-        gap: 20px;
-        background-color: #ffffff;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
-        padding: 16px 18px;
-        border: 1px solid #f3f4f6;
-    }
-
-    .home-datausage-summary-card {
-        padding: 4px 6px;
-        border-right: 1px solid #e5e7eb;
-    }
-
-    .home-datausage-summary-card:last-child {
-        border-right: none;
-    }
-
-    .home-datausage-summary-label {
-        font-size: 12px;
-        color: #6b7280;
-        margin-bottom: 4px;
-    }
-
-    .home-datausage-summary-main {
-        display: flex;
-        align-items: baseline;
-        gap: 4px;
-        margin-bottom: 6px;
-    }
-
-    .home-datausage-summary-value {
-        font-size: 22px;
-        font-weight: 700;
-        color: #111827;
-    }
-
-    .home-datausage-summary-unit {
-        font-size: 11px;
-        font-weight: 600;
-        color: #6b7280;
-    }
-
-    .home-datausage-summary-metrics {
-        font-size: 11px;
-        color: #4b5563;
-    }
-
-    .home-datausage-summary-metric {
-        display: flex;
-        gap: 4px;
-        line-height: 1.3;
-    }
-
-    .home-datausage-summary-metric-label {
-        color: #6b7280;
-    }
-
-    .home-datausage-summary-metric-value {
-        color: #16a34a;
-        font-weight: 500;
-    }
-
-    /* ====== GRAPH ROW ====== */
-
-    .home-datausage-graph-grid {
-        display: grid;
-        grid-gap: 20px;
-        grid-template-columns: repeat(2, 1fr);
-        margin: 0 auto;
-        padding: 10px 40px 10px 40px;
-    }
-
-    .home-datausage-card {
-        background-color: #ffffff;
-        border-radius: 8px;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-        padding: 1rem;
-        text-align: center;
-    }
-
-    .home-datausage-card h4 {
-        margin-top: 0;
-        font-size: 14px;
-        margin-bottom: 0.4rem;
-        color: #777;
-        text-align: left;
-    }
-
-    .home-datausage-chart-container {
-        position: relative;
-        width: 100%;
-        height: 270px;
-    }
-
-    .home-datausage-chart-container canvas {
-        width: 100% !important;
-        height: 270px !important;
-    }
-
-    .home-datausage-loading-text {
-        font-size: 13px;
-        color: #666;
-        text-align: center;
-        margin-top: 40px;
-    }
-
-    .empty-chart-message {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        height: 100%;
-        min-height: 220px;
-        /* ensures nice height even if container shrinks */
-        font-size: 14px;
-        font-weight: 600;
-        color: #6b7280;
-        text-align: center;
-    }
-
-
-    @media screen and (max-width: 1280px) {
-        .home-datausage-summary-grid {
-            grid-template-columns: repeat(2, minmax(180px, 1fr));
-        }
-
-        .home-datausage-summary-card {
-            border-right: none;
-            border-bottom: 1px solid #e5e7eb;
-            padding-bottom: 10px;
-        }
-
-        .home-datausage-summary-card:nth-child(3),
-        .home-datausage-summary-card:nth-child(4) {
-            padding-top: 8px;
-        }
-
-        .home-datausage-summary-card:last-child {
-            border-bottom: none;
-        }
-    }
-
-    @media screen and (max-width: 1024px) {
-        .home-datausage-graph-grid {
-            grid-template-columns: 1fr;
-        }
-    }
-
-    @media screen and (max-width: 600px) {
-
-        .home-datausage-summary-section,
-        .home-datausage-graph-grid {
-            padding: 10px 16px;
-        }
-
-        .home-datausage-summary-grid {
-            grid-template-columns: 1fr;
-            padding: 12px 12px;
-        }
-
-        .home-datausage-summary-card {
-            border-right: none;
-            border-bottom: 1px solid #e5e7eb;
-            padding-bottom: 8px;
-        }
-
-        .home-datausage-summary-card:last-child {
-            border-bottom: none;
-        }
-
-        .home-datausage-chart-container canvas {
-            height: 220px !important;
-        }
-    }
+  }
 </style>
