@@ -404,7 +404,7 @@
                 {% comment %} <th>Uptime</th> {% endcomment %}
                 <th>Interface IP/Mask</th>
                 <th>Ping Destination</th>
-                <th>Throughput</th>
+                {% comment %} <th>Throughput</th> {% endcomment %}
                 <th>Latency</th>
                 <th>Jitter</th>
                 <th>Loss</th>
@@ -787,8 +787,9 @@
 
         async function init() {
 
+            const API_BASE = window.location.origin;
             // Use your API base, in the same style you gave
-            const API_URL = `https://controller.nexapp.co.in/api/v1/monitoring/wan-uplinks/`;
+            const API_URL = `${API_BASE}/api/v1/monitoring/wan-uplinks/`;
 
             let json;
 
