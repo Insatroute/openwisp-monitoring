@@ -315,14 +315,14 @@
   </fieldset>
 </div>
 
-{% comment %} {% if not add %}
+{% if not add %}
 <div class="inline-group" id="ow-sla">
   <fieldset class="module">
     <h2>{% trans 'SLA' %}</h2>
-    {% include 'monitoring/sla/wan_sla.html' %}
+    {% include 'admin/config/sla.html' %}
   </fieldset>
 </div>
-{% endif %} {% endcomment %}
+{% endif %}
 
 {% if not add %}
 <div class="inline-group" id="ow-tools">
