@@ -166,7 +166,8 @@
   /* ===== 3 Panels Grid ===== */
   .usage-grid {
     display: grid;
-    grid-template-columns: 1fr 2.4fr 1fr;
+    /*grid-template-columns: 1fr 2.4fr 1fr;*/
+    grid-template-columns: 1fr 3fr;
     gap: 12px;
     margin-bottom: 14px;
     align-items: start;
@@ -447,7 +448,7 @@
     </div>
 
     <!-- WiFi -->
-    <div class="ow-panel narrow-cards">
+    {% comment %} <div class="ow-panel narrow-cards">
       <div class="ow-panel-hd"><span>WiFi</span></div>
       <div class="ow-panel-bd">
         <div class="usage-panel-bd">
@@ -458,7 +459,7 @@
           <div class="interface-grid" id="wifiInterfaces"></div>
         </div>
       </div>
-    </div>
+    </div> {% endcomment %}
   </div>
   <!-- Chart -->
   <div class="ow-panel">
