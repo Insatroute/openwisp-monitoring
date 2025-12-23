@@ -448,17 +448,20 @@
     // "device registration" = first UP, fallback to firstStartMs if never up
     const deviceBirthMs = firstUpStartMs !== null ? firstUpStartMs : firstStartMs;
 
-    function fmtDuration(seconds) {
-      seconds = Math.max(0, Math.round(seconds));
-      const h = Math.floor(seconds / 3600);
-      const m = Math.floor((seconds % 3600) / 60);
-      const s = seconds % 60;
-      const parts = [];
-      if (h) parts.push(h + 'h');
-      if (m) parts.push(m + 'm');
-      if (!h && !m) parts.push(s + 's');
-      return parts.join(' ') || '0s';
-    }
+   function fmtDuration(seconds) {
+  seconds = Math.max(0, Math.floor(seconds)); // better than round here
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+
+  const parts = [];
+  if (h) parts.push(h + 'h');
+  if (m || h) parts.push(m + 'm');     // show minutes if any
+  parts.push(s + 's');                 // ALWAYS show seconds
+
+  return parts.join(' ');
+}
+
 
     function fmtDateTime(ms) {
       const d = new Date(ms);
@@ -550,7 +553,8 @@
         if (r._endMs <= startMs || r._startMs >= endMs) return;
         const ovStart = Math.max(r._startMs, startMs);
         const ovEnd = Math.min(r._endMs, endMs);
-        const sec = Math.max(0, Math.round((ovEnd - ovStart) / 1000));
+        const sec = Math.max(0, Math.floor((ovEnd - ovStart) / 1000));
+
         if (!sec) return;
 
         if ((r.status || '').toLowerCase() === 'up') upSec += sec;
