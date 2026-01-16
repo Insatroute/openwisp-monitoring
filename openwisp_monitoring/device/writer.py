@@ -68,6 +68,10 @@ class DeviceDataWriter(object):
         # saves raw device data
         self.device_data.save_data()
         data = self.device_data.data
+        print("🔥 FIRING SIM  NOTIFICATION NOW")
+        self.check_sim_state_and_notify(old_data, data)
+        self.check_interface_state_and_notify(old_data, data) 
+        
         ct = ContentType.objects.get_for_model(Device)
         device_extra_tags = self._get_extra_tags(self.device_data)
         self.write_device_metrics = []
@@ -162,6 +166,174 @@ class DeviceDataWriter(object):
                 f'Failed to write metrics for "{self.device_data.pk}" device.'
                 f" Error: {error}"
             )
+
+
+    def check_interface_state_and_notify(self, old_data, new_data):
+
+        print("---- INTERFACE INPUT DATA ----")
+    
+        from copy import deepcopy
+        from django.utils.timezone import now
+        from swapper import load_model
+        from openwisp_notifications.signals import notify
+        NotificationModel = load_model("openwisp_notifications", "Notification")
+        NotificationSettingModel = load_model("openwisp_notifications", "NotificationSetting")
+        Device = load_model("config", "Device")
+        OrganizationUser = load_model("openwisp_users", "OrganizationUser")
+        device_ct = ContentType.objects.get_for_model(Device)
+        device = self.device_data
+
+        org_users = OrganizationUser.objects.filter(
+            organization_id=device.organization_id,
+            user__is_active=True,
+        ).select_related("user")
+        users = User.objects.filter(is_active=True)
+        # Load Device model just like SIM function does
+        #Device = load_model("config", "Device")
+    
+        # Sender must be actual Device model instance
+        # Get old and new interface snapshots directly from JSON
+        old_ifaces = (old_data or {}).get("interfaces", []) or []
+        new_ifaces = (new_data or {}).get("interfaces", []) or []
+
+        # Convert lists to dicts for comparison
+        old_ifaces_dict = {i["name"]: i.get("up", False) for i in old_ifaces}
+        new_ifaces_dict = {i["name"]: i.get("up", False) for i in new_ifaces}
+    
+        print("Previous Interfaces:", old_ifaces_dict)
+        print("Current Interfaces:", new_ifaces_dict)
+        print("---- NOTIFY PAYLOAD SENDING ----")
+
+        # Compare and fire notifications
+        for ifname, prev_state in old_ifaces_dict.items():
+            curr_state = new_ifaces_dict.get(ifname)
+
+
+            # DOWN event
+            if prev_state and not curr_state:
+                for org_user in org_users:
+                    user=org_user.user
+                    if user.notificationsetting_set.filter(type="interface_is_down", organization_id=device.organization_id,deleted=False,).exists():
+                        NotificationModel.objects.create(
+                            level="error",
+                            recipient=user,
+                            actor_content_type=device_ct,
+                            actor_object_id=device.pk,
+                            target_content_type=device_ct,
+                            target_object_id=device.pk,
+                            type="interface_is_down",
+                            description=f"Interface {ifname} is now DOWN on device {device.name}",
+                            data={"ifname": ifname, "state": "DOWN", "time": now().isoformat()},
+                            public=True
+                        )
+
+            elif not prev_state and curr_state:
+                for org_user in org_users:
+                    user=org_user.user
+                    if user.notificationsetting_set.filter(type="interface_is_up", organization_id=device.organization_id,deleted=False,).exists():
+                        NotificationModel.objects.create(
+                            level="success",
+                            recipient=user,
+                            actor_content_type=device_ct,
+                            actor_object_id=device.pk,
+                            target_content_type=device_ct,
+                            target_object_id=device.pk,
+                            type="interface_is_up",
+                            description=f"Interface {ifname} is now UP on device {device.name}",
+                            data={"ifname": ifname, "state": "UP", "time": now().isoformat()},
+                            public=True
+                        )
+
+    def check_sim_state_and_notify(self, old_data, new_data):
+        """
+        Detect SIM REMOVED and SIM CONNECTED for sim1 (modem) and sim2 (modem2)
+        using ICCID + modem_status with debounce.
+        """
+        print("✅ SIM CHECK FUNCTION EXECUTED for device:", self.device_data.pk)
+        from swapper import load_model
+        from openwisp_notifications.signals import notify
+        Device = load_model("config", "Device")
+        device = self.device_data
+
+        slots = {
+            "modem": "sim1",
+            "modem2": "sim2",
+        }
+
+        old_cellular = (old_data or {}).get("cellular", {})
+        new_cellular = (new_data or {}).get("cellular", {}) 
+        for modem_key, sim_slot in slots.items():
+            old_modem = old_cellular.get(modem_key, {}) or {}
+            new_modem = new_cellular.get(modem_key, {}) or {}
+
+            old_iccid = old_modem.get("sim_iccid")
+            new_iccid = new_modem.get("sim_iccid")
+            new_status = new_modem.get("modem_status")
+            print("---- SIM DEBUG ----")
+            print("Slot:", sim_slot)
+            print("Old ICCID:", old_iccid)
+            print("New ICCID:", new_iccid)
+            print("New Status:", new_status)
+            cache_key = f"sim_state:{device.pk}:{sim_slot}"
+            state = cache.get(cache_key, {})
+            now_ts = now().timestamp()
+            if old_iccid and not new_iccid:
+                print("🔥 FIRING SIM REMOVED NOTIFICATION NOW")
+
+                notify.send(
+                    sender=device,
+                    target=device,
+                    type="sdwan_sim_removed",
+                    verb=f"{sim_slot.upper()} removed",
+                    description=f"{sim_slot.upper()} has been removed from device {device.name}",
+                    data={
+                        "sim_slot": sim_slot,
+                        "device_id": str(device.id),
+                        "device_name": device.name,
+                        "old_iccid": old_iccid,
+                    },
+                    sim_slot=sim_slot,
+                )
+                continue
+            if old_iccid and new_iccid and old_iccid != new_iccid:
+                print("🔥 FIRING SIM EXCHANGED NOTIFICATION NOW")
+
+                notify.send(
+                    sender=device,
+                    target=device,
+                    type="sdwan_sim_exchanged",
+                    verb=f"{sim_slot.upper()} exchanged",
+                    description=f"{sim_slot.upper()} SIM exchanged on device {device.name}",
+                    data={
+                        "sim_slot": sim_slot,
+                        "device_id": str(device.id),
+                        "device_name": device.name,
+                        "old_iccid": old_iccid,
+                        "new_iccid": new_iccid,
+                    },
+                    sim_slot=sim_slot,
+                )
+                continue
+            if not old_iccid and new_iccid and new_status == "connected":
+                print("🔥 FIRING SIM connected NOTIFICATION NOW") 
+                notify.send(
+                    sender=device,
+                    type="sdwan_sim_connected",
+                    target=device,
+                    verb=f"{sim_slot.upper()} connected",
+                    description=f"{sim_slot.upper()} is now connected on device {device.name}",
+                    data={
+                        "sim_slot": sim_slot,
+                        "device_id": str(device.id),
+                        "device_name": device.name,
+                        "new_iccid": new_iccid,
+                    },
+                    sim_slot=sim_slot,
+                )
+                continue
+
+
+
 
     def _get_extra_tags(self, device):
         tags = {"organization_id": str(device.organization_id)}
