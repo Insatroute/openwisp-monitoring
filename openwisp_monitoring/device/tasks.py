@@ -13,7 +13,7 @@ from ..check.tasks import perform_check
 logger = logging.getLogger(__name__)
 
 
-@shared_task(base=OpenwispCeleryTask)
+@shared_task(base=OpenwispCeleryTask, queue='monitoring')
 def trigger_device_critical_checks(pk, recovery=True):
     """Triggers the monitoring checks for the specified device pk.
 
