@@ -82,15 +82,31 @@ def _check_rate_limit(user_pk, key_prefix, limit=30, window=60):
     return True
 
 
-def _get_org_device_data(user):
-    """Return DeviceData queryset scoped to user's organisations.
-    Uses openwisp_users.utils for correct org-scoping (not user.organizations).
-    """
-    from openwisp_users.utils import _get_user_org_ids
-    qs = DeviceData.objects.all()
+def _get_user_org_ids(user):
+    """Return org IDs the user belongs to. Superusers get None (all orgs).
+    Cached on user object per request (same pattern as nsbond_views)."""
     if user.is_superuser:
+        return None
+    cached = getattr(user, "_du_org_ids", None)
+    if cached is not None:
+        return cached
+    from openwisp_users.models import OrganizationUser
+    org_ids = list(
+        OrganizationUser.objects.filter(user=user).values_list(
+            "organization_id", flat=True
+        )
+    )
+    user._du_org_ids = org_ids
+    return org_ids
+
+
+def _get_org_device_data(user):
+    """Return DeviceData queryset scoped to user's organisations."""
+    qs = DeviceData.objects.all()
+    org_ids = _get_user_org_ids(user)
+    if org_ids is None:
         return qs
-    return qs.filter(organization_id__in=_get_user_org_ids(user))
+    return qs.filter(organization_id__in=org_ids)
 
 
 def _format_bytes(b):
