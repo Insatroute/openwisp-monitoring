@@ -218,7 +218,7 @@
       <div class="owdu-summary-card">
         <div class="owdu-card-top">
           <div class="owdu-card-left">
-            <div class="owdu-summary-label">Total Data Usage</div>
+            <div class="owdu-summary-label">Total Traffic</div>
             <div class="owdu-summary-main">
               <span id="owdu-total-value" class="owdu-summary-value">0.00</span>
               <span id="owdu-total-unit" class="owdu-summary-unit">GB</span>
@@ -448,20 +448,14 @@ window.OWDU_KIND_ICONS = {
 
   // ======= CONFIG =======
   const API_BASE = window.location.origin;
-  const DEVICES_LIST_URL = `${API_BASE}/api/v1/controller/device/`;
-
-  const IFACES = {
-    cellular: ["modem", "modem2"],
-    wired: ["eth0", "eth1", "eth2", "eth3", "eth4", "eth5"],
-    wifi: ["ra0", "rax0"],
-  };
-
+  const PERIOD = "24h";
   const REFRESH_MS = 300000; // 5 minutes
   const TOP_ROWS = 10;
-  const FETCH_CONCURRENCY = 6;
 
   let isRefreshingAll = false;
   let isRefreshingApps = false;
+  let allRequestController = null;
+  let appsRequestController = null;
 
   // =========================
   // Plotly sizing fixes (ADMIN TAB SAFE)
@@ -520,53 +514,39 @@ window.OWDU_KIND_ICONS = {
   // =========================
   // Fetch helpers
   // =========================
-  async function fetchJson(url) {
-    const resp = await fetch(url, {
-      method: "GET",
-      credentials: "same-origin",
-      headers: { Accept: "application/json" },
-    });
-    const json = await resp.json().catch(() => null);
-    if (!resp.ok) {
-      const msg = json?.detail || json?.message || `HTTP ${resp.status}`;
-      throw new Error(msg);
+  function apiUrl(path) {
+    return `${API_BASE}${path}${path.includes("?") ? "&" : "?"}period=${encodeURIComponent(PERIOD)}`;
+  }
+
+  async function fetchJson(url, opts = {}) {
+    const timeoutMs = Number(opts.timeoutMs || 12000);
+    const signal = opts.signal;
+    const controller = new AbortController();
+    const abortRelay = () => controller.abort();
+
+    if (signal) {
+      if (signal.aborted) controller.abort();
+      else signal.addEventListener("abort", abortRelay, { once: true });
     }
-    return json;
-  }
 
-  async function fetchAllDevices() {
-    let url = DEVICES_LIST_URL;
-    const all = [];
-    while (url) {
-      const page = await fetchJson(url);
-      const rows = Array.isArray(page?.results) ? page.results : [];
-      all.push(...rows);
-      url = page?.next || null;
-    }
-    return all
-      .map((d) => ({ id: String(d.id), name: d.name || String(d.id) }))
-      .filter((d) => d.id);
-  }
-
-  async function fetchMonitoringForDevice(deviceId) {
-    return fetchJson(`${API_BASE}/api/v1/monitoring/device/${encodeURIComponent(deviceId)}/`);
-  }
-
-  async function mapLimit(items, limit, mapper) {
-    const results = new Array(items.length);
-    let i = 0;
-    async function worker() {
-      while (i < items.length) {
-        const idx = i++;
-        try {
-          results[idx] = { ok: true, value: await mapper(items[idx], idx) };
-        } catch (err) {
-          results[idx] = { ok: false, error: String(err?.message || err) };
-        }
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const resp = await fetch(url, {
+        method: "GET",
+        credentials: "same-origin",
+        headers: { Accept: "application/json" },
+        signal: controller.signal,
+      });
+      const json = await resp.json().catch(() => null);
+      if (!resp.ok) {
+        const msg = json?.detail || json?.message || `HTTP ${resp.status}`;
+        throw new Error(msg);
       }
+      return json;
+    } finally {
+      clearTimeout(timeoutId);
+      if (signal) signal.removeEventListener("abort", abortRelay);
     }
-    await Promise.all(Array.from({ length: Math.min(limit, items.length) }, () => worker()));
-    return results;
   }
 
   // =========================
@@ -600,8 +580,6 @@ window.OWDU_KIND_ICONS = {
     if (maxBytes >= MB) return { unit: "MB", divisor: MB };
     return { unit: "KB", divisor: KB };
   }
-
-  function gbToBytes(gb) { return (Number(gb) || 0) * 1000 * 1000 * 1000; }
 
   function paintSummary(prefix, totalBytes, sentBytes, recvBytes) {
     const t = formatBytes(totalBytes);
@@ -648,58 +626,6 @@ window.OWDU_KIND_ICONS = {
     if (!el) return;
     const overlay = el.querySelector(".owdu-empty-overlay");
     if (overlay) overlay.style.display = "none";
-  }
-
-  // =========================
-  // Monitoring parsing (ONLY /monitoring/device/<id>/)
-  // =========================
-  function getChartByIface(monitoringData, ifaceName) {
-    const charts = Array.isArray(monitoringData?.charts) ? monitoringData.charts : [];
-    const wanted = `traffic: ${String(ifaceName).toLowerCase()}`;
-    return (
-      charts.find((c) => {
-        const t = String(c?.title || "").toLowerCase().replace(/\s+/g, " ").trim();
-        return t === wanted;
-      }) || null
-    );
-  }
-
-  function getSummaryGBFromChart(chart) {
-    const up = Number(chart?.summary?.upload || 0);
-    const down = Number(chart?.summary?.download || 0);
-    return { upGB: up, downGB: down };
-  }
-
-  function sumInterfacesGB(monitoringPayload, ifaceList) {
-    let upGB = 0, downGB = 0;
-    for (const iface of ifaceList) {
-      const s = getSummaryGBFromChart(getChartByIface(monitoringPayload, iface));
-      upGB += s.upGB;
-      downGB += s.downGB;
-    }
-    return { upGB, downGB };
-  }
-
-  function computeDeviceTotalsBytesFromMonitoring(monitoringPayload) {
-    const cellularGB = sumInterfacesGB(monitoringPayload, IFACES.cellular);
-    const wiredGB = sumInterfacesGB(monitoringPayload, IFACES.wired);
-    const wifiGB = sumInterfacesGB(monitoringPayload, IFACES.wifi);
-
-    const cellular = { sent: gbToBytes(cellularGB.upGB), recv: gbToBytes(cellularGB.downGB) };
-    const wired = { sent: gbToBytes(wiredGB.upGB), recv: gbToBytes(wiredGB.downGB) };
-    const wifi = { sent: gbToBytes(wifiGB.upGB), recv: gbToBytes(wifiGB.downGB) };
-
-    const total = {
-      sent: cellular.sent + wired.sent + wifi.sent,
-      recv: cellular.recv + wired.recv + wifi.recv,
-    };
-
-    return {
-      total: { ...total, total: total.sent + total.recv },
-      cellular: { ...cellular, total: cellular.sent + cellular.recv },
-      wired: { ...wired, total: wired.sent + wired.recv },
-      wifi: { ...wifi, total: wifi.sent + wifi.recv },
-    };
   }
 
   // =========================
@@ -801,41 +727,36 @@ window.OWDU_KIND_ICONS = {
     });
   }
 
-  function computeTopBranches(devicesTotals, topN) {
-    const rows = devicesTotals
-      .filter((d) => d.ok && d.totals)
-      .map((d) => ({ name: d.name, bytes: Number(d.totals.total?.total || 0) }))
+  function computeTopBranches(topDevices, topN) {
+    const rows = (Array.isArray(topDevices) ? topDevices : [])
+      .map((d) => ({
+        name: String(d.name || d.hostname || d.device || d.device_id || "").trim(),
+        bytes: Number(d.total_bytes || 0),
+      }))
+      .filter((d) => d.name)
       .sort((a, b) => b.bytes - a.bytes)
       .slice(0, topN || TOP_ROWS);
-
-    return { labels: rows.map((r) => r.name), bytes: rows.map((r) => r.bytes) };
+    return {
+      labels: rows.map((r) => r.name),
+      bytes: rows.map((r) => r.bytes),
+    };
   }
 
   // =========================
-  // Top Apps (UNCHANGED API)
+  // Top Apps
   // =========================
   async function refreshTopApps() {
     if (isRefreshingApps) return;
     isRefreshingApps = true;
+    if (appsRequestController) appsRequestController.abort();
+    appsRequestController = new AbortController();
 
     setLoading("owdu-loading-apps", true, "Loading…");
     try {
-      const resp = await fetch(`${API_BASE}/api/v1/monitoring/global-top-apps/`, {
-        headers: { Accept: "application/json" },
-        credentials: "include",
-      });
-      const json = await resp.json().catch(() => null);
-
-      if (!resp.ok) {
-        const msg =
-          resp.status === 401 ? "You are not authenticated. Please log in."
-          : resp.status === 403 ? (json?.detail || "Permission denied.")
-          : resp.status === 404 ? "Top application data not available."
-          : (json?.message || "Unable to load top applications.");
-        showEmptyOverlay("owdu-top-apps", msg);
-        return;
-      }
-
+      const json = await fetchJson(
+        apiUrl("/api/v1/monitoring/global-top-apps/"),
+        { signal: appsRequestController.signal, timeoutMs: 10000 }
+      );
       const rows = Array.isArray(json?.top_10_apps) ? json.top_10_apps : [];
       if (!rows.length) {
         showEmptyOverlay("owdu-top-apps", json?.message || "No application traffic data available.");
@@ -847,10 +768,12 @@ window.OWDU_KIND_ICONS = {
 
       renderPlotlyHBarCompact("owdu-top-apps", labels, bytes, "No application traffic data available.");
     } catch (e) {
+      if (e?.name === "AbortError") return;
       console.error("Top apps error:", e);
       showEmptyOverlay("owdu-top-apps", "Unable to load top applications.");
     } finally {
       setLoading("owdu-loading-apps", false);
+      appsRequestController = null;
       isRefreshingApps = false;
     }
   }
@@ -861,73 +784,52 @@ window.OWDU_KIND_ICONS = {
   async function refreshAllDevices() {
     if (isRefreshingAll) return;
     isRefreshingAll = true;
+    if (allRequestController) allRequestController.abort();
+    allRequestController = new AbortController();
 
     setLoading("owdu-loading-branches", true, "Loading…");
     const warnEl = $("owdu-warn");
     if (warnEl) { warnEl.style.display = "none"; warnEl.textContent = ""; }
 
     try {
-      const devices = await fetchAllDevices();
+      const [summaryResp, topDevicesResp] = await Promise.all([
+        fetchJson(apiUrl("/api/v1/monitoring/data-usage/"), {
+          signal: allRequestController.signal,
+          timeoutMs: 12000,
+        }),
+        fetchJson(apiUrl("/api/v1/monitoring/global-top-devices/"), {
+          signal: allRequestController.signal,
+          timeoutMs: 12000,
+        }),
+      ]);
 
-      const monitoringRes = await mapLimit(devices, FETCH_CONCURRENCY, async (dev) => {
-        const data = await fetchMonitoringForDevice(dev.id);
-        return { id: dev.id, name: dev.name, data };
-      });
+      const total = summaryResp?.total || { sent: 0, received: 0, total: 0 };
+      const cellular = summaryResp?.cellular || { sent: 0, received: 0, total: 0 };
+      const wired = summaryResp?.wired || { sent: 0, received: 0, total: 0 };
+      const wireless = summaryResp?.wireless || { sent: 0, received: 0, total: 0 };
 
-      const devicesTotals = monitoringRes.map((r, idx) => {
-        const dev = devices[idx];
-        if (!r.ok) {
-          return { id: dev.id, name: dev.name, ok: false, error: r.error, totals: null };
-        }
-        const totals = computeDeviceTotalsBytesFromMonitoring(r.value.data);
-        return { id: dev.id, name: dev.name, ok: true, totals };
-      });
+      paintSummary("total", total.total || 0, total.sent || 0, total.received || 0);
+      paintSummary("cellular", cellular.total || 0, cellular.sent || 0, cellular.received || 0);
+      paintSummary("wired", wired.total || 0, wired.sent || 0, wired.received || 0);
+      paintSummary("wifi", wireless.total || 0, wireless.sent || 0, wireless.received || 0);
 
-      const failed = devicesTotals.filter((d) => !d.ok);
-      if (failed.length && warnEl) {
+      const mergedWarnings = []
+        .concat(Array.isArray(summaryResp?.warnings) ? summaryResp.warnings : [])
+        .concat(Array.isArray(topDevicesResp?.warnings) ? topDevicesResp.warnings : []);
+      if (mergedWarnings.length && warnEl) {
         warnEl.style.display = "block";
-        warnEl.textContent = `Warning: ${failed.length} device(s) failed to load. Totals use remaining devices.`;
+        warnEl.textContent = `Warning: ${Array.from(new Set(mergedWarnings)).join(" | ")}`;
       }
 
-      const agg = {
-        total: { sent: 0, recv: 0, total: 0 },
-        cellular: { sent: 0, recv: 0, total: 0 },
-        wired: { sent: 0, recv: 0, total: 0 },
-        wifi: { sent: 0, recv: 0, total: 0 },
-      };
-
-      for (const d of devicesTotals) {
-        if (!d.ok || !d.totals) continue;
-
-        agg.total.sent += d.totals.total.sent || 0;
-        agg.total.recv += d.totals.total.recv || 0;
-        agg.total.total += d.totals.total.total || 0;
-
-        agg.cellular.sent += d.totals.cellular.sent || 0;
-        agg.cellular.recv += d.totals.cellular.recv || 0;
-        agg.cellular.total += d.totals.cellular.total || 0;
-
-        agg.wired.sent += d.totals.wired.sent || 0;
-        agg.wired.recv += d.totals.wired.recv || 0;
-        agg.wired.total += d.totals.wired.total || 0;
-
-        agg.wifi.sent += d.totals.wifi.sent || 0;
-        agg.wifi.recv += d.totals.wifi.recv || 0;
-        agg.wifi.total += d.totals.wifi.total || 0;
-      }
-
-      paintSummary("total", agg.total.total, agg.total.sent, agg.total.recv);
-      paintSummary("cellular", agg.cellular.total, agg.cellular.sent, agg.cellular.recv);
-      paintSummary("wired", agg.wired.total, agg.wired.sent, agg.wired.recv);
-      paintSummary("wifi", agg.wifi.total, agg.wifi.sent, agg.wifi.recv);
-
-      const top = computeTopBranches(devicesTotals, TOP_ROWS);
+      const top = computeTopBranches(topDevicesResp?.top_10_devices, TOP_ROWS);
       renderPlotlyHBarCompact("owdu-top-branches", top.labels, top.bytes, "No branch traffic data available.");
     } catch (e) {
+      if (e?.name === "AbortError") return;
       console.error("All devices error:", e);
       showEmptyOverlay("owdu-top-branches", "Unable to load top branches.");
     } finally {
       setLoading("owdu-loading-branches", false);
+      allRequestController = null;
       isRefreshingAll = false;
     }
   }

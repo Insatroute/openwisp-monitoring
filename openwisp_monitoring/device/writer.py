@@ -1,6 +1,7 @@
 import logging
 from copy import deepcopy
 from datetime import datetime, timedelta
+from django.core.cache import cache
 
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ObjectDoesNotExist
@@ -62,13 +63,13 @@ class DeviceDataWriter(object):
         )
 
     def write(self, data, time=None, current=False):
+        old_data = deepcopy(self.device_data.data)
         time = datetime.strptime(time, "%d-%m-%Y_%H:%M:%S.%f").replace(tzinfo=UTC)
         self._init_previous_data()
         self.device_data.data = data
         # saves raw device data
         self.device_data.save_data()
         data = self.device_data.data
-        print("🔥 FIRING SIM  NOTIFICATION NOW")
         self.check_sim_state_and_notify(old_data, data)
         self.check_interface_state_and_notify(old_data, data) 
         
@@ -270,16 +271,10 @@ class DeviceDataWriter(object):
             new_iccid = new_modem.get("sim_iccid")
             new_status = new_modem.get("modem_status")
             print("---- SIM DEBUG ----")
-            print("Slot:", sim_slot)
-            print("Old ICCID:", old_iccid)
-            print("New ICCID:", new_iccid)
-            print("New Status:", new_status)
             cache_key = f"sim_state:{device.pk}:{sim_slot}"
             state = cache.get(cache_key, {})
             now_ts = now().timestamp()
             if old_iccid and not new_iccid:
-                print("🔥 FIRING SIM REMOVED NOTIFICATION NOW")
-
                 notify.send(
                     sender=device,
                     target=device,
@@ -296,8 +291,6 @@ class DeviceDataWriter(object):
                 )
                 continue
             if old_iccid and new_iccid and old_iccid != new_iccid:
-                print("🔥 FIRING SIM EXCHANGED NOTIFICATION NOW")
-
                 notify.send(
                     sender=device,
                     target=device,
@@ -315,7 +308,6 @@ class DeviceDataWriter(object):
                 )
                 continue
             if not old_iccid and new_iccid and new_status == "connected":
-                print("🔥 FIRING SIM connected NOTIFICATION NOW") 
                 notify.send(
                     sender=device,
                     type="sdwan_sim_connected",
