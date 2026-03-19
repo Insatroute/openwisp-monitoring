@@ -1,7 +1,9 @@
 {% load static %}
 
 <!-- Plotly 3.3.0 (charts: area, horizontal bar) -->
-<script src="https://cdn.plot.ly/plotly-3.3.0.min.js"></script>
+<script src="https://cdn.plot.ly/plotly-3.3.0.min.js"
+  integrity="sha384-9j4dOnaStvA18a0L9YXraOfBpiADen+WXfxp1U03QguLoXMW9b5bKHada4AwQAxK"
+  crossorigin="anonymous"></script>
 
 <!-- html2pdf.js (PDF export) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"
@@ -9,7 +11,9 @@
   crossorigin="anonymous"
 ></script>
 <!-- SheetJS (Excel export) -->
-<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"
+  integrity="sha384-EnyY0/GSHQGSxSgMwaIPzSESbqoOLSexfnSMN2AP+39Ckmn92stwABZynq1JyzdT"
+  crossorigin="anonymous"></script>
 
 <!-- Chart.js 4.4.7 + datalabels plugin (WAN donut) -->
 <script
@@ -2205,9 +2209,11 @@
           return;
         }
 
+        var allowedSeverities = { "critical": 1, "high": 1, "medium": 1, "low": 1 };
         var html = "";
         results.forEach(function (a) {
           var severity = (a.severity || "low").toLowerCase();
+          if (!allowedSeverities[severity]) severity = "low";
           var badgeClass = "owdu-badge-" + severity;
           html += '<div class="owdu-anomaly-item">' +
             '<span class="owdu-anomaly-badge ' + badgeClass + '">' + escHtml(severity) + '</span>' +
@@ -2468,12 +2474,26 @@
   }
 
   // =========================================================================
-  // AUTO-REFRESH SETUP
+  // AUTO-REFRESH SETUP (with visibility-aware pause)
   // =========================================================================
   function startAutoRefresh() {
     if (refreshTimerId) clearInterval(refreshTimerId);
     refreshTimerId = setInterval(refreshAll, REFRESH_MS);
   }
+
+  function stopAutoRefresh() {
+    if (refreshTimerId) { clearInterval(refreshTimerId); refreshTimerId = null; }
+  }
+
+  // Pause refresh when tab is hidden, resume when visible
+  document.addEventListener("visibilitychange", function () {
+    if (document.hidden) {
+      stopAutoRefresh();
+    } else {
+      refreshAll();
+      startAutoRefresh();
+    }
+  });
 
   // =========================================================================
   // INITIALIZATION
