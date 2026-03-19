@@ -449,6 +449,36 @@
   /* Clickable chart bars */
   .owdu-plot .barlayer path { cursor: pointer; }
 
+  /* Anomaly badges */
+  .owdu-anomaly-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+    border-bottom: 1px solid #f3f4f6;
+    font-size: 12px;
+  }
+  .owdu-anomaly-item:last-child { border-bottom: none; }
+  .owdu-anomaly-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+  .owdu-badge-critical { background: #fef2f2; color: #dc2626; }
+  .owdu-badge-high { background: #fff7ed; color: #ea580c; }
+  .owdu-badge-medium { background: #fffbeb; color: #d97706; }
+  .owdu-badge-low { background: #f0fdf4; color: #16a34a; }
+  .owdu-anomaly-empty {
+    text-align: center;
+    padding: 24px;
+    color: #16a34a;
+    font-weight: 600;
+    font-size: 13px;
+  }
+
   /* ===================== PLACEHOLDER SECTIONS ===================== */
   .owdu-placeholder {
     padding: 10px 40px;
@@ -726,11 +756,58 @@
     </div>
   </div>
 
+  <!-- ================= INTELLIGENCE SECTION (DASH-16, 17, 18) ================= -->
+  <div class="owdu-graph-grid" style="grid-template-columns: repeat(3, 1fr);">
+
+    <!-- SLA Summary (DASH-18) -->
+    <div class="owdu-card">
+      <div class="owdu-card-hd">SLA Summary</div>
+      <div class="owdu-card-bd" style="padding:16px">
+        <div id="owdu-sla-content" style="min-height:120px;position:relative">
+          <div id="owdu-loading-sla" class="owdu-loading">Loading...</div>
+          <div class="owdu-drill-cards" style="grid-template-columns:1fr 1fr">
+            <div class="owdu-drill-card">
+              <div class="owdu-drill-card-label">Fleet Uptime</div>
+              <div id="owdu-sla-uptime" class="owdu-drill-card-value">—</div>
+            </div>
+            <div class="owdu-drill-card">
+              <div class="owdu-drill-card-label">Devices Below SLA</div>
+              <div id="owdu-sla-below" class="owdu-drill-card-value" style="color:#dc2626">—</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Anomaly Badges (DASH-16) -->
+    <div class="owdu-card">
+      <div class="owdu-card-hd">Active Anomalies</div>
+      <div class="owdu-card-bd" style="padding:16px">
+        <div id="owdu-anomaly-content" style="min-height:120px;position:relative">
+          <div id="owdu-loading-anomaly" class="owdu-loading">Loading...</div>
+          <div id="owdu-anomaly-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Per-User/Source Breakdown (DASH-17) -->
+    <div class="owdu-card">
+      <div class="owdu-card-hd">Top Discovered Devices</div>
+      <div class="owdu-card-bd">
+        <div id="owdu-per-user-content" style="min-height:120px;position:relative">
+          <div id="owdu-loading-per-user" class="owdu-loading">Loading...</div>
+          <div id="owdu-per-user-table" class="owdu-table-scroll"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
   <!-- ================= PLACEHOLDER: Future Sections ================= -->
   <div class="owdu-placeholder">
     <div class="owdu-placeholder-inner">
-      SLA / Anomaly Badges | App-to-Interface Sankey | Per-Tunnel Overlay
-      &mdash; Coming in Wave 3-4
+      App-to-Interface Sankey | Per-Tunnel Overlay
+      &mdash; Coming in Wave 4
     </div>
   </div>
 
@@ -1966,6 +2043,119 @@
   }
 
   // =========================================================================
+  // SLA SUMMARY EMBED (DASH-18)
+  // =========================================================================
+  function refreshSlaEmbed() {
+    setLoading("owdu-loading-sla", true, "Loading...");
+
+    fetchJson(monitoringUrl("/api/v1/monitoring/dashboard/"))
+      .then(function (json) {
+        setLoading("owdu-loading-sla", false);
+        // Try to extract availability from dashboard data
+        var uptimeEl = $("owdu-sla-uptime");
+        var belowEl = $("owdu-sla-below");
+
+        if (json && json.availability !== undefined) {
+          if (uptimeEl) setText(uptimeEl, Number(json.availability).toFixed(2) + "%");
+          if (belowEl) setText(belowEl, json.devices_below_sla || "0");
+        } else {
+          // Fallback: show device count from meta
+          if (uptimeEl) setText(uptimeEl, "—");
+          if (belowEl) setText(belowEl, "—");
+        }
+      })
+      .catch(function (err) {
+        setLoading("owdu-loading-sla", false);
+        if (err && err.name === "AbortError") return;
+        var uptimeEl = $("owdu-sla-uptime");
+        var belowEl = $("owdu-sla-below");
+        if (uptimeEl) setText(uptimeEl, "N/A");
+        if (belowEl) setText(belowEl, "N/A");
+      });
+  }
+
+  // =========================================================================
+  // ANOMALY BADGES (DASH-16)
+  // =========================================================================
+  function refreshAnomalyBadges() {
+    setLoading("owdu-loading-anomaly", true, "Loading...");
+
+    fetchJson(API_BASE + "/api/v1/dpi/intelligence/anomalies/?acknowledged=false&page_size=10")
+      .then(function (json) {
+        setLoading("owdu-loading-anomaly", false);
+        var listEl = $("owdu-anomaly-list");
+        if (!listEl) return;
+
+        var results = (json && json.results) || [];
+        if (!results.length) {
+          listEl.innerHTML = '<div class="owdu-anomaly-empty">No active anomalies detected</div>';
+          return;
+        }
+
+        var html = "";
+        results.forEach(function (a) {
+          var severity = (a.severity || "low").toLowerCase();
+          var badgeClass = "owdu-badge-" + severity;
+          html += '<div class="owdu-anomaly-item">' +
+            '<span class="owdu-anomaly-badge ' + badgeClass + '">' + escHtml(severity) + '</span>' +
+            '<span>' + escHtml(a.title || a.anomaly_type || "Unknown") + '</span>' +
+            '</div>';
+        });
+        listEl.innerHTML = html;
+      })
+      .catch(function (err) {
+        setLoading("owdu-loading-anomaly", false);
+        if (err && err.name === "AbortError") return;
+        var listEl = $("owdu-anomaly-list");
+        if (listEl) listEl.innerHTML = '<div class="owdu-anomaly-empty" style="color:#6b7280">Unable to load anomalies</div>';
+      });
+  }
+
+  // =========================================================================
+  // PER-USER/SOURCE BREAKDOWN (DASH-17)
+  // =========================================================================
+  function refreshPerUserBreakdown() {
+    setLoading("owdu-loading-per-user", true, "Loading...");
+
+    fetchJson(API_BASE + "/api/v1/dpi/stats/top-devices/?limit=10")
+      .then(function (json) {
+        setLoading("owdu-loading-per-user", false);
+        var tableEl = $("owdu-per-user-table");
+        if (!tableEl) return;
+
+        var devices = Array.isArray(json && json.devices) ? json.devices : [];
+        if (!devices.length) {
+          tableEl.innerHTML = '<div style="text-align:center;padding:24px;color:#6b7280;font-size:12px">No discovered devices yet</div>';
+          return;
+        }
+
+        tableEl.innerHTML = buildRankedTable(
+          devices.map(function (d) {
+            return {
+              mac: d.mac_address || "—",
+              hostname: d.hostname || "—",
+              os: d.os_name || "—",
+              type: d.device_type || "—",
+              traffic: (d.total_download_bytes || 0) + (d.total_upload_bytes || 0),
+            };
+          }),
+          [
+            { key: "mac", label: "MAC" },
+            { key: "hostname", label: "Hostname" },
+            { key: "type", label: "Type" },
+            { key: "traffic", label: "Traffic", align: "right", fmt: function (v) { return escHtml(fmtBytes(v)); } },
+          ]
+        );
+      })
+      .catch(function (err) {
+        setLoading("owdu-loading-per-user", false);
+        if (err && err.name === "AbortError") return;
+        var tableEl = $("owdu-per-user-table");
+        if (tableEl) tableEl.innerHTML = '<div style="text-align:center;padding:24px;color:#6b7280;font-size:12px">Unable to load devices</div>';
+      });
+  }
+
+  // =========================================================================
   // PDF EXPORT (DASH-14)
   // =========================================================================
   function exportPDF() {
@@ -2102,6 +2292,9 @@
     refreshTopCategories();
     refreshTopClients();
     refreshPerWanBreakdown();
+    refreshSlaEmbed();
+    refreshAnomalyBadges();
+    refreshPerUserBreakdown();
   }
 
   // =========================================================================
