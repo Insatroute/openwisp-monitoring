@@ -236,8 +236,8 @@
     min-height: 300px;
   }
   .owdu-donut-canvas {
-    max-width: 280px;
-    max-height: 280px;
+    width: 260px !important;
+    height: 260px !important;
   }
 
   /* ===================== CHART CARDS (2-col grid) ===================== */
@@ -448,6 +448,7 @@
     position: relative;
     width: 100%;
     height: 280px;
+    overflow: hidden;
   }
 
   /* Clickable chart bars */
@@ -687,7 +688,7 @@
       <div class="owdu-card-bd">
         <div class="owdu-donut-wrap">
           <div id="owdu-loading-donut" class="owdu-loading">Loading...</div>
-          <canvas id="owdu-wan-donut" class="owdu-donut-canvas" width="280" height="280"></canvas>
+          <canvas id="owdu-wan-donut" class="owdu-donut-canvas" width="260" height="260" style="display:block"></canvas>
         </div>
       </div>
     </div>
@@ -808,7 +809,7 @@
   </div>
 
   <!-- ================= APP-TO-INTERFACE SANKEY (DASH-24) ================= -->
-  <div class="owdu-per-wan-section">
+  <div id="owdu-sankey-section" class="owdu-per-wan-section">
     <div class="owdu-per-wan-card">
       <div class="owdu-card-hd">App-to-Interface Flow (Sankey)</div>
       <div class="owdu-card-bd">
@@ -1378,8 +1379,8 @@
         }],
       },
       options: {
-        responsive: true,
-        maintainAspectRatio: false,
+        responsive: false,
+        maintainAspectRatio: true,
         cutout: "55%",
         plugins: {
           legend: {
@@ -2072,7 +2073,9 @@
         var wanLinks = Object.keys(topAppsByWan).filter(function (k) { return k && k.trim(); });
 
         if (!wanLinks.length) {
-          showEmptyOverlay("owdu-sankey", "Sankey requires multiple WAN links with classified app traffic. Currently all traffic is on a single link.");
+          // Hide the entire Sankey section when no multi-WAN data
+          var sankeySection = document.getElementById("owdu-sankey-section");
+          if (sankeySection) sankeySection.style.display = "none";
           return;
         }
         hideEmptyOverlay("owdu-sankey");
@@ -2117,7 +2120,8 @@
         });
 
         if (!links.source.length) {
-          showEmptyOverlay("owdu-sankey", "No traffic flows to visualize.");
+          var sankeySection = document.getElementById("owdu-sankey-section");
+          if (sankeySection) sankeySection.style.display = "none";
           return;
         }
 
@@ -2161,7 +2165,8 @@
         setLoading("owdu-loading-sankey", false);
         if (err && err.name === "AbortError") return;
         console.error("Sankey error:", err);
-        showError("owdu-sankey", "Unable to load Sankey diagram.");
+        var sankeySection = document.getElementById("owdu-sankey-section");
+        if (sankeySection) sankeySection.style.display = "none";
       });
   }
 
