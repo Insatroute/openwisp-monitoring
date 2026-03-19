@@ -3,6 +3,14 @@
 <!-- Plotly 3.3.0 (charts: area, horizontal bar) -->
 <script src="https://cdn.plot.ly/plotly-3.3.0.min.js"></script>
 
+<!-- html2pdf.js (PDF export) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"
+  integrity="sha384-VU7ZYjGMOflHblTkT3/WaB8ZlZcaVAaSDl8Dv4dleLLNn5B9TaZzgKlKl8dRFOz"
+  crossorigin="anonymous"
+></script>
+<!-- SheetJS (Excel export) -->
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+
 <!-- Chart.js 4.4.7 + datalabels plugin (WAN donut) -->
 <script
   src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"
@@ -349,6 +357,98 @@
     border-radius: 6px;
   }
 
+  /* ===================== MODAL DRILL-DOWN ===================== */
+  .owdu-modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+  }
+  .owdu-modal-overlay.owdu-show { display: flex; }
+
+  .owdu-modal {
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    max-width: 900px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    padding: 0;
+  }
+  .owdu-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid #e5e7eb;
+    position: sticky;
+    top: 0;
+    background: #ffffff;
+    z-index: 1;
+  }
+  .owdu-modal-header h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+    color: #111827;
+  }
+  .owdu-modal-close {
+    background: none;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    width: 32px;
+    height: 32px;
+    font-size: 18px;
+    cursor: pointer;
+    color: #6b7280;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .owdu-modal-close:hover { background: #f3f4f6; color: #111827; }
+  .owdu-modal-body { padding: 20px; }
+  .owdu-modal-chart { width: 100%; height: 300px; }
+
+  .owdu-drill-cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .owdu-drill-card {
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 12px;
+    text-align: center;
+  }
+  .owdu-drill-card-label { font-size: 11px; color: #6b7280; margin-bottom: 4px; }
+  .owdu-drill-card-value { font-size: 20px; font-weight: 700; color: #059669; }
+
+  /* ===================== PER-WAN BREAKDOWN ===================== */
+  .owdu-per-wan-section {
+    padding: 10px 40px;
+  }
+  .owdu-per-wan-card {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    overflow: hidden;
+  }
+  .owdu-per-wan-chart {
+    position: relative;
+    width: 100%;
+    height: 280px;
+  }
+
+  /* Clickable chart bars */
+  .owdu-plot .barlayer path { cursor: pointer; }
+
   /* ===================== PLACEHOLDER SECTIONS ===================== */
   .owdu-placeholder {
     padding: 10px 40px;
@@ -415,7 +515,9 @@
 
     <div class="owdu-toolbar-spacer"></div>
 
-    <button class="owdu-btn" id="owdu-export-csv" type="button" title="Export dashboard data as CSV">Export CSV</button>
+    <button class="owdu-btn" id="owdu-export-csv" type="button" title="Export dashboard data as CSV">CSV</button>
+    <button class="owdu-btn" id="owdu-export-pdf" type="button" title="Export dashboard as PDF">PDF</button>
+    <button class="owdu-btn" id="owdu-export-xls" type="button" title="Export dashboard as Excel">XLS</button>
 
     <span id="owdu-last-updated" class="owdu-last-updated"></span>
   </div>
@@ -610,11 +712,36 @@
 
   </div>
 
+  <!-- ================= PER-WAN-LINK BREAKDOWN (DASH-13) ================= -->
+  <div class="owdu-per-wan-section">
+    <div class="owdu-per-wan-card">
+      <div class="owdu-card-hd">Per-WAN-Link Breakdown</div>
+      <div class="owdu-card-bd">
+        <div class="owdu-per-wan-chart">
+          <div id="owdu-loading-per-wan" class="owdu-loading">Loading...</div>
+          <div id="owdu-per-wan" style="width:100%;height:100%"></div>
+        </div>
+        <div id="owdu-per-wan-table-wrap" class="owdu-table-scroll"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- ================= PLACEHOLDER: Future Sections ================= -->
   <div class="owdu-placeholder">
     <div class="owdu-placeholder-inner">
-      Per-WAN Breakdown | SLA / Anomaly Badges | App-to-Interface Sankey | Per-Tunnel Overlay
-      &mdash; Coming in Wave 2-6
+      SLA / Anomaly Badges | App-to-Interface Sankey | Per-Tunnel Overlay
+      &mdash; Coming in Wave 3-4
+    </div>
+  </div>
+
+  <!-- ================= DRILL-DOWN MODAL ================= -->
+  <div id="owdu-modal-overlay" class="owdu-modal-overlay">
+    <div class="owdu-modal">
+      <div class="owdu-modal-header">
+        <h3 id="owdu-modal-title"></h3>
+        <button class="owdu-modal-close" id="owdu-modal-close" type="button" aria-label="Close">&times;</button>
+      </div>
+      <div id="owdu-modal-body" class="owdu-modal-body"></div>
     </div>
   </div>
 
@@ -1285,6 +1412,19 @@
 
         renderPlotlyHBarCompact("owdu-top-apps", labels, bytes, "No application traffic data available.");
 
+        // Wire click handler for app drill-down
+        var appEl = $("owdu-top-apps");
+        if (appEl) {
+          appEl.removeAllListeners && appEl.removeAllListeners("plotly_click");
+          appEl.on("plotly_click", function (data) {
+            if (data && data.points && data.points[0]) {
+              var idx = data.points[0].pointIndex;
+              var appName = rows[idx] && rows[idx].label;
+              if (appName) openDrillDown("app", appName);
+            }
+          });
+        }
+
         // Build table below chart
         var tableWrap = $("owdu-apps-table-wrap");
         if (tableWrap) {
@@ -1398,6 +1538,19 @@
         var bytes = top10.map(function (c) { return (c.total_down || 0) + (c.total_up || 0); });
 
         renderPlotlyHBarCompact("owdu-top-categories", labels, bytes, "No category data available.");
+
+        // Wire click handler for category drill-down
+        var catEl = $("owdu-top-categories");
+        if (catEl) {
+          catEl.removeAllListeners && catEl.removeAllListeners("plotly_click");
+          catEl.on("plotly_click", function (data) {
+            if (data && data.points && data.points[0]) {
+              var idx = data.points[0].pointIndex;
+              var catName = top10[idx] && top10[idx].category;
+              if (catName) openDrillDown("category", catName);
+            }
+          });
+        }
 
         // Build table below chart
         var tableWrap = $("owdu-categories-table-wrap");
@@ -1576,6 +1729,362 @@
   }
 
   // =========================================================================
+  // PER-WAN-LINK BREAKDOWN (DASH-13)
+  // =========================================================================
+  var cachedPerWan = null;
+
+  function refreshPerWanBreakdown() {
+    setLoading("owdu-loading-per-wan", true, "Loading...");
+    clearError("owdu-per-wan");
+    hideEmptyOverlay("owdu-per-wan");
+
+    fetchJson(dpiV1Url("/api/v1/dpi/stats/wan-comparison/"))
+      .then(function (json) {
+        setLoading("owdu-loading-per-wan", false);
+        var links = Array.isArray(json && json.wan_links) ? json.wan_links : [];
+        var topAppsByWan = (json && json.top_apps_by_wan) || {};
+        cachedPerWan = json;
+
+        if (!links.length) {
+          showEmptyOverlay("owdu-per-wan", "No WAN link data available for this period.");
+          var tw = $("owdu-per-wan-table-wrap");
+          if (tw) tw.innerHTML = "";
+          return;
+        }
+
+        links.sort(function (a, b) { return ((b.total_down || 0) + (b.total_up || 0)) - ((a.total_down || 0) + (a.total_up || 0)); });
+
+        var labels = links.map(function (l) { return l.wan_link || "Unknown"; });
+        var downs = links.map(function (l) { return l.total_down || 0; });
+        var ups = links.map(function (l) { return l.total_up || 0; });
+
+        var scale = getChartUnitScale(downs.concat(ups));
+
+        Plotly.react($("owdu-per-wan"), [
+          {
+            type: "bar", orientation: "h", name: "Download",
+            y: labels, x: downs.map(function (v) { return +(v / scale.divisor).toFixed(2); }),
+            marker: { color: "#0ea5e9" },
+          },
+          {
+            type: "bar", orientation: "h", name: "Upload",
+            y: labels, x: ups.map(function (v) { return +(v / scale.divisor).toFixed(2); }),
+            marker: { color: "#059669" },
+          },
+        ], {
+          barmode: "stack",
+          autosize: true,
+          paper_bgcolor: "#fff", plot_bgcolor: "#fff",
+          margin: { l: 100, r: 20, t: 10, b: 40 },
+          xaxis: { ticksuffix: " " + scale.unit, fixedrange: true, gridcolor: "#e5e7eb" },
+          yaxis: { autorange: "reversed", fixedrange: true },
+          legend: { orientation: "h", x: 0, y: 1.12, font: { size: 11 } },
+        }, { responsive: true, displayModeBar: false }).then(function () {
+          attachResizeObserver("owdu-per-wan");
+        });
+
+        // Table
+        var tw = $("owdu-per-wan-table-wrap");
+        if (tw) {
+          tw.innerHTML = buildRankedTable(
+            links.map(function (l) {
+              var apps = topAppsByWan[l.wan_link] || [];
+              return {
+                wan_link: l.wan_link || "Unknown",
+                download: l.total_down || 0,
+                upload: l.total_up || 0,
+                total: (l.total_down || 0) + (l.total_up || 0),
+                top_app: apps.length ? apps[0].app || "" : "—",
+              };
+            }),
+            [
+              { key: "wan_link", label: "WAN Link" },
+              { key: "download", label: "Download", align: "right", fmt: function (v) { return escHtml(fmtBytes(v)); } },
+              { key: "upload", label: "Upload", align: "right", fmt: function (v) { return escHtml(fmtBytes(v)); } },
+              { key: "total", label: "Total", align: "right", fmt: function (v) { return escHtml(fmtBytes(v)); } },
+              { key: "top_app", label: "Top App" },
+            ]
+          );
+        }
+      })
+      .catch(function (err) {
+        setLoading("owdu-loading-per-wan", false);
+        if (err && err.name === "AbortError") return;
+        console.error("Per-WAN error:", err);
+        showError("owdu-per-wan", "Unable to load WAN link breakdown.");
+      });
+  }
+
+  // =========================================================================
+  // DRILL-DOWN MODAL (DASH-10, DASH-11, DASH-12)
+  // =========================================================================
+
+  function openDrillDown(type, key) {
+    var overlay = $("owdu-modal-overlay");
+    var titleEl = $("owdu-modal-title");
+    var bodyEl = $("owdu-modal-body");
+    if (!overlay || !bodyEl) return;
+
+    setText(titleEl, type === "category" ? "Category: " + key : "Application: " + key);
+    bodyEl.innerHTML = '<div class="owdu-loading" style="position:relative;height:200px;display:flex">Loading...</div>';
+    overlay.classList.add("owdu-show");
+
+    if (type === "category") {
+      fetchJson(dpiV2Url("/api/v1/dpi/data/stats/top/", "&dimension=application&category=" + encodeURIComponent(key) + "&limit=20"))
+        .then(function (json) { renderCategoryDrillDown(key, json); })
+        .catch(function (err) {
+          bodyEl.innerHTML = "";
+          var msg = document.createElement("p");
+          msg.style.cssText = "color:#dc2626;text-align:center;padding:40px";
+          setText(msg, "Failed to load: " + (err.message || "Unknown error"));
+          bodyEl.appendChild(msg);
+        });
+    } else if (type === "app") {
+      fetchJson(dpiV2Url("/api/v1/dpi/data/stats/timeseries/", "&app_name=" + encodeURIComponent(key)))
+        .then(function (json) { renderAppDrillDown(key, json); })
+        .catch(function (err) {
+          bodyEl.innerHTML = "";
+          var msg = document.createElement("p");
+          msg.style.cssText = "color:#dc2626;text-align:center;padding:40px";
+          setText(msg, "Failed to load: " + (err.message || "Unknown error"));
+          bodyEl.appendChild(msg);
+        });
+    }
+  }
+
+  function closeDrillDown() {
+    var overlay = $("owdu-modal-overlay");
+    if (overlay) overlay.classList.remove("owdu-show");
+    // Purge any Plotly chart in modal
+    var chart = document.getElementById("owdu-modal-chart");
+    if (chart) { try { Plotly.purge(chart); } catch (e) {} }
+  }
+
+  function renderCategoryDrillDown(category, json) {
+    var bodyEl = $("owdu-modal-body");
+    if (!bodyEl) return;
+    bodyEl.innerHTML = "";
+
+    var results = (json && json.results) || [];
+    if (!results.length) {
+      var msg = document.createElement("p");
+      msg.style.cssText = "color:#6b7280;text-align:center;padding:40px";
+      setText(msg, "No applications found in this category.");
+      bodyEl.appendChild(msg);
+      return;
+    }
+
+    // Chart container
+    var chartDiv = document.createElement("div");
+    chartDiv.id = "owdu-modal-chart";
+    chartDiv.className = "owdu-modal-chart";
+    bodyEl.appendChild(chartDiv);
+
+    var labels = results.map(function (r) { return r.application || r.app_name || "Unknown"; });
+    var bytes = results.map(function (r) { return (r.download || 0) + (r.upload || 0); });
+    var totalAll = bytes.reduce(function (a, b) { return a + b; }, 0);
+
+    renderPlotlyHBarCompact("owdu-modal-chart", labels, bytes, "No data.");
+
+    // Table
+    var tableDiv = document.createElement("div");
+    tableDiv.className = "owdu-table-scroll";
+    tableDiv.style.marginTop = "12px";
+    tableDiv.innerHTML = buildRankedTable(
+      results.map(function (r) {
+        var total = (r.download || 0) + (r.upload || 0);
+        return {
+          app: r.application || r.app_name || "Unknown",
+          download: r.download || 0,
+          upload: r.upload || 0,
+          total: total,
+          pct: totalAll > 0 ? ((total / totalAll) * 100).toFixed(1) + "%" : "0%",
+          flows: r.flows || 0,
+        };
+      }),
+      [
+        { key: "app", label: "Application" },
+        { key: "download", label: "Download", align: "right", fmt: function (v) { return escHtml(fmtBytes(v)); } },
+        { key: "upload", label: "Upload", align: "right", fmt: function (v) { return escHtml(fmtBytes(v)); } },
+        { key: "pct", label: "% of Category", align: "right" },
+        { key: "flows", label: "Flows", align: "right", fmt: function (v) { return escHtml(fmtNumber(v)); } },
+      ]
+    );
+    bodyEl.appendChild(tableDiv);
+  }
+
+  function renderAppDrillDown(appName, json) {
+    var bodyEl = $("owdu-modal-body");
+    if (!bodyEl) return;
+    bodyEl.innerHTML = "";
+
+    var results = (json && json.results) || [];
+    if (!results.length) {
+      var msg = document.createElement("p");
+      msg.style.cssText = "color:#6b7280;text-align:center;padding:40px";
+      setText(msg, "No trend data available for this application.");
+      bodyEl.appendChild(msg);
+      return;
+    }
+
+    // Compute averages
+    var totalDown = 0, totalUp = 0, count = results.length;
+    results.forEach(function (r) { totalDown += (r.download || 0); totalUp += (r.upload || 0); });
+    var avgDown = count > 0 ? totalDown / count : 0;
+    var avgUp = count > 0 ? totalUp / count : 0;
+    var avgTotal = avgDown + avgUp;
+
+    // 3 cards
+    var cardsDiv = document.createElement("div");
+    cardsDiv.className = "owdu-drill-cards";
+    cardsDiv.innerHTML =
+      '<div class="owdu-drill-card"><div class="owdu-drill-card-label">Avg Usage / Day</div><div class="owdu-drill-card-value">' + escHtml(fmtBytes(avgTotal)) + '</div></div>' +
+      '<div class="owdu-drill-card"><div class="owdu-drill-card-label">Avg Download / Day</div><div class="owdu-drill-card-value">' + escHtml(fmtBytes(avgDown)) + '</div></div>' +
+      '<div class="owdu-drill-card"><div class="owdu-drill-card-label">Avg Upload / Day</div><div class="owdu-drill-card-value">' + escHtml(fmtBytes(avgUp)) + '</div></div>';
+    bodyEl.appendChild(cardsDiv);
+
+    // Area chart
+    var chartDiv = document.createElement("div");
+    chartDiv.id = "owdu-modal-chart";
+    chartDiv.className = "owdu-modal-chart";
+    bodyEl.appendChild(chartDiv);
+
+    var timestamps = results.map(function (r) { return r.timestamp; });
+    var downloads = results.map(function (r) { return r.download || 0; });
+    var uploads = results.map(function (r) { return r.upload || 0; });
+
+    Plotly.react(chartDiv, [
+      { x: timestamps, y: downloads, name: "Download", type: "scatter", mode: "lines", fill: "tozeroy", fillcolor: "rgba(14,165,233,0.25)", line: { color: "#0ea5e9", width: 2 } },
+      { x: timestamps, y: uploads, name: "Upload", type: "scatter", mode: "lines", fill: "tozeroy", fillcolor: "rgba(5,150,105,0.25)", line: { color: "#059669", width: 2 } },
+    ], {
+      autosize: true, paper_bgcolor: "#fff", plot_bgcolor: "#fff",
+      margin: { l: 60, r: 16, t: 10, b: 40 },
+      xaxis: { type: "date", tickfont: { size: 10 }, gridcolor: "#f3f4f6", fixedrange: true },
+      yaxis: { tickfont: { size: 10 }, gridcolor: "#e5e7eb", fixedrange: true, rangemode: "tozero" },
+      legend: { orientation: "h", x: 0, y: 1.12, font: { size: 11 } },
+    }, { responsive: true, displayModeBar: false });
+  }
+
+  // =========================================================================
+  // PDF EXPORT (DASH-14)
+  // =========================================================================
+  function exportPDF() {
+    var btn = $("owdu-export-pdf");
+    if (btn) { btn.disabled = true; setText(btn, "Generating..."); }
+
+    var element = document.querySelector(".owdu-wrap");
+    if (!element) { if (btn) { btn.disabled = false; setText(btn, "PDF"); } return; }
+
+    var period = getTimePeriod();
+    var dateStr = new Date().toISOString().slice(0, 10);
+
+    html2pdf().set({
+      margin: 10,
+      filename: "traffic-insights-" + period + "-" + dateStr + ".pdf",
+      image: { type: "jpeg", quality: 0.95 },
+      html2canvas: { scale: 2, useCORS: true, logging: false },
+      jsPDF: { unit: "mm", format: "a3", orientation: "landscape" },
+    }).from(element).save().then(function () {
+      if (btn) { btn.disabled = false; setText(btn, "PDF"); }
+    }).catch(function () {
+      if (btn) { btn.disabled = false; setText(btn, "PDF"); }
+    });
+  }
+
+  // =========================================================================
+  // XLS EXPORT (DASH-15)
+  // =========================================================================
+  function exportXLS() {
+    if (typeof XLSX === "undefined") { alert("Excel library not loaded."); return; }
+
+    var btn = $("owdu-export-xls");
+    if (btn) { btn.disabled = true; setText(btn, "Generating..."); }
+
+    var period = getTimePeriod();
+    var dateStr = new Date().toISOString().slice(0, 10);
+    var wb = XLSX.utils.book_new();
+
+    function safe(val) {
+      if (val === null || val === undefined) return "";
+      var s = String(val);
+      if (/^[=+\-@\t\r]/.test(s)) return "'" + s;
+      return s;
+    }
+
+    // Sheet 1: Summary
+    if (cachedSummary) {
+      var sumRows = [["Type", "Total", "Upload", "Download"]];
+      ["total", "cellular", "wired", "wireless"].forEach(function (t) {
+        var d = cachedSummary[t] || {};
+        sumRows.push([safe(t), d.total || 0, d.sent || 0, d.received || 0]);
+      });
+      var ws1 = XLSX.utils.aoa_to_sheet(sumRows);
+      ws1["!cols"] = [{ wch: 12 }, { wch: 16 }, { wch: 16 }, { wch: 16 }];
+      XLSX.utils.book_append_sheet(wb, ws1, "Summary");
+    }
+
+    // Sheet 2: Top Applications
+    if (cachedTopApps.length) {
+      var appRows = [["#", "Application", "Traffic (bytes)"]];
+      cachedTopApps.forEach(function (a, i) {
+        appRows.push([i + 1, safe(a.label || ""), a.traffic || 0]);
+      });
+      var ws2 = XLSX.utils.aoa_to_sheet(appRows);
+      ws2["!cols"] = [{ wch: 4 }, { wch: 30 }, { wch: 18 }];
+      XLSX.utils.book_append_sheet(wb, ws2, "Top Applications");
+    }
+
+    // Sheet 3: Top Categories
+    if (cachedTopCategories.length) {
+      var catRows = [["#", "Category", "Download", "Upload", "Flows"]];
+      cachedTopCategories.slice(0, TOP_ROWS).forEach(function (c, i) {
+        catRows.push([i + 1, safe(c.category || ""), c.total_down || 0, c.total_up || 0, c.total_flows || 0]);
+      });
+      var ws3 = XLSX.utils.aoa_to_sheet(catRows);
+      ws3["!cols"] = [{ wch: 4 }, { wch: 24 }, { wch: 16 }, { wch: 16 }, { wch: 10 }];
+      XLSX.utils.book_append_sheet(wb, ws3, "Top Categories");
+    }
+
+    // Sheet 4: Top Devices
+    if (cachedTopDevices.length) {
+      var devRows = [["#", "Device", "Total (bytes)"]];
+      cachedTopDevices.forEach(function (d, i) {
+        devRows.push([i + 1, safe(d.name || ""), d.total_bytes || 0]);
+      });
+      var ws4 = XLSX.utils.aoa_to_sheet(devRows);
+      ws4["!cols"] = [{ wch: 4 }, { wch: 30 }, { wch: 18 }];
+      XLSX.utils.book_append_sheet(wb, ws4, "Top Devices");
+    }
+
+    // Sheet 5: Top Clients
+    if (cachedTopClients.length) {
+      var cliRows = [["#", "IP Address", "Download", "Upload"]];
+      cachedTopClients.forEach(function (c, i) {
+        cliRows.push([i + 1, safe(c.ip || ""), c.download || 0, c.upload || 0]);
+      });
+      var ws5 = XLSX.utils.aoa_to_sheet(cliRows);
+      ws5["!cols"] = [{ wch: 4 }, { wch: 20 }, { wch: 16 }, { wch: 16 }];
+      XLSX.utils.book_append_sheet(wb, ws5, "Top Clients");
+    }
+
+    // Sheet 6: Per-WAN
+    if (cachedPerWan && cachedPerWan.wan_links) {
+      var wanRows = [["WAN Link", "Download", "Upload", "Top App"]];
+      var topApps = cachedPerWan.top_apps_by_wan || {};
+      cachedPerWan.wan_links.forEach(function (l) {
+        var apps = topApps[l.wan_link] || [];
+        wanRows.push([safe(l.wan_link || ""), l.total_down || 0, l.total_up || 0, safe(apps.length ? apps[0].app || "" : "")]);
+      });
+      var ws6 = XLSX.utils.aoa_to_sheet(wanRows);
+      ws6["!cols"] = [{ wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 24 }];
+      XLSX.utils.book_append_sheet(wb, ws6, "Per-WAN");
+    }
+
+    XLSX.writeFile(wb, "traffic-insights-" + period + "-" + dateStr + ".xlsx");
+    if (btn) { btn.disabled = false; setText(btn, "XLS"); }
+  }
+
+  // =========================================================================
   // REFRESH ALL (called on init + time range change + interval)
   // =========================================================================
   function refreshAll() {
@@ -1592,6 +2101,7 @@
     refreshTopDevices();
     refreshTopCategories();
     refreshTopClients();
+    refreshPerWanBreakdown();
   }
 
   // =========================================================================
@@ -1687,11 +2197,26 @@
       applyBtn.addEventListener("click", onApplyCustomRange);
     }
 
-    // CSV export button
+    // Export buttons
     var csvBtn = $("owdu-export-csv");
-    if (csvBtn) {
-      csvBtn.addEventListener("click", exportCSV);
+    if (csvBtn) csvBtn.addEventListener("click", exportCSV);
+    var pdfBtn = $("owdu-export-pdf");
+    if (pdfBtn) pdfBtn.addEventListener("click", exportPDF);
+    var xlsBtn = $("owdu-export-xls");
+    if (xlsBtn) xlsBtn.addEventListener("click", exportXLS);
+
+    // Modal close handlers
+    var modalClose = $("owdu-modal-close");
+    if (modalClose) modalClose.addEventListener("click", closeDrillDown);
+    var modalOverlay = $("owdu-modal-overlay");
+    if (modalOverlay) {
+      modalOverlay.addEventListener("click", function (e) {
+        if (e.target === modalOverlay) closeDrillDown();
+      });
     }
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape") closeDrillDown();
+    });
 
     // Attach resize observers
     attachResizeObserver("owdu-top-apps");
@@ -1699,6 +2224,7 @@
     attachResizeObserver("owdu-top-categories");
     attachResizeObserver("owdu-top-clients");
     attachResizeObserver("owdu-trending");
+    attachResizeObserver("owdu-per-wan");
 
     // Initial data load
     refreshAll();
@@ -1714,6 +2240,7 @@
     hardResize("owdu-top-categories");
     hardResize("owdu-top-clients");
     hardResize("owdu-trending");
+    hardResize("owdu-per-wan");
   });
 
 })();
