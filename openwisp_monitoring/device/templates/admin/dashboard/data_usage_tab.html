@@ -803,11 +803,16 @@
 
   </div>
 
-  <!-- ================= PLACEHOLDER: Future Sections ================= -->
-  <div class="owdu-placeholder">
-    <div class="owdu-placeholder-inner">
-      App-to-Interface Sankey | Per-Tunnel Overlay
-      &mdash; Coming in Wave 4
+  <!-- ================= APP-TO-INTERFACE SANKEY (DASH-24) ================= -->
+  <div class="owdu-per-wan-section">
+    <div class="owdu-per-wan-card">
+      <div class="owdu-card-hd">App-to-Interface Flow (Sankey)</div>
+      <div class="owdu-card-bd">
+        <div style="position:relative;width:100%;height:400px">
+          <div id="owdu-loading-sankey" class="owdu-loading">Loading...</div>
+          <div id="owdu-sankey" style="width:100%;height:100%"></div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -2043,6 +2048,114 @@
   }
 
   // =========================================================================
+  // APP-TO-INTERFACE SANKEY (DASH-24)
+  // =========================================================================
+  function refreshSankey() {
+    setLoading("owdu-loading-sankey", true, "Loading...");
+    clearError("owdu-sankey");
+    hideEmptyOverlay("owdu-sankey");
+
+    fetchJson(dpiV1Url("/api/v1/dpi/stats/wan-comparison/"))
+      .then(function (json) {
+        setLoading("owdu-loading-sankey", false);
+        var topAppsByWan = (json && json.top_apps_by_wan) || {};
+        var wanLinks = Object.keys(topAppsByWan);
+
+        if (!wanLinks.length) {
+          showEmptyOverlay("owdu-sankey", "No app-to-interface data available for this period.");
+          return;
+        }
+        hideEmptyOverlay("owdu-sankey");
+
+        // Build Sankey nodes: apps (left) + WAN links (right)
+        var appSet = {};
+        var nodeLabels = [];
+        var links = { source: [], target: [], value: [], color: [] };
+
+        // First pass: collect unique apps
+        wanLinks.forEach(function (wan) {
+          var apps = topAppsByWan[wan] || [];
+          apps.slice(0, 5).forEach(function (a) {
+            var name = a.app || a.app_name || "Unknown";
+            if (!appSet[name]) {
+              appSet[name] = nodeLabels.length;
+              nodeLabels.push(name);
+            }
+          });
+        });
+
+        // Add WAN link nodes after apps
+        var wanNodeStart = nodeLabels.length;
+        wanLinks.forEach(function (wan) {
+          nodeLabels.push(wan);
+        });
+
+        // Second pass: build links
+        var appColors = ["#0ea5e9", "#059669", "#8b5cf6", "#f59e0b", "#ef4444", "#ec4899", "#14b8a6", "#6366f1"];
+        wanLinks.forEach(function (wan, wanIdx) {
+          var apps = topAppsByWan[wan] || [];
+          apps.slice(0, 5).forEach(function (a) {
+            var name = a.app || a.app_name || "Unknown";
+            var bytes = (a.download || 0) + (a.upload || 0);
+            if (bytes > 0 && appSet[name] !== undefined) {
+              links.source.push(appSet[name]);
+              links.target.push(wanNodeStart + wanIdx);
+              links.value.push(bytes);
+              links.color.push(appColors[appSet[name] % appColors.length] + "40");
+            }
+          });
+        });
+
+        if (!links.source.length) {
+          showEmptyOverlay("owdu-sankey", "No traffic flows to visualize.");
+          return;
+        }
+
+        // Node colors: apps get themed colors, WAN links get gray
+        var nodeColors = nodeLabels.map(function (_, i) {
+          if (i < wanNodeStart) return appColors[i % appColors.length];
+          return "#6b7280";
+        });
+
+        Plotly.react($("owdu-sankey"), [{
+          type: "sankey",
+          orientation: "h",
+          node: {
+            pad: 20,
+            thickness: 24,
+            line: { color: "#e5e7eb", width: 1 },
+            label: nodeLabels,
+            color: nodeColors,
+            hovertemplate: "%{label}<br>%{value:.3s} bytes<extra></extra>",
+          },
+          link: {
+            source: links.source,
+            target: links.target,
+            value: links.value,
+            color: links.color,
+            hovertemplate: "%{source.label} → %{target.label}<br>%{value:.3s} bytes<extra></extra>",
+          },
+        }], {
+          autosize: true,
+          paper_bgcolor: "#ffffff",
+          plot_bgcolor: "#ffffff",
+          margin: { l: 10, r: 10, t: 10, b: 10 },
+          font: { size: 11, color: "#374151" },
+        }, {
+          responsive: true, displayModeBar: false, displaylogo: false,
+        }).then(function () {
+          attachResizeObserver("owdu-sankey");
+        });
+      })
+      .catch(function (err) {
+        setLoading("owdu-loading-sankey", false);
+        if (err && err.name === "AbortError") return;
+        console.error("Sankey error:", err);
+        showError("owdu-sankey", "Unable to load Sankey diagram.");
+      });
+  }
+
+  // =========================================================================
   // SLA SUMMARY EMBED (DASH-18)
   // =========================================================================
   function refreshSlaEmbed() {
@@ -2295,6 +2408,7 @@
     refreshSlaEmbed();
     refreshAnomalyBadges();
     refreshPerUserBreakdown();
+    refreshSankey();
   }
 
   // =========================================================================
@@ -2418,6 +2532,7 @@
     attachResizeObserver("owdu-top-clients");
     attachResizeObserver("owdu-trending");
     attachResizeObserver("owdu-per-wan");
+    attachResizeObserver("owdu-sankey");
 
     // Initial data load
     refreshAll();
