@@ -2596,30 +2596,32 @@
     startAutoRefresh();
   }
 
+  // Listen for the tab system's custom event (device_map.html dispatches this)
+  document.addEventListener("home:tabchange", function (e) {
+    if (e.detail && e.detail.suffix === "data-usage") {
+      // Tab is now visible — safe to init and render charts
+      setTimeout(function () {
+        initDashboard();
+        // Force resize all charts in case they were rendered before
+        hardResize("owdu-top-apps");
+        hardResize("owdu-top-branches");
+        hardResize("owdu-top-categories");
+        hardResize("owdu-top-clients");
+        hardResize("owdu-trending");
+        hardResize("owdu-per-wan");
+        hardResize("owdu-sankey");
+      }, 50);
+    } else {
+      // Another tab activated — stop auto-refresh to save bandwidth
+      stopAutoRefresh();
+    }
+  });
+
+  // Also check on DOMContentLoaded in case data-usage tab is the default active one
   document.addEventListener("DOMContentLoaded", function () {
-    // Check if the tab is already active (direct URL load)
     var pane = document.getElementById("home-pane-data-usage");
     if (pane && pane.classList.contains("home-active")) {
       initDashboard();
-    }
-
-    // Listen for tab activation click
-    var tabBtn = document.getElementById("home-tab-data-usage");
-    if (tabBtn) {
-      tabBtn.addEventListener("click", function () {
-        // Small delay to let the tab system show the pane first
-        setTimeout(function () {
-          initDashboard();
-          // Force resize all charts (they may have rendered at 0x0)
-          hardResize("owdu-top-apps");
-          hardResize("owdu-top-branches");
-          hardResize("owdu-top-categories");
-          hardResize("owdu-top-clients");
-          hardResize("owdu-trending");
-          hardResize("owdu-per-wan");
-          hardResize("owdu-sankey");
-        }, 100);
-      });
     }
   });
 
