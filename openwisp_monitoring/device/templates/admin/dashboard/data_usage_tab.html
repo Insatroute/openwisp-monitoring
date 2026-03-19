@@ -2532,9 +2532,14 @@
   });
 
   // =========================================================================
-  // INITIALIZATION
+  // INITIALIZATION — deferred until tab is visible
   // =========================================================================
-  document.addEventListener("DOMContentLoaded", function () {
+  var owduInitialized = false;
+
+  function initDashboard() {
+    if (owduInitialized) return;
+    owduInitialized = true;
+
     mountIoIcons();
     mountKindIcons();
 
@@ -2542,7 +2547,6 @@
     var sel = $("owdu-time-range");
     if (sel) {
       var stored = getTimePeriod();
-      // Validate stored value is a valid option
       var validOptions = ["1h", "6h", "24h", "7d", "30d", "90d", "custom"];
       if (validOptions.indexOf(stored) >= 0) {
         sel.value = stored;
@@ -2550,15 +2554,12 @@
         sel.value = "24h";
         setTimePeriod("24h");
       }
-
       sel.addEventListener("change", onTimeRangeChange);
     }
 
     // Custom range apply button
     var applyBtn = $("owdu-apply-custom");
-    if (applyBtn) {
-      applyBtn.addEventListener("click", onApplyCustomRange);
-    }
+    if (applyBtn) applyBtn.addEventListener("click", onApplyCustomRange);
 
     // Export buttons
     var csvBtn = $("owdu-export-csv");
@@ -2592,9 +2593,34 @@
 
     // Initial data load
     refreshAll();
-
-    // Start auto-refresh
     startAutoRefresh();
+  }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    // Check if the tab is already active (direct URL load)
+    var pane = document.getElementById("home-pane-data-usage");
+    if (pane && pane.classList.contains("home-active")) {
+      initDashboard();
+    }
+
+    // Listen for tab activation click
+    var tabBtn = document.getElementById("home-tab-data-usage");
+    if (tabBtn) {
+      tabBtn.addEventListener("click", function () {
+        // Small delay to let the tab system show the pane first
+        setTimeout(function () {
+          initDashboard();
+          // Force resize all charts (they may have rendered at 0x0)
+          hardResize("owdu-top-apps");
+          hardResize("owdu-top-branches");
+          hardResize("owdu-top-categories");
+          hardResize("owdu-top-clients");
+          hardResize("owdu-trending");
+          hardResize("owdu-per-wan");
+          hardResize("owdu-sankey");
+        }, 100);
+      });
+    }
   });
 
   // Global resize handler
