@@ -915,6 +915,7 @@
   var cachedTopClients = [];
   var wanDonutChart = null;
   var refreshTimerId = null;
+  var isFirstLoad = true; // Show loading spinners only on first load
 
   // =========================================================================
   // XSS-SAFE TEXT HELPERS
@@ -1076,6 +1077,8 @@
   // LOADING / EMPTY / ERROR STATE HELPERS
   // =========================================================================
   function setLoading(elId, show, text) {
+    // Silent refresh: only show loading spinners on first load
+    if (show && !isFirstLoad) return;
     var el = $(elId);
     if (!el) return;
     el.style.display = show ? "flex" : "none";
@@ -1328,6 +1331,9 @@
   // =========================================================================
   function renderWanDonut(summaryData) {
     setLoading("owdu-loading-donut", false);
+    // Also hide loading overlay explicitly (isFirstLoad may suppress setLoading)
+    var loadEl = $("owdu-loading-donut");
+    if (loadEl) loadEl.style.display = "none";
 
     if (!summaryData) return;
 
@@ -2063,10 +2069,10 @@
       .then(function (json) {
         setLoading("owdu-loading-sankey", false);
         var topAppsByWan = (json && json.top_apps_by_wan) || {};
-        var wanLinks = Object.keys(topAppsByWan);
+        var wanLinks = Object.keys(topAppsByWan).filter(function (k) { return k && k.trim(); });
 
         if (!wanLinks.length) {
-          showEmptyOverlay("owdu-sankey", "No app-to-interface data available for this period.");
+          showEmptyOverlay("owdu-sankey", "Sankey requires multiple WAN links with classified app traffic. Currently all traffic is on a single link.");
           return;
         }
         hideEmptyOverlay("owdu-sankey");
@@ -2164,25 +2170,38 @@
   // =========================================================================
   function refreshSlaEmbed() {
     setLoading("owdu-loading-sla", true, "Loading...");
+    var loadEl = $("owdu-loading-sla");
 
-    fetchJson(monitoringUrl("/api/v1/monitoring/dashboard/"))
+    // Use monitoring device list to compute basic uptime stats
+    fetchJson(API_BASE + "/api/v1/monitoring/device/?page_size=200&format=json")
       .then(function (json) {
-        setLoading("owdu-loading-sla", false);
-        // Try to extract availability from dashboard data
+        if (loadEl) loadEl.style.display = "none";
         var uptimeEl = $("owdu-sla-uptime");
         var belowEl = $("owdu-sla-below");
 
-        if (json && json.availability !== undefined) {
-          if (uptimeEl) setText(uptimeEl, Number(json.availability).toFixed(2) + "%");
-          if (belowEl) setText(belowEl, json.devices_below_sla || "0");
-        } else {
-          // Fallback: show device count from meta
-          if (uptimeEl) setText(uptimeEl, "—");
-          if (belowEl) setText(belowEl, "—");
+        var results = (json && json.results) || [];
+        if (!results.length) {
+          if (uptimeEl) setText(uptimeEl, "No devices");
+          if (belowEl) setText(belowEl, "0");
+          return;
         }
+
+        var total = results.length;
+        var online = results.filter(function (d) {
+          var s = (d.monitoring && d.monitoring.status) || "";
+          return s === "ok" || s === "problem";
+        }).length;
+        var critical = results.filter(function (d) {
+          var s = (d.monitoring && d.monitoring.status) || "";
+          return s === "critical";
+        }).length;
+
+        var uptime = total > 0 ? ((online / total) * 100).toFixed(1) : "0.0";
+        if (uptimeEl) setText(uptimeEl, uptime + "%");
+        if (belowEl) setText(belowEl, String(critical));
       })
       .catch(function (err) {
-        setLoading("owdu-loading-sla", false);
+        if (loadEl) loadEl.style.display = "none";
         if (err && err.name === "AbortError") return;
         var uptimeEl = $("owdu-sla-uptime");
         var belowEl = $("owdu-sla-below");
@@ -2255,7 +2274,7 @@
               hostname: d.hostname || "—",
               os: d.os_name || "—",
               type: d.device_type || "—",
-              traffic: (d.total_download_bytes || 0) + (d.total_upload_bytes || 0),
+              traffic: (d.total_download || d.total_download_bytes || 0) + (d.total_upload || d.total_upload_bytes || 0),
             };
           }),
           [
@@ -2415,6 +2434,11 @@
     refreshAnomalyBadges();
     refreshPerUserBreakdown();
     refreshSankey();
+
+    // After first load, suppress loading spinners for silent refresh
+    if (isFirstLoad) {
+      setTimeout(function () { isFirstLoad = false; }, 3000);
+    }
   }
 
   // =========================================================================
