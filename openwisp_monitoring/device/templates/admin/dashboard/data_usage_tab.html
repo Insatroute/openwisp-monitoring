@@ -995,17 +995,20 @@
       headers: { Accept: "application/json" },
       signal: controller.signal,
     }).then(function (resp) {
-      return resp.json().catch(function () { return null; }).then(function (json) {
-        clearTimeout(timeoutId);
-        if (!resp.ok) {
-          var msg = (json && (json.detail || json.message)) || ("HTTP " + resp.status);
-          throw new Error(msg);
-        }
-        return json;
-      });
+      clearTimeout(timeoutId);
+      if (!resp.ok) {
+        console.warn("fetchJson: " + resp.status + " from " + url);
+        return null;
+      }
+      return resp.json().catch(function () { return null; });
     }).catch(function (err) {
       clearTimeout(timeoutId);
-      throw err;
+      if (err && err.name === "AbortError") {
+        console.warn("fetchJson: timeout for " + url);
+        return null;
+      }
+      console.error("fetchJson: error for " + url, err);
+      return null;
     });
   }
 
@@ -1295,6 +1298,9 @@
 
     fetchJson(monitoringUrl("/api/v1/monitoring/data-usage/"))
       .then(function (json) {
+        // Hide donut loading regardless
+        var dl = $("owdu-loading-donut");
+        if (dl) dl.style.display = "none";
         if (!json) return;
 
         var total = json.total || { sent: 0, received: 0, total: 0 };
@@ -1321,6 +1327,9 @@
         }
       })
       .catch(function (err) {
+        // Hide donut loading on error (donut depends on summary data)
+        var donutLoad = $("owdu-loading-donut");
+        if (donutLoad) donutLoad.style.display = "none";
         if (err && err.name === "AbortError") return;
         console.error("Summary cards error:", err);
       });
@@ -2435,10 +2444,13 @@
     refreshPerUserBreakdown();
     refreshSankey();
 
-    // After first load, suppress loading spinners for silent refresh
-    if (isFirstLoad) {
-      setTimeout(function () { isFirstLoad = false; }, 3000);
-    }
+    // Safety net: hide ALL loading overlays after timeout
+    // Ensures no spinner stays stuck if an API fails silently
+    setTimeout(function () {
+      var loaders = document.querySelectorAll(".owdu-loading");
+      loaders.forEach(function (el) { el.style.display = "none"; });
+      if (isFirstLoad) isFirstLoad = false;
+    }, 15000);
   }
 
   // =========================================================================
