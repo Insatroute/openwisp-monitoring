@@ -1350,11 +1350,12 @@
     var wiredTotal = (summaryData.wired && summaryData.wired.total) || 0;
     var wifiTotal = (summaryData.wireless && summaryData.wireless.total) || 0;
 
-    // Always show donut even with 0 data — shows 0% for all types
-    if (cellularTotal + wiredTotal + wifiTotal <= 0) {
-      cellularTotal = 0.001;
-      wiredTotal = 0.001;
-      wifiTotal = 0.001;
+    // Always show donut — if all zero, show equal placeholder slices
+    var hasData = (cellularTotal + wiredTotal + wifiTotal) > 0;
+    if (!hasData) {
+      cellularTotal = 1;
+      wiredTotal = 1;
+      wifiTotal = 1;
     }
 
     var canvas = $("owdu-wan-donut");
