@@ -747,34 +747,17 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
             content_type__app_label='config',
         )
 
-    @classmethod
-    def get_active_metrics(cls):
-        """
-        Returns a list of active metric keys (Metric.configuration values)
-        derived from CHECK_LIST classes.
-        """
-        if not hasattr(cls, '_active_metrics'):
-            from ...check import settings as check_settings
+    def get_active_metrics(self):
+        """Return metrics that have received data recently (last 24h)."""
+        return self.related_metrics.filter(is_healthy__isnull=False)
 
-            active_metrics = []
-            for check in check_settings.CHECK_LIST:
-                Check = import_string(check)
-                active_metrics.extend(Check.get_related_metrics())
-            cls._active_metrics = active_metrics
-        return cls._active_metrics
-
-    @classmethod
-    def get_critical_checks(cls):
-        """
-        Returns list of critical check types.
-        """
-        if not hasattr(cls, '_critical_checks'):
-            critical_checks = []
-            for metric in app_settings.CRITICAL_DEVICE_METRICS:
-                if metric.get('check'):
-                    critical_checks.append(metric['check'])
-            cls._critical_checks = critical_checks
-        return cls._critical_checks
+    def get_critical_checks(self):
+        """Return check instances for critical device metrics."""
+        Check = load_model('check', 'Check')
+        return Check.objects.filter(
+            object_id=str(self.device_id),
+            is_active=True,
+        )
 
     @staticmethod
     @receiver(threshold_crossed, dispatch_uid='threshold_crossed_receiver')
