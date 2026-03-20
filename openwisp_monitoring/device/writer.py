@@ -2,15 +2,18 @@ import logging
 from copy import deepcopy
 from datetime import datetime, timedelta
 
+from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
+from django.core.cache import cache
 from django.core.exceptions import ObjectDoesNotExist
+from django.utils.timezone import now
 from pytz import UTC
 from swapper import load_model
 
 from .. import settings as monitoring_settings
 from ..monitoring.configuration import ACCESS_TECHNOLOGIES
 
-from django.utils.timezone import now 
+User = get_user_model()
 
 Chart = load_model("monitoring", "Chart")
 Metric = load_model("monitoring", "Metric")
@@ -62,15 +65,18 @@ class DeviceDataWriter(object):
         )
 
     def write(self, data, time=None, current=False):
-        time = datetime.strptime(time, "%d-%m-%Y_%H:%M:%S.%f").replace(tzinfo=UTC)
+        if time is None:
+            time = datetime.utcnow().replace(tzinfo=UTC)
+        else:
+            time = datetime.strptime(time, "%d-%m-%Y_%H:%M:%S.%f").replace(tzinfo=UTC)
+        old_data = deepcopy(self.device_data.data)
         self._init_previous_data()
         self.device_data.data = data
         # saves raw device data
         self.device_data.save_data()
         data = self.device_data.data
-        print("🔥 FIRING SIM  NOTIFICATION NOW")
         self.check_sim_state_and_notify(old_data, data)
-        self.check_interface_state_and_notify(old_data, data) 
+        self.check_interface_state_and_notify(old_data, data)
         
         ct = ContentType.objects.get_for_model(Device)
         device_extra_tags = self._get_extra_tags(self.device_data)
@@ -170,7 +176,7 @@ class DeviceDataWriter(object):
 
     def check_interface_state_and_notify(self, old_data, new_data):
 
-        print("---- INTERFACE INPUT DATA ----")
+        logger.debug("Interface state check for device %s", self.device_data.pk)
     
         from copy import deepcopy
         from django.utils.timezone import now
@@ -200,9 +206,8 @@ class DeviceDataWriter(object):
         old_ifaces_dict = {i["name"]: i.get("up", False) for i in old_ifaces}
         new_ifaces_dict = {i["name"]: i.get("up", False) for i in new_ifaces}
     
-        print("Previous Interfaces:", old_ifaces_dict)
-        print("Current Interfaces:", new_ifaces_dict)
-        print("---- NOTIFY PAYLOAD SENDING ----")
+        logger.debug("Previous Interfaces: %s", old_ifaces_dict)
+        logger.debug("Current Interfaces: %s", new_ifaces_dict)
 
         # Compare and fire notifications
         for ifname, prev_state in old_ifaces_dict.items():
@@ -249,7 +254,7 @@ class DeviceDataWriter(object):
         Detect SIM REMOVED and SIM CONNECTED for sim1 (modem) and sim2 (modem2)
         using ICCID + modem_status with debounce.
         """
-        print("✅ SIM CHECK FUNCTION EXECUTED for device:", self.device_data.pk)
+        logger.debug("SIM check for device %s", self.device_data.pk)
         from swapper import load_model
         from openwisp_notifications.signals import notify
         Device = load_model("config", "Device")
@@ -269,16 +274,13 @@ class DeviceDataWriter(object):
             old_iccid = old_modem.get("sim_iccid")
             new_iccid = new_modem.get("sim_iccid")
             new_status = new_modem.get("modem_status")
-            print("---- SIM DEBUG ----")
-            print("Slot:", sim_slot)
-            print("Old ICCID:", old_iccid)
-            print("New ICCID:", new_iccid)
-            print("New Status:", new_status)
+            logger.debug("SIM slot=%s old_iccid=%s new_iccid=%s status=%s",
+                         sim_slot, old_iccid, new_iccid, new_status)
             cache_key = f"sim_state:{device.pk}:{sim_slot}"
             state = cache.get(cache_key, {})
             now_ts = now().timestamp()
             if old_iccid and not new_iccid:
-                print("🔥 FIRING SIM REMOVED NOTIFICATION NOW")
+                logger.info("SIM removed notification for device %s", self.device_data.pk)
 
                 notify.send(
                     sender=device,
@@ -296,7 +298,7 @@ class DeviceDataWriter(object):
                 )
                 continue
             if old_iccid and new_iccid and old_iccid != new_iccid:
-                print("🔥 FIRING SIM EXCHANGED NOTIFICATION NOW")
+                logger.info("SIM exchanged notification for device %s", self.device_data.pk)
 
                 notify.send(
                     sender=device,
@@ -315,7 +317,7 @@ class DeviceDataWriter(object):
                 )
                 continue
             if not old_iccid and new_iccid and new_status == "connected":
-                print("🔥 FIRING SIM connected NOTIFICATION NOW") 
+                logger.info("SIM connected notification for device %s", self.device_data.pk) 
                 notify.send(
                     sender=device,
                     type="sdwan_sim_connected",

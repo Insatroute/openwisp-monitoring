@@ -98,6 +98,10 @@ class Ping(BaseCheck):
         stdout, stderr = self._command(command)
         # fpings shows statistics on stderr
         output = stderr.decode("utf8")
+        # DEBUG: log fping output for troubleshooting
+        import logging
+        _ping_logger = logging.getLogger('openwisp_monitoring.check.ping_debug')
+        _ping_logger.info("fping target=%s output=[%s]", ip, output.strip())
         try:
             parts = output.split("=")
             if len(parts) > 2:

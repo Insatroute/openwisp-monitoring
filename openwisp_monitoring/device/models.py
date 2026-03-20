@@ -32,6 +32,32 @@ class DeviceMonitoring(AbstractDeviceMonitoring):
         abstract = False
         swappable = swappable_setting('device_monitoring', 'DeviceMonitoring')
 
+    @classmethod
+    def get_active_metrics(cls):
+        from ..check import settings as check_settings
+        from django.utils.module_loading import import_string
+        if not hasattr(cls, "_active_metrics"):
+            active_metrics = []
+            for check in check_settings.CHECK_LIST:
+                try:
+                    Check = import_string(check)
+                    active_metrics.extend(Check.get_related_metrics())
+                except Exception:
+                    pass
+            cls._active_metrics = active_metrics
+        return cls._active_metrics
+
+    @classmethod
+    def get_critical_checks(cls):
+        from . import settings as app_settings
+        if not hasattr(cls, "_critical_checks"):
+            critical_checks = []
+            for metric in app_settings.CRITICAL_DEVICE_METRICS:
+                if metric.get("check"):
+                    critical_checks.append(metric["check"])
+            cls._critical_checks = critical_checks
+        return cls._critical_checks
+
 
 class WifiClient(AbstractWifiClient):
     class Meta(AbstractWifiClient.Meta):
