@@ -312,6 +312,10 @@
   async function fetchInterfacesSummary() {
     const path = window.location.pathname;
     const match = path.match(/[0-9a-fA-F-]{36}/);
+    if (!match) {
+      // Not on a device-detail URL; skip device-specific summary fetch.
+      return { interfaces: [] };
+    }
     const DEVICE_UUID = match[0];
     console.log('Detected DEVICE_UUID for interfaces-summary:====', DEVICE_UUID);
 
@@ -664,7 +668,7 @@
       pending: document.getElementById('spoke-pending'),
     };
     if (Object.values(elems).some(el => !el)) {
-      console.error('One or more spoke DOM elements not found.');
+      // Dashboard variant without spoke widgets: skip quietly.
       return;
     }
 
@@ -724,7 +728,7 @@
   };
 
   if (Object.values(elems).some(el => !el)) {
-    console.error('One or more IPSec DOM elements not found.');
+    // Dashboard variant without IPSec widgets: skip quietly.
     return;
   }
 

@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="UTF-8" />
-  <title>Home • Overview / WAN Uplink / Data Usage / Security / Map</title>
+  <title>Home - Overview / WAN Uplink / Traffic Insights / Application Intelligence</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <style>
@@ -105,10 +105,16 @@
           WAN Uplinks
         </button>
 
-        <!-- 3) DATA USAGE -->
+        <!-- 3) TRAFFIC INSIGHTS -->
         <button class="home-tablink" role="tab" aria-selected="false" aria-controls="home-pane-data-usage"
           id="home-tab-data-usage">
-          Data Usage
+          Traffic Insights
+        </button>
+
+        <!-- 4) APPLICATION INTELLIGENCE -->
+        <button class="home-tablink" role="tab" aria-selected="false" aria-controls="home-pane-dpi"
+          id="home-tab-dpi">
+          Application Intelligence
         </button>
 
       </div>
@@ -128,10 +134,16 @@
           {% include "./wan_uplink_tab.html" %}
         </section>
 
-        <!-- DATA USAGE -->
+        <!-- TRAFFIC INSIGHTS -->
         <section id="home-pane-data-usage" class="home-tab-pane" role="tabpanel" aria-labelledby="home-tab-data-usage">
           {% include "./data_usage_tab.html" %}
         </section>
+
+        <!-- APPLICATION INTELLIGENCE -->
+        <section id="home-pane-dpi" class="home-tab-pane" role="tabpanel" aria-labelledby="home-tab-dpi">
+          {% include "./dpi_analytics_tab.html" %}
+        </section>
+
       </div>
 
     </div>
