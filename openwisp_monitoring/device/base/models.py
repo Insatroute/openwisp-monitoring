@@ -22,6 +22,7 @@ from netaddr import EUI, NotRegisteredError
 from pytz import timezone as tz  # still used for a few epoch conversions
 from swapper import load_model
 
+from django.utils.module_loading import import_string
 from openwisp_controller.config.validators import mac_address_validator
 from openwisp_monitoring.device.settings import get_critical_device_metrics
 from openwisp_utils.base import TimeStampedEditableModel
@@ -745,6 +746,35 @@ class AbstractDeviceMonitoring(TimeStampedEditableModel):
             content_type__model='device',
             content_type__app_label='config',
         )
+
+    @classmethod
+    def get_active_metrics(cls):
+        """
+        Returns a list of active metric keys (Metric.configuration values)
+        derived from CHECK_LIST classes.
+        """
+        if not hasattr(cls, '_active_metrics'):
+            from ...check import settings as check_settings
+
+            active_metrics = []
+            for check in check_settings.CHECK_LIST:
+                Check = import_string(check)
+                active_metrics.extend(Check.get_related_metrics())
+            cls._active_metrics = active_metrics
+        return cls._active_metrics
+
+    @classmethod
+    def get_critical_checks(cls):
+        """
+        Returns list of critical check types.
+        """
+        if not hasattr(cls, '_critical_checks'):
+            critical_checks = []
+            for metric in app_settings.CRITICAL_DEVICE_METRICS:
+                if metric.get('check'):
+                    critical_checks.append(metric['check'])
+            cls._critical_checks = critical_checks
+        return cls._critical_checks
 
     @staticmethod
     @receiver(threshold_crossed, dispatch_uid='threshold_crossed_receiver')

@@ -688,7 +688,7 @@
       <div class="owdu-card-bd">
         <div class="owdu-donut-wrap">
           <div id="owdu-loading-donut" class="owdu-loading">Loading...</div>
-          <canvas id="owdu-wan-donut" class="owdu-donut-canvas" width="260" height="260" style="display:block"></canvas>
+          <canvas id="owdu-wan-donut" class="owdu-donut-canvas" style="display:block;max-width:260px;max-height:260px;margin:0 auto"></canvas>
         </div>
       </div>
     </div>
@@ -764,20 +764,20 @@
   <!-- ================= INTELLIGENCE SECTION (DASH-16, 17, 18) ================= -->
   <div class="owdu-graph-grid" style="grid-template-columns: repeat(3, 1fr);">
 
-    <!-- SLA Summary (DASH-18) -->
+    <!-- Traffic Summary (DASH-18) -->
     <div class="owdu-card">
-      <div class="owdu-card-hd">SLA Summary</div>
+      <div class="owdu-card-hd">Traffic Summary</div>
       <div class="owdu-card-bd" style="padding:16px">
-        <div id="owdu-sla-content" style="min-height:120px;position:relative">
-          <div id="owdu-loading-sla" class="owdu-loading">Loading...</div>
+        <div id="owdu-traffic-summary-content" style="min-height:120px;position:relative">
+          <div id="owdu-loading-traffic-summary" class="owdu-loading">Loading...</div>
           <div class="owdu-drill-cards" style="grid-template-columns:1fr 1fr">
             <div class="owdu-drill-card">
-              <div class="owdu-drill-card-label">Fleet Uptime</div>
-              <div id="owdu-sla-uptime" class="owdu-drill-card-value">—</div>
+              <div class="owdu-drill-card-label">Active Devices</div>
+              <div id="owdu-active-devices" class="owdu-drill-card-value" style="color:#16a34a">—</div>
             </div>
             <div class="owdu-drill-card">
-              <div class="owdu-drill-card-label">Devices Below SLA</div>
-              <div id="owdu-sla-below" class="owdu-drill-card-value" style="color:#dc2626">—</div>
+              <div class="owdu-drill-card-label">Total Flows</div>
+              <div id="owdu-total-flows" class="owdu-drill-card-value">—</div>
             </div>
           </div>
         </div>
@@ -1304,10 +1304,11 @@
         if (dl) dl.style.display = "none";
         if (!json) return;
 
-        var total = json.total || { sent: 0, received: 0, total: 0 };
-        var cellular = json.cellular || { sent: 0, received: 0, total: 0 };
-        var wired = json.wired || { sent: 0, received: 0, total: 0 };
-        var wireless = json.wireless || { sent: 0, received: 0, total: 0 };
+        var summary = json.summary || json || {};
+        var total = summary.total || json.total || { sent: 0, received: 0, total: 0 };
+        var cellular = summary.cellular || json.cellular || { sent: 0, received: 0, total: 0 };
+        var wired = summary.wired || json.wired || { sent: 0, received: 0, total: 0 };
+        var wireless = summary.wireless || json.wireless || { sent: 0, received: 0, total: 0 };
 
         paintSummary("total", total.total || 0, total.sent || 0, total.received || 0);
         paintSummary("cellular", cellular.total || 0, cellular.sent || 0, cellular.received || 0);
@@ -1320,11 +1321,14 @@
         // Render WAN donut from summary data
         renderWanDonut(json);
 
-        // Show warnings
+        // Show warnings — only user-actionable ones, not internal fallback notices
         var warnings = Array.isArray(json.warnings) ? json.warnings : [];
-        if (warnings.length && warnEl) {
+        var userWarnings = warnings.filter(function(w) {
+          return w.indexOf("fallback") === -1 && w.indexOf("query_failed") === -1;
+        });
+        if (userWarnings.length && warnEl) {
           warnEl.style.display = "block";
-          setText(warnEl, "Warning: " + Array.from(new Set(warnings)).join(" | "));
+          setText(warnEl, "Warning: " + Array.from(new Set(userWarnings)).join(" | "));
         }
       })
       .catch(function (err) {
@@ -1347,9 +1351,10 @@
 
     if (!summaryData) return;
 
-    var cellularTotal = (summaryData.cellular && summaryData.cellular.total) || 0;
-    var wiredTotal = (summaryData.wired && summaryData.wired.total) || 0;
-    var wifiTotal = (summaryData.wireless && summaryData.wireless.total) || 0;
+    var sd = summaryData.summary || summaryData || {};
+    var cellularTotal = (sd.cellular && sd.cellular.total) || 0;
+    var wiredTotal = (sd.wired && sd.wired.total) || 0;
+    var wifiTotal = (sd.wireless && sd.wireless.total) || 0;
 
     // Always show donut — if all zero, show equal placeholder slices
     var hasData = (cellularTotal + wiredTotal + wifiTotal) > 0;
@@ -1375,11 +1380,12 @@
         datasets: [{
           data: [cellularTotal, wiredTotal, wifiTotal],
           backgroundColor: ["#16a34a", "#0ea5e9", "#ff7f0e"],
-          borderWidth: 0,
+          borderWidth: 1,
+          borderColor: "#ffffff",
         }],
       },
       options: {
-        responsive: false,
+        responsive: true,
         maintainAspectRatio: true,
         cutout: "55%",
         plugins: {
@@ -2171,47 +2177,38 @@
   }
 
   // =========================================================================
-  // SLA SUMMARY EMBED (DASH-18)
+  // TRAFFIC SUMMARY (DASH-18)
   // =========================================================================
-  function refreshSlaEmbed() {
-    setLoading("owdu-loading-sla", true, "Loading...");
-    var loadEl = $("owdu-loading-sla");
+  function refreshTrafficSummary() {
+    setLoading("owdu-loading-traffic-summary", true, "Loading...");
+    var loadEl = $("owdu-loading-traffic-summary");
 
-    // Use monitoring device list to compute basic uptime stats
-    fetchJson(API_BASE + "/api/v1/monitoring/device/?page_size=200&format=json")
+    // Use DPI overview to get active device count + total flows
+    fetchJson(dpiV1Url("/api/v1/dpi/stats/overview/"))
       .then(function (json) {
         if (loadEl) loadEl.style.display = "none";
-        var uptimeEl = $("owdu-sla-uptime");
-        var belowEl = $("owdu-sla-below");
+        var activeEl = $("owdu-active-devices");
+        var flowsEl = $("owdu-total-flows");
 
-        var results = (json && json.results) || [];
-        if (!results.length) {
-          if (uptimeEl) setText(uptimeEl, "No devices");
-          if (belowEl) setText(belowEl, "0");
+        if (!json) {
+          if (activeEl) setText(activeEl, "0");
+          if (flowsEl) setText(flowsEl, "0");
           return;
         }
 
-        var total = results.length;
-        var online = results.filter(function (d) {
-          var s = (d.monitoring && d.monitoring.status) || "";
-          return s === "ok" || s === "problem";
-        }).length;
-        var critical = results.filter(function (d) {
-          var s = (d.monitoring && d.monitoring.status) || "";
-          return s === "critical";
-        }).length;
+        var activeDevices = json.active_devices || json.device_count || 0;
+        var totalFlows = json.total_flows || json.flow_count || 0;
 
-        var uptime = total > 0 ? ((online / total) * 100).toFixed(1) : "0.0";
-        if (uptimeEl) setText(uptimeEl, uptime + "%");
-        if (belowEl) setText(belowEl, String(critical));
+        if (activeEl) setText(activeEl, String(activeDevices));
+        if (flowsEl) setText(flowsEl, totalFlows > 1000 ? (totalFlows / 1000).toFixed(1) + "K" : String(totalFlows));
       })
       .catch(function (err) {
         if (loadEl) loadEl.style.display = "none";
         if (err && err.name === "AbortError") return;
-        var uptimeEl = $("owdu-sla-uptime");
-        var belowEl = $("owdu-sla-below");
-        if (uptimeEl) setText(uptimeEl, "N/A");
-        if (belowEl) setText(belowEl, "N/A");
+        var activeEl = $("owdu-active-devices");
+        var flowsEl = $("owdu-total-flows");
+        if (activeEl) setText(activeEl, "0");
+        if (flowsEl) setText(flowsEl, "0");
       });
   }
 
@@ -2435,7 +2432,7 @@
     refreshTopCategories();
     refreshTopClients();
     refreshPerWanBreakdown();
-    refreshSlaEmbed();
+    refreshTrafficSummary();
     refreshAnomalyBadges();
     refreshPerUserBreakdown();
     refreshSankey();
