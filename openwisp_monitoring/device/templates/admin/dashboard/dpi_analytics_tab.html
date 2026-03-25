@@ -865,9 +865,9 @@ if (typeof L === "undefined") {
       <div class="dpi-card-top">
         <div class="dpi-card-left">
           <div class="dpi-card-label">Bandwidth</div>
-          <div class="dpi-card-value" id="stat-bw" style="font-size: 18px;">
-            <span style="display:block;"><svg viewBox="0 0 24 24" style="width:12px;height:12px;vertical-align:middle;" aria-hidden="true"><path fill="#16a34a" d="M12 22 21 13h-6V2H9v11H3l9 9z"></path></svg> 0.00 KB</span>
-            <span style="display:block; margin-top:2px;"><svg viewBox="0 0 24 24" style="width:12px;height:12px;vertical-align:middle;" aria-hidden="true"><path fill="#2563eb" d="M12 2 3 11h6v11h6V11h6L12 2z"></path></svg> 0.00 KB</span>
+          <div class="dpi-card-value" id="stat-bw" style="font-size:16px;line-height:1.4;margin-bottom:8px;white-space:nowrap;">
+            <span style="display:flex;align-items:center;gap:4px;"><svg viewBox="0 0 24 24" style="width:11px;height:11px;flex-shrink:0;" aria-hidden="true"><path fill="#16a34a" d="M12 22 21 13h-6V2H9v11H3l9 9z"></path></svg><span>0.00 KB</span></span>
+            <span style="display:flex;align-items:center;gap:4px;margin-top:2px;"><svg viewBox="0 0 24 24" style="width:11px;height:11px;flex-shrink:0;" aria-hidden="true"><path fill="#2563eb" d="M12 2 3 11h6v11h6V11h6L12 2z"></path></svg><span>0.00 KB</span></span>
           </div>
         </div>
         <span class="dpi-kind-badge dpi-kind-bandwidth">
@@ -1197,17 +1197,44 @@ if (typeof L === "undefined") {
   Chart.defaults.font.family = "'Poppins', 'Roboto', sans-serif";
   Chart.defaults.font.size = 11;
 
-  var palette = ['rgba(66,133,244,0.85)'];
+  var palette = [
+    'rgba(66,133,244,0.85)',
+    'rgba(234,67,53,0.85)',
+    'rgba(251,188,4,0.85)',
+    'rgba(52,168,83,0.85)',
+    'rgba(156,39,176,0.85)',
+    'rgba(255,112,67,0.85)',
+    'rgba(0,172,193,0.85)',
+    'rgba(233,30,99,0.85)',
+    'rgba(103,58,183,0.85)',
+    'rgba(0,150,136,0.85)',
+    'rgba(255,167,38,0.85)',
+    'rgba(63,81,181,0.85)',
+    'rgba(139,195,74,0.85)',
+    'rgba(121,85,72,0.85)',
+    'rgba(96,125,139,0.85)',
+    'rgba(244,67,54,0.85)'
+  ];
 
   // Fetch top apps from API, then render charts
   var topAppsData = [];
+
+  // Smart unit selector: picks KB/MB/GB based on max value
+  function pickUnit(bytesArray) {
+    var maxVal = Math.max.apply(null, bytesArray.map(function(v) { return v || 0; }));
+    if (maxVal >= 1073741824) return { divisor: 1073741824, label: 'GB' };
+    if (maxVal >= 1048576) return { divisor: 1048576, label: 'MB' };
+    return { divisor: 1024, label: 'KB' };
+  }
 
   function renderOverviewCharts() {
   var topAppsLabels = topAppsData.map(function(a) {
     return (a.app_name || 'Unknown').replace('netify.','').replace(/^netify$/, 'DPI Engine');
   });
-  var topAppsDown = topAppsData.map(function(a) {
-    return Math.round((a.total_down || 0) / 1048576);
+  var rawDownBytes = topAppsData.map(function(a) { return a.total_down || 0; });
+  var appsUnit = pickUnit(rawDownBytes);
+  var topAppsDown = rawDownBytes.map(function(v) {
+    return Math.round((v / appsUnit.divisor) * 100) / 100;
   });
 
   // Top Apps Bar Chart
@@ -1229,7 +1256,7 @@ if (typeof L === "undefined") {
         data: {
           labels: [],
           datasets: [{
-            label: 'Download (MB)',
+            label: 'Download (' + appsUnit.label + ')',
             data: [],
             backgroundColor: '#f1f5f9',
           }]
@@ -1244,7 +1271,7 @@ if (typeof L === "undefined") {
             x: {
               grid: { color: '#e5e7eb' },
               border: { color: '#cbd5e1' },
-              title: { display: true, text: 'MB', color: '#64748b' },
+              title: { display: true, text: appsUnit.label, color: '#64748b' },
               ticks: { color: '#94a3b8' },
               min: 0, max: 100,
             },
@@ -1267,9 +1294,9 @@ if (typeof L === "undefined") {
         data: {
           labels: topAppsLabels,
           datasets: [{
-            label: 'Download (MB)',
+            label: 'Download (' + appsUnit.label + ')',
             data: topAppsDown,
-            backgroundColor: palette,
+            backgroundColor: 'rgba(66,133,244,0.85)',
             borderRadius: 3,
             borderSkipped: false,
             barThickness: 14,
@@ -1293,7 +1320,7 @@ if (typeof L === "undefined") {
           scales: {
             x: {
               grid: { color: '#f3f4f6' },
-              title: { display: true, text: 'MB', color: '#9ca3af' },
+              title: { display: true, text: appsUnit.label, color: '#9ca3af' },
             },
             y: {
               grid: { display: false },
@@ -1311,8 +1338,10 @@ if (typeof L === "undefined") {
     categories[cat] = (categories[cat] || 0) + (a.total_down || 0);
   });
   var catLabels = Object.keys(categories);
-  var catValues = Object.values(categories).map(function(v) {
-    return Math.round(v / 1048576);
+  var catRawBytes = Object.values(categories);
+  var catUnit = pickUnit(catRawBytes);
+  var catValues = catRawBytes.map(function(v) {
+    return Math.round((v / catUnit.divisor) * 100) / 100;
   });
 
   var catHasData = catValues.length > 0 && catValues.some(function(v) { return v > 0; });
@@ -1809,8 +1838,8 @@ if (typeof L === "undefined") {
     if (el) {
       var dl = data.total_download || 0;
       var ul = data.total_upload || 0;
-      el.innerHTML = '<span style="display:block;"><svg viewBox="0 0 24 24" style="width:12px;height:12px;vertical-align:middle;" aria-hidden="true"><path fill="#16a34a" d="M12 22 21 13h-6V2H9v11H3l9 9z"></path></svg> ' + fmtBytes(dl) + '</span>' +
-                     '<span style="display:block;margin-top:2px;"><svg viewBox="0 0 24 24" style="width:12px;height:12px;vertical-align:middle;" aria-hidden="true"><path fill="#2563eb" d="M12 2 3 11h6v11h6V11h6L12 2z"></path></svg> ' + fmtBytes(ul) + '</span>';
+      el.innerHTML = '<span style="display:flex;align-items:center;gap:4px;"><svg viewBox="0 0 24 24" style="width:11px;height:11px;flex-shrink:0;" aria-hidden="true"><path fill="#16a34a" d="M12 22 21 13h-6V2H9v11H3l9 9z"></path></svg><span>' + fmtBytes(dl) + '</span></span>' +
+                     '<span style="display:flex;align-items:center;gap:4px;margin-top:2px;"><svg viewBox="0 0 24 24" style="width:11px;height:11px;flex-shrink:0;" aria-hidden="true"><path fill="#2563eb" d="M12 2 3 11h6v11h6V11h6L12 2z"></path></svg><span>' + fmtBytes(ul) + '</span></span>';
     }
 
     // Hide banner if we have live data (any device with flows)
@@ -2734,15 +2763,17 @@ if (typeof L === "undefined") {
 <script>
 (function() {
   var DRILL_BASE = '/admin/dpi_analytics/dpisnapshot/api/drill/';
-  function drillUrl(type) { return DRILL_BASE + type + '/'; }
+  var APP_DB_URL = '/admin/traffic_application/application/api/database/';
+  function drillUrl(type) { return type === 'signatures' ? APP_DB_URL : DRILL_BASE + type + '/'; }
 
-  // Fetch signature count for card label
-  fetch(drillUrl('signatures') + '?page=1', { credentials: 'include' })
+  // Fetch app database count for card label
+  fetch(APP_DB_URL + '?page_size=1', { credentials: 'include' })
     .then(function(r) { return r.json(); })
     .then(function(data) {
       var el = document.getElementById('dpi-sig-count');
-      if (el && data.total) {
-        var n = data.total;
+      if (el) {
+        var stats = data.stats || {};
+        var n = stats.total_signatures || data.total || 0;
         el.textContent = n >= 1000 ? Math.round(n / 1000) + 'K' : n;
       }
     })
@@ -2994,62 +3025,72 @@ if (typeof L === "undefined") {
     }
 
     else if (type === 'signatures') {
-      var catHtml = '';
-      var cats = data.by_category || {};
-      Object.keys(cats).sort(function(a,b) { return cats[b]-cats[a]; }).slice(0,10).forEach(function(c) {
-        catHtml += statBadge(c || 'Unknown', cats[c]);
+      // App Database API response: { total, page, page_size, pages, categories, stats, results }
+      var dbStats = data.stats || {};
+      var cats = {};
+      (data.categories || []).forEach(function(c) { cats[c] = (cats[c] || 0) + 1; });
+      // Build category counts from results on current page
+      var catCounts = {};
+      (data.results || []).forEach(function(a) {
+        var c = a.category || 'unclassified';
+        catCounts[c] = (catCounts[c] || 0) + 1;
       });
-      var typeHtml = '';
-      var types = data.by_type || {};
-      Object.keys(types).forEach(function(t) { typeHtml += statBadge(t, types[t]); });
-      var srcHtml = '';
-      var sources = data.by_source || {};
-      Object.keys(sources).forEach(function(s) { srcHtml += statBadge(s, sources[s]); });
-      stats.innerHTML = statBadge('Total', data.total || 0) + typeHtml + srcHtml;
+
+      stats.innerHTML = statBadge('Apps', dbStats.total_apps || data.total || 0) +
+        statBadge('Signatures', dbStats.total_signatures || 0) +
+        statBadge('Categories', dbStats.total_categories || (data.categories || []).length || 0);
 
       var searchHtml = '<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">' +
         '<div style="flex:1;position:relative;">' +
         '<i class="fas fa-search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#94a3b8;font-size:13px;"></i>' +
-        '<input id="sig-search" type="text" placeholder="Search signatures by app, pattern, or category..." style="width:100%;padding:8px 12px 8px 32px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;outline:none;" onkeydown="if(event.key===\'Enter\')loadSignatures(1)">' +
+        '<input id="sig-search" type="text" placeholder="Search apps by name, pattern, or category..." style="width:100%;padding:8px 12px 8px 32px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;outline:none;" onkeydown="if(event.key===\'Enter\')loadSignatures(1)">' +
         '</div>' +
         '<button onclick="loadSignatures(1)" style="padding:8px 16px;background:#16a34a;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;font-size:12px;">Search</button>' +
         '</div>';
 
+      var totalPages = data.pages || data.total_pages || 1;
+      var curPage = data.page || 1;
+      var totalApps = data.total || 0;
       var pageHtml = '';
-      if (data.total_pages > 1) {
+      if (totalPages > 1) {
         pageHtml = '<div style="display:flex;justify-content:center;align-items:center;gap:8px;margin-top:12px;">';
-        if (data.page > 1) pageHtml += '<button onclick="loadSignatures(' + (data.page - 1) + ')" style="padding:4px 12px;border:1px solid #e2e8f0;border-radius:6px;background:#fff;cursor:pointer;font-size:12px;">&laquo; Prev</button>';
-        pageHtml += '<span style="font-size:12px;color:#6b7280;">Page ' + data.page + ' of ' + data.total_pages + ' (' + data.total + ' signatures)</span>';
-        if (data.page < data.total_pages) pageHtml += '<button onclick="loadSignatures(' + (data.page + 1) + ')" style="padding:4px 12px;border:1px solid #e2e8f0;border-radius:6px;background:#fff;cursor:pointer;font-size:12px;">Next &raquo;</button>';
+        if (curPage > 1) pageHtml += '<button onclick="loadSignatures(' + (curPage - 1) + ')" style="padding:4px 12px;border:1px solid #e2e8f0;border-radius:6px;background:#fff;cursor:pointer;font-size:12px;">&laquo; Prev</button>';
+        pageHtml += '<span style="font-size:12px;color:#6b7280;">Page ' + curPage + ' of ' + totalPages + ' (' + totalApps + ' apps)</span>';
+        if (curPage < totalPages) pageHtml += '<button onclick="loadSignatures(' + (curPage + 1) + ')" style="padding:4px 12px;border:1px solid #e2e8f0;border-radius:6px;background:#fff;cursor:pointer;font-size:12px;">Next &raquo;</button>';
         pageHtml += '</div>';
       }
 
+      var allCats = data.categories || Object.keys(catCounts);
       var catPills = '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:12px;">';
-      Object.keys(cats).sort(function(a,b) { return cats[b]-cats[a]; }).slice(0,15).forEach(function(c) {
+      allCats.slice(0, 20).forEach(function(c) {
         catPills += '<span onclick="document.getElementById(\'sig-search\').value=\'' + esc(c).replace(/'/g,"\\'") + '\';loadSignatures(1)" style="padding:3px 10px;border-radius:12px;font-size:10px;font-weight:600;background:' + catColor(c) + ';color:#fff;cursor:pointer;opacity:0.85;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.85">' + esc(c || 'Unknown') + '</span>';
       });
       catPills += '</div>';
 
-      var rows = (data.signatures || []).map(function(s) {
-        var typeLbl = {app:'Application',dom:'Domain',net:'Network',host:'Hostname',ip:'IP'}[s.signature_type] || s.signature_type;
-        var srcLbl = {netify:'Netify',custom:'Custom',ut1:'UT1'}[s.source] || s.source;
+      var rows = (data.results || []).map(function(a) {
+        var label = a.label || (a.app_name || '').replace('netify.','');
+        var pats = (a.patterns || []).slice(0, 3).map(function(p) {
+          return '<code style="font-size:10px;background:#f1f5f9;padding:1px 5px;border-radius:3px;">' + esc(p) + '</code>';
+        }).join(' ');
+        if ((a.patterns || []).length > 3) pats += ' <span style="font-size:10px;color:#94a3b8;">+' + ((a.patterns || []).length - 3) + '</span>';
+        var srcLbl = a.source_label || ({netify:'DPI Engine',custom:'Custom',admin:'Admin'}[a.source] || a.source);
         return [
-          '<span style="font-weight:600;color:#1e293b;">' + esc((s.app_name || '').replace('netify.','')) + '</span>',
-          '<span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;color:#fff;background:' + catColor(s.category) + ';">' + esc(s.category || '-') + '</span>',
-          '<code style="font-size:11px;background:#f1f5f9;padding:2px 6px;border-radius:4px;">' + esc(s.pattern) + '</code>',
-          '<span style="font-size:11px;">' + esc(typeLbl) + '</span>',
+          '<span style="font-weight:600;color:#1e293b;">' + esc(label) + '</span><br><span style="font-size:10px;color:#94a3b8;">' + esc(a.app_name || '') + '</span>',
+          '<span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;color:#fff;background:' + catColor(a.category) + ';">' + esc(a.category || '-') + '</span>',
+          pats || '<span style="color:#cbd5e1;">—</span>',
+          '<span style="font-size:12px;font-weight:600;color:#374151;">' + (a.sig_count || 0) + '</span>',
           '<span style="font-size:11px;padding:2px 6px;border-radius:4px;background:#fef3c7;color:#92400e;">' + esc(srcLbl) + '</span>',
-          String(s.app_id || 0)
+          String(a.app_id || 0)
         ];
       });
-      body.innerHTML = searchHtml + catPills + drillTable(['Application','Category','Pattern','Type','Source','App ID'], rows) + pageHtml;
+      body.innerHTML = searchHtml + catPills + drillTable(['Application','Category','Patterns','Signatures','Source','App ID'], rows) + pageHtml;
     }
   }
 
-  // Signature pagination loader
+  // App database pagination loader
   window.loadSignatures = function(page) {
     var q = document.getElementById('sig-search') ? document.getElementById('sig-search').value : '';
-    var url = drillUrl('signatures') + '?page=' + page + '&q=' + encodeURIComponent(q);
+    var url = APP_DB_URL + '?page=' + page + '&page_size=25&q=' + encodeURIComponent(q);
     document.getElementById('card-drill-body').innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8;"><i class="fas fa-spinner fa-spin" style="font-size:24px;"></i></div>';
     fetch(url, { credentials: 'include' })
       .then(function(r) {
@@ -3058,7 +3099,7 @@ if (typeof L === "undefined") {
       })
       .then(function(data) { renderCardDrill('signatures', data); })
       .catch(function(err) {
-        console.error('Signatures error:', err);
+        console.error('App database error:', err);
         document.getElementById('card-drill-body').innerHTML = msgError();
       });
   };

@@ -16,7 +16,7 @@ from openwisp_monitoring.device.base.models import UP_STATUSES
 
 DeviceData = load_model("device_monitoring", "DeviceData")
 
-ALLOWED_PERIODS = {"1h", "6h", "24h", "7d", "30d"}
+ALLOWED_PERIODS = {"1d", "3d", "7d", "30d", "365d"}
 INTERNAL_APPS = {"netify.nethserver", "netify.snort", "netify.netify"}
 CACHE_TTL_SECONDS = 45
 
@@ -125,11 +125,11 @@ def _parse_window(period: Optional[str], start: Optional[str], end: Optional[str
             end_dt = timezone.make_aware(end_dt, timezone.get_current_timezone())
         if start_dt > end_dt:
             raise DataUsageValidationError("'start' cannot be greater than 'end'")
-        if (end_dt - start_dt) > timedelta(days=30):
-            raise DataUsageValidationError("Custom range cannot exceed 30 days")
+        if (end_dt - start_dt) > timedelta(days=365):
+            raise DataUsageValidationError("Custom range cannot exceed 365 days")
         return WindowParams(period="custom", start=start_dt, end=end_dt, is_custom=True)
 
-    normalized = _safe_str(period, "24h").lower() or "24h"
+    normalized = _safe_str(period, "7d").lower() or "7d"
     if normalized not in ALLOWED_PERIODS:
         raise DataUsageValidationError(
             f"Unsupported period '{normalized}'. Allowed: {', '.join(sorted(ALLOWED_PERIODS))}"
@@ -229,16 +229,17 @@ def _build_timeseries_iface_totals(device_ids: List[str], window: WindowParams) 
                 f"WHERE {time_clause} AND (content_type = 'config.device' OR content_type = 'device') AND {object_filter} "
                 "GROUP BY object_id, ifname"
             )
-            rows = timeseries_db.get_list_query(query) or []
-
-            for row in rows:
-                object_id = _safe_str(row.get("object_id"))
+            result = timeseries_db.query(query)
+            for key, points in result.items():
+                tags = key[1] if len(key) > 1 else {}
+                object_id = _safe_str(tags.get("object_id", ""))
                 if not object_id:
                     continue
-                ifname = _safe_str(row.get("ifname"), "unknown")
+                ifname = _safe_str(tags.get("ifname", ""), "unknown")
                 oid = _oid_norm(object_id)
-                totals[oid][ifname]["rx"] += _sum_row_field(row, ["rx_bytes", "download", "rx"])
-                totals[oid][ifname]["tx"] += _sum_row_field(row, ["tx_bytes", "upload", "tx"])
+                for pt in points:
+                    totals[oid][ifname]["rx"] += _safe_int(pt.get("rx_bytes"), 0)
+                    totals[oid][ifname]["tx"] += _safe_int(pt.get("tx_bytes"), 0)
     except Exception as exc:
         warnings.append(f"timeseries_query_failed:{exc}")
 

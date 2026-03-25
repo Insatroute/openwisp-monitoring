@@ -15,6 +15,11 @@
   integrity="sha384-EnyY0/GSHQGSxSgMwaIPzSESbqoOLSexfnSMN2AP+39Ckmn92stwABZynq1JyzdT"
   crossorigin="anonymous"></script>
 
+<!-- Moment.js + Daterangepicker -->
+<script src="https://cdn.jsdelivr.net/momentjs/latest/moment.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css" />
+
 <!-- Chart.js 4.4.7 + datalabels plugin (WAN donut) -->
 <script
   src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"
@@ -87,6 +92,9 @@
   }
   .owdu-custom-range { display: none; align-items: center; gap: 6px; }
   .owdu-custom-range.owdu-show { display: flex; }
+
+  /* Daterangepicker calendar z-index fix */
+  .daterangepicker { z-index: 1000 !important; }
 
   .owdu-btn.owdu-spinning svg:first-child {
     animation: owdu-spin 0.8s linear infinite;
@@ -734,42 +742,32 @@
 
       <!-- Hidden select to keep existing JS working -->
       <select id="owdu-time-range" style="display:none;">
-        <option value="1h">1 Hour</option>
-        <option value="6h">6 Hours</option>
         <option value="24h">24 Hours</option>
-        <option value="7d">7 Days</option>
-        <option value="30d">30 Days</option>
-        <option value="90d">90 Days</option>
-        <option value="custom">Custom Range</option>
       </select>
 
-      <!-- Time Range dropdown button -->
+      <!-- Time Range Dropdown -->
       <div class="owdu-dropdown-wrap">
-        <button class="owdu-btn" id="owdu-timerange-btn" type="button" title="Select time range">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10"/>
-            <polyline points="12 6 12 12 16 14"/>
+        <button class="owdu-btn" id="owdu-daterange-btn" type="button" title="Select time range">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+            <line x1="16" y1="2" x2="16" y2="6"/>
+            <line x1="8" y1="2" x2="8" y2="6"/>
+            <line x1="3" y1="10" x2="21" y2="10"/>
           </svg>
-          <span id="owdu-timerange-label">24 Hours</span>
+          <span id="owdu-timerange-label">Last 7 Days</span>
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
         </button>
         <div class="owdu-dropdown-menu" id="owdu-timerange-dropdown">
-          <button class="owdu-dropdown-option" data-value="1h" type="button">1 Hour</button>
-          <button class="owdu-dropdown-option" data-value="6h" type="button">6 Hours</button>
-          <button class="owdu-dropdown-option active" data-value="24h" type="button">24 Hours</button>
-          <button class="owdu-dropdown-option" data-value="7d" type="button">7 Days</button>
-          <button class="owdu-dropdown-option" data-value="30d" type="button">30 Days</button>
-          <button class="owdu-dropdown-option" data-value="90d" type="button">90 Days</button>
-          <button class="owdu-dropdown-option" data-value="custom" type="button">Custom Range</button>
+          <button class="owdu-dropdown-option" data-period="1d" type="button">Last 1 Day</button>
+          <button class="owdu-dropdown-option" data-period="3d" type="button">Last 3 Days</button>
+          <button class="owdu-dropdown-option active" data-period="7d" type="button">Last 7 Days</button>
+          <button class="owdu-dropdown-option" data-period="30d" type="button">Last 30 Days</button>
+          <button class="owdu-dropdown-option" data-period="365d" type="button">Last 365 Days</button>
+          <button class="owdu-dropdown-option" data-period="custom" type="button">Custom Range</button>
         </div>
       </div>
-
-      <div id="owdu-custom-range" class="owdu-custom-range">
-        <input type="date" id="owdu-date-from" title="Start date">
-        <span style="font-size:11px;color:#6b7280;">to</span>
-        <input type="date" id="owdu-date-to" title="End date">
-        <button class="owdu-btn owdu-btn-primary" id="owdu-apply-custom" type="button">Apply</button>
-      </div>
+      <!-- Hidden input for daterangepicker (Custom Range only) -->
+      <input type="text" id="owdu-custom-daterange" style="position:absolute;visibility:hidden;width:0;height:0;" />
 
       <!-- Export dropdown button -->
       <div class="owdu-dropdown-wrap">
@@ -948,7 +946,7 @@
           <div id="owdu-loading-apps" class="owdu-loading">Loading...</div>
           <div id="owdu-top-apps" class="owdu-plot"></div>
         </div>
-        <div id="owdu-apps-table-wrap" class="owdu-table-scroll"></div>
+        <div id="owdu-apps-table-wrap" class="owdu-table-scroll" style="display:none"></div>
       </div>
     </div>
 
@@ -960,7 +958,7 @@
           <div id="owdu-loading-categories" class="owdu-loading">Loading...</div>
           <div id="owdu-top-categories" class="owdu-plot"></div>
         </div>
-        <div id="owdu-categories-table-wrap" class="owdu-table-scroll"></div>
+        <div id="owdu-categories-table-wrap" class="owdu-table-scroll" style="display:none"></div>
       </div>
     </div>
 
@@ -972,7 +970,7 @@
           <div id="owdu-loading-branches" class="owdu-loading">Loading...</div>
           <div id="owdu-top-branches" class="owdu-plot"></div>
         </div>
-        <div id="owdu-devices-table-wrap" class="owdu-table-scroll"></div>
+        <div id="owdu-devices-table-wrap" class="owdu-table-scroll" style="display:none"></div>
       </div>
     </div>
 
@@ -984,7 +982,7 @@
           <div id="owdu-loading-clients" class="owdu-loading">Loading...</div>
           <div id="owdu-top-clients" class="owdu-plot"></div>
         </div>
-        <div id="owdu-clients-table-wrap" class="owdu-table-scroll"></div>
+        <div id="owdu-clients-table-wrap" class="owdu-table-scroll" style="display:none"></div>
       </div>
     </div>
 
@@ -999,56 +997,20 @@
           <div id="owdu-loading-per-wan" class="owdu-loading">Loading...</div>
           <div id="owdu-per-wan" style="width:100%;height:100%"></div>
         </div>
-        <div id="owdu-per-wan-table-wrap" class="owdu-table-scroll"></div>
+        <div id="owdu-per-wan-table-wrap" class="owdu-table-scroll" style="display:none"></div>
       </div>
     </div>
   </div>
 
-  <!-- ================= INTELLIGENCE SECTION (DASH-16, 17, 18) ================= -->
-  <div class="owdu-graph-grid" style="grid-template-columns: repeat(3, 1fr);">
-
-    <!-- Traffic Summary (DASH-18) -->
-    <div class="owdu-card">
-      <div class="owdu-card-hd">Traffic Summary</div>
-      <div class="owdu-card-bd" style="padding:16px">
-        <div id="owdu-traffic-summary-content" style="min-height:120px;position:relative">
-          <div id="owdu-loading-traffic-summary" class="owdu-loading">Loading...</div>
-          <div class="owdu-drill-cards" style="grid-template-columns:1fr 1fr">
-            <div class="owdu-drill-card">
-              <div class="owdu-drill-card-label">Active Devices</div>
-              <div id="owdu-active-devices" class="owdu-drill-card-value" style="color:#16a34a">—</div>
-            </div>
-            <div class="owdu-drill-card">
-              <div class="owdu-drill-card-label">Total Flows</div>
-              <div id="owdu-total-flows" class="owdu-drill-card-value">—</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Anomaly Badges (DASH-16) -->
-    <div class="owdu-card">
-      <div class="owdu-card-hd">Active Anomalies</div>
-      <div class="owdu-card-bd" style="padding:16px">
-        <div id="owdu-anomaly-content" style="min-height:120px;position:relative">
-          <div id="owdu-loading-anomaly" class="owdu-loading">Loading...</div>
-          <div id="owdu-anomaly-list"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Per-User/Source Breakdown (DASH-17) -->
-    <div class="owdu-card">
-      <div class="owdu-card-hd">Top Discovered Devices</div>
-      <div class="owdu-card-bd">
-        <div id="owdu-per-user-content" style="min-height:120px;position:relative">
-          <div id="owdu-loading-per-user" class="owdu-loading">Loading...</div>
-          <div id="owdu-per-user-table" class="owdu-table-scroll"></div>
-        </div>
-      </div>
-    </div>
-
+  <!-- INTELLIGENCE SECTION (DASH-16, 17, 18) hidden -->
+  <div style="display:none">
+    <div id="owdu-active-devices"></div>
+    <div id="owdu-total-flows"></div>
+    <div id="owdu-loading-traffic-summary"></div>
+    <div id="owdu-anomaly-list"></div>
+    <div id="owdu-loading-anomaly"></div>
+    <div id="owdu-per-user-table"></div>
+    <div id="owdu-loading-per-user"></div>
   </div>
 
   <!-- ================= APP-TO-INTERFACE SANKEY (DASH-24) ================= -->
@@ -1163,6 +1125,23 @@
     return '<div style="' + MSG_STYLE + '">' + MSG_ICON + '<span>No data available</span></div>';
   }
 
+  // Format a relative "time ago" string from an ISO timestamp
+  function fmtTimeAgo(isoStr) {
+    if (!isoStr) return '';
+    var diff = (Date.now() - new Date(isoStr).getTime()) / 1000;
+    if (diff < 60) return 'just now';
+    if (diff < 3600) return Math.round(diff / 60) + 'm ago';
+    if (diff < 86400) return Math.round(diff / 3600) + 'h ago';
+    return Math.round(diff / 86400) + 'd ago';
+  }
+
+  // No DPI data message with optional "last data" hint
+  function msgNoDpiData(lastDataTime) {
+    var hint = lastDataTime ? ' (last data: ' + fmtTimeAgo(lastDataTime) + ')' : '';
+    return '<div style="' + MSG_STYLE + '">' + MSG_ICON +
+      '<span>No DPI data in selected period' + escHtml(hint) + '</span></div>';
+  }
+
   // Unable to load: API call failed
   function msgError() {
     return '<div style="' + MSG_STYLE + '">' + MSG_ICON + '<span>Unable to load data</span></div>';
@@ -1219,10 +1198,10 @@
   /** Convert period string to minutes for DPI v1 APIs. */
   function timeRangeToMinutes(period) {
     var map = {
-      "1h": 60, "6h": 360, "24h": 1440, "7d": 10080,
-      "30d": 43200, "90d": 129600
+      "1d": 1440, "3d": 4320, "7d": 10080,
+      "30d": 43200, "365d": 525600
     };
-    return map[period] || 1440;
+    return map[period] || 10080;
   }
 
   /** Build monitoring API URL (uses ?period= string). */
@@ -1506,7 +1485,8 @@
     clearError(plotId);
 
     var chartLabels = rows.map(function (r) { return r.label; });
-    var scale = getChartUnitScale(rows.map(function (r) { return r.bytes; }));
+    var rawBytes = rows.map(function (r) { return r.bytes; });
+    var scale = getChartUnitScale(rawBytes);
     var chartData = rows.map(function (r) { return +(r.bytes / scale.divisor).toFixed(2); });
     var colors = rows.map(function (_, i) { return barPalette[i % barPalette.length]; });
 
@@ -1515,7 +1495,7 @@
       data: {
         labels: chartLabels,
         datasets: [{
-          label: 'Download (' + scale.unit + ')',
+          label: 'Traffic',
           data: chartData,
           backgroundColor: colors,
           borderRadius: 3,
@@ -1536,6 +1516,12 @@
             borderColor: '#e5e7eb',
             borderWidth: 1,
             titleFont: { weight: '600' },
+            callbacks: {
+              label: function (context) {
+                var idx = context.dataIndex;
+                return fmtBytes(rawBytes[idx]);
+              }
+            }
           }
         },
         scales: {
@@ -1701,13 +1687,13 @@
     // Donut ring: only 3 breakdown segments (Cellular, Wired, Wi-Fi)
     var donutLabels = ["Cellular", "Wired", "Wi-Fi"];
     var donutValues = [cellularTotal, wiredTotal, wifiTotal];
-    var donutBg    = ["#16a34a", "#0ea5e9", "#fb923c"];
-    var donutHover = ["#15803d", "#0284c7", "#f97316"];
+    var donutBg    = ["#16a34a", "rgba(66,133,244,0.85)", "#fb923c"];
+    var donutHover = ["#15803d", "rgba(56,113,214,0.95)", "#f97316"];
 
     // Build HTML legend showing 3 types (no Total)
     var legendItems = [
       { label: "Cellular", color: "#16a34a", value: cellularTotal },
-      { label: "Wired",    color: "#0ea5e9", value: wiredTotal },
+      { label: "Wired",    color: "rgba(66,133,244,0.85)", value: wiredTotal },
       { label: "Wi-Fi",    color: "#fb923c", value: wifiTotal },
     ];
     if (legendEl) {
@@ -1720,12 +1706,18 @@
     }
 
     if (!canvas) return;
-    var ctx = canvas.getContext("2d");
 
     if (wanDonutChart) {
       wanDonutChart.destroy();
       wanDonutChart = null;
     }
+
+    // Reset canvas dimensions to ensure consistent sizing across renders
+    canvas.width = 180;
+    canvas.height = 180;
+    canvas.style.width = '180px';
+    canvas.style.height = '180px';
+    var ctx = canvas.getContext("2d");
 
     var donutTotal = donutValues.reduce(function (a, b) { return a + b; }, 0) || 1;
 
@@ -1738,6 +1730,12 @@
         var ctx2 = chart.ctx;
         ctx2.save();
 
+        // Use outerRadius to derive consistent font sizes (outerRadius scales with canvas)
+        var outerR = meta.data[0] ? meta.data[0].outerRadius : 90;
+        var pctSize = Math.round(outerR * 0.12);
+        var valSize = Math.round(outerR * 0.10);
+        var gap = Math.round(outerR * 0.07);
+
         meta.data.forEach(function (arc, i) {
           var val = donutValues[i];
           if (!val || val <= 0) return;
@@ -1745,54 +1743,42 @@
           var pct = (val / donutTotal * 100).toFixed(1) + '%';
           var byteLabel = fmtBytes(val);
 
-          // Calculate midpoint angle of the arc
           var startAngle = arc.startAngle;
           var endAngle = arc.endAngle;
           var midAngle = (startAngle + endAngle) / 2;
-
-          // Position label at the middle of the ring (between inner and outer radius)
-          var innerRadius = arc.innerRadius;
-          var outerRadius = arc.outerRadius;
-          var midRadius = (innerRadius + outerRadius) / 2;
+          var midRadius = (arc.innerRadius + arc.outerRadius) / 2;
 
           var cx = arc.x + Math.cos(midAngle) * midRadius;
           var cy = arc.y + Math.sin(midAngle) * midRadius;
 
-          // Check if arc is wide enough for inline text
           var arcSpan = endAngle - startAngle;
 
           ctx2.textAlign = 'center';
           ctx2.textBaseline = 'middle';
 
           if (arcSpan > 0.6) {
-            // Wide segment — draw both lines inside the ring
-            ctx2.font = 'bold 11px -apple-system, BlinkMacSystemFont, sans-serif';
+            ctx2.font = 'bold ' + pctSize + 'px -apple-system, BlinkMacSystemFont, sans-serif';
             ctx2.fillStyle = '#ffffff';
-            ctx2.fillText(pct, cx, cy - 6);
-            ctx2.font = '600 9px -apple-system, BlinkMacSystemFont, sans-serif';
-            ctx2.fillText(byteLabel, cx, cy + 6);
+            ctx2.fillText(pct, cx, cy - gap);
+            ctx2.font = '600 ' + valSize + 'px -apple-system, BlinkMacSystemFont, sans-serif';
+            ctx2.fillText(byteLabel, cx, cy + gap);
           } else if (arcSpan > 0.3) {
-            // Medium segment — single line inside
-            ctx2.font = 'bold 10px -apple-system, BlinkMacSystemFont, sans-serif';
+            ctx2.font = 'bold ' + valSize + 'px -apple-system, BlinkMacSystemFont, sans-serif';
             ctx2.fillStyle = '#ffffff';
             ctx2.fillText(pct, cx, cy);
           } else {
-            // Narrow segment — draw label outside with a line
-            var labelRadius = outerRadius + 18;
+            var labelRadius = arc.outerRadius + 18;
             var lx = arc.x + Math.cos(midAngle) * labelRadius;
             var ly = arc.y + Math.sin(midAngle) * labelRadius;
 
-            // Connector line
-            var lineStart = arc.x + Math.cos(midAngle) * outerRadius;
-            var lineStartY = arc.y + Math.sin(midAngle) * outerRadius;
             ctx2.beginPath();
-            ctx2.moveTo(lineStart, lineStartY);
+            ctx2.moveTo(arc.x + Math.cos(midAngle) * arc.outerRadius, arc.y + Math.sin(midAngle) * arc.outerRadius);
             ctx2.lineTo(lx, ly);
             ctx2.strokeStyle = '#94a3b8';
             ctx2.lineWidth = 1;
             ctx2.stroke();
 
-            ctx2.font = 'bold 10px -apple-system, BlinkMacSystemFont, sans-serif';
+            ctx2.font = 'bold ' + valSize + 'px -apple-system, BlinkMacSystemFont, sans-serif';
             ctx2.fillStyle = '#1e293b';
             ctx2.fillText(pct + ' ' + byteLabel, lx, ly);
           }
@@ -1820,11 +1806,21 @@
         plugins: {
           legend: { display: false },
           tooltip: {
+            backgroundColor: 'rgba(0,0,0,0.8)',
+            titleColor: '#fff',
+            bodyColor: '#fff',
+            titleFont: { weight: '600', size: 13 },
+            bodyFont: { size: 12 },
+            padding: 10,
+            cornerRadius: 4,
             callbacks: {
+              title: function (items) {
+                return items[0] ? items[0].label : '';
+              },
               label: function (context) {
                 var val = context.parsed || 0;
                 var pct = (val / donutTotal * 100).toFixed(1);
-                return context.label + ": " + fmtBytes(val) + " (" + pct + "%)";
+                return context.label + ': ' + fmtBytes(val) + ' (' + pct + '%)';
               },
             },
           },
@@ -1867,16 +1863,16 @@
         var traceDown = {
           x: timestamps, y: downloads, name: "Download",
           type: "scatter", mode: "lines", fill: "tozeroy",
-          fillcolor: "rgba(14,165,233,0.25)",
-          line: { color: "#0ea5e9", width: 2 },
+          fillcolor: "rgba(5,150,105,0.25)",
+          line: { color: "#059669", width: 2 },
           hovertemplate: "Download: %{customdata}<extra></extra>",
           customdata: downloads.map(function (v) { return formatBytesForLabel(v); }),
         };
         var traceUp = {
           x: timestamps, y: uploads, name: "Upload",
           type: "scatter", mode: "lines", fill: "tozeroy",
-          fillcolor: "rgba(5,150,105,0.25)",
-          line: { color: "#059669", width: 2 },
+          fillcolor: "rgba(14,165,233,0.25)",
+          line: { color: "#0ea5e9", width: 2 },
           hovertemplate: "Upload: %{customdata}<extra></extra>",
           customdata: uploads.map(function (v) { return formatBytesForLabel(v); }),
         };
@@ -1894,21 +1890,41 @@
           yTickTexts.push(formatBytesForLabel(tv));
         }
 
+        // Dynamic x-axis ticks based on selected time period
+        var period = getTimePeriod();
+        var xTickFormat, xDtick;
+        if (period === "1d") {
+          xTickFormat = "%H:%M";
+          xDtick = 3 * 3600000;      // every 3 hours
+        } else if (period === "3d") {
+          xTickFormat = "%b %d %H:%M";
+          xDtick = 12 * 3600000;     // every 12 hours
+        } else if (period === "7d") {
+          xTickFormat = "%b %d";
+          xDtick = 86400000;         // every 1 day
+        } else if (period === "30d") {
+          xTickFormat = "%b %d";
+          xDtick = 3 * 86400000;     // every 3 days
+        } else {
+          xTickFormat = "%b %Y";
+          xDtick = 30 * 86400000;    // every 30 days
+        }
+
         var layout = {
           autosize: true,
           paper_bgcolor: "#ffffff",
           plot_bgcolor: "#ffffff",
           showlegend: true,
           legend: { orientation: "h", x: 0, y: 1.12, font: { size: 11 } },
-          margin: { l: 80, r: 20, t: 10, b: 60 },
+          margin: { l: 80, r: 20, t: 10, b: 40 },
           xaxis: {
             type: "date",
             tickfont: { size: 10, color: "#6b7280" },
             gridcolor: "#f3f4f6",
             fixedrange: true,
-            tickformat: "%H:%M\n%b %d",
+            tickformat: xTickFormat,
             tickangle: 0,
-            dtick: 3 * 3600000,
+            dtick: xDtick,
           },
           yaxis: {
             tickfont: { size: 10, color: "#6b7280" },
@@ -1955,10 +1971,18 @@
     clearError("owdu-top-apps");
     hideEmptyOverlay("owdu-top-apps");
 
-    fetchJson(monitoringUrl("/api/v1/monitoring/global-top-apps/"))
+    fetchJson(dpiV1Url("/api/v1/dpi/stats/top-apps/", "&limit=10"))
       .then(function (json) {
         setLoading("owdu-loading-apps", false);
-        var rows = Array.isArray(json && json.top_10_apps) ? json.top_10_apps : [];
+        var rawApps = Array.isArray(json && json.apps) ? json.apps : [];
+        // Map DPI response to uniform format: label + traffic (total_down + total_up)
+        var rows = rawApps.map(function (a) {
+          return {
+            label: a.app_name || "",
+            traffic: (Number(a.total_down) || 0) + (Number(a.total_up) || 0),
+            category: a.category || "",
+          };
+        });
         cachedTopApps = rows;
 
         var labels = rows.map(function (r) { return String(r.label || ""); });
@@ -1966,18 +1990,24 @@
 
         var hasTraffic = bytes.some(function (b) { return b > 0; });
         renderPlotlyHBarCompact("owdu-top-apps", labels, bytes, "No application traffic data available.");
+        // Show informative message if no DPI data in the selected period
+        if (!hasTraffic && json && json.last_data_time) {
+          var ov = document.querySelector('#owdu-top-apps .owdu-bar-overlay');
+          if (ov) ov.innerHTML = msgNoDpiData(json.last_data_time);
+        }
 
-        // Wire click handler for app drill-down
-        var appEl = $("owdu-top-apps");
-        if (appEl && hasTraffic) {
-          appEl.removeAllListeners && appEl.removeAllListeners("plotly_click");
-          appEl.on("plotly_click", function (data) {
-            if (data && data.points && data.points[0]) {
-              var idx = data.points[0].pointIndex;
+        // Wire click handler for app drill-down (Chart.js)
+        var appChart = _chartInstances["owdu-top-apps"];
+        if (appChart && hasTraffic) {
+          var appCanvas = appChart.canvas;
+          appCanvas.onclick = function (evt) {
+            var elems = appChart.getElementsAtEventForMode(evt, 'nearest', { intersect: true }, false);
+            if (elems.length) {
+              var idx = elems[0].index;
               var appName = rows[idx] && rows[idx].label;
               if (appName) openDrillDown("app", appName);
             }
-          });
+          };
         }
 
         // Build table below chart — only if there's actual traffic
@@ -2071,7 +2101,8 @@
     fetchJson(dpiV1Url("/api/v1/dpi/stats/categories/"))
       .then(function (json) {
         setLoading("owdu-loading-categories", false);
-        var categories = Array.isArray(json && json.categories) ? json.categories : [];
+        if (!json) { showEmptyOverlay("owdu-top-categories", msgNoDpiData()); return; }
+        var categories = Array.isArray(json.categories) ? json.categories : [];
         cachedTopCategories = categories;
 
         // Sort and take top 10
@@ -2085,18 +2116,24 @@
 
         var hasTraffic = bytes.some(function (b) { return b > 0; });
         renderPlotlyHBarCompact("owdu-top-categories", labels, bytes, "No category data available.");
+        // Show informative message if no DPI data in the selected period
+        if (!hasTraffic && json && json.last_data_time) {
+          var ov = document.querySelector('#owdu-top-categories .owdu-bar-overlay');
+          if (ov) ov.innerHTML = msgNoDpiData(json.last_data_time);
+        }
 
-        // Wire click handler for category drill-down
-        var catEl = $("owdu-top-categories");
-        if (catEl && hasTraffic) {
-          catEl.removeAllListeners && catEl.removeAllListeners("plotly_click");
-          catEl.on("plotly_click", function (data) {
-            if (data && data.points && data.points[0]) {
-              var idx = data.points[0].pointIndex;
+        // Wire click handler for category drill-down (Chart.js)
+        var catChart = _chartInstances["owdu-top-categories"];
+        if (catChart && hasTraffic) {
+          var catCanvas = catChart.canvas;
+          catCanvas.onclick = function (evt) {
+            var elems = catChart.getElementsAtEventForMode(evt, 'nearest', { intersect: true }, false);
+            if (elems.length) {
+              var idx = elems[0].index;
               var catName = top10[idx] && top10[idx].category;
               if (catName) openDrillDown("category", catName);
             }
-          });
+          };
         }
 
         // Build table below chart — only if there's actual traffic
@@ -2332,20 +2369,31 @@
         var downData = downs.map(function (v) { return +(v / scale.divisor).toFixed(2); });
         var upData = ups.map(function (v) { return +(v / scale.divisor).toFixed(2); });
 
+        var rawDowns = downs;
+        var rawUps = ups;
         _chartInstances[plotId] = new Chart(canvas.getContext('2d'), {
           type: 'bar',
           data: {
             labels: labels,
             datasets: [
-              { label: 'Download (' + scale.unit + ')', data: downData, backgroundColor: 'rgba(66,133,244,0.85)', borderRadius: 3, borderSkipped: false, barThickness: 14 },
-              { label: 'Upload (' + scale.unit + ')', data: upData, backgroundColor: 'rgba(66,133,244,0.50)', borderRadius: 3, borderSkipped: false, barThickness: 14 }
+              { label: 'Download', data: downData, backgroundColor: 'rgba(5,150,105,0.85)', borderRadius: 3, borderSkipped: false, barThickness: 14 },
+              { label: 'Upload', data: upData, backgroundColor: 'rgba(14,165,233,0.85)', borderRadius: 3, borderSkipped: false, barThickness: 14 }
             ]
           },
           options: {
             indexAxis: 'y', responsive: true, maintainAspectRatio: false,
             plugins: {
               legend: { display: true, position: 'top', align: 'start', labels: { boxWidth: 12, padding: 16, font: { size: 11 } } },
-              tooltip: { backgroundColor: '#fff', titleColor: '#111827', bodyColor: '#374151', borderColor: '#e5e7eb', borderWidth: 1, titleFont: { weight: '600' } }
+              tooltip: {
+                backgroundColor: '#fff', titleColor: '#111827', bodyColor: '#374151', borderColor: '#e5e7eb', borderWidth: 1, titleFont: { weight: '600' },
+                callbacks: {
+                  label: function (context) {
+                    var idx = context.dataIndex;
+                    var raw = context.datasetIndex === 0 ? rawDowns[idx] : rawUps[idx];
+                    return context.dataset.label + ': ' + fmtBytes(raw);
+                  }
+                }
+              }
             },
             scales: {
               x: { stacked: true, grid: { color: '#f3f4f6' }, title: { display: true, text: scale.unit, color: '#9ca3af' } },
@@ -2930,38 +2978,7 @@
   }
 
   function onApplyCustomRange() {
-    var fromEl = $("owdu-date-from");
-    var toEl = $("owdu-date-to");
-    if (!fromEl || !toEl) return;
-
-    var fromVal = fromEl.value;
-    var toVal = toEl.value;
-
-    if (!fromVal || !toVal) {
-      alert("Please select both start and end dates.");
-      return;
-    }
-
-    // For custom range, we store the raw "custom" marker and compute days
-    var fromDate = new Date(fromVal);
-    var toDate = new Date(toVal);
-    var diffMs = toDate - fromDate;
-    if (diffMs <= 0) {
-      alert("End date must be after start date.");
-      return;
-    }
-
-    var diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-    // Map to nearest supported period
-    var mapped;
-    if (diffDays <= 0) mapped = "1h";
-    else if (diffDays <= 1) mapped = "24h";
-    else if (diffDays <= 7) mapped = "7d";
-    else if (diffDays <= 30) mapped = "30d";
-    else mapped = "90d";
-
-    setTimePeriod(mapped);
-    refreshAll();
+    // No longer used — custom range handled by dropdown options
   }
 
   // =========================================================================
@@ -3005,68 +3022,102 @@
       });
     });
 
-    // --- Time Range dropdown ---
-    var sel = $("owdu-time-range"); // hidden <select>
-    var trBtn = $("owdu-timerange-btn");
-    var trDropdown = $("owdu-timerange-dropdown");
+    // --- Time Range Dropdown ---
     var trLabel = $("owdu-timerange-label");
-    var labelMap = { "1h": "1 Hour", "6h": "6 Hours", "24h": "24 Hours", "7d": "7 Days", "30d": "30 Days", "90d": "90 Days", "custom": "Custom Range" };
+    var drBtn = $("owdu-daterange-btn");
+    var trDropdown = $("owdu-timerange-dropdown");
+    var customInput = $("owdu-custom-daterange");
+    var _periodToLabel = {
+      "1d": "Last 1 Day", "3d": "Last 3 Days", "7d": "Last 7 Days",
+      "30d": "Last 30 Days", "365d": "Last 365 Days"
+    };
 
-    // Restore from session
-    if (sel) {
-      var stored = getTimePeriod();
-      var validOptions = ["1h", "6h", "24h", "7d", "30d", "90d", "custom"];
-      if (validOptions.indexOf(stored) >= 0) {
-        sel.value = stored;
-      } else {
-        sel.value = "24h";
-        setTimePeriod("24h");
-        stored = "24h";
-      }
-      if (trLabel) trLabel.textContent = labelMap[sel.value] || sel.value;
-      // Mark active option
-      if (trDropdown) {
-        trDropdown.querySelectorAll(".owdu-dropdown-option").forEach(function (opt) {
-          opt.classList.toggle("active", opt.getAttribute("data-value") === sel.value);
-        });
-      }
-      sel.addEventListener("change", onTimeRangeChange);
+    // Restore stored period
+    var stored = getTimePeriod();
+    if (!_periodToLabel[stored] && stored !== "custom") {
+      stored = "7d";
+      setTimePeriod("7d");
+    }
+    if (trLabel) trLabel.textContent = _periodToLabel[stored] || stored;
+
+    // Mark active option
+    if (trDropdown) {
+      trDropdown.querySelectorAll('.owdu-dropdown-option').forEach(function(opt) {
+        opt.classList.toggle('active', opt.getAttribute('data-period') === stored);
+      });
     }
 
-    if (trBtn && trDropdown) {
-      trBtn.addEventListener("click", function (e) {
+    // Toggle dropdown on button click
+    if (drBtn && trDropdown) {
+      drBtn.addEventListener('click', function(e) {
         e.stopPropagation();
-        // Close other dropdowns
-        document.querySelectorAll(".owdu-dropdown-menu.owdu-show").forEach(function (el) {
-          if (el !== trDropdown) el.classList.remove("owdu-show");
+        document.querySelectorAll('.owdu-dropdown-menu.owdu-show').forEach(function(el) {
+          if (el !== trDropdown) el.classList.remove('owdu-show');
         });
-        trDropdown.classList.toggle("owdu-show");
+        trDropdown.classList.toggle('owdu-show');
       });
-      trDropdown.addEventListener("click", function (e) {
-        e.stopPropagation();
-      });
-      trDropdown.querySelectorAll(".owdu-dropdown-option").forEach(function (opt) {
-        opt.addEventListener("click", function () {
-          var val = opt.getAttribute("data-value");
-          // Update hidden select and trigger change
-          if (sel) {
-            sel.value = val;
-            sel.dispatchEvent(new Event("change"));
+    }
+
+    // Handle preset option clicks
+    if (trDropdown) {
+      trDropdown.querySelectorAll('.owdu-dropdown-option').forEach(function(opt) {
+        opt.addEventListener('click', function(e) {
+          e.stopPropagation();
+          var period = this.getAttribute('data-period');
+          if (period === 'custom') {
+            // Close dropdown and open daterangepicker
+            trDropdown.classList.remove('owdu-show');
+            if (customInput && typeof jQuery !== 'undefined') {
+              jQuery(customInput).data('daterangepicker').show();
+            }
+            return;
           }
-          // Update button label
-          if (trLabel) trLabel.textContent = labelMap[val] || val;
-          // Update active state
-          trDropdown.querySelectorAll(".owdu-dropdown-option").forEach(function (o) {
-            o.classList.toggle("active", o === opt);
-          });
-          trDropdown.classList.remove("owdu-show");
+          // Preset: apply immediately
+          trDropdown.querySelectorAll('.owdu-dropdown-option').forEach(function(o) { o.classList.remove('active'); });
+          this.classList.add('active');
+          trDropdown.classList.remove('owdu-show');
+          if (trLabel) trLabel.textContent = _periodToLabel[period];
+          setTimePeriod(period);
+          refreshAll();
         });
       });
     }
 
-    // Custom range apply button
-    var applyBtn = $("owdu-apply-custom");
-    if (applyBtn) applyBtn.addEventListener("click", onApplyCustomRange);
+    // Initialize hidden daterangepicker for Custom Range only
+    if (customInput && typeof jQuery !== 'undefined') {
+      var $customInput = jQuery(customInput);
+      var now = moment();
+      $customInput.daterangepicker({
+        startDate: moment().subtract(7, 'days'),
+        endDate: now,
+        maxDate: now,
+        opens: 'left',
+        parentEl: '.owdu-header-right',
+        locale: {
+          format: 'MM/DD/YYYY',
+          applyLabel: 'Apply',
+          cancelLabel: 'Cancel',
+        }
+      }, function(start, end) {
+        var diffDays = end.diff(start, 'days');
+        var period;
+        if (diffDays <= 1) period = '1d';
+        else if (diffDays <= 3) period = '3d';
+        else if (diffDays <= 7) period = '7d';
+        else if (diffDays <= 30) period = '30d';
+        else period = '365d';
+        var label = start.format('MM/DD/YYYY') + ' - ' + end.format('MM/DD/YYYY');
+        if (trLabel) trLabel.textContent = label;
+        // Mark custom as active
+        if (trDropdown) {
+          trDropdown.querySelectorAll('.owdu-dropdown-option').forEach(function(o) { o.classList.remove('active'); });
+          var customOpt = trDropdown.querySelector('[data-period="custom"]');
+          if (customOpt) customOpt.classList.add('active');
+        }
+        setTimePeriod(period);
+        refreshAll();
+      });
+    }
 
     // --- Export dropdown ---
     var exportBtn = $("owdu-export-btn");
