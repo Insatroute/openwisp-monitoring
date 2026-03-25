@@ -28,34 +28,59 @@
 ></script>
 
 <style>
-  /* ===================== BASE ===================== */
-  .owdu-wrap { padding-top: 4px; }
+  /* ===================== PAGE HEADER ===================== */
+  .owdu-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 20px 40px 16px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .owdu-header-left { display: flex; align-items: flex-start; gap: 14px; }
 
-  /* ===================== TOOLBAR ===================== */
-  .owdu-toolbar {
+  .owdu-header-icon {
+    width: 44px;
+    height: 44px;
+    background: #24415d;
+    border-radius: 10px;
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 8px 40px;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .owdu-header-icon svg { width: 24px; height: 24px; color: #fff; }
+
+  .owdu-header-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--body-loud-color, #000);
+    line-height: 1.3;
+  }
+  .owdu-header-sub {
+    font-size: 13px;
+    color: var(--body-quiet-color, #666);
+    margin-top: 2px;
+  }
+
+  .owdu-header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
     flex-wrap: wrap;
   }
-  .owdu-toolbar label {
-    font-size: 12px;
-    font-weight: 600;
-    color: #374151;
-  }
-  .owdu-toolbar select,
-  .owdu-toolbar input[type="date"] {
-    font-size: 12px;
-    padding: 5px 8px;
-    border: 1px solid #d1d5db;
-    border-radius: 6px;
-    background: #ffffff;
-    color: #111827;
+
+  .owdu-header-right input[type="date"] {
+    font-size: 13px;
+    padding: 7px 10px;
+    border: 1px solid var(--border-color, #ccc);
+    border-radius: 8px;
+    background: var(--body-bg, #fff);
+    color: var(--body-fg, #333);
     cursor: pointer;
+    font-weight: 500;
   }
-  .owdu-toolbar select:focus,
-  .owdu-toolbar input[type="date"]:focus {
+  .owdu-header-right input[type="date"]:focus {
     outline: none;
     border-color: #059669;
     box-shadow: 0 0 0 2px rgba(5,150,105,0.15);
@@ -63,21 +88,57 @@
   .owdu-custom-range { display: none; align-items: center; gap: 6px; }
   .owdu-custom-range.owdu-show { display: flex; }
 
-  .owdu-btn {
-    font-size: 12px;
+  .owdu-btn.owdu-spinning svg:first-child {
+    animation: owdu-spin 0.8s linear infinite;
+  }
+  @keyframes owdu-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  .owdu-live-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
     font-weight: 600;
-    padding: 5px 12px;
-    border: 1px solid #d1d5db;
-    border-radius: 6px;
-    background: #ffffff;
-    color: #374151;
+    color: #22c55e;
+  }
+  .owdu-live-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #22c55e;
+    animation: owdu-pulse 2s ease-in-out infinite;
+  }
+  @keyframes owdu-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  .owdu-last-updated {
+    font-size: 11px;
+    color: #9ca3af;
+    white-space: nowrap;
+  }
+
+  .owdu-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border: 1px solid var(--border-color, #ccc);
+    border-radius: 8px;
+    background: var(--body-bg, #fff);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--body-fg, #333);
     cursor: pointer;
-    transition: all 0.15s ease;
+    transition: all 0.15s;
   }
-  .owdu-btn:hover {
-    background: #f3f4f6;
-    border-color: #9ca3af;
-  }
+  .owdu-btn:hover { background: var(--darkened-bg, #f8f8f8); border-color: var(--body-quiet-color, #666); }
+  .owdu-btn svg { width: 14px; height: 14px; }
+
   .owdu-btn-primary {
     background: #059669;
     color: #ffffff;
@@ -87,32 +148,92 @@
     background: #047857;
     border-color: #047857;
   }
-  .owdu-toolbar-spacer { flex: 1; }
-  .owdu-last-updated {
-    font-size: 11px;
-    color: #9ca3af;
-    white-space: nowrap;
+
+  /* ===================== DROPDOWN (shared for Time Range & Export) ===================== */
+  .owdu-dropdown-wrap {
+    position: relative;
+    display: inline-block;
+  }
+  .owdu-dropdown-menu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 4px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    z-index: 50;
+    min-width: 140px;
+    overflow: hidden;
+  }
+  .owdu-dropdown-menu.owdu-show {
+    display: block;
+  }
+  .owdu-dropdown-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 10px 14px;
+    border: none;
+    background: none;
+    font-size: 13px;
+    font-weight: 500;
+    color: #374151;
+    cursor: pointer;
+    transition: background 0.15s;
+    text-align: left;
+  }
+  .owdu-dropdown-option:hover {
+    background: #f3f4f6;
+  }
+  .owdu-dropdown-option.active {
+    background: #f0fdf4;
+    color: #059669;
+    font-weight: 600;
+  }
+  .owdu-dropdown-option + .owdu-dropdown-option {
+    border-top: 1px solid #f3f4f6;
   }
 
   /* ===================== SUMMARY CARDS ===================== */
-  .owdu-summary-section { padding: 10px 40px; }
+  .owdu-summary-section { padding: 16px 40px; }
 
   .owdu-summary-grid {
     display: grid;
-    grid-template-columns: repeat(4, minmax(160px, 1fr));
-    gap: 20px;
-    background: #ffffff;
-    border-radius: 10px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-    padding: 12px;
-    border: 1px solid #f1f5f9;
+    grid-template-columns: repeat(4, minmax(180px, 1fr));
+    gap: 16px;
   }
 
   .owdu-summary-card {
-    padding: 8px 10px;
-    border-right: 1px solid #e5e7eb;
+    background: var(--body-bg, #fff);
+    border: none;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+    border-radius: 12px;
+    padding: 18px 16px 14px;
+    position: relative;
+    overflow: hidden;
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
   }
-  .owdu-summary-card:last-child { border-right: none; }
+  .owdu-summary-card:hover {
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    transform: translateY(-2px);
+  }
+
+  .owdu-summary-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+  }
+  .owdu-summary-card[data-accent="gray"]::before    { background: #6b7280; }
+  .owdu-summary-card[data-accent="green"]::before   { background: #6b7280; }
+  .owdu-summary-card[data-accent="blue"]::before    { background: #6b7280; }
+  .owdu-summary-card[data-accent="orange"]::before  { background: #6b7280; }
 
   .owdu-card-top {
     display: flex;
@@ -123,11 +244,27 @@
   }
   .owdu-card-left { min-width: 0; }
 
-  .owdu-summary-label { font-size: 12px; color: #6b7280; margin-bottom: 6px; }
-  .owdu-summary-main { display: flex; align-items: baseline; gap: 6px; margin-bottom: 0; }
+  .owdu-summary-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--body-quiet-color, #666);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 8px;
+  }
+  .owdu-summary-main { display: flex; align-items: baseline; gap: 4px; margin-bottom: 12px; }
 
-  .owdu-summary-value { font-size: 22px; font-weight: 700; color: #059669; letter-spacing: 0.2px; }
-  .owdu-summary-unit { font-size: 11px; font-weight: 700; color: #6b7280; }
+  .owdu-summary-value {
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--body-loud-color, #000);
+    line-height: 1;
+  }
+  .owdu-summary-unit {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--body-quiet-color, #666);
+  }
 
   /* Upload/Download row layout */
   .owdu-metric-row {
@@ -158,86 +295,119 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    color: #059669;
   }
+  .io-pill.up { color: #2563eb; }
+  .io-pill.down { color: #16a34a; }
   .io-pill svg { width: 12px; height: 12px; display: block; }
 
   /* ===================== KIND BADGES ===================== */
   .kind-badge {
-    width: 40px;
-    height: 40px;
-    border-radius: 999px;
+    width: 46px;
+    height: 46px;
+    border-radius: 12px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     position: relative;
+    flex-shrink: 0;
   }
   .kind-badge::before {
     content: "";
     position: absolute;
     inset: 0;
-    border-radius: 10px;
-    opacity: 0.18;
-    background: linear-gradient(135deg, currentColor 0%, transparent 70%);
+    border-radius: 12px;
+    opacity: .10;
+    background: currentColor;
     pointer-events: none;
   }
   .kind-badge svg {
-    width: 18px;
-    height: 18px;
+    width: 24px;
+    height: 24px;
     display: block;
     position: relative;
     z-index: 1;
   }
   .kind-total    { color: #6b7280; }
-  .kind-cellular { color: #16a34a; }
-  .kind-wired    { color: #0ea5e9; }
-  .kind-wifi     { color: #ff7f0e; }
+  .kind-cellular { color: #6b7280; }
+  .kind-wired    { color: #6b7280; }
+  .kind-wifi     { color: #6b7280; }
 
   /* ===================== TRENDING + DONUT ROW ===================== */
   .owdu-trending-row {
     display: grid;
     grid-template-columns: 7fr 3fr;
     gap: 20px;
-    padding: 10px 40px;
+    padding: 20px 40px;
   }
 
   .owdu-trending-card,
   .owdu-donut-card {
-    background: #ffffff;
-    border: 1px solid #e5e7eb;
-    border-radius: 12px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    position: relative;
     overflow: hidden;
+    background: #fff;
+    border-radius: 14px;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 6px 20px rgba(22,34,51,0.08);
   }
 
   .owdu-card-hd {
-    background: #f3f4f6;
-    padding: 8px 12px;
+    background: #f0f0f0;
+    padding: 10px 14px;
     font-size: 13px;
     font-weight: 700;
-    color: #111827;
-    border-bottom: 1px solid #e5e7eb;
+    color: #1f2937;
+    border-bottom: 1px solid #eee;
   }
-  .owdu-card-bd { padding: 12px 0 4px; background: #ffffff; }
+  .owdu-card-bd { padding: 0; background: #ffffff; }
 
   .owdu-trending-chart {
     position: relative;
     width: 100%;
     height: 300px;
     overflow: hidden;
-  }
-
-  .owdu-donut-wrap {
-    position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 16px;
-    min-height: 300px;
+  }
+
+  .owdu-donut-shell {
+    height: 220px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
   .owdu-donut-canvas {
-    width: 260px !important;
-    height: 260px !important;
+    width: 180px !important;
+    height: 180px !important;
+    display: block !important;
+  }
+
+  .owdu-donut-legend {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    padding: 0 12px 12px;
+  }
+  .owdu-donut-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 10px;
+    color: #334155;
+    background: #f8fafc;
+    border: 1px solid #e5e7eb;
+    padding: 4px 7px;
+    border-radius: 8px;
+  }
+  .owdu-donut-legend-color {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .owdu-donut-legend-label {
+    font-weight: 600;
   }
 
   /* ===================== CHART CARDS (2-col grid) ===================== */
@@ -246,24 +416,24 @@
     grid-gap: 20px;
     grid-template-columns: repeat(2, 1fr);
     margin: 0 auto;
-    padding: 10px 40px;
+    padding: 20px 40px;
   }
 
   .owdu-card {
-    background: #ffffff;
-    border: 1px solid #e5e7eb;
-    border-radius: 12px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    position: relative;
     overflow: hidden;
+    background: #fff;
+    border-radius: 14px;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 6px 20px rgba(22,34,51,0.08);
     padding: 0;
   }
 
   .owdu-chart-container {
     position: relative;
     width: 100%;
-    height: 270px;
+    height: 240px;
     overflow: hidden;
-    border-radius: 10px;
   }
 
   .owdu-plot { width: 100%; height: 100%; }
@@ -276,34 +446,48 @@
   .owdu-ranked-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 11px;
-    margin-top: 4px;
+    font-size: 12px;
+    table-layout: fixed;
   }
   .owdu-ranked-table th {
-    background: #f9fafb;
-    padding: 5px 8px;
     text-align: left;
-    font-weight: 600;
-    color: #6b7280;
-    border-bottom: 1px solid #e5e7eb;
-    white-space: nowrap;
+    font-weight: 700;
+    color: #475569;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 8px 12px;
+    background: #f0f0f0;
+    border-bottom: 2px solid #e5e7eb;
+    vertical-align: middle;
+  }
+  .owdu-ranked-table th:last-child {
+    text-align: right;
   }
   .owdu-ranked-table td {
-    padding: 4px 8px;
+    padding: 8px 12px;
     border-bottom: 1px solid #f3f4f6;
+    vertical-align: middle;
     color: #374151;
     max-width: 180px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  .owdu-ranked-table tr:hover td { background: #f9fafb; }
+  .owdu-ranked-table tr td:last-child {
+    text-align: right;
+    color: #111827;
+    font-weight: 600;
+  }
+  .owdu-ranked-table tbody tr { cursor: pointer; }
+  .owdu-ranked-table tbody tr:hover { background: #f8fafc; }
   .owdu-ranked-table .owdu-right { text-align: right; }
 
   .owdu-table-scroll {
-    max-height: 200px;
-    overflow-y: auto;
-    padding: 0 8px 8px;
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: 180px;
+    overflow: auto;
   }
 
   /* ===================== LOADING / EMPTY / ERROR ===================== */
@@ -313,8 +497,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 13px;
-    color: #6b7280;
+    font-size: 12px;
+    color: #94a3b8;
     background: rgba(255,255,255,0.72);
     z-index: 5;
   }
@@ -327,9 +511,9 @@
     justify-content: center;
     text-align: center;
     padding: 16px;
-    font-size: 13px;
-    font-weight: 700;
-    color: #6b7280;
+    font-size: 12px;
+    font-weight: 600;
+    color: #94a3b8;
     background: rgba(255,255,255,0.86);
     z-index: 4;
   }
@@ -344,7 +528,7 @@
     padding: 16px;
     font-size: 12px;
     font-weight: 600;
-    color: #dc2626;
+    color: #94a3b8;
     background: rgba(255,255,255,0.9);
     z-index: 5;
   }
@@ -435,7 +619,7 @@
 
   /* ===================== PER-WAN BREAKDOWN ===================== */
   .owdu-per-wan-section {
-    padding: 10px 40px;
+    padding: 20px 40px;
   }
   .owdu-per-wan-card {
     background: #ffffff;
@@ -477,16 +661,18 @@
   .owdu-badge-medium { background: #fffbeb; color: #d97706; }
   .owdu-badge-low { background: #f0fdf4; color: #16a34a; }
   .owdu-anomaly-empty {
-    text-align: center;
-    padding: 24px;
-    color: #16a34a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100px;
+    color: #94a3b8;
     font-weight: 600;
-    font-size: 13px;
+    font-size: 12px;
   }
 
   /* ===================== PLACEHOLDER SECTIONS ===================== */
   .owdu-placeholder {
-    padding: 10px 40px;
+    padding: 20px 40px;
   }
   .owdu-placeholder-inner {
     background: #f9fafb;
@@ -502,9 +688,6 @@
   /* ===================== RESPONSIVE ===================== */
   @media (max-width: 1280px) {
     .owdu-summary-grid { grid-template-columns: repeat(2, minmax(180px, 1fr)); }
-    .owdu-summary-card { border-right: none; border-bottom: 1px solid #e5e7eb; padding-bottom: 10px; }
-    .owdu-summary-card:nth-child(3),
-    .owdu-summary-card:nth-child(4) { border-bottom: none; }
     .owdu-trending-row { grid-template-columns: 1fr; }
   }
 
@@ -513,13 +696,12 @@
   }
 
   @media (max-width: 600px) {
-    .owdu-toolbar { padding: 8px 16px; }
+    .owdu-header { padding: 12px 16px; }
+    .owdu-header-right { gap: 8px; }
     .owdu-summary-section,
     .owdu-graph-grid,
     .owdu-trending-row { padding: 10px 16px; }
-    .owdu-summary-grid { grid-template-columns: 1fr; padding: 12px; }
-    .owdu-summary-card { border-right: none; border-bottom: 1px solid #e5e7eb; padding-bottom: 8px; }
-    .owdu-summary-card:last-child { border-bottom: none; }
+    .owdu-summary-grid { grid-template-columns: 1fr; }
     .owdu-chart-container, .owdu-plot { height: 240px; }
     .owdu-trending-chart { height: 240px; }
     .owdu-donut-wrap { min-height: 240px; }
@@ -528,33 +710,93 @@
 
 <div class="owdu-wrap">
 
-  <!-- ================= TOOLBAR ================= -->
-  <div class="owdu-toolbar">
-    <label for="owdu-time-range">Time Range:</label>
-    <select id="owdu-time-range">
-      <option value="1h">1 Hour</option>
-      <option value="6h">6 Hours</option>
-      <option value="24h">24 Hours</option>
-      <option value="7d">7 Days</option>
-      <option value="30d">30 Days</option>
-      <option value="90d">90 Days</option>
-      <option value="custom">Custom Range</option>
-    </select>
-
-    <div id="owdu-custom-range" class="owdu-custom-range">
-      <input type="date" id="owdu-date-from" title="Start date">
-      <span style="font-size:11px;color:#6b7280;">to</span>
-      <input type="date" id="owdu-date-to" title="End date">
-      <button class="owdu-btn owdu-btn-primary" id="owdu-apply-custom" type="button">Apply</button>
+  <!-- ================= PAGE HEADER ================= -->
+  <div class="owdu-header">
+    <div class="owdu-header-left">
+      <div class="owdu-header-icon">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M3 3h18v14H3z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+          <path d="M8 21h8M12 17v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          <path d="M7 8h4M7 11h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <circle cx="17" cy="9.5" r="2.5" stroke="currentColor" stroke-width="1.5"/>
+        </svg>
+      </div>
+      <div>
+        <div class="owdu-header-title">Data Usage Insights</div>
+        <div class="owdu-header-sub" id="owdu-status-text">Traffic analysis dashboard</div>
+      </div>
     </div>
+    <div class="owdu-header-right">
+      <div class="owdu-live-badge">
+        <span class="owdu-live-dot"></span>
+        LIVE
+      </div>
 
-    <div class="owdu-toolbar-spacer"></div>
+      <!-- Hidden select to keep existing JS working -->
+      <select id="owdu-time-range" style="display:none;">
+        <option value="1h">1 Hour</option>
+        <option value="6h">6 Hours</option>
+        <option value="24h">24 Hours</option>
+        <option value="7d">7 Days</option>
+        <option value="30d">30 Days</option>
+        <option value="90d">90 Days</option>
+        <option value="custom">Custom Range</option>
+      </select>
 
-    <button class="owdu-btn" id="owdu-export-csv" type="button" title="Export dashboard data as CSV">CSV</button>
-    <button class="owdu-btn" id="owdu-export-pdf" type="button" title="Export dashboard as PDF">PDF</button>
-    <button class="owdu-btn" id="owdu-export-xls" type="button" title="Export dashboard as Excel">XLS</button>
+      <!-- Time Range dropdown button -->
+      <div class="owdu-dropdown-wrap">
+        <button class="owdu-btn" id="owdu-timerange-btn" type="button" title="Select time range">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
+          </svg>
+          <span id="owdu-timerange-label">24 Hours</span>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="owdu-dropdown-menu" id="owdu-timerange-dropdown">
+          <button class="owdu-dropdown-option" data-value="1h" type="button">1 Hour</button>
+          <button class="owdu-dropdown-option" data-value="6h" type="button">6 Hours</button>
+          <button class="owdu-dropdown-option active" data-value="24h" type="button">24 Hours</button>
+          <button class="owdu-dropdown-option" data-value="7d" type="button">7 Days</button>
+          <button class="owdu-dropdown-option" data-value="30d" type="button">30 Days</button>
+          <button class="owdu-dropdown-option" data-value="90d" type="button">90 Days</button>
+          <button class="owdu-dropdown-option" data-value="custom" type="button">Custom Range</button>
+        </div>
+      </div>
 
-    <span id="owdu-last-updated" class="owdu-last-updated"></span>
+      <div id="owdu-custom-range" class="owdu-custom-range">
+        <input type="date" id="owdu-date-from" title="Start date">
+        <span style="font-size:11px;color:#6b7280;">to</span>
+        <input type="date" id="owdu-date-to" title="End date">
+        <button class="owdu-btn owdu-btn-primary" id="owdu-apply-custom" type="button">Apply</button>
+      </div>
+
+      <!-- Export dropdown button -->
+      <div class="owdu-dropdown-wrap">
+        <button class="owdu-btn" id="owdu-export-btn" type="button" title="Export dashboard">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          Export
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="owdu-dropdown-menu" id="owdu-export-dropdown">
+          <button class="owdu-dropdown-option" id="owdu-export-csv" type="button">CSV</button>
+          <button class="owdu-dropdown-option" id="owdu-export-pdf" type="button">PDF</button>
+          <button class="owdu-dropdown-option" id="owdu-export-xls" type="button">XLS</button>
+        </div>
+      </div>
+
+      <button class="owdu-btn" id="owdu-refresh-btn" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="23 4 23 10 17 10"></polyline>
+          <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+        </svg>
+        Refresh
+      </button>
+    </div>
   </div>
 
   <!-- ================= SUMMARY ROW ================= -->
@@ -562,7 +804,7 @@
     <div class="owdu-summary-grid">
 
       <!-- Total -->
-      <div class="owdu-summary-card">
+      <div class="owdu-summary-card" data-accent="gray">
         <div class="owdu-card-top">
           <div class="owdu-card-left">
             <div class="owdu-summary-label">Total Traffic</div>
@@ -588,7 +830,7 @@
       </div>
 
       <!-- Cellular -->
-      <div class="owdu-summary-card">
+      <div class="owdu-summary-card" data-accent="green">
         <div class="owdu-card-top">
           <div class="owdu-card-left">
             <div class="owdu-summary-label">Cellular</div>
@@ -614,7 +856,7 @@
       </div>
 
       <!-- Wired -->
-      <div class="owdu-summary-card">
+      <div class="owdu-summary-card" data-accent="blue">
         <div class="owdu-card-top">
           <div class="owdu-card-left">
             <div class="owdu-summary-label">Wired</div>
@@ -640,7 +882,7 @@
       </div>
 
       <!-- Wi-Fi -->
-      <div class="owdu-summary-card">
+      <div class="owdu-summary-card" data-accent="orange">
         <div class="owdu-card-top">
           <div class="owdu-card-left">
             <div class="owdu-summary-label">Wi-Fi</div>
@@ -685,11 +927,12 @@
     <!-- WAN Donut (Chart.js doughnut) -->
     <div class="owdu-donut-card">
       <div class="owdu-card-hd">WAN Type Distribution</div>
-      <div class="owdu-card-bd">
-        <div class="owdu-donut-wrap">
+      <div class="owdu-card-bd" style="padding:16px;">
+        <div class="owdu-donut-shell">
           <div id="owdu-loading-donut" class="owdu-loading">Loading...</div>
-          <canvas id="owdu-wan-donut" class="owdu-donut-canvas" style="display:block;max-width:260px;max-height:260px;margin:0 auto"></canvas>
+          <canvas id="owdu-wan-donut" class="owdu-donut-canvas"></canvas>
         </div>
+        <div id="owdu-donut-legend" class="owdu-donut-legend"></div>
       </div>
     </div>
   </div>
@@ -855,30 +1098,32 @@
 
   window.OWDU_KIND_ICONS = {
     total: '<span class="kind-badge kind-total" title="Total" aria-label="Total">' +
-      '<svg viewBox="0 0 24 24" aria-hidden="true">' +
-      '<path d="M12 3 21 8.2 12 13.4 3 8.2 12 3Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>' +
-      '<path d="M21 12.2 12 17.4 3 12.2" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>' +
+      '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
+      '<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" stroke="currentColor" stroke-width="2"/>' +
+      '<path d="M2 12h20M12 2c2.5 2.5 4 6 4 10s-1.5 7.5-4 10c-2.5-2.5-4-6-4-10s1.5-7.5 4-10z" stroke="currentColor" stroke-width="1.5"/>' +
       '</svg></span>',
     cellular: '<span class="kind-badge kind-cellular" title="Cellular" aria-label="Cellular">' +
-      '<svg viewBox="0 0 24 24" aria-hidden="true">' +
-      '<path d="M4 20h2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>' +
-      '<path d="M8 20v-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>' +
-      '<path d="M12 20v-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>' +
-      '<path d="M16 20v-10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>' +
-      '<path d="M20 20V6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>' +
+      '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
+      '<rect x="3" y="16" width="3" height="5" rx="1" stroke="currentColor" stroke-width="1.5"/>' +
+      '<rect x="8.5" y="12" width="3" height="9" rx="1" stroke="currentColor" stroke-width="1.5"/>' +
+      '<rect x="14" y="7" width="3" height="14" rx="1" stroke="currentColor" stroke-width="1.5"/>' +
+      '<rect x="19.5" y="3" width="3" height="18" rx="1" stroke="currentColor" stroke-width="1.5"/>' +
       '</svg></span>',
     wired: '<span class="kind-badge kind-wired" title="Ethernet" aria-label="Ethernet">' +
-      '<svg viewBox="0 0 24 24" aria-hidden="true">' +
-      '<path d="M7 3h10a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>' +
-      '<path d="M8 10V8m2 2V8m2 2V8m2 2V8m2 2V8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>' +
-      '<path d="M10 13v5m4-5v5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>' +
+      '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
+      '<rect x="5" y="2" width="14" height="15" rx="2" stroke="currentColor" stroke-width="1.8"/>' +
+      '<path d="M8 17v3M12 17v3M16 17v3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>' +
+      '<rect x="7.5" y="5" width="2" height="4" rx="0.5" fill="currentColor"/>' +
+      '<rect x="11" y="5" width="2" height="4" rx="0.5" fill="currentColor"/>' +
+      '<rect x="14.5" y="5" width="2" height="4" rx="0.5" fill="currentColor"/>' +
+      '<path d="M5 12h14" stroke="currentColor" stroke-width="1.2"/>' +
       '</svg></span>',
     wifi: '<span class="kind-badge kind-wifi" title="Wi-Fi" aria-label="Wi-Fi">' +
-      '<svg viewBox="0 0 24 24" aria-hidden="true">' +
-      '<path d="M5 10a11 11 0 0 1 14 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>' +
-      '<path d="M8 13a7 7 0 0 1 8 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>' +
-      '<path d="M11 16a3 3 0 0 1 2 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>' +
-      '<path d="M12 20h.01" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>' +
+      '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
+      '<path d="M2 8.82a15 15 0 0 1 20 0" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' +
+      '<path d="M5 12.86a10 10 0 0 1 14 0" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' +
+      '<path d="M8.5 16.43a5 5 0 0 1 7 0" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' +
+      '<circle cx="12" cy="20" r="1.5" fill="currentColor"/>' +
       '</svg></span>',
   };
 
@@ -905,6 +1150,23 @@
   var REFRESH_MS = 300000; // 5 minutes
   var TOP_ROWS = 10;
   var FETCH_TIMEOUT_MS = 12000;
+
+  // =========================================================================
+  // CENTRALIZED MESSAGE TEMPLATES
+  // =========================================================================
+  var MSG_COLOR = "#94a3b8";
+  var MSG_STYLE = "display:flex;align-items:center;justify-content:center;flex-direction:column;gap:6px;min-height:100px;color:" + MSG_COLOR + ";font-size:12px;font-weight:600;";
+  var MSG_ICON  = '<i class="fas fa-database" style="font-size:20px;color:#d1d5db;"></i>';
+
+  // No data: API succeeded but returned empty results
+  function msgNoData() {
+    return '<div style="' + MSG_STYLE + '">' + MSG_ICON + '<span>No data available</span></div>';
+  }
+
+  // Unable to load: API call failed
+  function msgError() {
+    return '<div style="' + MSG_STYLE + '">' + MSG_ICON + '<span>Unable to load data</span></div>';
+  }
 
   // =========================================================================
   // MODULE STATE (data cache for CSV export)
@@ -1089,7 +1351,7 @@
     if (text) setText(el, text);
   }
 
-  function showEmptyOverlay(containerId, message) {
+  function showEmptyOverlay(containerId, message, icon) {
     var container = $(containerId);
     if (!container) return;
     var overlay = container.querySelector(".owdu-empty-overlay");
@@ -1098,7 +1360,7 @@
       overlay.className = "owdu-empty-overlay";
       container.appendChild(overlay);
     }
-    setText(overlay, message || "No data available.");
+    overlay.innerHTML = message || msgNoData();
     overlay.style.display = "flex";
   }
 
@@ -1112,13 +1374,14 @@
   function showError(containerId, message) {
     var container = $(containerId);
     if (!container) return;
-    // Remove previous error if any
-    var prev = container.querySelector(".owdu-error-msg");
-    if (prev) prev.remove();
-    var errDiv = document.createElement("div");
-    errDiv.className = "owdu-error-msg";
-    setText(errDiv, message || "Failed to load data.");
-    container.appendChild(errDiv);
+    // Clear all content to avoid double messages
+    container.innerHTML = message || msgError();
+    // Also clear the sibling table
+    var card = container.closest(".owdu-card") || container.closest(".owdu-per-wan-card");
+    if (card) {
+      var tableWrap = card.querySelector(".owdu-table-scroll");
+      if (tableWrap) tableWrap.innerHTML = '';
+    }
   }
 
   function clearError(containerId) {
@@ -1178,8 +1441,11 @@
   }
 
   // =========================================================================
-  // PLOTLY HORIZONTAL BAR (reusable for Top Apps, Categories, Devices, Clients)
+  // CHART.JS HORIZONTAL BAR (reusable for Top Apps, Categories, Devices, Clients)
   // =========================================================================
+  var _chartInstances = {};
+  var barPalette = ['rgba(66,133,244,0.85)'];
+
   function renderPlotlyHBarCompact(plotId, labels, bytesArray, emptyMessage) {
     var el = $(plotId);
     if (!el) return;
@@ -1192,73 +1458,96 @@
       .sort(function (a, b) { return b.bytes - a.bytes; })
       .slice(0, TOP_ROWS);
 
-    if (!rows.length || rows.every(function (r) { return r.bytes <= 0; })) {
-      // Show chart with placeholder "No data" row instead of empty overlay
-      rows = [{ label: "No data", bytes: 0 }];
+    var hasData = rows.length > 0 && rows.some(function (r) { return r.bytes > 0; });
+
+    // Destroy previous chart instance
+    if (_chartInstances[plotId]) {
+      _chartInstances[plotId].destroy();
+      _chartInstances[plotId] = null;
     }
+
+    // Replace div with canvas if needed
+    var canvas = el.querySelector('canvas');
+    if (!canvas) {
+      el.innerHTML = '';
+      canvas = document.createElement('canvas');
+      el.appendChild(canvas);
+    }
+    el.style.position = 'relative';
+
+    // Remove old overlay
+    var oldOv = el.querySelector('.owdu-bar-overlay');
+    if (oldOv) oldOv.remove();
+
+    if (!hasData) {
+      // Empty chart with blank axes + overlay
+      _chartInstances[plotId] = new Chart(canvas.getContext('2d'), {
+        type: 'bar',
+        data: { labels: [], datasets: [{ data: [], backgroundColor: '#f1f5f9' }] },
+        options: {
+          indexAxis: 'y', responsive: true, maintainAspectRatio: false, animation: false,
+          plugins: { legend: { display: false }, tooltip: { enabled: false } },
+          scales: {
+            x: { grid: { color: '#e5e7eb' }, border: { color: '#cbd5e1' },
+              title: { display: true, text: 'MB', color: '#64748b' }, ticks: { color: '#94a3b8' }, min: 0, max: 100 },
+            y: { grid: { display: false }, border: { color: '#cbd5e1' }, ticks: { display: false } }
+          }
+        }
+      });
+      var ov = document.createElement('div');
+      ov.className = 'owdu-bar-overlay';
+      ov.style.cssText = 'position:absolute;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.75);z-index:2;pointer-events:none;';
+      ov.innerHTML = msgNoData();
+      el.appendChild(ov);
+      return;
+    }
+
     hideEmptyOverlay(plotId);
     clearError(plotId);
 
-    var padded = rows.slice();
-    while (padded.length < TOP_ROWS) padded.push({ label: "", bytes: 0 });
+    var chartLabels = rows.map(function (r) { return r.label; });
+    var scale = getChartUnitScale(rows.map(function (r) { return r.bytes; }));
+    var chartData = rows.map(function (r) { return +(r.bytes / scale.divisor).toFixed(2); });
+    var colors = rows.map(function (_, i) { return barPalette[i % barPalette.length]; });
 
-    var bytesAll = padded.map(function (r) { return r.bytes; });
-    var scale = getChartUnitScale(bytesAll);
-    var xAll = bytesAll.map(function (b) { return +(b / scale.divisor).toFixed(2); });
-
-    var maxX = Math.max.apply(null, xAll.concat([0]));
-    var xMaxPad = maxX > 0 ? maxX * 1.15 : 1;
-
-    var yAll = Array.from({ length: TOP_ROWS }, function (_, i) { return i; });
-    var ticktext = padded.map(function (r) { return r.label || ""; });
-
-    var maxLen = rows.reduce(function (m, r) { return Math.max(m, (r.label || "").length); }, 0);
-    var leftMargin = Math.min(260, Math.max(120, Math.floor(maxLen * 7.2)));
-
-    var annotations = rows.map(function (r, i) {
-      return {
-        x: xAll[i], y: yAll[i], xref: "x", yref: "y",
-        text: formatBytesForLabel(r.bytes),
-        showarrow: false, xanchor: "left", yanchor: "middle", xshift: 8,
-        font: { size: 11, color: "#374151" }, cliponaxis: false,
-      };
-    });
-
-    Plotly.react(
-      el,
-      [{
-        type: "bar", orientation: "h", x: xAll, y: yAll,
-        marker: { line: { width: 0 }, cornerradius: 30 },
-        width: 0.55,
-      }],
-      {
-        autosize: true,
-        paper_bgcolor: "#ffffff",
-        plot_bgcolor: "#ffffff",
-        showlegend: false,
-        margin: { l: leftMargin, r: 40, t: 8, b: 34 },
-        xaxis: {
-          range: [0, xMaxPad],
-          ticksuffix: " " + scale.unit,
-          tickfont: { size: 11, color: "#6b7280" },
-          gridcolor: "#e5e7eb",
-          zeroline: true, zerolinecolor: "#e5e7eb", zerolinewidth: 1,
-          fixedrange: true, tick0: 0,
-        },
-        yaxis: {
-          autorange: "reversed", showgrid: false, fixedrange: true,
-          tickmode: "array", tickvals: yAll, ticktext: ticktext,
-          tickfont: { size: 11, color: "#374151" },
-          range: [-0.5, TOP_ROWS - 0.5], ticklabelstandoff: 10,
-        },
-        annotations: annotations,
+    _chartInstances[plotId] = new Chart(canvas.getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: chartLabels,
+        datasets: [{
+          label: 'Download (' + scale.unit + ')',
+          data: chartData,
+          backgroundColor: colors,
+          borderRadius: 3,
+          borderSkipped: false,
+          barThickness: 14,
+        }]
       },
-      { responsive: true, displaylogo: false, displayModeBar: false }
-    ).then(function () {
-      attachResizeObserver(plotId);
-      resizeBurst(plotId);
-      setTimeout(function () { roundBars(plotId, 8); }, 0);
-      setTimeout(function () { roundBars(plotId, 8); }, 250);
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#fff',
+            titleColor: '#111827',
+            bodyColor: '#374151',
+            borderColor: '#e5e7eb',
+            borderWidth: 1,
+            titleFont: { weight: '600' },
+          }
+        },
+        scales: {
+          x: {
+            grid: { color: '#f3f4f6' },
+            title: { display: true, text: scale.unit, color: '#9ca3af' },
+          },
+          y: {
+            grid: { display: false },
+          }
+        }
+      }
     });
   }
 
@@ -1271,13 +1560,19 @@
    * All cell values run through escHtml for XSS safety.
    */
   function buildRankedTable(rows, columns) {
-    if (!rows || !rows.length) return "";
+    if (!rows || !rows.length) return msgNoData();
+    // Filter out placeholder rows
+    var real = rows.filter(function(r) {
+      var first = r[columns[0].key];
+      return first && first !== "No data yet" && first !== "No data";
+    });
+    if (!real.length) return msgNoData();
     var html = '<table class="owdu-ranked-table"><thead><tr>';
     columns.forEach(function (col) {
       html += '<th class="' + (col.align === "right" ? "owdu-right" : "") + '">' + escHtml(col.label) + '</th>';
     });
     html += '</tr></thead><tbody>';
-    rows.forEach(function (row, idx) {
+    real.forEach(function (row, idx) {
       html += '<tr>';
       columns.forEach(function (col) {
         var val = row[col.key];
@@ -1355,16 +1650,75 @@
     var cellularTotal = (sd.cellular && sd.cellular.total) || 0;
     var wiredTotal = (sd.wired && sd.wired.total) || 0;
     var wifiTotal = (sd.wireless && sd.wireless.total) || 0;
+    var grandTotal = cellularTotal + wiredTotal + wifiTotal;
 
-    // Always show donut — if all zero, show equal placeholder slices
-    var hasData = (cellularTotal + wiredTotal + wifiTotal) > 0;
-    if (!hasData) {
-      cellularTotal = 1;
-      wiredTotal = 1;
-      wifiTotal = 1;
-    }
+    var hasData = grandTotal > 0;
 
     var canvas = $("owdu-wan-donut");
+    var legendEl = $("owdu-donut-legend");
+
+    if (!hasData) {
+      // No traffic — show grey empty ring + overlay
+      if (legendEl) legendEl.innerHTML = "";
+      var shell = canvas && canvas.closest(".owdu-donut-shell");
+      if (shell) {
+        shell.style.position = 'relative';
+        // Keep canvas, draw grey ring
+        if (wanDonutChart) { wanDonutChart.destroy(); wanDonutChart = null; }
+        if (canvas) {
+          wanDonutChart = new Chart(canvas.getContext("2d"), {
+            type: "doughnut",
+            data: { labels: ["No Data"], datasets: [{ data: [1], backgroundColor: ["#e2e8f0"], borderWidth: 0 }] },
+            options: { responsive: false, maintainAspectRatio: false, cutout: "65%", animation: false,
+              plugins: { legend: { display: false }, tooltip: { enabled: false } } }
+          });
+        }
+        // Remove old overlay if any
+        var oldOv = shell.querySelector('.owdu-donut-overlay');
+        if (oldOv) oldOv.remove();
+        // Add overlay
+        var ov = document.createElement('div');
+        ov.className = 'owdu-donut-overlay';
+        ov.style.cssText = 'position:absolute;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;z-index:2;';
+        ov.innerHTML = msgNoData();
+        shell.appendChild(ov);
+      }
+      return;
+    }
+
+    // Has data — ensure canvas exists in shell, remove overlay
+    var shell = canvas && canvas.closest(".owdu-donut-shell");
+    if (shell) {
+      var oldOv = shell.querySelector('.owdu-donut-overlay');
+      if (oldOv) oldOv.remove();
+      if (!shell.contains(canvas)) {
+        shell.innerHTML = '';
+        shell.appendChild(canvas);
+      }
+    }
+    if (canvas) canvas.style.display = "";
+
+    // Donut ring: only 3 breakdown segments (Cellular, Wired, Wi-Fi)
+    var donutLabels = ["Cellular", "Wired", "Wi-Fi"];
+    var donutValues = [cellularTotal, wiredTotal, wifiTotal];
+    var donutBg    = ["#16a34a", "#0ea5e9", "#fb923c"];
+    var donutHover = ["#15803d", "#0284c7", "#f97316"];
+
+    // Build HTML legend showing 3 types (no Total)
+    var legendItems = [
+      { label: "Cellular", color: "#16a34a", value: cellularTotal },
+      { label: "Wired",    color: "#0ea5e9", value: wiredTotal },
+      { label: "Wi-Fi",    color: "#fb923c", value: wifiTotal },
+    ];
+    if (legendEl) {
+      legendEl.innerHTML = legendItems.map(function (item) {
+        return '<div class="owdu-donut-legend-item">' +
+          '<span class="owdu-donut-legend-color" style="background:' + item.color + '"></span>' +
+          '<span class="owdu-donut-legend-label">' + item.label + '</span>' +
+          '</div>';
+      }).join("");
+    }
+
     if (!canvas) return;
     var ctx = canvas.getContext("2d");
 
@@ -1373,50 +1727,109 @@
       wanDonutChart = null;
     }
 
+    var donutTotal = donutValues.reduce(function (a, b) { return a + b; }, 0) || 1;
+
+    // Segment label plugin — draws percentage + value ON each donut arc
+    var segmentLabelPlugin = {
+      id: 'segmentLabels',
+      afterDraw: function (chart) {
+        var meta = chart.getDatasetMeta(0);
+        if (!meta || !meta.data || !meta.data.length) return;
+        var ctx2 = chart.ctx;
+        ctx2.save();
+
+        meta.data.forEach(function (arc, i) {
+          var val = donutValues[i];
+          if (!val || val <= 0) return;
+
+          var pct = (val / donutTotal * 100).toFixed(1) + '%';
+          var byteLabel = fmtBytes(val);
+
+          // Calculate midpoint angle of the arc
+          var startAngle = arc.startAngle;
+          var endAngle = arc.endAngle;
+          var midAngle = (startAngle + endAngle) / 2;
+
+          // Position label at the middle of the ring (between inner and outer radius)
+          var innerRadius = arc.innerRadius;
+          var outerRadius = arc.outerRadius;
+          var midRadius = (innerRadius + outerRadius) / 2;
+
+          var cx = arc.x + Math.cos(midAngle) * midRadius;
+          var cy = arc.y + Math.sin(midAngle) * midRadius;
+
+          // Check if arc is wide enough for inline text
+          var arcSpan = endAngle - startAngle;
+
+          ctx2.textAlign = 'center';
+          ctx2.textBaseline = 'middle';
+
+          if (arcSpan > 0.6) {
+            // Wide segment — draw both lines inside the ring
+            ctx2.font = 'bold 11px -apple-system, BlinkMacSystemFont, sans-serif';
+            ctx2.fillStyle = '#ffffff';
+            ctx2.fillText(pct, cx, cy - 6);
+            ctx2.font = '600 9px -apple-system, BlinkMacSystemFont, sans-serif';
+            ctx2.fillText(byteLabel, cx, cy + 6);
+          } else if (arcSpan > 0.3) {
+            // Medium segment — single line inside
+            ctx2.font = 'bold 10px -apple-system, BlinkMacSystemFont, sans-serif';
+            ctx2.fillStyle = '#ffffff';
+            ctx2.fillText(pct, cx, cy);
+          } else {
+            // Narrow segment — draw label outside with a line
+            var labelRadius = outerRadius + 18;
+            var lx = arc.x + Math.cos(midAngle) * labelRadius;
+            var ly = arc.y + Math.sin(midAngle) * labelRadius;
+
+            // Connector line
+            var lineStart = arc.x + Math.cos(midAngle) * outerRadius;
+            var lineStartY = arc.y + Math.sin(midAngle) * outerRadius;
+            ctx2.beginPath();
+            ctx2.moveTo(lineStart, lineStartY);
+            ctx2.lineTo(lx, ly);
+            ctx2.strokeStyle = '#94a3b8';
+            ctx2.lineWidth = 1;
+            ctx2.stroke();
+
+            ctx2.font = 'bold 10px -apple-system, BlinkMacSystemFont, sans-serif';
+            ctx2.fillStyle = '#1e293b';
+            ctx2.fillText(pct + ' ' + byteLabel, lx, ly);
+          }
+        });
+
+        ctx2.restore();
+      }
+    };
+
     wanDonutChart = new Chart(ctx, {
       type: "doughnut",
       data: {
-        labels: ["Cellular", "Wired", "Wi-Fi"],
+        labels: donutLabels,
         datasets: [{
-          data: [cellularTotal, wiredTotal, wifiTotal],
-          backgroundColor: ["#16a34a", "#0ea5e9", "#ff7f0e"],
-          borderWidth: 1,
-          borderColor: "#ffffff",
+          data: donutValues,
+          backgroundColor: donutBg,
+          borderWidth: 0,
         }],
       },
+      plugins: [segmentLabelPlugin],
       options: {
-        responsive: true,
-        maintainAspectRatio: true,
-        cutout: "55%",
+        responsive: false,
+        maintainAspectRatio: false,
+        cutout: "65%",
         plugins: {
-          legend: {
-            position: "bottom",
-            labels: { font: { size: 11 }, padding: 12 },
-          },
+          legend: { display: false },
           tooltip: {
             callbacks: {
               label: function (context) {
-                var label = context.label || "";
                 var val = context.parsed || 0;
-                var total = context.dataset.data.reduce(function (a, b) { return a + b; }, 0);
-                var pct = total > 0 ? ((val / total) * 100).toFixed(1) : "0.0";
-                return label + ": " + fmtBytes(val) + " (" + pct + "%)";
+                var pct = (val / donutTotal * 100).toFixed(1);
+                return context.label + ": " + fmtBytes(val) + " (" + pct + "%)";
               },
             },
           },
-          datalabels: {
-            formatter: function (val, ctx) {
-              var total = ctx.dataset.data.reduce(function (a, b) { return a + b; }, 0);
-              if (total <= 0) return "";
-              var pct = ((val / total) * 100).toFixed(1);
-              return pct > 2 ? pct + "%" : "";
-            },
-            color: "#374151",
-            font: { size: 11, weight: "bold" },
-          },
         },
       },
-      plugins: [ChartDataLabels],
     });
   }
 
@@ -1433,13 +1846,17 @@
         setLoading("owdu-loading-trending", false);
 
         var results = (json && json.results) || [];
+        var _trendNoData = false;
+        // If no results, generate zero-value timestamps so chart renders with axes
         if (!results.length) {
-          // Show flat zero line instead of empty overlay
+          _trendNoData = true;
           var now = new Date();
-          results = [
-            { timestamp: new Date(now - 3600000).toISOString(), download: 0, upload: 0 },
-            { timestamp: now.toISOString(), download: 0, upload: 0 },
-          ];
+          var hourAgo = new Date(now.getTime() - 3600000);
+          var step = 3600000 / 12;
+          results = [];
+          for (var gi = 0; gi <= 12; gi++) {
+            results.push({ timestamp: new Date(hourAgo.getTime() + step * gi).toISOString(), download: 0, upload: 0 });
+          }
         }
         hideEmptyOverlay("owdu-trending");
 
@@ -1452,13 +1869,30 @@
           type: "scatter", mode: "lines", fill: "tozeroy",
           fillcolor: "rgba(14,165,233,0.25)",
           line: { color: "#0ea5e9", width: 2 },
+          hovertemplate: "Download: %{customdata}<extra></extra>",
+          customdata: downloads.map(function (v) { return formatBytesForLabel(v); }),
         };
         var traceUp = {
           x: timestamps, y: uploads, name: "Upload",
           type: "scatter", mode: "lines", fill: "tozeroy",
           fillcolor: "rgba(5,150,105,0.25)",
           line: { color: "#059669", width: 2 },
+          hovertemplate: "Upload: %{customdata}<extra></extra>",
+          customdata: uploads.map(function (v) { return formatBytesForLabel(v); }),
         };
+
+        // Compute smart Y-axis tick values with human-readable byte labels
+        var allVals = downloads.concat(uploads);
+        var yMax = Math.max.apply(null, allVals) || 1;
+        var tickCount = 6;
+        var tickStep = yMax / (tickCount - 1);
+        var yTickVals = [];
+        var yTickTexts = [];
+        for (var ti = 0; ti < tickCount; ti++) {
+          var tv = tickStep * ti;
+          yTickVals.push(tv);
+          yTickTexts.push(formatBytesForLabel(tv));
+        }
 
         var layout = {
           autosize: true,
@@ -1466,19 +1900,23 @@
           plot_bgcolor: "#ffffff",
           showlegend: true,
           legend: { orientation: "h", x: 0, y: 1.12, font: { size: 11 } },
-          margin: { l: 60, r: 16, t: 10, b: 40 },
+          margin: { l: 80, r: 20, t: 10, b: 60 },
           xaxis: {
             type: "date",
             tickfont: { size: 10, color: "#6b7280" },
             gridcolor: "#f3f4f6",
             fixedrange: true,
+            tickformat: "%H:%M\n%b %d",
+            tickangle: 0,
+            dtick: 3 * 3600000,
           },
           yaxis: {
             tickfont: { size: 10, color: "#6b7280" },
             gridcolor: "#e5e7eb",
             fixedrange: true,
             rangemode: "tozero",
-            title: { text: "Bytes", font: { size: 10, color: "#9ca3af" } },
+            tickvals: yTickVals,
+            ticktext: yTickTexts,
           },
         };
 
@@ -1487,13 +1925,25 @@
         }).then(function () {
           attachResizeObserver("owdu-trending");
           resizeBurst("owdu-trending");
+          // Overlay "No data" message on top of chart when empty
+          var tEl = $("owdu-trending");
+          var oldOv = tEl && tEl.querySelector('.owdu-trend-overlay');
+          if (oldOv) oldOv.remove();
+          if (_trendNoData && tEl) {
+            tEl.style.position = 'relative';
+            var ov = document.createElement('div');
+            ov.className = 'owdu-trend-overlay';
+            ov.style.cssText = 'position:absolute;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.75);z-index:2;pointer-events:none;';
+            ov.innerHTML = msgNoData();
+            tEl.appendChild(ov);
+          }
         });
       })
       .catch(function (err) {
         setLoading("owdu-loading-trending", false);
         if (err && err.name === "AbortError") return;
         console.error("Trending chart error:", err);
-        showError("owdu-trending", "Failed to load trending data.");
+        showError("owdu-trending", msgError());
       });
   }
 
@@ -1511,18 +1961,15 @@
         var rows = Array.isArray(json && json.top_10_apps) ? json.top_10_apps : [];
         cachedTopApps = rows;
 
-        if (!rows.length) {
-          rows = [{ label: "No data yet", traffic: 0 }];
-        }
-
         var labels = rows.map(function (r) { return String(r.label || ""); });
         var bytes = rows.map(function (r) { return Number(r.traffic) || 0; });
 
+        var hasTraffic = bytes.some(function (b) { return b > 0; });
         renderPlotlyHBarCompact("owdu-top-apps", labels, bytes, "No application traffic data available.");
 
         // Wire click handler for app drill-down
         var appEl = $("owdu-top-apps");
-        if (appEl) {
+        if (appEl && hasTraffic) {
           appEl.removeAllListeners && appEl.removeAllListeners("plotly_click");
           appEl.on("plotly_click", function (data) {
             if (data && data.points && data.points[0]) {
@@ -1533,23 +1980,23 @@
           });
         }
 
-        // Build table below chart
+        // Build table below chart — only if there's actual traffic
         var tableWrap = $("owdu-apps-table-wrap");
         if (tableWrap) {
-          tableWrap.innerHTML = buildRankedTable(
+          tableWrap.innerHTML = hasTraffic ? buildRankedTable(
             rows.map(function (r) { return { name: r.label, traffic: r.traffic }; }),
             [
               { key: "name", label: "Application" },
               { key: "traffic", label: "Traffic", align: "right", fmt: function (v) { return escHtml(fmtBytes(v)); } },
             ]
-          );
+          ) : '';
         }
       })
       .catch(function (err) {
         setLoading("owdu-loading-apps", false);
         if (err && err.name === "AbortError") return;
         console.error("Top apps error:", err);
-        showError("owdu-top-apps", "Unable to load top applications.");
+        showError("owdu-top-apps", msgError());
       });
   }
 
@@ -1567,20 +2014,20 @@
         var devices = Array.isArray(json && json.top_10_devices) ? json.top_10_devices : [];
         cachedTopDevices = devices;
 
-        if (!devices.length) {
-          devices = [{ name: "No data yet", total_bytes: 0 }];
-        }
-
         var labels = devices.map(function (d) {
           return String(d.name || d.hostname || d.device || d.device_id || "").trim();
         });
         var bytes = devices.map(function (d) { return Number(d.total_bytes || 0); });
 
+        var hasTraffic = bytes.some(function (b) { return b > 0; });
         renderPlotlyHBarCompact("owdu-top-branches", labels, bytes, "No device traffic data available.");
 
-        // Build table with device link
+        // Build table with device link — only if there's actual traffic
         var tableWrap = $("owdu-devices-table-wrap");
         if (tableWrap) {
+          if (!hasTraffic) {
+            tableWrap.innerHTML = '';
+          } else {
           tableWrap.innerHTML = buildRankedTable(
             devices.map(function (d) {
               return {
@@ -1602,13 +2049,14 @@
               { key: "total_bytes", label: "Traffic", align: "right", fmt: function (v) { return escHtml(fmtBytes(v)); } },
             ]
           );
+          }
         }
       })
       .catch(function (err) {
         setLoading("owdu-loading-branches", false);
         if (err && err.name === "AbortError") return;
         console.error("Top devices error:", err);
-        showError("owdu-top-branches", "Unable to load top devices.");
+        showError("owdu-top-branches", msgError());
       });
   }
 
@@ -1626,10 +2074,6 @@
         var categories = Array.isArray(json && json.categories) ? json.categories : [];
         cachedTopCategories = categories;
 
-        if (!categories.length) {
-          categories = [{ category: "No data yet", total_down: 0, total_up: 0, total_flows: 0 }];
-        }
-
         // Sort and take top 10
         categories.sort(function (a, b) {
           return ((b.total_down || 0) + (b.total_up || 0)) - ((a.total_down || 0) + (a.total_up || 0));
@@ -1639,11 +2083,12 @@
         var labels = top10.map(function (c) { return c.category || "Unknown"; });
         var bytes = top10.map(function (c) { return (c.total_down || 0) + (c.total_up || 0); });
 
+        var hasTraffic = bytes.some(function (b) { return b > 0; });
         renderPlotlyHBarCompact("owdu-top-categories", labels, bytes, "No category data available.");
 
         // Wire click handler for category drill-down
         var catEl = $("owdu-top-categories");
-        if (catEl) {
+        if (catEl && hasTraffic) {
           catEl.removeAllListeners && catEl.removeAllListeners("plotly_click");
           catEl.on("plotly_click", function (data) {
             if (data && data.points && data.points[0]) {
@@ -1654,10 +2099,10 @@
           });
         }
 
-        // Build table below chart
+        // Build table below chart — only if there's actual traffic
         var tableWrap = $("owdu-categories-table-wrap");
         if (tableWrap) {
-          tableWrap.innerHTML = buildRankedTable(
+          tableWrap.innerHTML = hasTraffic ? buildRankedTable(
             top10.map(function (c) {
               return {
                 category: c.category || "Unknown",
@@ -1673,14 +2118,14 @@
               { key: "upload", label: "Upload", align: "right", fmt: function (v) { return escHtml(fmtBytes(v)); } },
               { key: "total", label: "Total", align: "right", fmt: function (v) { return escHtml(fmtBytes(v)); } },
             ]
-          );
+          ) : '';
         }
       })
       .catch(function (err) {
         setLoading("owdu-loading-categories", false);
         if (err && err.name === "AbortError") return;
         console.error("Top categories error:", err);
-        showError("owdu-top-categories", "Unable to load top categories.");
+        showError("owdu-top-categories", msgError());
       });
   }
 
@@ -1698,19 +2143,16 @@
         var ips = Array.isArray(json && json.ips) ? json.ips : [];
         cachedTopClients = ips;
 
-        if (!ips.length) {
-          ips = [{ ip: "No data yet", download: 0, upload: 0 }];
-        }
-
         var labels = ips.map(function (c) { return c.ip || c.hostname || "Unknown"; });
         var bytes = ips.map(function (c) { return (c.download || 0) + (c.upload || 0); });
 
+        var hasTraffic = bytes.some(function (b) { return b > 0; });
         renderPlotlyHBarCompact("owdu-top-clients", labels, bytes, "No client data available.");
 
-        // Build table below chart
+        // Build table below chart — only if there's actual traffic
         var tableWrap = $("owdu-clients-table-wrap");
         if (tableWrap) {
-          tableWrap.innerHTML = buildRankedTable(
+          tableWrap.innerHTML = hasTraffic ? buildRankedTable(
             ips.map(function (c) {
               return {
                 ip: c.ip || "Unknown",
@@ -1725,14 +2167,14 @@
               { key: "upload", label: "Upload", align: "right", fmt: function (v) { return escHtml(fmtBytes(v)); } },
               { key: "total", label: "Total", align: "right", fmt: function (v) { return escHtml(fmtBytes(v)); } },
             ]
-          );
+          ) : '';
         }
       })
       .catch(function (err) {
         setLoading("owdu-loading-clients", false);
         if (err && err.name === "AbortError") return;
         console.error("Top clients error:", err);
-        showError("owdu-top-clients", "Unable to load top clients.");
+        showError("owdu-top-clients", msgError());
       });
   }
 
@@ -1844,42 +2286,72 @@
         var topAppsByWan = (json && json.top_apps_by_wan) || {};
         cachedPerWan = json;
 
-        if (!links.length) {
-          links = [{ wan_link: "Default WAN", total_down: 0, total_up: 0, total_flows: 0 }];
-          var tw = $("owdu-per-wan-table-wrap");
-          if (tw) tw.innerHTML = "";
-          return;
-        }
-
         links.sort(function (a, b) { return ((b.total_down || 0) + (b.total_up || 0)) - ((a.total_down || 0) + (a.total_up || 0)); });
 
         var labels = links.map(function (l) { return l.wan_link || "Default WAN"; });
         var downs = links.map(function (l) { return l.total_down || 0; });
         var ups = links.map(function (l) { return l.total_up || 0; });
+        var hasData = links.length > 0 && links.some(function (l) { return (l.total_down || 0) + (l.total_up || 0) > 0; });
 
+        var plotId = "owdu-per-wan";
+        var el = $(plotId);
+        if (!el) return;
+        if (_chartInstances[plotId]) { _chartInstances[plotId].destroy(); _chartInstances[plotId] = null; }
+        var canvas = el.querySelector('canvas');
+        if (!canvas) { el.innerHTML = ''; canvas = document.createElement('canvas'); el.appendChild(canvas); }
+        el.style.position = 'relative';
+        var oldOv = el.querySelector('.owdu-bar-overlay');
+        if (oldOv) oldOv.remove();
+
+        if (!hasData) {
+          _chartInstances[plotId] = new Chart(canvas.getContext('2d'), {
+            type: 'bar',
+            data: { labels: [], datasets: [{ data: [], backgroundColor: '#f1f5f9' }] },
+            options: {
+              indexAxis: 'y', responsive: true, maintainAspectRatio: false, animation: false,
+              plugins: { legend: { display: false }, tooltip: { enabled: false } },
+              scales: {
+                x: { grid: { color: '#e5e7eb' }, border: { color: '#cbd5e1' },
+                  title: { display: true, text: 'MB', color: '#64748b' }, ticks: { color: '#94a3b8' }, min: 0, max: 100 },
+                y: { grid: { display: false }, border: { color: '#cbd5e1' }, ticks: { display: false } }
+              }
+            }
+          });
+          var ov = document.createElement('div');
+          ov.className = 'owdu-bar-overlay';
+          ov.style.cssText = 'position:absolute;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.75);z-index:2;pointer-events:none;';
+          ov.innerHTML = msgNoData();
+          el.appendChild(ov);
+          var tw = $("owdu-per-wan-table-wrap");
+          if (tw) tw.innerHTML = "";
+          return;
+        }
+
+        hideEmptyOverlay(plotId); clearError(plotId);
         var scale = getChartUnitScale(downs.concat(ups));
+        var downData = downs.map(function (v) { return +(v / scale.divisor).toFixed(2); });
+        var upData = ups.map(function (v) { return +(v / scale.divisor).toFixed(2); });
 
-        Plotly.react($("owdu-per-wan"), [
-          {
-            type: "bar", orientation: "h", name: "Download",
-            y: labels, x: downs.map(function (v) { return +(v / scale.divisor).toFixed(2); }),
-            marker: { color: "#0ea5e9" },
+        _chartInstances[plotId] = new Chart(canvas.getContext('2d'), {
+          type: 'bar',
+          data: {
+            labels: labels,
+            datasets: [
+              { label: 'Download (' + scale.unit + ')', data: downData, backgroundColor: 'rgba(66,133,244,0.85)', borderRadius: 3, borderSkipped: false, barThickness: 14 },
+              { label: 'Upload (' + scale.unit + ')', data: upData, backgroundColor: 'rgba(66,133,244,0.50)', borderRadius: 3, borderSkipped: false, barThickness: 14 }
+            ]
           },
-          {
-            type: "bar", orientation: "h", name: "Upload",
-            y: labels, x: ups.map(function (v) { return +(v / scale.divisor).toFixed(2); }),
-            marker: { color: "#059669" },
-          },
-        ], {
-          barmode: "stack",
-          autosize: true,
-          paper_bgcolor: "#fff", plot_bgcolor: "#fff",
-          margin: { l: 100, r: 20, t: 10, b: 40 },
-          xaxis: { ticksuffix: " " + scale.unit, fixedrange: true, gridcolor: "#e5e7eb" },
-          yaxis: { autorange: "reversed", fixedrange: true },
-          legend: { orientation: "h", x: 0, y: 1.12, font: { size: 11 } },
-        }, { responsive: true, displayModeBar: false }).then(function () {
-          attachResizeObserver("owdu-per-wan");
+          options: {
+            indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+            plugins: {
+              legend: { display: true, position: 'top', align: 'start', labels: { boxWidth: 12, padding: 16, font: { size: 11 } } },
+              tooltip: { backgroundColor: '#fff', titleColor: '#111827', bodyColor: '#374151', borderColor: '#e5e7eb', borderWidth: 1, titleFont: { weight: '600' } }
+            },
+            scales: {
+              x: { stacked: true, grid: { color: '#f3f4f6' }, title: { display: true, text: scale.unit, color: '#9ca3af' } },
+              y: { stacked: true, grid: { display: false } }
+            }
+          }
         });
 
         // Table
@@ -1910,7 +2382,7 @@
         setLoading("owdu-loading-per-wan", false);
         if (err && err.name === "AbortError") return;
         console.error("Per-WAN error:", err);
-        showError("owdu-per-wan", "Unable to load WAN link breakdown.");
+        showError("owdu-per-wan", msgError());
       });
   }
 
@@ -1932,21 +2404,15 @@
       fetchJson(dpiV2Url("/api/v1/dpi/data/stats/top/", "&dimension=application&category=" + encodeURIComponent(key) + "&limit=20"))
         .then(function (json) { renderCategoryDrillDown(key, json); })
         .catch(function (err) {
-          bodyEl.innerHTML = "";
-          var msg = document.createElement("p");
-          msg.style.cssText = "color:#dc2626;text-align:center;padding:40px";
-          setText(msg, "Failed to load: " + (err.message || "Unknown error"));
-          bodyEl.appendChild(msg);
+          console.error("Category drill error:", err);
+          bodyEl.innerHTML = msgError();
         });
     } else if (type === "app") {
       fetchJson(dpiV2Url("/api/v1/dpi/data/stats/timeseries/", "&app_name=" + encodeURIComponent(key)))
         .then(function (json) { renderAppDrillDown(key, json); })
         .catch(function (err) {
-          bodyEl.innerHTML = "";
-          var msg = document.createElement("p");
-          msg.style.cssText = "color:#dc2626;text-align:center;padding:40px";
-          setText(msg, "Failed to load: " + (err.message || "Unknown error"));
-          bodyEl.appendChild(msg);
+          console.error("App drill error:", err);
+          bodyEl.innerHTML = msgError();
         });
     }
   }
@@ -1967,9 +2433,7 @@
     var results = (json && json.results) || [];
     if (!results.length) {
       var msg = document.createElement("p");
-      msg.style.cssText = "color:#6b7280;text-align:center;padding:40px";
-      setText(msg, "No applications found in this category.");
-      bodyEl.appendChild(msg);
+      bodyEl.innerHTML = msgNoData();
       return;
     }
 
@@ -2019,10 +2483,7 @@
 
     var results = (json && json.results) || [];
     if (!results.length) {
-      var msg = document.createElement("p");
-      msg.style.cssText = "color:#6b7280;text-align:center;padding:40px";
-      setText(msg, "No trend data available for this application.");
-      bodyEl.appendChild(msg);
+      bodyEl.innerHTML = msgNoData();
       return;
     }
 
@@ -2226,7 +2687,7 @@
 
         var results = (json && json.results) || [];
         if (!results.length) {
-          listEl.innerHTML = '<div class="owdu-anomaly-empty">No active anomalies detected</div>';
+          listEl.innerHTML = msgNoData();
           return;
         }
 
@@ -2247,7 +2708,7 @@
         setLoading("owdu-loading-anomaly", false);
         if (err && err.name === "AbortError") return;
         var listEl = $("owdu-anomaly-list");
-        if (listEl) listEl.innerHTML = '<div class="owdu-anomaly-empty" style="color:#6b7280">Unable to load anomalies</div>';
+        if (listEl) listEl.innerHTML = msgError();
       });
   }
 
@@ -2265,7 +2726,7 @@
 
         var devices = Array.isArray(json && json.devices) ? json.devices : [];
         if (!devices.length) {
-          tableEl.innerHTML = '<div style="text-align:center;padding:24px;color:#6b7280;font-size:12px">No discovered devices yet</div>';
+          tableEl.innerHTML = msgNoData();
           return;
         }
 
@@ -2291,7 +2752,7 @@
         setLoading("owdu-loading-per-user", false);
         if (err && err.name === "AbortError") return;
         var tableEl = $("owdu-per-user-table");
-        if (tableEl) tableEl.innerHTML = '<div style="text-align:center;padding:24px;color:#6b7280;font-size:12px">Unable to load devices</div>';
+        if (tableEl) tableEl.innerHTML = msgError();
       });
   }
 
@@ -2418,10 +2879,11 @@
   // REFRESH ALL (called on init + time range change + interval)
   // =========================================================================
   function refreshAll() {
-    // Update last-updated timestamp
-    var tsEl = $("owdu-last-updated");
-    if (tsEl) {
-      setText(tsEl, "Updated: " + new Date().toLocaleTimeString());
+    // Spin the refresh button icon while loading
+    var refreshBtn = $("owdu-refresh-btn");
+    if (refreshBtn) {
+      refreshBtn.classList.add("owdu-spinning");
+      setTimeout(function () { refreshBtn.classList.remove("owdu-spinning"); }, 800);
     }
 
     // Each section fetched independently — one failure does not break others
@@ -2536,8 +2998,21 @@
     mountIoIcons();
     mountKindIcons();
 
-    // Restore time range from sessionStorage
-    var sel = $("owdu-time-range");
+    // --- Generic dropdown closer: close all dropdowns on outside click ---
+    document.addEventListener("click", function () {
+      document.querySelectorAll(".owdu-dropdown-menu.owdu-show").forEach(function (el) {
+        el.classList.remove("owdu-show");
+      });
+    });
+
+    // --- Time Range dropdown ---
+    var sel = $("owdu-time-range"); // hidden <select>
+    var trBtn = $("owdu-timerange-btn");
+    var trDropdown = $("owdu-timerange-dropdown");
+    var trLabel = $("owdu-timerange-label");
+    var labelMap = { "1h": "1 Hour", "6h": "6 Hours", "24h": "24 Hours", "7d": "7 Days", "30d": "30 Days", "90d": "90 Days", "custom": "Custom Range" };
+
+    // Restore from session
     if (sel) {
       var stored = getTimePeriod();
       var validOptions = ["1h", "6h", "24h", "7d", "30d", "90d", "custom"];
@@ -2546,21 +3021,80 @@
       } else {
         sel.value = "24h";
         setTimePeriod("24h");
+        stored = "24h";
+      }
+      if (trLabel) trLabel.textContent = labelMap[sel.value] || sel.value;
+      // Mark active option
+      if (trDropdown) {
+        trDropdown.querySelectorAll(".owdu-dropdown-option").forEach(function (opt) {
+          opt.classList.toggle("active", opt.getAttribute("data-value") === sel.value);
+        });
       }
       sel.addEventListener("change", onTimeRangeChange);
+    }
+
+    if (trBtn && trDropdown) {
+      trBtn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        // Close other dropdowns
+        document.querySelectorAll(".owdu-dropdown-menu.owdu-show").forEach(function (el) {
+          if (el !== trDropdown) el.classList.remove("owdu-show");
+        });
+        trDropdown.classList.toggle("owdu-show");
+      });
+      trDropdown.addEventListener("click", function (e) {
+        e.stopPropagation();
+      });
+      trDropdown.querySelectorAll(".owdu-dropdown-option").forEach(function (opt) {
+        opt.addEventListener("click", function () {
+          var val = opt.getAttribute("data-value");
+          // Update hidden select and trigger change
+          if (sel) {
+            sel.value = val;
+            sel.dispatchEvent(new Event("change"));
+          }
+          // Update button label
+          if (trLabel) trLabel.textContent = labelMap[val] || val;
+          // Update active state
+          trDropdown.querySelectorAll(".owdu-dropdown-option").forEach(function (o) {
+            o.classList.toggle("active", o === opt);
+          });
+          trDropdown.classList.remove("owdu-show");
+        });
+      });
     }
 
     // Custom range apply button
     var applyBtn = $("owdu-apply-custom");
     if (applyBtn) applyBtn.addEventListener("click", onApplyCustomRange);
 
+    // --- Export dropdown ---
+    var exportBtn = $("owdu-export-btn");
+    var exportDropdown = $("owdu-export-dropdown");
+    if (exportBtn && exportDropdown) {
+      exportBtn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        document.querySelectorAll(".owdu-dropdown-menu.owdu-show").forEach(function (el) {
+          if (el !== exportDropdown) el.classList.remove("owdu-show");
+        });
+        exportDropdown.classList.toggle("owdu-show");
+      });
+      exportDropdown.addEventListener("click", function (e) {
+        e.stopPropagation();
+      });
+    }
+
     // Export buttons
     var csvBtn = $("owdu-export-csv");
-    if (csvBtn) csvBtn.addEventListener("click", exportCSV);
+    if (csvBtn) csvBtn.addEventListener("click", function () { exportDropdown.classList.remove("owdu-show"); exportCSV(); });
     var pdfBtn = $("owdu-export-pdf");
-    if (pdfBtn) pdfBtn.addEventListener("click", exportPDF);
+    if (pdfBtn) pdfBtn.addEventListener("click", function () { exportDropdown.classList.remove("owdu-show"); exportPDF(); });
     var xlsBtn = $("owdu-export-xls");
-    if (xlsBtn) xlsBtn.addEventListener("click", exportXLS);
+    if (xlsBtn) xlsBtn.addEventListener("click", function () { exportDropdown.classList.remove("owdu-show"); exportXLS(); });
+
+    // Refresh button
+    var refreshBtn = $("owdu-refresh-btn");
+    if (refreshBtn) refreshBtn.addEventListener("click", refreshAll);
 
     // Modal close handlers
     var modalClose = $("owdu-modal-close");

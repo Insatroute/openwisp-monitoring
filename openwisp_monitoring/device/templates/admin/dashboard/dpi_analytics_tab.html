@@ -1,22 +1,720 @@
 {% load static %}
 
-<style>
-  .dpi-dashboard { padding: 15px; }
-  .dpi-dashboard * { box-sizing: border-box; }
-</style>
-
-<link rel="stylesheet" href="{% static 'dpi_analytics/dpi_admin.css' %}">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
-
-<link rel="stylesheet" href="{% static 'dpi_analytics/dpi_admin.css' %}">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
 <style>
-  .dpi-map-tooltip { font-family: 'Poppins', 'Roboto', sans-serif; }
-  .dpi-map-tooltip .leaflet-tooltip-content { line-height: 1.5; }
+/* =====================================================
+   Nexapp DPI Analytics — All CSS inline
+   ===================================================== */
+
+/* ---- Badge system (shared with sdwan_admin.css) ---- */
+.sdwan-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+}
+.sdwan-badge-green { background: #dcfce7; color: #166534; }
+.sdwan-badge-red { background: #fee2e2; color: #991b1b; }
+.sdwan-badge-amber { background: #fef3c7; color: #92400e; }
+.sdwan-badge-blue { background: #dbeafe; color: #1e40af; }
+.sdwan-badge-purple { background: #ede9fe; color: #5b21b6; }
+.sdwan-badge-gray { background: #f3f4f6; color: #374151; }
+
+/* ---- DASHBOARD WRAPPER ---- */
+.dpi-dashboard {
+  font-family: var(--font-family-primary, 'Poppins', 'Roboto', sans-serif);
+  color: #374151;
+  background: #fff;
+  padding: 0;
+}
+.dpi-dashboard *,
+.dpi-dashboard *::before,
+.dpi-dashboard *::after {
+  box-sizing: border-box;
+}
+
+/* ---- HEADER ---- */
+.dpi-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 20px 40px 16px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.dpi-header-left {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+.dpi-header-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: #24415d;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.dpi-header-icon svg { width: 24px; height: 24px; color: #fff; }
+.dpi-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--body-loud-color, #000);
+  margin: 0;
+  line-height: 1.3;
+}
+.dpi-subtitle {
+  font-size: 13px;
+  color: var(--body-quiet-color, #666);
+  margin-top: 2px;
+}
+.dpi-header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.dpi-live-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #22c55e;
+}
+.dpi-live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #22c55e;
+  animation: dpi-pulse 2s ease-in-out infinite;
+}
+@keyframes dpi-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+.dpi-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border: 1px solid var(--border-color, #ccc);
+  border-radius: 8px;
+  background: var(--body-bg, #fff);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--body-fg, #333);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.dpi-btn:hover { background: var(--darkened-bg, #f8f8f8); border-color: var(--body-quiet-color, #666); }
+.dpi-btn svg { width: 14px; height: 14px; }
+
+/* Dropdown */
+.dpi-dropdown-wrap { position: relative; display: inline-block; }
+.dpi-dropdown-menu {
+  display: none; position: absolute; top: 100%; right: 0; margin-top: 4px;
+  background: #fff; border: 1px solid #e5e7eb; border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12); z-index: 50; min-width: 140px; overflow: hidden;
+}
+.dpi-dropdown-menu.dpi-show { display: block; }
+.dpi-dropdown-option {
+  display: flex; align-items: center; gap: 8px; width: 100%; padding: 10px 14px;
+  border: none; background: none; font-size: 13px; font-weight: 500; color: #374151;
+  cursor: pointer; transition: background 0.15s; text-align: left;
+}
+.dpi-dropdown-option:hover { background: #f3f4f6; }
+
+/* Refresh spin */
+.dpi-btn.dpi-spinning svg:first-child { animation: dpi-spin 0.8s linear infinite; }
+@keyframes dpi-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+/* ---- SUMMARY CARDS ---- */
+.dpi-summary-row {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 16px;
+  padding: 16px 40px;
+}
+.dpi-summary-card {
+  background: #fff;
+  border: none;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  border-radius: 12px;
+  padding: 18px 16px 14px;
+  position: relative;
+  overflow: hidden;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+.dpi-summary-card:hover {
+  box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+  transform: translateY(-2px);
+}
+.dpi-summary-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: #6b7280;
+}
+
+.dpi-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+.dpi-card-left { min-width: 0; flex: 1; }
+.dpi-card-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #6b7280;
+  margin-bottom: 8px;
+  white-space: nowrap;
+}
+.dpi-card-value {
+  font-size: 22px;
+  font-weight: 800;
+  color: #111827;
+  line-height: 1;
+  margin-bottom: 12px;
+}
+.dpi-card-trend {
+  font-size: 11px;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 0;
+  white-space: nowrap;
+}
+.dpi-card-trend svg { flex-shrink: 0; }
+.dpi-card-trend.up { color: #dc2626; }
+.dpi-card-trend.down { color: #d97706; }
+.dpi-card-trend.stable { color: #999; }
+
+/* Kind badge (rounded square icon) */
+.dpi-kind-badge {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  flex-shrink: 0;
+}
+.dpi-kind-badge::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 10px;
+  opacity: .10;
+  background: currentColor;
+  pointer-events: none;
+}
+.dpi-kind-badge svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+  position: relative;
+  z-index: 1;
+}
+.dpi-kind-flows    { color: #6b7280; }
+.dpi-kind-apps     { color: #6b7280; }
+.dpi-kind-unknown  { color: #6b7280; }
+.dpi-kind-devices  { color: #6b7280; }
+.dpi-kind-alerts   { color: #6b7280; }
+.dpi-kind-bandwidth { color: #6b7280; }
+
+/* Legacy icon position (hidden, replaced by badge) */
+.dpi-card-icon { display: none; }
+
+/* ---- TAB NAVIGATION ---- */
+.dpi-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  border-bottom: 2px solid #e5e7eb;
+  margin: 0 40px 20px;
+}
+.dpi-tab {
+  padding: 10px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #6b7280;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: inherit;
+}
+.dpi-tab:hover { color: #374151; }
+.dpi-tab.active {
+  color: #24415d;
+  border-bottom-color: #24415d;
+  font-weight: 600;
+}
+.dpi-tab-count {
+  display: inline-block;
+  font-size: 8px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 8px;
+  background: #dbeafe;
+  color: #1e40af;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+/* ---- PANELS ---- */
+.dpi-panels { position: relative; padding: 20px 40px; }
+.dpi-panel { display: none; }
+.dpi-panel.active { display: block; }
+
+/* ---- SECTIONS ---- */
+.dpi-section {
+  margin-bottom: 20px;
+  border-radius: 14px;
+  box-shadow: 0 6px 20px rgba(22,34,51,0.08);
+  overflow: hidden;
+}
+.dpi-section-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1f2937;
+  padding: 10px 14px;
+  background: #f0f0f0;
+  border: 1px solid #e5e7eb;
+  border-bottom: 1px solid #eee;
+  border-radius: 14px 14px 0 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ---- CHART CARDS ---- */
+.dpi-chart-grid {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.dpi-chart-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  box-shadow: 0 6px 20px rgba(22,34,51,0.08);
+  overflow: hidden;
+}
+.dpi-chart-title {
+  background: #f0f0f0;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #1f2937;
+  border-bottom: 1px solid #eee;
+  margin: 0;
+}
+.dpi-chart-canvas {
+  width: 100% !important;
+  height: 280px !important;
+  padding: 16px;
+}
+
+/* ---- DONUT CARD (matches data_usage_tab) ---- */
+.dpi-donut-card {
+  background: #fff;
+  border-radius: 14px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 6px 20px rgba(22,34,51,0.08);
+  overflow: hidden;
+}
+.dpi-donut-hd {
+  background: #f0f0f0;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #1f2937;
+  border-bottom: 1px solid #eee;
+}
+.dpi-donut-bd { padding: 16px; background: #fff; }
+.dpi-donut-shell {
+  height: 220px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.dpi-donut-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 12px 12px;
+}
+.dpi-donut-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  color: #334155;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  padding: 4px 7px;
+  border-radius: 8px;
+}
+.dpi-donut-legend-color {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.dpi-donut-legend-label { font-weight: 600; }
+
+/* ---- TABLES ---- */
+.dpi-table-wrap {
+  overflow-x: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 0 0 14px 14px;
+}
+.dpi-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  font-size: 13px;
+}
+.dpi-table thead { background: #f9fafb; }
+.dpi-table th {
+  padding: 10px 14px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #6b7280;
+  border-bottom: 1px solid #e5e7eb;
+  white-space: nowrap;
+}
+.dpi-table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid #f3f4f6;
+  color: #374151;
+  vertical-align: middle;
+}
+.dpi-table tbody tr:hover { background: #f9fafb; }
+.dpi-table tbody tr:last-child td { border-bottom: none; }
+
+/* ---- EMPTY STATE ---- */
+.dpi-empty {
+  padding: 48px 24px;
+  text-align: center;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 0 0 14px 14px;
+}
+.dpi-empty-icon { font-size: 24px; color: #d1d5db; margin-bottom: 8px; }
+.dpi-empty-text { font-size: 12px; font-weight: 600; color: #94a3b8; margin-bottom: 4px; }
+.dpi-empty-hint { font-size: 11px; color: #9ca3af; }
+
+/* ---- TUNNEL GRID (Tab 3) ---- */
+.dpi-tunnel-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 16px;
+}
+.dpi-tunnel-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  box-shadow: 0 6px 20px rgba(22,34,51,0.08);
+  overflow: hidden;
+}
+.dpi-tunnel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: #f0f0f0;
+  border-bottom: 1px solid #eee;
+}
+.dpi-tunnel-name { font-size: 13px; font-weight: 700; color: #1f2937; }
+.dpi-tunnel-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 500;
+}
+.dpi-tunnel-body { padding: 12px 16px; }
+.dpi-tunnel-app-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px solid #f3f4f6;
+  font-size: 12px;
+}
+.dpi-tunnel-app-row:last-child { border-bottom: none; }
+.dpi-tunnel-app-name { color: #374151; font-weight: 500; }
+.dpi-tunnel-app-bw {
+  color: #6b7280;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+  font-size: 11px;
+}
+
+/* ---- WAN GRID (Tab 4) ---- */
+.dpi-wan-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.dpi-wan-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  box-shadow: 0 6px 20px rgba(22,34,51,0.08);
+  overflow: hidden;
+}
+.dpi-wan-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: #f0f0f0;
+  border-bottom: 1px solid #eee;
+}
+.dpi-wan-name { font-size: 13px; font-weight: 700; color: #1f2937; }
+.dpi-wan-util { font-size: 12px; font-weight: 600; color: #24415d; }
+.dpi-wan-body { padding: 16px; }
+
+/* ---- FLEET RADAR (Tab 5) ---- */
+.dpi-radar-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+.dpi-radar-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  box-shadow: 0 6px 20px rgba(22,34,51,0.08);
+  overflow: hidden;
+}
+.dpi-radar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: #f0f0f0;
+  border-bottom: 1px solid #eee;
+}
+.dpi-radar-device { font-size: 13px; font-weight: 700; color: #1f2937; }
+.dpi-radar-body { padding: 12px 16px; }
+.dpi-heatmap-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: 12px;
+}
+.dpi-heatmap-label {
+  width: 100px;
+  color: #374151;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dpi-heatmap-bar {
+  flex: 1;
+  height: 20px;
+  background: #f3f4f6;
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+.dpi-heatmap-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.4s ease;
+}
+.dpi-heatmap-value {
+  width: 60px;
+  text-align: right;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+  font-size: 11px;
+  color: #6b7280;
+}
+
+/* ---- ALERT CARDS (Tab 7) ---- */
+.dpi-alert-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+.dpi-alert-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-top: 4px;
+  flex-shrink: 0;
+}
+.dpi-alert-dot.critical { background: #dc2626; }
+.dpi-alert-dot.high { background: #7c3aed; }
+.dpi-alert-dot.medium { background: #d97706; }
+.dpi-alert-dot.low { background: #16a34a; }
+.dpi-alert-body { flex: 1; min-width: 0; }
+.dpi-alert-title { font-size: 13px; font-weight: 600; color: #111827; }
+.dpi-alert-meta {
+  font-size: 12px;
+  color: #6b7280;
+  margin-top: 3px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.dpi-alert-time { font-size: 11px; color: #9ca3af; white-space: nowrap; }
+
+/* ---- BADGES (DPI-specific) ---- */
+.dpi-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+.dpi-badge-red { background: #fee2e2; color: #991b1b; }
+.dpi-badge-amber { background: #fef3c7; color: #92400e; }
+.dpi-badge-green { background: #dcfce7; color: #166534; }
+.dpi-badge-blue { background: #dbeafe; color: #1e40af; }
+.dpi-badge-purple { background: #ede9fe; color: #5b21b6; }
+.dpi-badge-gray { background: #f3f4f6; color: #374151; }
+
+/* ---- MONO TEXT ---- */
+.dpi-mono {
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+  font-size: 12px;
+  background: #f3f4f6;
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: #374151;
+}
+
+/* ---- UNKNOWN FLOW CARDS (Tab 8) ---- */
+.dpi-unknown-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 10px;
+}
+.dpi-unknown-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.dpi-unknown-title { font-size: 13px; font-weight: 600; color: #111827; }
+.dpi-unknown-detail {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  font-size: 12px;
+}
+.dpi-unknown-field-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #9ca3af;
+  margin-bottom: 3px;
+}
+.dpi-unknown-field-value { font-size: 13px; color: #374151; font-weight: 500; }
+.dpi-create-app-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: #eff6ff;
+  color: #24415d;
+  border: 1px solid #bfdbfe;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.dpi-create-app-btn:hover { background: #dbeafe; border-color: #93c5fd; }
+
+/* ---- INFO BOX ---- */
+.dpi-info-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 18px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+.dpi-info-box i { color: #24415d; margin-top: 2px; }
+.dpi-info-box-text { font-size: 12px; color: #1e40af; line-height: 1.5; }
+.dpi-info-box-text strong { font-weight: 600; }
+
+/* ---- EMBEDDED TAB MODE ---- */
+.dpi-dashboard-embed {
+  font-family: var(--font-family-primary, 'Poppins', 'Roboto', sans-serif);
+  color: #374151;
+  background: #fff;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  padding: 24px;
+  margin-top: 8px;
+}
+
+/* ---- MAP TOOLTIP ---- */
+.dpi-map-tooltip { font-family: 'Poppins', 'Roboto', sans-serif; }
+.dpi-map-tooltip .leaflet-tooltip-content { line-height: 1.5; }
+
+/* ---- RESPONSIVE ---- */
+@media (max-width: 1200px) {
+  .dpi-summary-row { grid-template-columns: repeat(3, 1fr); }
+  .dpi-chart-grid { grid-template-columns: 1fr; }
+  .dpi-wan-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 768px) {
+  .dpi-summary-row { grid-template-columns: repeat(2, 1fr); }
+  .dpi-header { flex-direction: column; align-items: flex-start; gap: 12px; }
+  .dpi-tab { padding: 8px 10px; font-size: 11px; }
+  .dpi-unknown-detail { grid-template-columns: repeat(2, 1fr); }
+}
 </style>
 
 <script>
@@ -37,64 +735,165 @@ if (typeof L === "undefined") {
   <div class="dpi-header">
     <div class="dpi-header-left">
       <div class="dpi-header-icon">
-        <i class="fas fa-satellite-dish"></i>
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/>
+          <path d="M12 3a9 9 0 0 1 0 18" stroke="currentColor" stroke-width="1.5" stroke-dasharray="3 2"/>
+          <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.5"/>
+          <line x1="12" y1="3" x2="12" y2="9" stroke="currentColor" stroke-width="1.5"/>
+          <line x1="12" y1="15" x2="12" y2="21" stroke="currentColor" stroke-width="1.5"/>
+          <line x1="3" y1="12" x2="9" y2="12" stroke="currentColor" stroke-width="1.5"/>
+          <line x1="15" y1="12" x2="21" y2="12" stroke="currentColor" stroke-width="1.5"/>
+        </svg>
       </div>
       <div>
-        <h1 class="dpi-title">DPI Analytics</h1>
+        <div class="dpi-title">DPI Analytics</div>
         <div class="dpi-subtitle">DPI Engine &mdash; Network-Wide Visibility</div>
       </div>
     </div>
     <div class="dpi-header-right">
-      <span class="dpi-live-dot"></span>
-      <span class="dpi-live-text">Live</span>
-      <button class="dpi-refresh-btn" onclick="refreshDashboard()">
-        <i class="fas fa-sync-alt"></i> Refresh
+      <div class="dpi-live-badge">
+        <span class="dpi-live-dot"></span>
+        LIVE
+      </div>
+
+      <div class="dpi-dropdown-wrap">
+        <button class="dpi-btn" id="dpi-export-btn-toggle" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          Export
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="dpi-dropdown-menu" id="dpi-export-dropdown">
+          <button class="dpi-dropdown-option" id="dpi-export-csv" type="button">CSV</button>
+          <button class="dpi-dropdown-option" id="dpi-export-pdf" type="button">PDF</button>
+          <button class="dpi-dropdown-option" id="dpi-export-xls" type="button">XLS</button>
+        </div>
+      </div>
+
+      <button class="dpi-btn" id="dpi-refresh-btn" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="23 4 23 10 17 10"></polyline>
+          <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+        </svg>
+        Refresh
       </button>
+    </div>
+  </div>
+
+  <!-- DATA STATUS BANNER (hidden dynamically when live data detected) -->
+  <div id="dpi-limited-banner" style="background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:8px 14px;margin:0 40px 0 40px;display:flex;align-items:center;gap:8px;">
+    <i class="fas fa-info-circle" style="color:#d97706;font-size:14px;flex-shrink:0"></i>
+    <div>
+      <div style="font-weight:600;color:#92400e;font-size:12px;">Dashboard shows limited data</div>
+      <div style="color:#a16207;font-size:11px;margin-top:1px;">
+        To see real-time DPI analytics, deploy an SD-WAN topology from
+        <a href="/admin/sdwan_tunnel/nsbondtopology/add/" style="color:#1d4ed8;text-decoration:underline">SD-WAN Fabric</a>.
+        Once deployed, the DPI engine on each router will start sending traffic data to this dashboard automatically.
+      </div>
     </div>
   </div>
 
   <!-- SUMMARY CARDS -->
   <div class="dpi-summary-row">
-    <div class="dpi-summary-card card-flows">
-      <div class="dpi-card-label">Active Flows</div>
-      <div class="dpi-card-value" id="stat-flows">0</div>
-      <div class="dpi-card-trend stable"><i class="fas fa-minus"></i> Real-time</div>
-      <div class="dpi-card-icon"><i class="fas fa-network-wired"></i></div>
-    </div>
-    <div class="dpi-summary-card card-apps">
-      <div class="dpi-card-label">Identified Apps</div>
-      <div class="dpi-card-value" id="stat-apps">0</div>
-      <div class="dpi-card-trend stable"><i class="fas fa-fingerprint"></i> 42K DPI signatures</div>
-      <div class="dpi-card-icon"><i class="fas fa-fingerprint"></i></div>
-    </div>
-    <div class="dpi-summary-card card-unknown">
-      <div class="dpi-card-label">Unknown Flows</div>
-      <div class="dpi-card-value" id="stat-unknown">0</div>
-      <div class="dpi-card-trend down"><i class="fas fa-search"></i> Investigate</div>
-      <div class="dpi-card-icon"><i class="fas fa-question-circle"></i></div>
-    </div>
-    <div class="dpi-summary-card card-devices">
-      <div class="dpi-card-label">LAN Devices</div>
-      <div class="dpi-card-value" id="stat-devices">0</div>
-      <div class="dpi-card-trend stable"><i class="fas fa-laptop"></i> Auto-discovered</div>
-      <div class="dpi-card-icon"><i class="fas fa-desktop"></i></div>
-    </div>
-    <div class="dpi-summary-card card-alerts">
-      <div class="dpi-card-label">Active Alerts</div>
-      <div class="dpi-card-value" id="stat-alerts">0</div>
-      <div class="dpi-card-trend {% if summary.active_alerts > 0 %}up{% else %}stable{% endif %}">
-        <i class="fas fa-{% if summary.active_alerts > 0 %}exclamation-triangle{% else %}check{% endif %}"></i>
-        {% if summary.active_alerts > 0 %}Action needed{% else %}All clear{% endif %}
+    <div class="dpi-summary-card card-flows" onclick="openCardDrill('flows')" style="cursor:pointer;">
+      <div class="dpi-card-top">
+        <div class="dpi-card-left">
+          <div class="dpi-card-label">Active Flows</div>
+          <div class="dpi-card-value" id="stat-flows">0</div>
+          <div class="dpi-card-trend stable"><i class="fas fa-sitemap" style="font-size:11px;"></i> Real-time</div>
+        </div>
+        <span class="dpi-kind-badge dpi-kind-flows">
+          <i class="fas fa-sitemap" style="font-size:18px;opacity:0.7;"></i>
+        </span>
       </div>
-      <div class="dpi-card-icon"><i class="fas fa-shield-alt"></i></div>
     </div>
-    <div class="dpi-summary-card card-bandwidth">
-      <div class="dpi-card-label">Bandwidth</div>
-      <div class="dpi-card-value" id="stat-bw" style="font-size: 18px;">
-        <span style="display:block;"><i class="fas fa-arrow-down" style="color: #16a34a; font-size: 12px;"></i> 0 B</span>
-        <span style="display:block; margin-top:2px;"><i class="fas fa-arrow-up" style="color: #2563eb; font-size: 12px;"></i> 0 B</span>
+    <div class="dpi-summary-card card-apps" onclick="openCardDrill('signatures')" style="cursor:pointer;">
+      <div class="dpi-card-top">
+        <div class="dpi-card-left">
+          <div class="dpi-card-label">Identified Apps</div>
+          <div class="dpi-card-value" id="stat-apps">0</div>
+          <div class="dpi-card-trend stable"><i class="fas fa-fingerprint" style="font-size:11px;"></i> <span id="dpi-sig-count"></span> DPI signatures</div>
+        </div>
+        <span class="dpi-kind-badge dpi-kind-apps">
+          <i class="fas fa-fingerprint" style="font-size:18px;opacity:0.7;"></i>
+        </span>
       </div>
-      <div class="dpi-card-icon"><i class="fas fa-tachometer-alt"></i></div>
+    </div>
+    <div class="dpi-summary-card card-unknown" onclick="openCardDrill('unknown')" style="cursor:pointer;">
+      <div class="dpi-card-top">
+        <div class="dpi-card-left">
+          <div class="dpi-card-label">Unknown Flows</div>
+          <div class="dpi-card-value" id="stat-unknown">0</div>
+          <div class="dpi-card-trend stable"><i class="fas fa-question-circle" style="font-size:11px;"></i> Investigate</div>
+        </div>
+        <span class="dpi-kind-badge dpi-kind-unknown">
+          <i class="fas fa-question-circle" style="font-size:18px;opacity:0.7;"></i>
+        </span>
+      </div>
+    </div>
+    <div class="dpi-summary-card card-devices" onclick="openCardDrill('devices')" style="cursor:pointer;">
+      <div class="dpi-card-top">
+        <div class="dpi-card-left">
+          <div class="dpi-card-label">LAN Devices</div>
+          <div class="dpi-card-value" id="stat-devices">0</div>
+          <div class="dpi-card-trend stable"><i class="fas fa-desktop" style="font-size:11px;"></i> Auto-discovered</div>
+        </div>
+        <span class="dpi-kind-badge dpi-kind-devices">
+          <i class="fas fa-desktop" style="font-size:18px;opacity:0.7;"></i>
+        </span>
+      </div>
+    </div>
+    <div class="dpi-summary-card card-alerts" onclick="openCardDrill('alerts')" style="cursor:pointer;">
+      <div class="dpi-card-top">
+        <div class="dpi-card-left">
+          <div class="dpi-card-label">Active Alerts</div>
+          <div class="dpi-card-value" id="stat-alerts">0</div>
+          <div class="dpi-card-trend {% if summary.active_alerts > 0 %}up{% else %}stable{% endif %}">
+            <i class="fas fa-{% if summary.active_alerts > 0 %}exclamation-triangle{% else %}check{% endif %}" style="font-size:11px;"></i>
+            {% if summary.active_alerts > 0 %}Action needed{% else %}All clear{% endif %}
+          </div>
+        </div>
+        <span class="dpi-kind-badge dpi-kind-alerts">
+          <i class="fas fa-shield-alt" style="font-size:18px;opacity:0.7;"></i>
+        </span>
+      </div>
+    </div>
+    <div class="dpi-summary-card card-bandwidth" onclick="openCardDrill('bandwidth')" style="cursor:pointer;">
+      <div class="dpi-card-top">
+        <div class="dpi-card-left">
+          <div class="dpi-card-label">Bandwidth</div>
+          <div class="dpi-card-value" id="stat-bw" style="font-size: 18px;">
+            <span style="display:block;"><svg viewBox="0 0 24 24" style="width:12px;height:12px;vertical-align:middle;" aria-hidden="true"><path fill="#16a34a" d="M12 22 21 13h-6V2H9v11H3l9 9z"></path></svg> 0.00 KB</span>
+            <span style="display:block; margin-top:2px;"><svg viewBox="0 0 24 24" style="width:12px;height:12px;vertical-align:middle;" aria-hidden="true"><path fill="#2563eb" d="M12 2 3 11h6v11h6V11h6L12 2z"></path></svg> 0.00 KB</span>
+          </div>
+        </div>
+        <span class="dpi-kind-badge dpi-kind-bandwidth">
+          <i class="fas fa-tachometer-alt" style="font-size:18px;opacity:0.7;"></i>
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- INLINE DRILL-DOWN VIEW -->
+  <div id="card-drill-section" style="display:none;margin:0 40px 20px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:#f0f0f0;border:1px solid #e5e7eb;border-radius:10px 10px 0 0;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div id="card-drill-icon" style="width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:17px;color:#6b7280;background:#fff;border:1px solid #e5e7eb;box-shadow:0 1px 3px rgba(0,0,0,0.06);"></div>
+        <div>
+          <div id="card-drill-title" style="font-size:16px;font-weight:700;color:#1e293b;"></div>
+          <div id="card-drill-subtitle" style="font-size:12px;color:#6b7280;margin-top:2px;"></div>
+        </div>
+      </div>
+      <button onclick="closeCardDrill()" style="display:flex;align-items:center;justify-content:center;width:30px;height:30px;padding:0;background:#fff;border:1px solid #d1d5db;border-radius:8px;font-size:13px;color:#374151;cursor:pointer;" onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background='#fff'" title="Close">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div id="card-drill-stats" style="display:flex;gap:10px;padding:12px 20px;border-left:1px solid #e5e7eb;border-right:1px solid #e5e7eb;flex-wrap:wrap;background:#fff;"></div>
+    <div id="card-drill-body" style="padding:16px 20px;border:1px solid #e5e7eb;border-top:1px solid #f1f5f9;border-radius:0 0 10px 10px;background:#fff;overflow-x:auto;">
+      <div style="text-align:center;padding:40px;color:#94a3b8;"><i class="fas fa-spinner fa-spin" style="font-size:24px;"></i><div style="margin-top:8px;">Loading...</div></div>
     </div>
   </div>
 
@@ -130,7 +929,7 @@ if (typeof L === "undefined") {
   </div>
 
   <!-- DRILL-DOWN FILTER BAR -->
-  <div id="drill-filter-bar" style="display:none; padding:8px 16px; background:#f8fafc; border:1px solid #e5e7eb; border-radius:8px; margin-bottom:8px; align-items:center; gap:12px; flex-wrap:wrap;">
+  <div id="drill-filter-bar" style="display:none; padding:8px 16px; background:#f0f0f0; border:1px solid #e5e7eb; border-radius:8px; margin:0 40px 8px; align-items:center; gap:12px; flex-wrap:wrap;">
     <!-- Breadcrumb -->
     <div id="drill-breadcrumb" style="display:flex; align-items:center; gap:4px; flex:1; min-width:200px;">
       <span style="font-size:12px; color:#6b7280;">Navigate:</span>
@@ -146,7 +945,7 @@ if (typeof L === "undefined") {
     <div style="display:flex; align-items:center; gap:4px;">
       <label style="font-size:11px; font-weight:600; color:#6b7280; text-transform:uppercase; letter-spacing:0.5px;">Period</label>
       <div style="display:flex; border:1px solid #e2e8f0; border-radius:6px; overflow:hidden;">
-        <button class="drill-time-btn active" data-interval="1h" style="padding:4px 10px; font-size:11px; border:none; cursor:pointer; background:#2563eb; color:#fff; font-weight:600;">1H</button>
+        <button class="drill-time-btn active" data-interval="1h" style="padding:4px 10px; font-size:11px; border:none; cursor:pointer; background:#24415d; color:#fff; font-weight:600;">1H</button>
         <button class="drill-time-btn" data-interval="24h" style="padding:4px 10px; font-size:11px; border:none; cursor:pointer; background:#fff; color:#6b7280; border-left:1px solid #e2e8f0;">24H</button>
         <button class="drill-time-btn" data-interval="7d" style="padding:4px 10px; font-size:11px; border:none; cursor:pointer; background:#fff; color:#6b7280; border-left:1px solid #e2e8f0;">7D</button>
         <button class="drill-time-btn" data-interval="30d" style="padding:4px 10px; font-size:11px; border:none; cursor:pointer; background:#fff; color:#6b7280; border-left:1px solid #e2e8f0;">ALL</button>
@@ -164,16 +963,21 @@ if (typeof L === "undefined") {
           <div class="dpi-chart-title">Top 10 Applications by Bandwidth</div>
           <canvas id="chart-top-apps" class="dpi-chart-canvas"></canvas>
         </div>
-        <div class="dpi-chart-card">
-          <div class="dpi-chart-title">Traffic Distribution by Category</div>
-          <canvas id="chart-categories" class="dpi-chart-canvas"></canvas>
+        <div class="dpi-donut-card">
+          <div class="dpi-donut-hd">Traffic Distribution by Category</div>
+          <div class="dpi-donut-bd">
+            <div class="dpi-donut-shell">
+              <canvas id="chart-categories" width="180" height="180" style="width:180px!important;height:180px!important;display:block!important;"></canvas>
+            </div>
+            <div id="dpi-cat-legend" class="dpi-donut-legend"></div>
+          </div>
         </div>
       </div>
 
       {% if recent_alerts %}
       <div class="dpi-section" style="margin-top: 8px;">
         <div class="dpi-section-title"><i class="fas fa-bell"></i> Recent Alerts</div>
-        <div style="border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px; padding: 12px;">
+        <div style="border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 14px 14px; padding: 12px;">
           {% for alert in recent_alerts %}
           <div class="dpi-alert-card">
             <div class="dpi-alert-dot "></div>
@@ -195,27 +999,27 @@ if (typeof L === "undefined") {
 
       <!-- GEO MAP — Network Device Map -->
       <div class="dpi-section" style="margin-top: 8px;">
-        <div class="dpi-section-title" style="display:flex;align-items:center;justify-content:space-between;"><span><i class="fas fa-globe-americas"></i> Network Geo Map</span><a href="/admin/dpi_analytics/dpisnapshot/dashboard/map/" style="display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:500;color:#3b82f6;text-decoration:none;padding:4px 10px;border:1px solid #bfdbfe;border-radius:6px;background:#eff6ff;transition:all 0.15s;" onmouseover="this.style.background='#dbeafe'" onmouseout="this.style.background='#eff6ff'"><i class="fas fa-expand-arrows-alt" style="font-size:11px;"></i> Full Map</a></div>
-        <div style="border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px; overflow: hidden;">
+        <div class="dpi-section-title" style="display:flex;align-items:center;justify-content:space-between;"><span><i class="fas fa-globe-americas"></i> Network Geo Map</span><a href="/admin/dpi_analytics/dpisnapshot/dashboard/map/" target="_blank" style="display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:500;color:#3b82f6;text-decoration:none;padding:4px 10px;border:1px solid #bfdbfe;border-radius:6px;background:#eff6ff;transition:all 0.15s;" onmouseover="this.style.background='#dbeafe'" onmouseout="this.style.background='#eff6ff'"><i class="fas fa-expand-arrows-alt" style="font-size:11px;"></i> Full Map</a></div>
+        <div style="border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 14px 14px; overflow: hidden;">
           <div id="dpi-geo-map" style="height: 420px; width: 100%; background: #f8fafc;"></div>
         </div>
       </div>
 
       <!-- Geo Map device detail + fleet stats row -->
-      <div style="display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap;">
-        <div class="dpi-section" style="flex: 1; min-width: 280px;">
+      <div style="display: flex; gap: 12px; margin-top: 12px; flex-wrap: wrap;">
+        <div class="dpi-section" style="flex: 1; min-width: 320px;">
           <div class="dpi-section-title"><i class="fas fa-info-circle"></i> Device Detail</div>
-          <div id="geo-device-details" style="border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px; padding: 12px; min-height: 120px;">
-            <div class="dpi-empty" style="padding: 20px 0;">
-              <div class="dpi-empty-icon" style="font-size: 24px;"><i class="fas fa-mouse-pointer"></i></div>
-              <div class="dpi-empty-text">Click a device marker for details</div>
+          <div id="geo-device-details" style="border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 14px 14px; padding: 16px; min-height: 140px;">
+            <div style="display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;min-height:110px;color:#94a3b8;font-size:13px;font-weight:500;">
+              <i class="fas fa-mouse-pointer" style="font-size:24px;color:#d1d5db;"></i>
+              <span>Click a device marker for details</span>
             </div>
           </div>
         </div>
         <div class="dpi-section" style="flex: 2; min-width: 400px;">
           <div class="dpi-section-title"><i class="fas fa-chart-bar"></i> Fleet Traffic Summary</div>
-          <div style="border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px; padding: 12px; min-height: 120px;">
-            <div style="display: flex; gap: 8px; flex-wrap: wrap;" id="geo-fleet-cards"></div>
+          <div style="border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 14px 14px; padding: 16px; min-height: 140px;">
+            <div style="display: flex; gap: 12px; flex-wrap: wrap; width:100%;" id="geo-fleet-cards"></div>
           </div>
         </div>
       </div>
@@ -237,9 +1041,8 @@ if (typeof L === "undefined") {
         <div class="dpi-section-title"><i class="fas fa-project-diagram"></i> Per-Tunnel Application Breakdown</div>
         <div class="dpi-tunnel-grid" id="tunnel-grid">
           <div class="dpi-empty" style="grid-column: 1 / -1;">
-            <div class="dpi-empty-icon"><i class="fas fa-project-diagram"></i></div>
-            <div class="dpi-empty-text">No tunnel data yet</div>
-            <div class="dpi-empty-hint">Enable DPI sink to see which applications use each IPsec tunnel</div>
+            <div class="dpi-empty-icon"><i class="fas fa-database"></i></div>
+            <div class="dpi-empty-text">No data available</div>
           </div>
         </div>
       </div>
@@ -255,8 +1058,11 @@ if (typeof L === "undefined") {
               <div class="dpi-wan-name">WAN 1 (eth1)</div>
               <div class="dpi-wan-util" id="wan1-util">--</div>
             </div>
-            <div class="dpi-wan-body">
-              <canvas id="chart-wan1" height="200"></canvas>
+            <div class="dpi-wan-body" id="wan1-body">
+              <div class="dpi-empty">
+                <div class="dpi-empty-icon"><i class="fas fa-database"></i></div>
+                <div class="dpi-empty-text">No data available</div>
+              </div>
             </div>
           </div>
           <div class="dpi-wan-card">
@@ -264,8 +1070,11 @@ if (typeof L === "undefined") {
               <div class="dpi-wan-name">WAN 2 (eth2)</div>
               <div class="dpi-wan-util" id="wan2-util">--</div>
             </div>
-            <div class="dpi-wan-body">
-              <canvas id="chart-wan2" height="200"></canvas>
+            <div class="dpi-wan-body" id="wan2-body">
+              <div class="dpi-empty">
+                <div class="dpi-empty-icon"><i class="fas fa-database"></i></div>
+                <div class="dpi-empty-text">No data available</div>
+              </div>
             </div>
           </div>
         </div>
@@ -278,9 +1087,8 @@ if (typeof L === "undefined") {
         <div class="dpi-section-title"><i class="fas fa-satellite"></i> Cross-Device Application Comparison</div>
         <div class="dpi-radar-grid" id="fleet-radar">
           <div class="dpi-empty" style="grid-column: 1 / -1;">
-            <div class="dpi-empty-icon"><i class="fas fa-satellite"></i></div>
-            <div class="dpi-empty-text">Fleet radar requires data from multiple devices</div>
-            <div class="dpi-empty-hint">Connect 2+ routers with DPI sink enabled to see cross-device comparison</div>
+            <div class="dpi-empty-icon"><i class="fas fa-database"></i></div>
+            <div class="dpi-empty-text">No data available</div>
           </div>
         </div>
       </div>
@@ -290,31 +1098,11 @@ if (typeof L === "undefined") {
     <div class="dpi-panel" id="panel-discovery">
       <div class="dpi-section">
         <div class="dpi-section-title"><i class="fas fa-search-location"></i> Auto-Discovered LAN Devices</div>
-        <div class="dpi-table-wrap">
-          <table class="dpi-table" id="devices-table">
-            <thead>
-              <tr>
-                <th>Device</th>
-                <th>MAC Address</th>
-                <th>IP Address</th>
-                <th>OS</th>
-                <th>Type</th>
-                <th>Status</th>
-                <th>Router</th>
-                <th>Traffic</th>
-                <th>Last Seen</th>
-              </tr>
-            </thead>
-            <tbody id="devices-tbody">
-              <tr><td colspan="9" style="padding:0;">
-                <div class="dpi-empty">
-                  <div class="dpi-empty-icon"><i class="fas fa-search-location"></i></div>
-                  <div class="dpi-empty-text">No devices discovered yet</div>
-                  <div class="dpi-empty-hint">Devices will appear here when DPI data is received from routers</div>
-                </div>
-              </td></tr>
-            </tbody>
-          </table>
+        <div id="discovery-content" style="border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 14px 14px;">
+          <div class="dpi-empty">
+            <div class="dpi-empty-icon"><i class="fas fa-database"></i></div>
+            <div class="dpi-empty-text">No data available</div>
+          </div>
         </div>
       </div>
     </div>
@@ -324,11 +1112,10 @@ if (typeof L === "undefined") {
       <div class="dpi-chart-grid">
         <div class="dpi-section">
           <div class="dpi-section-title"><i class="fas fa-shield-alt"></i> Threat Indicators</div>
-          <div id="security-alerts" style="border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+          <div id="security-alerts" style="border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 14px 14px;">
             <div class="dpi-empty">
-              <div class="dpi-empty-icon"><i class="fas fa-shield-alt"></i></div>
-              <div class="dpi-empty-text">No security alerts</div>
-              <div class="dpi-empty-hint">Monitoring for deprecated TLS, suspicious IPs, unencrypted protocols</div>
+              <div class="dpi-empty-icon"><i class="fas fa-database"></i></div>
+              <div class="dpi-empty-text">No data available</div>
             </div>
           </div>
         </div>
@@ -340,10 +1127,10 @@ if (typeof L === "undefined") {
       <!-- IP Reputation Section -->
       <div class="dpi-section" style="margin-top:16px;">
         <div class="dpi-section-title"><i class="fas fa-crosshairs"></i> IP Reputation Monitor</div>
-        <div id="ip-reputation-table" style="border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+        <div id="ip-reputation-table" style="border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 14px 14px;">
           <div class="dpi-empty">
-            <div class="dpi-empty-icon"><i class="fas fa-crosshairs"></i></div>
-            <div class="dpi-empty-text">Loading IP reputation data...</div>
+            <div class="dpi-empty-icon"><i class="fas fa-database"></i></div>
+            <div class="dpi-empty-text">No data available</div>
           </div>
         </div>
       </div>
@@ -353,11 +1140,10 @@ if (typeof L === "undefined") {
     <div class="dpi-panel" id="panel-unknown">
       <div class="dpi-section">
         <div class="dpi-section-title"><i class="fas fa-microscope"></i> Unclassified Traffic Analysis</div>
-        <div id="unknown-flows" style="border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+        <div id="unknown-flows" style="border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 14px 14px;">
           <div class="dpi-empty">
-            <div class="dpi-empty-icon"><i class="fas fa-microscope"></i></div>
-            <div class="dpi-empty-text">No unknown flows detected</div>
-            <div class="dpi-empty-hint">When DPI Engine encounters traffic it cannot classify, those flows appear here</div>
+            <div class="dpi-empty-icon"><i class="fas fa-database"></i></div>
+            <div class="dpi-empty-text">No data available</div>
           </div>
         </div>
       </div>
@@ -365,6 +1151,20 @@ if (typeof L === "undefined") {
 
   </div>
 </div>
+
+<!-- Centralized message templates (shared across all DPI script blocks) -->
+<script>
+  var DPI_MSG_STYLE = "display:flex;align-items:center;justify-content:center;flex-direction:column;gap:6px;min-height:100px;color:#94a3b8;font-size:12px;font-weight:600;";
+  var DPI_MSG_ICON  = '<i class="fas fa-database" style="font-size:20px;color:#d1d5db;"></i>';
+
+  function msgNoData() {
+    return '<div style="' + DPI_MSG_STYLE + '">' + DPI_MSG_ICON + '<span>No data available</span></div>';
+  }
+
+  function msgError() {
+    return '<div style="' + DPI_MSG_STYLE + '">' + DPI_MSG_ICON + '<span>Unable to load data</span></div>';
+  }
+</script>
 
 <script>
 (function() {
@@ -397,13 +1197,12 @@ if (typeof L === "undefined") {
   Chart.defaults.font.family = "'Poppins', 'Roboto', sans-serif";
   Chart.defaults.font.size = 11;
 
-  var palette = [
-    '#2563eb', '#16a34a', '#d97706', '#dc2626', '#7c3aed',
-    '#0891b2', '#db2777', '#0d9488', '#ea580c', '#4f46e5'
-  ];
+  var palette = ['rgba(66,133,244,0.85)'];
 
-  // Server data
+  // Fetch top apps from API, then render charts
   var topAppsData = [];
+
+  function renderOverviewCharts() {
   var topAppsLabels = topAppsData.map(function(a) {
     return (a.app_name || 'Unknown').replace('netify.','').replace(/^netify$/, 'DPI Engine');
   });
@@ -414,45 +1213,95 @@ if (typeof L === "undefined") {
   // Top Apps Bar Chart
   var ctxApps = document.getElementById('chart-top-apps');
   if (ctxApps) {
-    new Chart(ctxApps.getContext('2d'), {
-      type: 'bar',
-      data: {
-        labels: topAppsLabels.length ? topAppsLabels : ['No data'],
-        datasets: [{
-          label: 'Download (MB)',
-          data: topAppsDown.length ? topAppsDown : [0],
-          backgroundColor: palette,
-          borderRadius: 4,
-          borderSkipped: false,
-          barThickness: 20,
-        }]
-      },
-      options: {
-        indexAxis: 'y',
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            backgroundColor: '#fff',
-            titleColor: '#111827',
-            bodyColor: '#374151',
-            borderColor: '#e5e7eb',
-            borderWidth: 1,
-            titleFont: { weight: '600' },
-          }
+    var hasAppsData = topAppsLabels.length > 0 && topAppsDown.some(function(v) { return v > 0; });
+
+    // Wrap canvas in a relative container for overlay
+    var appsParent = ctxApps.parentNode;
+    var appsWrap = document.createElement('div');
+    appsWrap.style.cssText = 'position:relative;width:100%;height:280px;';
+    appsParent.insertBefore(appsWrap, ctxApps);
+    appsWrap.appendChild(ctxApps);
+
+    if (!hasAppsData) {
+      // Render blank bar chart — no labels, no data, just axes
+      new Chart(ctxApps.getContext('2d'), {
+        type: 'bar',
+        data: {
+          labels: [],
+          datasets: [{
+            label: 'Download (MB)',
+            data: [],
+            backgroundColor: '#f1f5f9',
+          }]
         },
-        scales: {
-          x: {
-            grid: { color: '#f3f4f6' },
-            title: { display: true, text: 'MB', color: '#9ca3af' },
-          },
-          y: {
-            grid: { display: false },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: false,
+          plugins: { legend: { display: false }, tooltip: { enabled: false } },
+          scales: {
+            x: {
+              grid: { color: '#e5e7eb' },
+              border: { color: '#cbd5e1' },
+              title: { display: true, text: 'MB', color: '#64748b' },
+              ticks: { color: '#94a3b8' },
+              min: 0, max: 100,
+            },
+            y: {
+              grid: { display: false },
+              border: { color: '#cbd5e1' },
+              ticks: { display: false },
+            }
           }
         }
-      }
-    });
+      });
+      // Overlay no-data message
+      var appsOverlay = document.createElement('div');
+      appsOverlay.style.cssText = 'position:absolute;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.7);z-index:2;';
+      appsOverlay.innerHTML = msgNoData();
+      appsWrap.appendChild(appsOverlay);
+    } else {
+      new Chart(ctxApps.getContext('2d'), {
+        type: 'bar',
+        data: {
+          labels: topAppsLabels,
+          datasets: [{
+            label: 'Download (MB)',
+            data: topAppsDown,
+            backgroundColor: palette,
+            borderRadius: 3,
+            borderSkipped: false,
+            barThickness: 14,
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: '#fff',
+              titleColor: '#111827',
+              bodyColor: '#374151',
+              borderColor: '#e5e7eb',
+              borderWidth: 1,
+              titleFont: { weight: '600' },
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: '#f3f4f6' },
+              title: { display: true, text: 'MB', color: '#9ca3af' },
+            },
+            y: {
+              grid: { display: false },
+            }
+          }
+        }
+      });
+    }
   }
 
   // Category Doughnut Chart
@@ -466,59 +1315,205 @@ if (typeof L === "undefined") {
     return Math.round(v / 1048576);
   });
 
+  var catHasData = catValues.length > 0 && catValues.some(function(v) { return v > 0; });
+
+  // Build custom legend for category donut
+  var catLegendEl = document.getElementById('dpi-cat-legend');
+  if (catLegendEl) {
+    if (catHasData) {
+      catLegendEl.innerHTML = catLabels.map(function(label, i) {
+        return '<div class="dpi-donut-legend-item">' +
+          '<span class="dpi-donut-legend-color" style="background:' + palette[i % palette.length] + '"></span>' +
+          '<span class="dpi-donut-legend-label">' + label + '</span>' +
+          '</div>';
+      }).join('');
+    } else {
+      catLegendEl.innerHTML = '';
+    }
+  }
+
   var ctxCat = document.getElementById('chart-categories');
   if (ctxCat) {
-    new Chart(ctxCat.getContext('2d'), {
-      type: 'doughnut',
-      data: {
-        labels: catLabels.length ? catLabels : ['No data'],
-        datasets: [{
-          data: catValues.length ? catValues : [1],
-          backgroundColor: palette,
-          borderWidth: 2,
-          borderColor: '#fff',
-          hoverOffset: 6,
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        cutout: '60%',
-        plugins: {
-          legend: {
-            position: 'bottom',
-            labels: {
-              padding: 16,
-              usePointStyle: true,
-              pointStyleWidth: 8,
+    if (!catHasData) {
+      // Wrap in relative container for overlay
+      var catShell = ctxCat.closest('.dpi-donut-shell') || ctxCat.parentNode;
+      catShell.style.position = 'relative';
+
+      // Render grey empty donut ring
+      new Chart(ctxCat.getContext('2d'), {
+        type: 'doughnut',
+        data: {
+          labels: ['No Data'],
+          datasets: [{
+            data: [1],
+            backgroundColor: ['#e2e8f0'],
+            borderWidth: 0,
+          }]
+        },
+        options: {
+          responsive: false,
+          maintainAspectRatio: false,
+          cutout: '65%',
+          animation: false,
+          plugins: { legend: { display: false }, tooltip: { enabled: false } },
+        }
+      });
+
+      // Overlay no-data message centered on donut
+      var catOverlay = document.createElement('div');
+      catOverlay.style.cssText = 'position:absolute;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;z-index:2;';
+      catOverlay.innerHTML = msgNoData();
+      catShell.appendChild(catOverlay);
+    } else {
+      var catTotal = catValues.reduce(function(a, b) { return a + b; }, 0) || 1;
+
+      // Segment label plugin — draws percentage + value ON each donut arc
+      var catSegmentLabelPlugin = {
+        id: 'catSegmentLabels',
+        afterDraw: function (chart) {
+          var meta = chart.getDatasetMeta(0);
+          if (!meta || !meta.data || !meta.data.length) return;
+          var ctx2 = chart.ctx;
+          ctx2.save();
+
+          meta.data.forEach(function (arc, i) {
+            var val = catValues[i];
+            if (!val || val <= 0) return;
+
+            var pct = (val / catTotal * 100).toFixed(1) + '%';
+            var byteLabel = val >= 1024 ? (val / 1024).toFixed(1) + ' GB' : val + ' MB';
+
+            var startAngle = arc.startAngle;
+            var endAngle = arc.endAngle;
+            var midAngle = (startAngle + endAngle) / 2;
+            var innerRadius = arc.innerRadius;
+            var outerRadius = arc.outerRadius;
+            var midRadius = (innerRadius + outerRadius) / 2;
+
+            var cx = arc.x + Math.cos(midAngle) * midRadius;
+            var cy = arc.y + Math.sin(midAngle) * midRadius;
+            var arcSpan = endAngle - startAngle;
+
+            ctx2.textAlign = 'center';
+            ctx2.textBaseline = 'middle';
+
+            if (arcSpan > 0.6) {
+              ctx2.font = 'bold 11px -apple-system, BlinkMacSystemFont, sans-serif';
+              ctx2.fillStyle = '#ffffff';
+              ctx2.fillText(pct, cx, cy - 6);
+              ctx2.font = '600 9px -apple-system, BlinkMacSystemFont, sans-serif';
+              ctx2.fillText(byteLabel, cx, cy + 6);
+            } else if (arcSpan > 0.3) {
+              ctx2.font = 'bold 10px -apple-system, BlinkMacSystemFont, sans-serif';
+              ctx2.fillStyle = '#ffffff';
+              ctx2.fillText(pct, cx, cy);
+            } else {
+              var labelRadius = outerRadius + 18;
+              var lx = arc.x + Math.cos(midAngle) * labelRadius;
+              var ly = arc.y + Math.sin(midAngle) * labelRadius;
+              var lineStart = arc.x + Math.cos(midAngle) * outerRadius;
+              var lineStartY = arc.y + Math.sin(midAngle) * outerRadius;
+              ctx2.beginPath();
+              ctx2.moveTo(lineStart, lineStartY);
+              ctx2.lineTo(lx, ly);
+              ctx2.strokeStyle = '#94a3b8';
+              ctx2.lineWidth = 1;
+              ctx2.stroke();
+              ctx2.font = 'bold 10px -apple-system, BlinkMacSystemFont, sans-serif';
+              ctx2.fillStyle = '#1e293b';
+              ctx2.fillText(pct + ' ' + byteLabel, lx, ly);
             }
-          },
-          tooltip: {
-            backgroundColor: '#fff',
-            titleColor: '#111827',
-            bodyColor: '#374151',
-            borderColor: '#e5e7eb',
-            borderWidth: 1,
-            callbacks: {
-              label: function(ctx) {
-                return ctx.label + ': ' + ctx.parsed + ' MB';
+          });
+
+          ctx2.restore();
+        }
+      };
+
+      new Chart(ctxCat.getContext('2d'), {
+        type: 'doughnut',
+        data: {
+          labels: catLabels,
+          datasets: [{
+            data: catValues,
+            backgroundColor: palette,
+            borderWidth: 0,
+          }]
+        },
+        plugins: [catSegmentLabelPlugin],
+        options: {
+          responsive: false,
+          maintainAspectRatio: false,
+          cutout: '65%',
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  var val = context.parsed || 0;
+                  var pct = (val / catTotal * 100).toFixed(1);
+                  var label = val >= 1024 ? (val / 1024).toFixed(1) + ' GB' : val + ' MB';
+                  return context.label + ': ' + label + ' (' + pct + '%)';
+                }
               }
             }
           }
         }
-      }
-    });
+      });
+    }
   }
+  } // end renderOverviewCharts
+
+  // Fetch top-apps data from API, then render both charts
+  fetch('/api/v1/dpi/stats/top-apps/?limit=10', { credentials: 'include' })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      topAppsData = data.apps || data.results || [];
+      renderOverviewCharts();
+    })
+    .catch(function(err) {
+      console.error('Top apps fetch error:', err);
+      renderOverviewCharts();
+    });
 
   // Severity Doughnut
   var ctxSev = document.getElementById('chart-severity');
   if (ctxSev) {
-    new Chart(ctxSev.getContext('2d'), {
+    // Initial state: grey empty ring + overlay
+    var sevParent = ctxSev.parentNode;
+    sevParent.style.position = 'relative';
+    window._sevEmptyChart = new Chart(ctxSev.getContext('2d'), {
+      type: 'doughnut',
+      data: {
+        labels: ['No Data'],
+        datasets: [{ data: [1], backgroundColor: ['#e2e8f0'], borderWidth: 0 }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, cutout: '65%', animation: false,
+        plugins: { legend: { display: false }, tooltip: { enabled: false } }
+      }
+    });
+    var sevOverlay = document.createElement('div');
+    sevOverlay.id = 'chart-severity-empty';
+    sevOverlay.style.cssText = 'position:absolute;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;z-index:2;';
+    sevOverlay.innerHTML = msgNoData();
+    sevParent.appendChild(sevOverlay);
+  }
+
+  // Will be populated when security data loads; see loadSecurityTab()
+  window._renderSeverityChart = function(sevData) {
+    var canvas = document.getElementById('chart-severity');
+    var emptyEl = document.getElementById('chart-severity-empty');
+    if (!canvas) return;
+    var hasData = sevData && sevData.some(function(v) { return v > 0; });
+    if (!hasData) return; // keep empty state
+    if (window._sevEmptyChart) { window._sevEmptyChart.destroy(); window._sevEmptyChart = null; }
+    if (emptyEl) emptyEl.remove();
+    new Chart(canvas.getContext('2d'), {
       type: 'doughnut',
       data: {
         labels: ['Critical', 'High', 'Medium', 'Low'],
         datasets: [{
-          data: [0, 0, 0, 0],
+          data: sevData,
           backgroundColor: ['#dc2626', '#7c3aed', '#d97706', '#16a34a'],
           borderWidth: 2,
           borderColor: '#fff',
@@ -536,9 +1531,9 @@ if (typeof L === "undefined") {
         }
       }
     });
-  }
+  };
 
-  // --- GEO MAP (on Overview tab) ---
+  // --- GEO MAP (lazy-init for hidden tab support) ---
   function formatBytes(bytes) {
     if (!bytes || bytes === 0) return '0 B';
     var k = 1024;
@@ -547,41 +1542,57 @@ if (typeof L === "undefined") {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
   }
 
-  var geoMap = L.map('dpi-geo-map', {
-    center: [20.5937, 78.9629],
-    zoom: 5,
-    scrollWheelZoom: true,
-  });
+  var geoMap = null;
+  var geoMapInited = false;
 
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
-    subdomains: 'abcd',
-    maxZoom: 19,
-  }).addTo(geoMap);
+  function initGeoMap() {
+    if (geoMapInited) return;
+    var container = document.getElementById('dpi-geo-map');
+    if (!container) return;
+    // Skip if container is hidden (zero dimensions) — wait for tab activation
+    if (container.offsetWidth === 0 && container.offsetHeight === 0) return;
+    geoMapInited = true;
 
-  // Device coordinates from server context
-  var geoCoords = [];
+    geoMap = L.map('dpi-geo-map', {
+      center: [20.5937, 78.9629],
+      zoom: 5,
+      scrollWheelZoom: true,
+    });
 
-  fetch('/api/v1/dpi/stats/geo-map/')
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
+      subdomains: 'abcd',
+      maxZoom: 19,
+    }).addTo(geoMap);
+
+    loadGeoMapData();
+  }
+
+  function loadGeoMapData() {
+    fetch('/api/v1/dpi/stats/geo-map/')
     .then(function(r) { return r.json(); })
     .then(function(data) {
       var devices = data.devices || {};
       var deviceKeys = Object.keys(devices);
-      if (deviceKeys.length === 0) return;
+      if (deviceKeys.length === 0) {
+        var fleetEl = document.getElementById('geo-fleet-cards');
+        if (fleetEl) fleetEl.innerHTML = msgNoData();
+        return;
+      }
 
       var bounds = [];
-      var fleetHtml = '';
+      var fleetRows = '';
+      // Track devices without location for skip
+      var noLocationDevices = [];
 
       deviceKeys.forEach(function(deviceId, idx) {
         var dev = devices[deviceId];
-        var coords = geoCoords[deviceId] || geoCoords[dev.name] || null;
-        if (!coords) {
-          coords = [20.5 + (idx * 2), 78.9 + (idx * 3)];
+        // Use real coordinates from API
+        if (typeof dev.lat !== 'number' || typeof dev.lng !== 'number') {
+          noLocationDevices.push(dev.name);
+          return; // skip devices without location
         }
-        // Offset devices sharing same coords so markers don't overlap
-        var offsetAngle = (idx * 2 * Math.PI) / Math.max(deviceKeys.length, 1);
-        var offsetDist = 0.015; // ~1.5km spread
-        coords = [coords[0] + Math.cos(offsetAngle) * offsetDist, coords[1] + Math.sin(offsetAngle) * offsetDist];
+        var coords = [dev.lat, dev.lng];
 
         var totalTraffic = (dev.download || 0) + (dev.upload || 0);
         var radius = Math.max(6, Math.min(14, Math.sqrt(totalTraffic / 2048) * 1.5));
@@ -625,7 +1636,7 @@ if (typeof L === "undefined") {
           '<tr><td style="padding:2px 8px 2px 0;color:#6b7280;">Identified</td><td style="font-weight:600;color:#16a34a;">' + dev.identified + '</td></tr>' +
           '<tr><td style="padding:2px 8px 2px 0;color:#6b7280;">Unknown</td><td style="font-weight:600;color:#d97706;">' + dev.unknown + '</td></tr>' +
           '<tr><td style="padding:2px 8px 2px 0;color:#6b7280;">Download</td><td style="font-weight:600;color:#16a34a;">' + formatBytes(dev.download) + '</td></tr>' +
-          '<tr><td style="padding:2px 8px 2px 0;color:#6b7280;">Upload</td><td style="font-weight:600;color:#2563eb;">' + formatBytes(dev.upload) + '</td></tr>' +
+          '<tr><td style="padding:2px 8px 2px 0;color:#6b7280;">Upload</td><td style="font-weight:600;color:#24415d;">' + formatBytes(dev.upload) + '</td></tr>' +
           '</table>',
           { permanent: false, direction: 'right', className: 'dpi-map-tooltip', offset: [radius + 4, 0] }
         );
@@ -635,40 +1646,65 @@ if (typeof L === "undefined") {
           var el = document.getElementById('geo-device-details');
           if (!el) return;
           el.innerHTML =
-            '<div style="font-size:16px;font-weight:700;color:#111827;">' + dev.name + '</div>' +
-            '<div style="font-size:11px;color:#9ca3af;margin-top:2px;">DPI Engine ' + (dev.agent_version || '') + ' &bull; Last seen: ' + (dev.last_seen ? new Date(dev.last_seen).toLocaleTimeString() : 'N/A') + '</div>' +
-            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px;">' +
-            '<div style="background:#f0fdf4;border-radius:8px;padding:8px;text-align:center;">' +
-              '<div style="font-size:22px;font-weight:700;color:#16a34a;">' + dev.flow_count + '</div>' +
-              '<div style="font-size:10px;color:#6b7280;">Active Flows</div></div>' +
-            '<div style="background:#eff6ff;border-radius:8px;padding:8px;text-align:center;">' +
-              '<div style="font-size:22px;font-weight:700;color:#2563eb;">' + dev.identified + '</div>' +
-              '<div style="font-size:10px;color:#6b7280;">Identified</div></div>' +
-            '<div style="background:#fef3c7;border-radius:8px;padding:8px;text-align:center;">' +
-              '<div style="font-size:22px;font-weight:700;color:#d97706;">' + dev.unknown + '</div>' +
-              '<div style="font-size:10px;color:#6b7280;">Unknown</div></div>' +
-            '<div style="background:#f8fafc;border-radius:8px;padding:8px;text-align:center;">' +
-              '<div style="font-size:14px;font-weight:600;color:#374151;">' + formatBytes(dev.download) + ' / ' + formatBytes(dev.upload) + '</div>' +
-              '<div style="font-size:10px;color:#6b7280;">DL / UL</div></div>' +
+            '<div style="margin-bottom:12px;">' +
+              '<div style="font-size:17px;font-weight:700;color:#111827;margin-bottom:4px;">' + dev.name + '</div>' +
+              '<div style="font-size:11px;color:#9ca3af;">DPI Engine ' + (dev.agent_version || 'N/A') + ' &bull; Last seen: ' + (dev.last_seen ? new Date(dev.last_seen).toLocaleTimeString() : 'N/A') + '</div>' +
+            '</div>' +
+            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
+              '<div style="background:#f0fdf4;border-radius:10px;padding:12px 8px;text-align:center;">' +
+                '<div style="font-size:24px;font-weight:700;color:#16a34a;">' + dev.flow_count + '</div>' +
+                '<div style="font-size:11px;color:#6b7280;margin-top:2px;">Active Flows</div></div>' +
+              '<div style="background:#eff6ff;border-radius:10px;padding:12px 8px;text-align:center;">' +
+                '<div style="font-size:24px;font-weight:700;color:#2563eb;">' + dev.identified + '</div>' +
+                '<div style="font-size:11px;color:#6b7280;margin-top:2px;">Identified</div></div>' +
+              '<div style="background:#fef3c7;border-radius:10px;padding:12px 8px;text-align:center;">' +
+                '<div style="font-size:24px;font-weight:700;color:#d97706;">' + dev.unknown + '</div>' +
+                '<div style="font-size:11px;color:#6b7280;margin-top:2px;">Unknown</div></div>' +
+              '<div style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:10px;padding:12px 8px;text-align:center;">' +
+                '<div style="font-size:13px;font-weight:600;color:#16a34a;"><i class="fas fa-arrow-down" style="font-size:10px;"></i> ' + formatBytes(dev.download) + '</div>' +
+                '<div style="font-size:13px;font-weight:600;color:#2563eb;margin-top:4px;"><i class="fas fa-arrow-up" style="font-size:10px;"></i> ' + formatBytes(dev.upload) + '</div>' +
+                '<div style="font-size:11px;color:#6b7280;margin-top:2px;">Traffic</div></div>' +
             '</div>';
         });
 
         bounds.push([coords[0], coords[1]]);
 
-        // Fleet summary card
-        fleetHtml +=
-          '<div style="flex:1;min-width:130px;background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px;padding:10px;text-align:center;">' +
-          '<div style="font-weight:600;color:#111827;font-size:13px;">' + dev.name + '</div>' +
-          '<div style="font-size:22px;font-weight:700;color:' + color + ';margin:4px 0;">' + dev.flow_count + '</div>' +
-          '<div style="font-size:10px;color:#6b7280;">flows</div>' +
-          '<div style="font-size:11px;margin-top:4px;color:#374151;">' +
-          '<span style="color:#16a34a;">&#x25BC;</span> ' + formatBytes(dev.download) +
-          ' <span style="color:#2563eb;">&#x25B2;</span> ' + formatBytes(dev.upload) +
-          '</div></div>';
+        // Fleet summary row
+        fleetRows +=
+          '<tr style="border-bottom:1px solid #f1f5f9;">' +
+            '<td style="padding:10px 12px;font-weight:600;color:#111827;font-size:13px;white-space:nowrap;">' +
+              '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + color + ';margin-right:6px;"></span>' + dev.name + '</td>' +
+            '<td style="padding:10px 12px;text-align:center;font-weight:700;font-size:15px;color:' + color + ';">' + dev.flow_count + '</td>' +
+            '<td style="padding:10px 12px;text-align:center;font-weight:600;font-size:13px;color:#16a34a;">' + dev.identified + '</td>' +
+            '<td style="padding:10px 12px;text-align:center;font-weight:600;font-size:13px;color:#d97706;">' + dev.unknown + '</td>' +
+            '<td style="padding:10px 12px;text-align:right;font-size:12px;white-space:nowrap;">' +
+              '<span style="color:#16a34a;font-weight:600;"><i class="fas fa-arrow-down" style="font-size:9px;"></i> ' + formatBytes(dev.download) + '</span>' +
+              '<span style="margin-left:8px;color:#2563eb;font-weight:600;"><i class="fas fa-arrow-up" style="font-size:9px;"></i> ' + formatBytes(dev.upload) + '</span></td>' +
+          '</tr>';
       });
 
       var fleetEl = document.getElementById('geo-fleet-cards');
-      if (fleetEl) fleetEl.innerHTML = fleetHtml;
+      if (fleetEl) {
+        if (fleetRows) {
+          fleetEl.innerHTML =
+            '<table style="width:100%;border-collapse:collapse;font-family:inherit;">' +
+              '<thead><tr style="border-bottom:2px solid #e5e7eb;">' +
+                '<th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;">Device</th>' +
+                '<th style="padding:8px 12px;text-align:center;font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;">Flows</th>' +
+                '<th style="padding:8px 12px;text-align:center;font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;">Identified</th>' +
+                '<th style="padding:8px 12px;text-align:center;font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;">Unknown</th>' +
+                '<th style="padding:8px 12px;text-align:right;font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;">Traffic</th>' +
+              '</tr></thead>' +
+              '<tbody>' + fleetRows + '</tbody>' +
+            '</table>';
+        } else if (noLocationDevices.length > 0) {
+          fleetEl.innerHTML = '<div style="text-align:center;padding:16px;color:#6b7280;font-size:12px;">' +
+            '<i class="fas fa-map-marker-alt" style="font-size:20px;color:#d1d5db;display:block;margin-bottom:6px;"></i>' +
+            noLocationDevices.length + ' device(s) found but no location data configured</div>';
+        } else {
+          fleetEl.innerHTML = msgNoData();
+        }
+      }
 
       // Fit map to show all devices
       if (bounds.length > 1) {
@@ -693,26 +1729,107 @@ if (typeof L === "undefined") {
     })
     .catch(function(err) {
       console.error('Geo map load error:', err);
+      var fleetEl = document.getElementById('geo-fleet-cards');
+      if (fleetEl) fleetEl.innerHTML = msgError();
     });
+  } // end loadGeoMapData
 
-  // Refresh
+  // Try to init map immediately (works if tab is already visible)
+  initGeoMap();
+
+  // Listen for tab activation to lazy-init and fix map sizing
+  document.addEventListener('home:tabchange', function(e) {
+    if (e.detail && e.detail.suffix === 'dpi') {
+      setTimeout(function() {
+        initGeoMap();
+        if (geoMap) geoMap.invalidateSize();
+      }, 250);
+    }
+  });
+
+  // Refresh with spin animation
   window.refreshDashboard = function() {
-    var btn = document.querySelector('.dpi-refresh-btn');
-    btn.innerHTML = '<i class="fas fa-sync-alt fa-spin"></i> Refreshing...';
-    setTimeout(function() { location.reload(); }, 500);
+    var btn = document.getElementById('dpi-refresh-btn');
+    if (btn) {
+      var svgIcon = btn.querySelector('svg');
+      if (svgIcon) {
+        svgIcon.style.animation = 'dpi-spin 0.8s linear infinite';
+        setTimeout(function() { svgIcon.style.animation = ''; }, 800);
+      }
+    }
+    setTimeout(function() { location.reload(); }, 800);
   };
+  var dpiRefreshBtn = document.getElementById('dpi-refresh-btn');
+  if (dpiRefreshBtn) dpiRefreshBtn.addEventListener('click', refreshDashboard);
+
+  // Export dropdown toggle
+  var dpiExportToggle = document.getElementById('dpi-export-btn-toggle');
+  var dpiExportDropdown = document.getElementById('dpi-export-dropdown');
+  if (dpiExportToggle && dpiExportDropdown) {
+    dpiExportToggle.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var isOpen = dpiExportDropdown.style.display === 'block';
+      dpiExportDropdown.style.display = isOpen ? 'none' : 'block';
+    });
+    document.addEventListener('click', function() {
+      dpiExportDropdown.style.display = 'none';
+    });
+    dpiExportDropdown.addEventListener('click', function(e) { e.stopPropagation(); });
+  }
+
+  // Map overview API data to all summary cards
+  function updateSummaryCards(data) {
+    var el;
+    // API returns "devices" array (latest snapshot per device)
+    var devices = data.devices || data.snapshots || [];
+    var totalFlows = 0, identifiedApps = 0, unknownFlows = 0;
+    for (var i = 0; i < devices.length; i++) {
+      totalFlows += (devices[i].flow_count || 0);
+      identifiedApps += (devices[i].identified_count || 0);
+      unknownFlows += (devices[i].unknown_count || 0);
+    }
+
+    el = document.getElementById('stat-flows');
+    if (el) el.textContent = totalFlows;
+
+    el = document.getElementById('stat-apps');
+    if (el) el.textContent = identifiedApps;
+
+    el = document.getElementById('stat-unknown');
+    if (el) el.textContent = unknownFlows;
+
+    el = document.getElementById('stat-devices');
+    if (el && data.discovered_devices !== undefined) el.textContent = data.discovered_devices;
+
+    el = document.getElementById('stat-alerts');
+    if (el && data.active_alerts !== undefined) el.textContent = data.active_alerts;
+
+    // Bandwidth
+    el = document.getElementById('stat-bw');
+    if (el) {
+      var dl = data.total_download || 0;
+      var ul = data.total_upload || 0;
+      el.innerHTML = '<span style="display:block;"><svg viewBox="0 0 24 24" style="width:12px;height:12px;vertical-align:middle;" aria-hidden="true"><path fill="#16a34a" d="M12 22 21 13h-6V2H9v11H3l9 9z"></path></svg> ' + fmtBytes(dl) + '</span>' +
+                     '<span style="display:block;margin-top:2px;"><svg viewBox="0 0 24 24" style="width:12px;height:12px;vertical-align:middle;" aria-hidden="true"><path fill="#2563eb" d="M12 2 3 11h6v11h6V11h6L12 2z"></path></svg> ' + fmtBytes(ul) + '</span>';
+    }
+
+    // Hide banner if we have live data (any device with flows)
+    var hasLive = devices.length > 0 && totalFlows > 0;
+    var banner = document.getElementById('dpi-limited-banner');
+    if (banner) banner.style.display = hasLive ? 'none' : 'flex';
+  }
+
+  // Initial load
+  fetch('/admin/dpi_analytics/dpisnapshot/api/overview/')
+    .then(function(r) { return r.json(); })
+    .then(updateSummaryCards)
+    .catch(function() {});
 
   // Auto-refresh stats every 30s
   setInterval(function() {
     fetch('/admin/dpi_analytics/dpisnapshot/api/overview/')
       .then(function(r) { return r.json(); })
-      .then(function(data) {
-        var el;
-        el = document.getElementById('stat-alerts');
-        if (el && data.active_alerts !== undefined) el.textContent = data.active_alerts;
-        el = document.getElementById('stat-devices');
-        if (el && data.discovered_devices !== undefined) el.textContent = data.discovered_devices;
-      })
+      .then(updateSummaryCards)
       .catch(function() {});
   }, 30000);
 
@@ -735,7 +1852,7 @@ if (typeof L === "undefined") {
 
   // Helper: category badge color
   function catColor(cat) {
-    var m = {'Streaming':'#dc2626','Social':'#7c3aed','Network':'#0891b2','Web':'#2563eb','Business':'#16a34a','Security':'#d97706','Gaming':'#db2777','Other':'#6b7280'};
+    var m = {'Streaming':'#dc2626','Social':'#7c3aed','Network':'#0891b2','Web':'#24415d','Business':'#16a34a','Security':'#d97706','Gaming':'#db2777','Other':'#6b7280'};
     return m[cat] || '#6b7280';
   }
 
@@ -748,7 +1865,7 @@ if (typeof L === "undefined") {
 
   // Helper: severity badge
   function sevBadge(sev) {
-    var colors = {'critical':'#dc2626','high':'#7c3aed','medium':'#d97706','low':'#16a34a','info':'#2563eb'};
+    var colors = {'critical':'#dc2626','high':'#7c3aed','medium':'#d97706','low':'#16a34a','info':'#24415d'};
     var c = colors[sev] || '#6b7280';
     return '<span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;color:#fff;background:' + c + ';">' + (sev||'info') + '</span>';
   }
@@ -787,7 +1904,7 @@ if (typeof L === "undefined") {
   };
   var catColors = {
     'Streaming': '#dc2626', 'Social': '#7c3aed', 'Network': '#0891b2',
-    'Web': '#2563eb', 'Business': '#16a34a', 'Security': '#d97706',
+    'Web': '#24415d', 'Business': '#16a34a', 'Security': '#d97706',
     'Gaming': '#db2777', 'Unknown': '#6b7280', 'Other': '#475569',
     'Communication': '#0d9488', 'Cloud': '#4f46e5', 'File Sharing': '#ea580c',
   };
@@ -860,7 +1977,7 @@ if (typeof L === "undefined") {
         b.style.background = '#fff'; b.style.color = '#6b7280';
         b.classList.remove('active');
       });
-      this.style.background = '#2563eb'; this.style.color = '#fff';
+      this.style.background = '#24415d'; this.style.color = '#fff';
       this.classList.add('active');
       drillState.interval = this.getAttribute('data-interval');
       drillReload();
@@ -886,7 +2003,7 @@ if (typeof L === "undefined") {
     if (drillState.layer === 1) {
       html += '<span style="font-size:12px;font-weight:600;color:#1e293b;padding:3px 8px;background:#e2e8f0;border-radius:4px;">Categories</span>';
     } else {
-      html += '<a href="#" onclick="drillGo(1);return false;" style="font-size:12px;font-weight:500;color:#2563eb;text-decoration:none;padding:3px 8px;border-radius:4px;">Categories</a>';
+      html += '<a href="#" onclick="drillGo(1);return false;" style="font-size:12px;font-weight:500;color:#24415d;text-decoration:none;padding:3px 8px;border-radius:4px;">Categories</a>';
       html += '<i class="fas fa-chevron-right" style="font-size:8px;color:#cbd5e1;margin:0 2px;"></i>';
     }
     // Layer 2: category
@@ -894,7 +2011,7 @@ if (typeof L === "undefined") {
       if (drillState.layer === 2) {
         html += '<span style="font-size:12px;font-weight:600;color:#1e293b;padding:3px 8px;background:#e2e8f0;border-radius:4px;">' + drillState.category + '</span>';
       } else {
-        html += '<a href="#" onclick="drillGo(2);return false;" style="font-size:12px;font-weight:500;color:#2563eb;text-decoration:none;padding:3px 8px;border-radius:4px;">' + drillState.category + '</a>';
+        html += '<a href="#" onclick="drillGo(2);return false;" style="font-size:12px;font-weight:500;color:#24415d;text-decoration:none;padding:3px 8px;border-radius:4px;">' + drillState.category + '</a>';
         html += '<i class="fas fa-chevron-right" style="font-size:8px;color:#cbd5e1;margin:0 2px;"></i>';
       }
     }
@@ -971,7 +2088,7 @@ if (typeof L === "undefined") {
                 '</div>' +
                 '<div style="display:flex;justify-content:space-between;font-size:12px;">' +
                   '<div><span style="color:#6b7280;">DL</span> <span style="font-weight:600;color:#16a34a;">' + fmtBytes(c.totalDown) + '</span></div>' +
-                  '<div><span style="color:#6b7280;">UL</span> <span style="font-weight:600;color:#2563eb;">' + fmtBytes(c.totalUp) + '</span></div>' +
+                  '<div><span style="color:#6b7280;">UL</span> <span style="font-weight:600;color:#24415d;">' + fmtBytes(c.totalUp) + '</span></div>' +
                   '<div><span style="color:#6b7280;">Flows</span> <span style="font-weight:600;">' + c.totalFlows + '</span></div>' +
                 '</div>' +
                 '<div style="margin-top:8px;font-size:11px;color:#94a3b8;">';
@@ -990,7 +2107,7 @@ if (typeof L === "undefined") {
           });
       })
       .catch(function(e) {
-        container.innerHTML = '<div class="dpi-empty"><div class="dpi-empty-icon"><i class="fas fa-exclamation-triangle"></i></div><div class="dpi-empty-text">Failed to load category data</div></div>';
+        container.innerHTML = msgError();
       });
   }
 
@@ -1035,7 +2152,7 @@ if (typeof L === "undefined") {
             '<div style="text-align:center;background:#fff;border-radius:8px;padding:8px 16px;border:1px solid #e5e7eb;">' +
               '<div style="font-size:18px;font-weight:700;color:#16a34a;">' + fmtBytes(totalDown) + '</div><div style="font-size:10px;color:#6b7280;">Download</div></div>' +
             '<div style="text-align:center;background:#fff;border-radius:8px;padding:8px 16px;border:1px solid #e5e7eb;">' +
-              '<div style="font-size:18px;font-weight:700;color:#2563eb;">' + fmtBytes(totalUp) + '</div><div style="font-size:10px;color:#6b7280;">Upload</div></div>' +
+              '<div style="font-size:18px;font-weight:700;color:#24415d;">' + fmtBytes(totalUp) + '</div><div style="font-size:10px;color:#6b7280;">Upload</div></div>' +
             '<div style="text-align:center;background:#fff;border-radius:8px;padding:8px 16px;border:1px solid #e5e7eb;">' +
               '<div style="font-size:18px;font-weight:700;color:#1e293b;">' + totalFlows + '</div><div style="font-size:10px;color:#6b7280;">Flows</div></div>' +
           '</div>' +
@@ -1062,7 +2179,7 @@ if (typeof L === "undefined") {
             '<td><div style="font-weight:600;color:#1e293b;font-size:13px;">' + name + '</div>' +
               '</td>' +
             '<td style="font-weight:600;color:#16a34a;">' + fmtBytes(down) + '</td>' +
-            '<td style="font-weight:600;color:#2563eb;">' + fmtBytes(up) + '</td>' +
+            '<td style="font-weight:600;color:#24415d;">' + fmtBytes(up) + '</td>' +
             '<td>' + flows + '</td>' +
             '<td><div style="display:flex;align-items:center;gap:6px;">' +
               '<div style="flex:1;height:6px;background:#f3f4f6;border-radius:3px;overflow:hidden;max-width:80px;"><div style="height:100%;width:' + pct + '%;background:' + palette[i%10] + ';border-radius:3px;"></div></div>' +
@@ -1075,7 +2192,7 @@ if (typeof L === "undefined") {
         container.innerHTML = html;
       })
       .catch(function(e) {
-        container.innerHTML = '<div class="dpi-empty"><div class="dpi-empty-icon"><i class="fas fa-exclamation-triangle"></i></div><div class="dpi-empty-text">Failed to load apps</div></div>';
+        container.innerHTML = msgError();
       });
   }
 
@@ -1094,7 +2211,7 @@ if (typeof L === "undefined") {
     container.innerHTML = '<div style="text-align:center;padding:30px;"><i class="fas fa-spinner fa-spin" style="font-size:20px;color:#94a3b8;"></i></div>';
 
     var displayName = (appName || 'Unknown').replace('netify.','').replace(/^netify$/, 'DPI Engine');
-    var color = catColors[drillState.category] || '#2563eb';
+    var color = catColors[drillState.category] || '#24415d';
 
     // Fetch per-device breakdown for this app from fleet radar
     fetch(BASE_ADMIN + 'api/fleet-radar/')
@@ -1142,7 +2259,7 @@ if (typeof L === "undefined") {
                   '<div style="text-align:center;background:#fff;border-radius:8px;padding:10px 20px;border:1px solid #e5e7eb;min-width:80px;">' +
                     '<div style="font-size:24px;font-weight:700;color:#16a34a;">' + fmtBytes(totalDown) + '</div><div style="font-size:10px;color:#6b7280;">Download</div></div>' +
                   '<div style="text-align:center;background:#fff;border-radius:8px;padding:10px 20px;border:1px solid #e5e7eb;min-width:80px;">' +
-                    '<div style="font-size:24px;font-weight:700;color:#2563eb;">' + fmtBytes(totalUp) + '</div><div style="font-size:10px;color:#6b7280;">Upload</div></div>' +
+                    '<div style="font-size:24px;font-weight:700;color:#24415d;">' + fmtBytes(totalUp) + '</div><div style="font-size:10px;color:#6b7280;">Upload</div></div>' +
                   '<div style="text-align:center;background:#fff;border-radius:8px;padding:10px 20px;border:1px solid #e5e7eb;min-width:80px;">' +
                     '<div style="font-size:24px;font-weight:700;color:#1e293b;">' + totalFlows + '</div><div style="font-size:10px;color:#6b7280;">Flows</div></div>' +
                 '</div>' +
@@ -1154,11 +2271,11 @@ if (typeof L === "undefined") {
 
             // Left: Per-Device Breakdown
             html += '<div style="background:#fff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;">' +
-              '<div style="padding:12px 16px;border-bottom:1px solid #e5e7eb;font-weight:700;font-size:13px;color:#1e293b;"><i class="fas fa-server" style="color:#2563eb;margin-right:6px;"></i>Per-Device Breakdown</div>' +
+              '<div style="padding:12px 16px;border-bottom:1px solid #e5e7eb;font-weight:700;font-size:13px;color:#1e293b;"><i class="fas fa-server" style="color:#24415d;margin-right:6px;"></i>Per-Device Breakdown</div>' +
               '<div style="padding:12px 16px;">';
 
             if (perDevice.length === 0) {
-              html += '<div style="text-align:center;color:#94a3b8;padding:20px;font-size:12px;">No per-device data available</div>';
+              html += msgNoData();
             } else {
               var maxDev = Math.max.apply(null, perDevice.map(function(d) { return d.bytes; }));
               perDevice.sort(function(a,b) { return b.bytes - a.bytes; });
@@ -1185,7 +2302,7 @@ if (typeof L === "undefined") {
                   '<tr><td style="padding:8px 0;color:#6b7280;border-bottom:1px solid #f3f4f6;">DPI Signature</td><td style="padding:8px 0;font-weight:600;color:#1e293b;border-bottom:1px solid #f3f4f6;">' + displayName + '</td></tr>' +
                   '<tr><td style="padding:8px 0;color:#6b7280;border-bottom:1px solid #f3f4f6;">Category</td><td style="padding:8px 0;font-weight:600;color:#1e293b;border-bottom:1px solid #f3f4f6;">' + (drillState.category||'Other') + '</td></tr>' +
                   '<tr><td style="padding:8px 0;color:#6b7280;border-bottom:1px solid #f3f4f6;">Total Download</td><td style="padding:8px 0;font-weight:600;color:#16a34a;border-bottom:1px solid #f3f4f6;">' + fmtBytes(totalDown) + '</td></tr>' +
-                  '<tr><td style="padding:8px 0;color:#6b7280;border-bottom:1px solid #f3f4f6;">Total Upload</td><td style="padding:8px 0;font-weight:600;color:#2563eb;border-bottom:1px solid #f3f4f6;">' + fmtBytes(totalUp) + '</td></tr>' +
+                  '<tr><td style="padding:8px 0;color:#6b7280;border-bottom:1px solid #f3f4f6;">Total Upload</td><td style="padding:8px 0;font-weight:600;color:#24415d;border-bottom:1px solid #f3f4f6;">' + fmtBytes(totalUp) + '</td></tr>' +
                   '<tr><td style="padding:8px 0;color:#6b7280;border-bottom:1px solid #f3f4f6;">Total Flows</td><td style="padding:8px 0;font-weight:600;color:#1e293b;border-bottom:1px solid #f3f4f6;">' + totalFlows + '</td></tr>' +
                   '<tr><td style="padding:8px 0;color:#6b7280;border-bottom:1px solid #f3f4f6;">Devices Seen On</td><td style="padding:8px 0;font-weight:600;color:#1e293b;border-bottom:1px solid #f3f4f6;">' + perDevice.length + ' router' + (perDevice.length!==1?'s':'') + '</td></tr>' +
                   '<tr><td style="padding:8px 0;color:#6b7280;">Upload/Download Ratio</td><td style="padding:8px 0;font-weight:600;color:#1e293b;">' + (totalDown > 0 ? (totalUp/totalDown).toFixed(2) : '0') + 'x</td></tr>' +
@@ -1198,7 +2315,7 @@ if (typeof L === "undefined") {
           });
       })
       .catch(function(e) {
-        container.innerHTML = '<div class="dpi-empty"><div class="dpi-empty-icon"><i class="fas fa-exclamation-triangle"></i></div><div class="dpi-empty-text">Failed to load app detail</div></div>';
+        container.innerHTML = msgError();
       });
   }
 
@@ -1225,12 +2342,12 @@ if (typeof L === "undefined") {
               if (maxBytes === 0) maxBytes = 1;
 
               var html = '<div style="grid-column:1/-1;">' +
-                '<div style="background:#fff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;">' +
-                '<div style="padding:14px 20px;background:linear-gradient(135deg,#eff6ff,#f0fdf4);border-bottom:1px solid #e5e7eb;display:flex;align-items:center;gap:10px;">' +
-                  '<div style="width:32px;height:32px;border-radius:8px;background:#2563eb;display:flex;align-items:center;justify-content:center;">' +
-                    '<i class="fas fa-globe" style="color:#fff;font-size:14px;"></i></div>' +
-                  '<div><div style="font-weight:700;font-size:14px;color:#1e293b;">Direct Traffic (No Tunnel)</div>' +
-                  '<div style="font-size:11px;color:#6b7280;">Top 10 applications by total bandwidth</div></div>' +
+                '<div style="background:#fff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.04);">' +
+                '<div style="padding:12px 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #f3f4f6;">' +
+                  '<div style="width:34px;height:34px;border-radius:8px;background:#f3f4f6;display:flex;align-items:center;justify-content:center;">' +
+                    '<i class="fas fa-globe" style="color:#6b7280;font-size:14px;"></i></div>' +
+                  '<div><div style="font-weight:700;font-size:13px;color:#1e293b;">Direct Traffic (No Tunnel)</div>' +
+                  '<div style="font-size:11px;color:#9ca3af;">Top 10 applications by total bandwidth</div></div>' +
                 '</div>' +
                 '<div style="padding:4px 0;">';
 
@@ -1243,7 +2360,7 @@ if (typeof L === "undefined") {
 
                 var catColors = {
                   'Streaming':'#dc2626','Social':'#7c3aed','Network':'#0891b2',
-                  'Web':'#2563eb','Business':'#16a34a','Security':'#d97706',
+                  'Web':'#24415d','Business':'#16a34a','Security':'#d97706',
                   'Gaming':'#db2777','Unknown':'#9ca3af','Other':'#6b7280'
                 };
                 var cat = a.category || 'Other';
@@ -1261,11 +2378,14 @@ if (typeof L === "undefined") {
                     '</div>' +
                   '</div>' +
                   '<div style="text-align:right;flex-shrink:0;min-width:80px;">' +
-                    '<div style="font-size:11px;font-weight:600;color:#16a34a;"><i class="fas fa-arrow-down" style="font-size:9px;"></i> ' + fmtBytes(down) + '</div>' +
-                    '<div style="font-size:11px;font-weight:600;color:#2563eb;"><i class="fas fa-arrow-up" style="font-size:9px;"></i> ' + fmtBytes(up) + '</div>' +
+                    '<div style="font-size:11px;font-weight:600;color:#2563eb;"><svg viewBox="0 0 24 24" style="width:9px;height:9px;vertical-align:middle;" aria-hidden="true"><path fill="#2563eb" d="M12 2 3 11h6v11h6V11h6L12 2z"></path></svg> ' + fmtBytes(up) + '</div>' +
+                    '<div style="font-size:11px;font-weight:600;color:#16a34a;"><svg viewBox="0 0 24 24" style="width:9px;height:9px;vertical-align:middle;" aria-hidden="true"><path fill="#16a34a" d="M12 22 21 13h-6V2H9v11H3l9 9z"></path></svg> ' + fmtBytes(down) + '</div>' +
                   '</div>' +
                 '</div>';
               });
+              if (apps.length === 0) {
+                html += msgNoData();
+              }
               html += '</div></div></div>';
               grid.innerHTML = html;
             });
@@ -1279,10 +2399,10 @@ if (typeof L === "undefined") {
           apps.forEach(function(a) { var t = (a.download||0)+(a.upload||0); if(t>maxB)maxB=t; });
           if (maxB === 0) maxB = 1;
 
-          html += '<div style="background:#fff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;">' +
-            '<div style="padding:12px 16px;background:#f0fdf4;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;gap:8px;">' +
-              '<div style="width:28px;height:28px;border-radius:6px;background:#16a34a;display:flex;align-items:center;justify-content:center;">' +
-                '<i class="fas fa-lock" style="color:#fff;font-size:12px;"></i></div>' +
+          html += '<div style="background:#fff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.04);">' +
+            '<div style="padding:12px 16px;display:flex;align-items:center;gap:8px;border-bottom:1px solid #f3f4f6;">' +
+              '<div style="width:34px;height:34px;border-radius:8px;background:#f3f4f6;display:flex;align-items:center;justify-content:center;">' +
+                '<i class="fas fa-lock" style="color:#6b7280;font-size:13px;"></i></div>' +
               '<div style="font-weight:700;font-size:13px;color:#1e293b;">' + tun + '</div>' +
             '</div><div style="padding:4px 0;">';
 
@@ -1321,7 +2441,7 @@ if (typeof L === "undefined") {
         var keys = Object.keys(wanLinks);
 
         if (keys.length === 0) {
-          grid.innerHTML = '<div class="dpi-empty" style="grid-column:1/-1;"><div class="dpi-empty-icon"><i class="fas fa-exchange-alt"></i></div><div class="dpi-empty-text">No WAN link data yet</div></div>';
+          grid.innerHTML = '<div style="grid-column:1/-1;">' + msgNoData() + '</div>';
           return;
         }
 
@@ -1333,18 +2453,18 @@ if (typeof L === "undefined") {
           var linkName = link === 'unknown' ? 'Default Route' : link;
 
           html += '<div style="background:#fff;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">' +
-            '<div style="padding:14px 16px;background:linear-gradient(135deg,' + palette[linkIdx%10] + '10,' + palette[linkIdx%10] + '05);border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;">' +
+            '<div style="padding:14px 16px;background:#f0f0f0;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;">' +
               '<div style="font-weight:700;font-size:14px;color:#1e293b;">' +
-                '<i class="fas fa-ethernet" style="color:' + palette[linkIdx%10] + ';"></i> ' + linkName +
+                '<i class="fas fa-ethernet" style="color:#6b7280;opacity:0.7;"></i> ' + linkName +
               '</div>' +
               '<div style="font-size:12px;color:#6b7280;">' + fmtBytes(totalDown + totalUp) + ' total</div>' +
             '</div>' +
             '<div style="padding:12px 16px;">' +
               '<div style="display:flex;gap:16px;margin-bottom:12px;">' +
-                '<div style="flex:1;text-align:center;background:#f0fdf4;border-radius:6px;padding:8px;">' +
+                '<div style="flex:1;text-align:center;background:#f3f4f6;border-radius:6px;padding:8px;">' +
                   '<div style="font-size:18px;font-weight:700;color:#16a34a;">' + fmtBytes(totalDown) + '</div>' +
                   '<div style="font-size:10px;color:#6b7280;">Download</div></div>' +
-                '<div style="flex:1;text-align:center;background:#eff6ff;border-radius:6px;padding:8px;">' +
+                '<div style="flex:1;text-align:center;background:#f3f4f6;border-radius:6px;padding:8px;">' +
                   '<div style="font-size:18px;font-weight:700;color:#2563eb;">' + fmtBytes(totalUp) + '</div>' +
                   '<div style="font-size:10px;color:#6b7280;">Upload</div></div>' +
               '</div>';
@@ -1423,33 +2543,38 @@ if (typeof L === "undefined") {
       .then(function(r) { return r.json(); })
       .then(function(data) {
         var devices = data.results || data.devices || [];
-        if (!devices.length) return;
-        var tbody = document.getElementById('devices-tbody');
-        var html = '';
+        var container = document.getElementById('discovery-content');
+        if (!container || !devices.length) return;
+        var rows = '';
         devices.forEach(function(d) {
           var name = d.hostname || d.name || d.mac_address || '-';
           var mac = d.mac_address || '-';
           var ip = d.ip_address || '-';
           var os = d.os_name || '-';
           var dtype = d.device_type || '-';
-          var status = d.status || 'active';
+          var st = d.status || 'active';
           var router = d.device_name || d.device__name || '-';
           var traffic = (d.total_download_bytes || d.total_download || 0) + (d.total_upload_bytes || d.total_upload || 0);
           var lastSeen = d.last_seen ? new Date(d.last_seen).toLocaleString() : '-';
-
-          html += '<tr>' +
+          rows += '<tr>' +
             '<td><div style="font-weight:600;color:#1e293b;">' + name + '</div></td>' +
             '<td><code style="font-size:11px;background:#f3f4f6;padding:2px 6px;border-radius:4px;">' + mac + '</code></td>' +
             '<td>' + ip + '</td>' +
             '<td>' + os + '</td>' +
             '<td>' + dtype + '</td>' +
-            '<td>' + statusBadge(status) + '</td>' +
+            '<td>' + statusBadge(st) + '</td>' +
             '<td>' + router + '</td>' +
             '<td style="font-weight:600;">' + fmtBytes(traffic) + '</td>' +
             '<td style="font-size:11px;color:#6b7280;">' + lastSeen + '</td>' +
           '</tr>';
         });
-        tbody.innerHTML = html;
+        container.innerHTML =
+          '<div class="dpi-table-wrap"><table class="dpi-table">' +
+          '<thead><tr>' +
+            '<th>Device</th><th>MAC Address</th><th>IP Address</th><th>OS</th>' +
+            '<th>Type</th><th>Status</th><th>Router</th><th>Traffic</th><th>Last Seen</th>' +
+          '</tr></thead>' +
+          '<tbody>' + rows + '</tbody></table></div>';
       })
       .catch(function(e) { console.error('Discovery tab error:', e); });
   }
@@ -1466,13 +2591,13 @@ if (typeof L === "undefined") {
         if (recent.length === 0) {
           el.innerHTML =
             '<div style="padding:24px;text-align:center;">' +
-              '<div style="font-size:48px;margin-bottom:8px;">&#x2705;</div>' +
-              '<div style="font-size:16px;font-weight:600;color:#16a34a;">All Clear</div>' +
+              '<div style="margin-bottom:8px;"><i class="fas fa-check-circle" style="font-size:32px;color:#16a34a;opacity:0.7;"></i></div>' +
+              '<div style="font-size:14px;font-weight:600;color:#16a34a;">All Clear</div>' +
               '<div style="font-size:12px;color:#6b7280;margin-top:4px;">No active security alerts detected</div>' +
               '<div style="display:flex;justify-content:center;gap:16px;margin-top:16px;">' +
-                '<div style="text-align:center;"><div style="font-size:20px;font-weight:700;color:#1e293b;">' + (bySev['critical']||0) + '</div><div style="font-size:10px;color:#6b7280;">Critical</div></div>' +
-                '<div style="text-align:center;"><div style="font-size:20px;font-weight:700;color:#1e293b;">' + (bySev['high']||0) + '</div><div style="font-size:10px;color:#6b7280;">High</div></div>' +
-                '<div style="text-align:center;"><div style="font-size:20px;font-weight:700;color:#1e293b;">' + (bySev['medium']||0) + '</div><div style="font-size:10px;color:#6b7280;">Medium</div></div>' +
+                '<div style="text-align:center;"><div style="font-size:16px;font-weight:600;color:#1e293b;">' + (bySev['critical']||0) + '</div><div style="font-size:10px;color:#6b7280;">Critical</div></div>' +
+                '<div style="text-align:center;"><div style="font-size:16px;font-weight:600;color:#1e293b;">' + (bySev['high']||0) + '</div><div style="font-size:10px;color:#6b7280;">High</div></div>' +
+                '<div style="text-align:center;"><div style="font-size:16px;font-weight:600;color:#1e293b;">' + (bySev['medium']||0) + '</div><div style="font-size:10px;color:#6b7280;">Medium</div></div>' +
               '</div>' +
             '</div>';
         } else {
@@ -1495,13 +2620,13 @@ if (typeof L === "undefined") {
           el.innerHTML = html;
         }
 
-        var sevChart = Chart.getChart('chart-severity');
-        if (sevChart) {
-          sevChart.data.datasets[0].data = [
-            bySev['critical'] || 0, bySev['high'] || 0,
-            bySev['medium'] || 0, bySev['low'] || 0,
-          ];
-          sevChart.update();
+        // Update severity chart with real data
+        var sevData = [
+          bySev['critical'] || 0, bySev['high'] || 0,
+          bySev['medium'] || 0, bySev['low'] || 0,
+        ];
+        if (typeof window._renderSeverityChart === 'function') {
+          window._renderSeverityChart(sevData);
         }
       })
       .catch(function(e) { console.error('Security tab error:', e); });
@@ -1515,17 +2640,12 @@ if (typeof L === "undefined") {
         if (!el) return;
 
         if (items.length === 0) {
-          el.innerHTML =
-            '<div style="padding:24px;text-align:center;">' +
-              '<div style="font-size:36px;margin-bottom:8px;color:#d1d5db;"><i class="fas fa-crosshairs"></i></div>' +
-              '<div style="font-size:14px;font-weight:600;color:#6b7280;">No flagged IPs</div>' +
-              '<div style="font-size:12px;color:#9ca3af;margin-top:4px;">All destination IPs have clean reputation scores</div>' +
-            '</div>';
+          el.innerHTML = msgNoData();
           return;
         }
 
         var html = '<div style="padding:0;">' +
-          '<div style="display:grid;grid-template-columns:1fr 100px 100px 60px;padding:10px 16px;background:#f8fafc;font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #e5e7eb;">' +
+          '<div style="display:grid;grid-template-columns:1fr 100px 100px 60px;padding:10px 16px;background:#f0f0f0;font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #e5e7eb;">' +
             '<div>IP Address</div><div>Threat Type</div><div style="text-align:center;">Score</div><div style="text-align:center;">Hits</div>' +
           '</div>';
 
@@ -1563,10 +2683,7 @@ if (typeof L === "undefined") {
         console.error('IP reputation error:', e);
         var el = document.getElementById('ip-reputation-table');
         if (el) {
-          el.innerHTML =
-            '<div style="padding:16px;text-align:center;font-size:12px;color:#9ca3af;">' +
-              '<i class="fas fa-exclamation-triangle" style="color:#d97706;"></i> Could not load IP reputation data' +
-            '</div>';
+          el.innerHTML = msgError();
         }
       });
   }
@@ -1580,7 +2697,7 @@ if (typeof L === "undefined") {
         var el = document.getElementById('unknown-flows');
 
         if (!flows.length) {
-          el.innerHTML = '<div style="padding:20px;text-align:center;color:#6b7280;">No unclassified traffic data available</div>';
+          el.innerHTML = msgNoData();
           return;
         }
 
@@ -1598,7 +2715,7 @@ if (typeof L === "undefined") {
             '</div></td>' +
             '<td><span style="font-size:11px;color:#6b7280;">' + (f.category || 'Uncategorized') + '</span></td>' +
             '<td style="font-weight:600;color:#16a34a;">' + fmtBytes(f.total_down || f.download_bytes || 0) + '</td>' +
-            '<td style="font-weight:600;color:#2563eb;">' + fmtBytes(f.total_up || f.upload_bytes || 0) + '</td>' +
+            '<td style="font-weight:600;color:#24415d;">' + fmtBytes(f.total_up || f.upload_bytes || 0) + '</td>' +
             '<td>' + (f.total_flows || f.flow_count || 0) + '</td>' +
             '<td style="font-size:11px;color:#6b7280;">' + (f.device_name || f.device__name || '-') + '</td>' +
           '</tr>';
@@ -1612,17 +2729,338 @@ if (typeof L === "undefined") {
 })();
 </script>
 
+<!-- Tab init handled by inline geo map lazy-init listener -->
+
 <script>
 (function() {
-  function initDpiTab() {
-    if (typeof refreshDashboard === 'function') {
-      setTimeout(refreshDashboard, 500);
+  var DRILL_BASE = '/admin/dpi_analytics/dpisnapshot/api/drill/';
+  function drillUrl(type) { return DRILL_BASE + type + '/'; }
+
+  // Fetch signature count for card label
+  fetch(drillUrl('signatures') + '?page=1', { credentials: 'include' })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      var el = document.getElementById('dpi-sig-count');
+      if (el && data.total) {
+        var n = data.total;
+        el.textContent = n >= 1000 ? Math.round(n / 1000) + 'K' : n;
+      }
+    })
+    .catch(function() {});
+
+  // Card metadata
+  var cardMeta = {
+    flows:      { title: 'Active Flows',    icon: 'fa-sitemap',          color: '#6b7280', subtitle: 'Top flows by bandwidth' },
+    apps:       { title: 'Identified Apps',  icon: 'fa-fingerprint',      color: '#6b7280', subtitle: 'All identified applications with categories' },
+    signatures: { title: 'DPI Signatures',   icon: 'fa-fingerprint',      color: '#6b7280', subtitle: 'Full DPI signature database' },
+    unknown:    { title: 'Unknown Flows',    icon: 'fa-question-circle',  color: '#6b7280', subtitle: 'Unclassified traffic requiring investigation' },
+    devices:    { title: 'LAN Devices',      icon: 'fa-desktop',          color: '#6b7280', subtitle: 'Auto-discovered devices on your network' },
+    alerts:     { title: 'Active Alerts',    icon: 'fa-shield-alt',       color: '#6b7280', subtitle: 'Unacknowledged security alerts' },
+    bandwidth:  { title: 'Bandwidth',        icon: 'fa-tachometer-alt',   color: '#6b7280', subtitle: 'Per-device and per-app bandwidth breakdown' }
+  };
+
+  function esc(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+  function fmtBytes(b) {
+    if (!b || b === 0) return '0 B';
+    var u = ['B','KB','MB','GB','TB'];
+    var i = Math.floor(Math.log(b) / Math.log(1024));
+    return (b / Math.pow(1024, i)).toFixed(i > 0 ? 1 : 0) + ' ' + u[i];
+  }
+
+  function statBadge(label, value) {
+    return '<div style="display:inline-flex;align-items:center;background:#f3f4f6;border:1px solid #d1d5db;border-radius:999px;padding:5px 10px 5px 12px;gap:6px;">' +
+      '<span style="font-size:11px;font-weight:500;color:#6b7280;white-space:nowrap;">' + esc(label) + '</span>' +
+      '<span style="font-size:12px;font-weight:700;color:#6b7280;white-space:nowrap;">' + esc(String(value)) + '</span>' +
+      '</div>';
+  }
+
+  function drillTable(headers, rows) {
+    var html = '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;">';
+    html += '<thead><tr>';
+    headers.forEach(function(h) {
+      html += '<th style="text-align:left;padding:8px 12px;background:#f0f0f0;border-bottom:2px solid #e2e8f0;color:#64748b;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;white-space:nowrap;position:sticky;top:0;">' + esc(h) + '</th>';
+    });
+    html += '</tr></thead><tbody>';
+    rows.forEach(function(row, idx) {
+      html += '<tr style="border-bottom:1px solid #f1f5f9;' + (idx % 2 === 0 ? '' : 'background:#fafbfc;') + '">';
+      row.forEach(function(cell) { html += '<td style="padding:7px 12px;color:#374151;white-space:nowrap;">' + cell + '</td>'; });
+      html += '</tr>';
+    });
+    if (rows.length === 0) {
+      html += '<tr><td colspan="' + headers.length + '">' + msgNoData() + '</td></tr>';
+    }
+    html += '</tbody></table></div>';
+    return html;
+  }
+
+  function catColor(cat) {
+    var m = {'Streaming':'#dc2626','Social':'#7c3aed','Network':'#0891b2','Web':'#24415d','Business':'#16a34a','Security':'#d97706','Gaming':'#db2777','Other':'#6b7280'};
+    return m[cat] || '#6b7280';
+  }
+
+  function severityBadge(sev) {
+    var colors = {critical:'#dc2626',high:'#9333ea',medium:'#d97706',low:'#16a34a'};
+    var c = colors[sev] || '#6b7280';
+    return '<span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;color:#fff;background:' + c + ';text-transform:uppercase;">' + esc(sev) + '</span>';
+  }
+
+  function statusBadge(status) {
+    var colors = {known:'#16a34a',new:'#24415d',rogue:'#dc2626'};
+    var c = colors[status] || '#6b7280';
+    return '<span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;color:#fff;background:' + c + ';text-transform:uppercase;">' + esc(status) + '</span>';
+  }
+
+  function typeBadge(type) {
+    var icons = {laptop:'fa-laptop',desktop:'fa-desktop',mobile:'fa-mobile-alt',tablet:'fa-tablet-alt',iot:'fa-microchip',server:'fa-server',printer:'fa-print',camera:'fa-video',router:'fa-wifi',other:'fa-question'};
+    var icon = icons[type] || 'fa-question';
+    return '<i class="fas ' + icon + '" style="color:#6b7280;margin-right:4px;"></i>' + esc(type);
+  }
+
+  // Open inline drill-down
+  window.openCardDrill = function(type) {
+    var meta = cardMeta[type];
+    if (!meta) return;
+    var section = document.getElementById('card-drill-section');
+    var tabs = document.querySelector('.dpi-tabs');
+    var panels = document.querySelector('.dpi-panels');
+    var filterBar = document.getElementById('drill-filter-bar');
+
+    // Hide tabs & panels, show drill section
+    if (tabs) tabs.style.display = 'none';
+    if (panels) panels.style.display = 'none';
+    if (filterBar) filterBar.style.display = 'none';
+    section.style.display = 'block';
+
+    document.getElementById('card-drill-icon').innerHTML = '<i class="fas ' + meta.icon + '" style="opacity:0.7;"></i>';
+    document.getElementById('card-drill-title').textContent = meta.title;
+    document.getElementById('card-drill-subtitle').textContent = meta.subtitle;
+    document.getElementById('card-drill-stats').innerHTML = '';
+    document.getElementById('card-drill-body').innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8;"><i class="fas fa-spinner fa-spin" style="font-size:24px;"></i><div style="margin-top:8px;">Loading...</div></div>';
+
+    // Scroll to drill section
+    section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    var drillIconMap = { flows: 'flow', apps: 'list', signatures: 'list', unknown: 'search', devices: 'device', alerts: 'shield', bandwidth: 'chart' };
+    var drillIcon = drillIconMap[type] || 'info';
+
+    fetch(drillUrl(type), { credentials: 'include' })
+      .then(function(r) {
+        if (!r.ok) throw new Error('API error');
+        return r.json();
+      })
+      .then(function(data) { renderCardDrill(type, data); })
+      .catch(function(err) {
+        console.error('Drill-down error:', err);
+        document.getElementById('card-drill-body').innerHTML = msgError();
+      });
+  };
+
+  // Close inline drill-down, restore tabs
+  window.closeCardDrill = function() {
+    var section = document.getElementById('card-drill-section');
+    var tabs = document.querySelector('.dpi-tabs');
+    var panels = document.querySelector('.dpi-panels');
+
+    section.style.display = 'none';
+    if (tabs) tabs.style.display = 'flex';
+    if (panels) panels.style.display = 'block';
+  };
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeCardDrill();
+  });
+
+  // Render drill-down data
+  function renderCardDrill(type, data) {
+    var stats = document.getElementById('card-drill-stats');
+    var body = document.getElementById('card-drill-body');
+
+    if (type === 'flows') {
+      stats.innerHTML = statBadge('Total Flows', data.total || 0) + statBadge('Showing', (data.flows || []).length);
+      var rows = (data.flows || []).map(function(f) {
+        return [
+          '<span style="font-weight:600;color:#1e293b;">' + esc((f.app_name || 'Unknown').replace('netify.','')) + '</span>',
+          esc(f.device__name || '-'),
+          '<span style="font-family:monospace;font-size:11px;">' + esc(f.source_ip || '-') + '</span>',
+          '<span style="font-family:monospace;font-size:11px;">' + esc((f.destination_ip || '-') + (f.destination_port ? ':' + f.destination_port : '')) + '</span>',
+          '<span style="color:#16a34a;">' + fmtBytes(f.total_down) + '</span>',
+          '<span style="color:#24415d;">' + fmtBytes(f.total_up) + '</span>',
+          String(f.flow_count || 0)
+        ];
+      });
+      body.innerHTML = drillTable(['Application','Device','Source','Destination','Download','Upload','Flows'], rows);
+    }
+
+    else if (type === 'apps') {
+      var catHtml = '';
+      var cats = data.by_category || {};
+      Object.keys(cats).forEach(function(c) { catHtml += statBadge(c, cats[c]); });
+      stats.innerHTML = statBadge('Total Apps', (data.apps || []).length) + catHtml;
+      var rows = (data.apps || []).map(function(a) {
+        return [
+          '<span style="font-weight:600;color:#1e293b;">' + esc((a.app_name || '').replace('netify.','')) + '</span>',
+          '<span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;color:#fff;background:' + catColor(a.category) + ';">' + esc(a.category || 'Unknown') + '</span>',
+          '<span style="color:#16a34a;">' + fmtBytes(a.total_down) + '</span>',
+          '<span style="color:#24415d;">' + fmtBytes(a.total_up) + '</span>',
+          String(a.total_flows || 0)
+        ];
+      });
+      body.innerHTML = drillTable(['Application','Category','Download','Upload','Flows'], rows);
+    }
+
+    else if (type === 'unknown') {
+      stats.innerHTML = statBadge('Unknown Flows', data.total || 0) + statBadge('Showing', (data.flows || []).length);
+      var rows = (data.flows || []).map(function(f) {
+        return [
+          esc(f.device__name || '-'),
+          '<span style="font-family:monospace;font-size:11px;">' + esc(f.source_ip || '-') + '</span>',
+          '<span style="font-family:monospace;font-size:11px;">' + esc((f.destination_ip || '-') + (f.destination_port ? ':' + f.destination_port : '')) + '</span>',
+          esc(f.destination_domain || '-'),
+          '<span style="color:#16a34a;">' + fmtBytes(f.total_down) + '</span>',
+          '<span style="color:#24415d;">' + fmtBytes(f.total_up) + '</span>'
+        ];
+      });
+      body.innerHTML = drillTable(['Device','Source','Destination','Domain','Download','Upload'], rows);
+    }
+
+    else if (type === 'devices') {
+      var statusHtml = '';
+      var statuses = data.by_status || {};
+      Object.keys(statuses).forEach(function(s) { statusHtml += statBadge(s, statuses[s]); });
+      stats.innerHTML = statBadge('Total', data.total || 0) + statusHtml;
+      var rows = (data.devices || []).map(function(d) {
+        var name = d.hostname || d.mac_address || '-';
+        return [
+          '<span style="font-weight:600;color:#1e293b;">' + esc(name) + '</span>',
+          '<span style="font-family:monospace;font-size:11px;">' + esc(d.ip_address || '-') + '</span>',
+          '<span style="font-family:monospace;font-size:11px;color:#64748b;">' + esc(d.mac_address || '-') + '</span>',
+          statusBadge(d.status || 'new'),
+          esc(d.device__name || '-'),
+          '<span style="color:#16a34a;">' + fmtBytes(d.total_download_bytes) + '</span>',
+          '<span style="color:#24415d;">' + fmtBytes(d.total_upload_bytes) + '</span>'
+        ];
+      });
+      body.innerHTML = drillTable(['Name','IP','MAC','Status','Router','Download','Upload'], rows);
+    }
+
+    else if (type === 'alerts') {
+      var sevHtml = '';
+      var sevs = data.by_severity || {};
+      ['critical','high','medium','low'].forEach(function(s) {
+        if (sevs[s]) sevHtml += statBadge(s, sevs[s]);
+      });
+      stats.innerHTML = statBadge('Total', data.total || 0) + sevHtml;
+      var rows = (data.alerts || []).map(function(a) {
+        return [
+          severityBadge(a.severity),
+          '<span style="font-weight:600;color:#1e293b;">' + esc(a.title || '-') + '</span>',
+          esc(a.device__name || '-'),
+          esc(a.app_name || '-'),
+          '<span style="font-family:monospace;font-size:11px;">' + esc(a.source_ip || '-') + '</span>',
+          '<span style="color:#94a3b8;font-size:11px;">' + esc(a.created_at || '-') + '</span>'
+        ];
+      });
+      body.innerHTML = drillTable(['Severity','Title','Device','App','Source','Time'], rows);
+    }
+
+    else if (type === 'bandwidth') {
+      stats.innerHTML = statBadge('Devices', (data.per_device || []).length);
+      var html = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">';
+      html += '<div>';
+      html += '<div style="font-size:13px;font-weight:700;color:#1e293b;margin-bottom:8px;"><i class="fas fa-server" style="color:#0891b2;margin-right:6px;"></i>Per-Device Bandwidth</div>';
+      var rows1 = (data.per_device || []).map(function(d) {
+        return [
+          '<span style="font-weight:600;">' + esc(d.device__name || '-') + '</span>',
+          '<span style="color:#16a34a;">' + fmtBytes(d.total_down) + '</span>',
+          '<span style="color:#24415d;">' + fmtBytes(d.total_up) + '</span>',
+          String(d.total_flows || 0)
+        ];
+      });
+      html += drillTable(['Device','Download','Upload','Flows'], rows1);
+      html += '</div>';
+      html += '<div>';
+      html += '<div style="font-size:13px;font-weight:700;color:#1e293b;margin-bottom:8px;"><i class="fas fa-th-large" style="color:#0891b2;margin-right:6px;"></i>Top Apps by Bandwidth</div>';
+      var rows2 = (data.top_apps || []).map(function(a) {
+        return [
+          '<span style="font-weight:600;">' + esc((a.app_name || '').replace('netify.','')) + '</span>',
+          '<span style="color:#16a34a;">' + fmtBytes(a.total_down) + '</span>',
+          '<span style="color:#24415d;">' + fmtBytes(a.total_up) + '</span>'
+        ];
+      });
+      html += drillTable(['Application','Download','Upload'], rows2);
+      html += '</div></div>';
+      body.innerHTML = html;
+    }
+
+    else if (type === 'signatures') {
+      var catHtml = '';
+      var cats = data.by_category || {};
+      Object.keys(cats).sort(function(a,b) { return cats[b]-cats[a]; }).slice(0,10).forEach(function(c) {
+        catHtml += statBadge(c || 'Unknown', cats[c]);
+      });
+      var typeHtml = '';
+      var types = data.by_type || {};
+      Object.keys(types).forEach(function(t) { typeHtml += statBadge(t, types[t]); });
+      var srcHtml = '';
+      var sources = data.by_source || {};
+      Object.keys(sources).forEach(function(s) { srcHtml += statBadge(s, sources[s]); });
+      stats.innerHTML = statBadge('Total', data.total || 0) + typeHtml + srcHtml;
+
+      var searchHtml = '<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">' +
+        '<div style="flex:1;position:relative;">' +
+        '<i class="fas fa-search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#94a3b8;font-size:13px;"></i>' +
+        '<input id="sig-search" type="text" placeholder="Search signatures by app, pattern, or category..." style="width:100%;padding:8px 12px 8px 32px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;outline:none;" onkeydown="if(event.key===\'Enter\')loadSignatures(1)">' +
+        '</div>' +
+        '<button onclick="loadSignatures(1)" style="padding:8px 16px;background:#16a34a;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;font-size:12px;">Search</button>' +
+        '</div>';
+
+      var pageHtml = '';
+      if (data.total_pages > 1) {
+        pageHtml = '<div style="display:flex;justify-content:center;align-items:center;gap:8px;margin-top:12px;">';
+        if (data.page > 1) pageHtml += '<button onclick="loadSignatures(' + (data.page - 1) + ')" style="padding:4px 12px;border:1px solid #e2e8f0;border-radius:6px;background:#fff;cursor:pointer;font-size:12px;">&laquo; Prev</button>';
+        pageHtml += '<span style="font-size:12px;color:#6b7280;">Page ' + data.page + ' of ' + data.total_pages + ' (' + data.total + ' signatures)</span>';
+        if (data.page < data.total_pages) pageHtml += '<button onclick="loadSignatures(' + (data.page + 1) + ')" style="padding:4px 12px;border:1px solid #e2e8f0;border-radius:6px;background:#fff;cursor:pointer;font-size:12px;">Next &raquo;</button>';
+        pageHtml += '</div>';
+      }
+
+      var catPills = '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:12px;">';
+      Object.keys(cats).sort(function(a,b) { return cats[b]-cats[a]; }).slice(0,15).forEach(function(c) {
+        catPills += '<span onclick="document.getElementById(\'sig-search\').value=\'' + esc(c).replace(/'/g,"\\'") + '\';loadSignatures(1)" style="padding:3px 10px;border-radius:12px;font-size:10px;font-weight:600;background:' + catColor(c) + ';color:#fff;cursor:pointer;opacity:0.85;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.85">' + esc(c || 'Unknown') + '</span>';
+      });
+      catPills += '</div>';
+
+      var rows = (data.signatures || []).map(function(s) {
+        var typeLbl = {app:'Application',dom:'Domain',net:'Network',host:'Hostname',ip:'IP'}[s.signature_type] || s.signature_type;
+        var srcLbl = {netify:'Netify',custom:'Custom',ut1:'UT1'}[s.source] || s.source;
+        return [
+          '<span style="font-weight:600;color:#1e293b;">' + esc((s.app_name || '').replace('netify.','')) + '</span>',
+          '<span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;color:#fff;background:' + catColor(s.category) + ';">' + esc(s.category || '-') + '</span>',
+          '<code style="font-size:11px;background:#f1f5f9;padding:2px 6px;border-radius:4px;">' + esc(s.pattern) + '</code>',
+          '<span style="font-size:11px;">' + esc(typeLbl) + '</span>',
+          '<span style="font-size:11px;padding:2px 6px;border-radius:4px;background:#fef3c7;color:#92400e;">' + esc(srcLbl) + '</span>',
+          String(s.app_id || 0)
+        ];
+      });
+      body.innerHTML = searchHtml + catPills + drillTable(['Application','Category','Pattern','Type','Source','App ID'], rows) + pageHtml;
     }
   }
-  document.addEventListener('home:tabchange', function(e) {
-    if (e.detail && e.detail.suffix === 'dpi-analytics') {
-      setTimeout(initDpiTab, 300);
-    }
-  });
+
+  // Signature pagination loader
+  window.loadSignatures = function(page) {
+    var q = document.getElementById('sig-search') ? document.getElementById('sig-search').value : '';
+    var url = drillUrl('signatures') + '?page=' + page + '&q=' + encodeURIComponent(q);
+    document.getElementById('card-drill-body').innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8;"><i class="fas fa-spinner fa-spin" style="font-size:24px;"></i></div>';
+    fetch(url, { credentials: 'include' })
+      .then(function(r) {
+        if (!r.ok) throw new Error('API error');
+        return r.json();
+      })
+      .then(function(data) { renderCardDrill('signatures', data); })
+      .catch(function(err) {
+        console.error('Signatures error:', err);
+        document.getElementById('card-drill-body').innerHTML = msgError();
+      });
+  };
 })();
 </script>

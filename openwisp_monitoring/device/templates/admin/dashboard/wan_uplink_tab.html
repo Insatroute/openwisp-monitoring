@@ -1,650 +1,1111 @@
-{# wan_uplink.html - WAN Uplink tab: single summary card + table (abnormal removed) #}
+{# wan_uplink_tab.html – WAN Uplink monitor: summary cards + table #}
 
 <style>
-  /* ======= SUMMARY CARD (LIKE DATA USAGE SUMMARY) ======= */
-  .wan-summary-wrap {
-    margin: 10px auto 18px;
-    font-family: inherit;
+  /* ===== RESET & BASE ===== */
+  .wanu-wrap { padding: 0; font-family: var(--font-family-primary, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif); }
+
+  /* ===== PAGE HEADER ===== */
+  .wanu-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 20px 40px 16px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .wanu-header-left { display: flex; align-items: flex-start; gap: 14px; }
+
+  .wanu-header-icon {
+    width: 44px;
+    height: 44px;
+    background: #24415d;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .wanu-header-icon svg { width: 24px; height: 24px; color: var(--primary-fg, #fff); }
+
+  .wanu-header-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--body-loud-color, #000);
+    line-height: 1.3;
+  }
+  .wanu-header-sub {
+    font-size: 13px;
+    color: var(--body-quiet-color, #666);
+    margin-top: 2px;
   }
 
-  .wan-summary-title {
-    margin: 0;
-    font-size: 14px;
+  .wanu-header-right { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+  .wanu-live-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
     font-weight: 600;
-    color: #4b5563;
+    color: #22c55e;
+  }
+  .wanu-live-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #22c55e;
+    animation: wanu-pulse 2s ease-in-out infinite;
+  }
+  @keyframes wanu-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
   }
 
-  /* header row containing title + export button */
-  .wan-summary-header {
+  .wanu-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border: 1px solid var(--border-color, #ccc);
+    border-radius: 8px;
+    background: var(--body-bg, #fff);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--body-fg, #333);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .wanu-btn:hover { background: var(--darkened-bg, #f8f8f8); border-color: var(--body-quiet-color, #666); }
+  .wanu-btn svg { width: 14px; height: 14px; }
+
+  /* ===== SUMMARY CARDS ===== */
+  .wanu-summary-section { padding: 16px 40px; }
+
+  .wanu-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(180px, 1fr));
+    gap: 16px;
+  }
+
+  .wanu-summary-card {
+    background: var(--body-bg, #fff);
+    border: none;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+    border-radius: 12px;
+    padding: 18px 16px 14px;
+    position: relative;
+    overflow: hidden;
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+  }
+  .wanu-summary-card:hover {
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    transform: translateY(-2px);
+  }
+
+  .wanu-summary-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+  }
+  .wanu-summary-card[data-accent="blue"]::before   { background: #6b7280; }
+  .wanu-summary-card[data-accent="green"]::before  { background: #6b7280; }
+  .wanu-summary-card[data-accent="orange"]::before { background: #6b7280; }
+  .wanu-summary-card[data-accent="gray"]::before   { background: #6b7280; }
+
+  .wanu-card-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .wanu-card-left { min-width: 0; flex: 1; }
+
+  .wanu-summary-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--body-quiet-color, #666);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 8px;
+  }
+
+  .wanu-summary-main {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+    margin-bottom: 12px;
+  }
+
+  .wanu-summary-value {
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--body-loud-color, #000);
+    line-height: 1;
+  }
+
+  .wanu-summary-unit {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--body-quiet-color, #666);
+  }
+
+  .wanu-summary-sub {
+    font-size: 12px;
+    color: #999;
+  }
+
+  /* Kind badge */
+  .wanu-kind-badge {
+    width: 46px;
+    height: 46px;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    flex-shrink: 0;
+  }
+  .wanu-kind-badge::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 12px;
+    opacity: .10;
+    background: currentColor;
+    pointer-events: none;
+  }
+  .wanu-kind-badge svg {
+    width: 24px;
+    height: 24px;
+    display: block;
+    position: relative;
+    z-index: 1;
+  }
+  .wanu-kind-total    { color: #6b7280; }
+  .wanu-kind-online   { color: #6b7280; }
+  .wanu-kind-offline  { color: #6b7280; }
+  .wanu-kind-disabled { color: #6b7280; }
+
+  /* ===== TABLE SECTION ===== */
+  .wanu-table-section { padding: 20px 40px; }
+
+  .wanu-table-card {
+    background: var(--body-bg, #fff);
+    border: 1px solid var(--hairline-color, #e8e8e8);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  /* ---- Toolbar ---- */
+  .wanu-toolbar {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--hairline-color, #e8e8e8);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 6px;
-    gap: 8px;
+    gap: 12px;
+    flex-wrap: wrap;
   }
 
-  /* export button style */
-  .wan-export-btn {
-    display: inline-flex;
+  .wanu-toolbar-left {
+    display: flex;
     align-items: center;
-    gap: 6px;
-    font-size: 12px;
-    padding: 6px 10px;
-    border-radius: 999px;
-    border: 1px solid #d1d5db;
-    background: #ffffff;
-    color: #0b63c5;
-    cursor: pointer;
-    line-height: 1.2;
-    box-shadow: 0 1px 2px rgba(15, 23, 42, .04);
+    gap: 12px;
+    flex-wrap: wrap;
   }
 
-  .wan-export-btn:hover { background: #f3f4f6; }
-  .wan-export-btn:active {
-    background: #e5e7eb;
-    box-shadow: 0 0 0 rgba(0,0,0,0);
+  .wanu-table-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--body-loud-color, #000);
   }
 
-  .wan-export-btn-icon {
-    width: 14px;
-    height: 14px;
-    display: inline-block;
-    border-radius: 3px;
-    border: 1px solid currentColor;
-    position: relative;
-  }
-
-  .wan-export-btn-icon::after {
-    content: '';
-    position: absolute;
-    left: 3px;
-    right: 3px;
-    bottom: 2px;
-    height: 2px;
-    background: currentColor;
-    border-radius: 999px;
-  }
-
-  .wan-export-btn-icon::before {
-    content: '';
-    position: absolute;
-    left: 5px;
-    right: 5px;
-    top: 3px;
-    height: 5px;
-    border-left: 2px solid currentColor;
-    border-right: 2px solid currentColor;
-    border-bottom: 2px solid currentColor;
-    transform: translateY(2px);
-  }
-
-  .wan-summary-card {
-    background: #ffffff;
-    border-radius: 8px;
-    box-shadow: 0 1px 3px rgba(15, 23, 42, .08);
-    border: 1px solid #f3f4f6;
-    padding: 14px 18px;
+  .wanu-filters {
     display: flex;
-    gap: 0;
-  }
-
-  .wan-summary-item {
-    flex: 1 1 0;
-    padding: 4px 18px;
-    display: flex;
-    flex-direction: column;
     gap: 4px;
   }
 
-  .wan-summary-item + .wan-summary-item {
-    border-left: 1px solid #e5e7eb;
+  button[type="button"].wanu-filter-pill {
+    padding: 4px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--hairline-color, #e8e8e8);
+    background: var(--body-bg, #fff);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--body-quiet-color, #666);
+    cursor: pointer;
+    transition: all 0.15s;
+    margin: 0;
+    box-sizing: border-box;
+    height: auto;
+    line-height: normal;
+    appearance: none;
+  }
+  button[type="button"].wanu-filter-pill:hover { background: var(--darkened-bg, #f8f8f8); }
+  button[type="button"].wanu-filter-pill.active {
+    background: #24415d;
+    border-color: #24415d;
+    color: var(--primary-fg, #fff);
+    font-weight: 600;
   }
 
-  .wan-summary-label { font-size: 13px; color: #6b7280; }
-
-  .wan-summary-main {
-    display: flex;
-    align-items: baseline;
-    gap: 6px;
+  .wanu-search-box {
+    position: relative;
+    width: 220px;
   }
-
-  .wan-summary-value { font-size: 20px; font-weight: 700; color: #111827; }
-  .wan-summary-unit { font-size: 12px; color: #9ca3af; }
-  .wan-summary-sub  { font-size: 11px; color: #9ca3af; }
-
-  .wan-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 999px;
-    display: inline-block;
-    margin-right: 4px;
+  .wanu-search-icon {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 14px;
+    height: 14px;
+    color: #999;
+    pointer-events: none;
   }
-
-  .wan-dot-green  { background: #22c55e; }
-  .wan-dot-gray   { background: #9ca3af; }
-  .wan-dot-silver { background: #d1d5db; }
-
-  @media (max-width: 900px) {
-    .wan-summary-card { flex-direction: column; }
-    .wan-summary-item + .wan-summary-item {
-      border-left: none;
-      border-top: 1px solid #e5e7eb;
-    }
-    .wan-summary-header { align-items: flex-start; flex-direction: column; }
-    .wan-export-btn { align-self: flex-start; }
+  input[type="text"].wanu-search-input {
+    width: 100%;
+    padding: 7px 12px 7px 30px;
+    border: 1px solid var(--border-color, #ccc);
+    border-radius: 8px;
+    font-size: 13px;
+    color: var(--body-fg, #333);
+    background: var(--body-bg, #fff);
+    outline: none;
+    transition: border-color 0.15s;
+    box-sizing: border-box;
+    height: auto;
+    margin: 0;
   }
+  input[type="text"].wanu-search-input::placeholder { color: #999; }
+  input[type="text"].wanu-search-input:focus { border-color: #24415d; }
 
-  /* ========= TABLE SHELL ========= */
-  .home-wan-table-wrap {
-    background: #fff;
-    border: 1px solid #e5e7eb;
-    box-shadow: 0 6px 18px rgba(15, 23, 42, .06);
-    margin: 0 0 0;
+  /* ---- Table ---- */
+  .wanu-table-scroll {
     overflow-x: auto;
-    overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
   }
 
-  .home-wan-table {
+  .wanu-table {
     width: 100%;
     border-collapse: separate;
     border-spacing: 0;
-    font-size: 12px;
-    min-width: 1100px;
+    font-size: 13px;
+    min-width: 1060px;
   }
 
-  .home-wan-table thead th {
+  .wanu-table thead th {
     text-align: left;
-    padding: 10px 12px;
-    border-bottom: 1px solid #eef0f3;
-    background: #f9fafb;
+    padding: 10px 14px;
+    background: #f0f0f0;
     font-size: 11px;
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: .03em;
-    color: #6b7280;
+    letter-spacing: 0.03em;
+    color: var(--body-quiet-color, #666);
     white-space: nowrap;
+    border-bottom: 1px solid var(--hairline-color, #e8e8e8);
   }
 
-  .home-wan-table tbody td {
-    padding: 10px 12px;
-    border-bottom: 1px solid #f1f5f9;
+  .wanu-table tbody td {
+    padding: 10px 14px;
     vertical-align: middle;
     white-space: nowrap;
+    color: var(--body-fg, #333);
+    border-bottom: 1px solid var(--hairline-color, #e8e8e8);
   }
 
-  .home-wan-table tbody tr:last-child td { border-bottom: none; }
+  .wanu-table tbody tr:last-child td { border-bottom: none; }
+  .wanu-table tbody tr:hover td { background: var(--darkened-bg, #f8f8f8); }
 
-  .home-wan-status-cell { white-space: nowrap; }
-  .home-wan-status-dot {
-    display: inline-block;
+  /* ---- Status ---- */
+  .wanu-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .wanu-dot {
     width: 8px;
     height: 8px;
-    border-radius: 999px;
-    margin-right: 6px;
-    vertical-align: middle;
+    border-radius: 50%;
+    flex-shrink: 0;
   }
+  .wanu-dot-connected    { background: #22c55e; }
+  .wanu-dot-disconnected { background: #fb923c; }
+  .wanu-dot-disabled     { background: var(--border-color, #ccc); }
 
-  .home-wan-status-connected    { background: #22c55e; }
-  .home-wan-status-disconnected { background: #9ca3af; }
-  .home-wan-status-disabled     { background: #d1d5db; }
+  .wanu-status-text { font-weight: 500; }
 
-  .home-wan-linkish {
-    color: #0b63c5;
+  /* ---- Cell helpers ---- */
+  .wanu-hostname { font-weight: 600; color: var(--body-loud-color, #000); }
+
+  .wanu-uplink {
+    color: var(--link-fg, #447e9b);
     font-weight: 600;
-    text-decoration: none;
   }
-  .home-wan-linkish:hover { text-decoration: underline; }
 
-  .home-wan-muted  { color: #9ca3af; }
-  .home-wan-nowrap { white-space: nowrap; }
+  .wanu-muted { color: #999; }
 
-  .home-wan-empty-row td { text-align: center; }
+  .wanu-metric { font-weight: 500; }
+  .wanu-metric-good { color: #059669; }
+  .wanu-metric-warn { color: #d97706; }
+  .wanu-metric-bad  { color: var(--error-fg, #ba2121); }
 
-  /* ========= PAGINATION ========= */
-  .home-wan-pagination {
-    display: flex;
-    justify-content: flex-end;
-    align-items: center;
-    gap: 8px;
+  .wanu-empty-row td {
+    text-align: center;
+    color: #94a3b8;
     font-size: 12px;
-    padding: 8px 4px;
-    margin-top: 6px;
+    font-weight: 600;
+    padding: 60px 14px;
   }
 
-  .home-wan-page-btn {
-    padding: 4px 10px;
-    border-radius: 999px;
-    border: 1px solid #d1d5db;
-    background: #ffffff;
+  /* ===== PAGINATION ===== */
+  .wanu-pagination {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 18px;
+    border-top: 1px solid var(--hairline-color, #e8e8e8);
+    font-size: 12px;
+    color: var(--body-quiet-color, #666);
+  }
+
+  .wanu-page-btns { display: flex; gap: 4px; }
+
+  .wanu-page-btn {
+    padding: 5px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color, #ccc);
+    background: var(--body-bg, #fff);
     cursor: pointer;
     font-size: 12px;
+    font-weight: 500;
+    color: var(--body-fg, #333);
+    transition: all 0.15s;
+  }
+  .wanu-page-btn:hover { background: var(--darkened-bg, #f8f8f8); }
+  .wanu-page-btn[disabled] { opacity: .4; cursor: default; pointer-events: none; }
+  .wanu-page-btn.active {
+    background: #24415d;
+    border-color: #24415d;
+    color: var(--primary-fg, #fff);
   }
 
-  .home-wan-page-btn[disabled] {
-    opacity: .5;
-    cursor: default;
+  /* ===== SKELETON LOADING ===== */
+  @keyframes wanu-shimmer {
+    0% { background-position: -400px 0; }
+    100% { background-position: 400px 0; }
+  }
+  .wanu-skeleton-cell {
+    height: 14px;
+    border-radius: 4px;
+    background: linear-gradient(90deg, var(--darkened-bg, #f0f0f0) 25%, var(--hairline-color, #e8e8e8) 50%, var(--darkened-bg, #f0f0f0) 75%);
+    background-size: 800px 100%;
+    animation: wanu-shimmer 1.5s ease-in-out infinite;
+  }
+  .wanu-skeleton-row td { padding: 12px 14px; border-bottom: 1px solid var(--hairline-color, #e8e8e8); }
+  .wanu-skeleton-wide { width: 80%; }
+  .wanu-skeleton-med { width: 60%; }
+  .wanu-skeleton-sm { width: 40%; }
+
+  /* ===== SORTABLE HEADERS ===== */
+  .wanu-table thead th[data-sort] {
+    cursor: pointer;
+    user-select: none;
+  }
+  .wanu-table thead th[data-sort]:hover { color: var(--body-fg, #333); }
+
+  /* ===== DROPDOWN ===== */
+  .wanu-dropdown-wrap { position: relative; display: inline-block; }
+  .wanu-dropdown-menu {
+    display: none; position: absolute; top: 100%; right: 0; margin-top: 4px;
+    background: #fff; border: 1px solid #e5e7eb; border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12); z-index: 50; min-width: 140px; overflow: hidden;
+  }
+  .wanu-dropdown-menu.wanu-show { display: block; }
+  .wanu-dropdown-option {
+    display: flex; align-items: center; gap: 8px; width: 100%; padding: 10px 14px;
+    border: none; background: none; font-size: 13px; font-weight: 500; color: #374151;
+    cursor: pointer; transition: background 0.15s; text-align: left;
+  }
+  .wanu-dropdown-option:hover { background: #f3f4f6; }
+
+  /* ===== REFRESH SPIN ===== */
+  .wanu-btn.wanu-spinning svg:first-child { animation: wanu-spin 0.8s linear infinite; }
+  @keyframes wanu-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+  /* ===== RESPONSIVE ===== */
+  @media (max-width: 1280px) {
+    .wanu-summary-grid { grid-template-columns: repeat(2, minmax(180px, 1fr)); }
+  }
+
+  @media (max-width: 1024px) {
+    .wanu-table { min-width: 900px; }
+    .wanu-toolbar { flex-direction: column; align-items: stretch; }
+  }
+
+  @media (max-width: 600px) {
+    .wanu-header { padding: 16px; flex-direction: column; gap: 12px; }
+    .wanu-summary-section, .wanu-table-section { padding-left: 16px; padding-right: 16px; }
+    .wanu-summary-grid { grid-template-columns: 1fr; }
+    .wanu-search-box { width: 100%; }
   }
 </style>
 
-{# ====== SINGLE SUMMARY CARD ====== #}
-<div class="wan-summary-wrap">
-  <div class="wan-summary-header">
-    <div class="wan-summary-title">Summary</div>
+<div class="wanu-wrap">
+  <!-- ================= PAGE HEADER ================= -->
+  <div class="wanu-header">
+    <div class="wanu-header-left">
+      <div class="wanu-header-icon">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/>
+          <ellipse cx="12" cy="12" rx="4" ry="9" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M3.5 9h17M3.5 15h17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div>
+        <div class="wanu-header-title">WAN Uplink Monitor</div>
+        <div class="wanu-header-sub" id="wanu-status-text">Loading uplinks...</div>
+      </div>
+    </div>
+    <div class="wanu-header-right">
+      <div class="wanu-live-badge">
+        <span class="wanu-live-dot"></span>
+        LIVE
+      </div>
 
-    <button type="button" id="home-wan-export-btn" class="wan-export-btn">
-      <span class="wan-export-btn-icon" aria-hidden="true"></span>
-      <span>Download CSV</span>
-    </button>
+      <div class="wanu-dropdown-wrap">
+        <button class="wanu-btn" id="wanu-export-btn-toggle" type="button" title="Export">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          Export
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="wanu-dropdown-menu" id="wanu-export-dropdown">
+          <button class="wanu-dropdown-option" id="wanu-export-btn" type="button">CSV</button>
+        </div>
+      </div>
+
+      <button class="wanu-btn" id="wanu-refresh-btn" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="23 4 23 10 17 10"></polyline>
+          <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+        </svg>
+        Refresh
+      </button>
+    </div>
   </div>
 
-  <div class="wan-summary-card">
-    <!-- Total -->
-    <div class="wan-summary-item">
-      <div class="wan-summary-label">Total WAN Uplinks</div>
-      <div class="wan-summary-main">
-        <span class="wan-summary-value" id="home-wan-total">0</span>
-        <span class="wan-summary-unit">links</span>
-      </div>
-      <div class="wan-summary-sub">All WAN interfaces</div>
-    </div>
+  <!-- ================= SUMMARY CARDS ================= -->
+  <div class="wanu-summary-section">
+    <div class="wanu-summary-grid">
 
-    <!-- Connected -->
-    <div class="wan-summary-item">
-      <div class="wan-summary-label">Connected</div>
-      <div class="wan-summary-main">
-        <span class="wan-dot wan-dot-green"></span>
-        <span class="wan-summary-value" id="home-wan-connected">0</span>
+      <!-- Total -->
+      <div class="wanu-summary-card" data-accent="blue">
+        <div class="wanu-card-top">
+          <div class="wanu-card-left">
+            <div class="wanu-summary-label">Total Uplinks</div>
+            <div class="wanu-summary-main">
+              <span id="wanu-total" class="wanu-summary-value">0</span>
+              <span class="wanu-summary-unit">links</span>
+            </div>
+            <div class="wanu-summary-sub">All WAN interfaces</div>
+          </div>
+          <span class="wanu-kind-badge wanu-kind-total">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" stroke="currentColor" stroke-width="2"/>
+              <path d="M2 12h20M12 2c2.5 2.5 4 6 4 10s-1.5 7.5-4 10c-2.5-2.5-4-6-4-10s1.5-7.5 4-10z" stroke="currentColor" stroke-width="1.5"/>
+            </svg>
+          </span>
+        </div>
       </div>
-      <div class="wan-summary-sub">Currently online</div>
-    </div>
 
-    <!-- Disconnected + Disabled -->
-    <div class="wan-summary-item">
-      <div class="wan-summary-label">Disconnected</div>
-      <div class="wan-summary-main">
-        <span class="wan-dot wan-dot-gray"></span>
-        <span class="wan-summary-value" id="home-wan-disconnected">0</span>
+      <!-- Connected -->
+      <div class="wanu-summary-card" data-accent="green">
+        <div class="wanu-card-top">
+          <div class="wanu-card-left">
+            <div class="wanu-summary-label">Connected</div>
+            <div class="wanu-summary-main">
+              <span id="wanu-connected" class="wanu-summary-value">0</span>
+              <span class="wanu-summary-unit">online</span>
+            </div>
+            <div class="wanu-summary-sub">Currently active</div>
+          </div>
+          <span class="wanu-kind-badge wanu-kind-online">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              <polyline points="22 4 12 14.01 9 11.01" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </span>
+        </div>
       </div>
-      <div class="wan-summary-sub">
-        <span class="wan-dot wan-dot-silver"></span>
-        Disabled:
-        <span id="home-wan-disabled">0</span>
+
+      <!-- Disconnected -->
+      <div class="wanu-summary-card" data-accent="orange">
+        <div class="wanu-card-top">
+          <div class="wanu-card-left">
+            <div class="wanu-summary-label">Disconnected</div>
+            <div class="wanu-summary-main">
+              <span id="wanu-disconnected" class="wanu-summary-value">0</span>
+              <span class="wanu-summary-unit">offline</span>
+            </div>
+            <div class="wanu-summary-sub">Currently unreachable</div>
+          </div>
+          <span class="wanu-kind-badge wanu-kind-offline">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+              <line x1="15" y1="9" x2="9" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              <line x1="9" y1="9" x2="15" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </span>
+        </div>
+      </div>
+
+      <!-- Disabled -->
+      <div class="wanu-summary-card" data-accent="gray">
+        <div class="wanu-card-top">
+          <div class="wanu-card-left">
+            <div class="wanu-summary-label">Disabled</div>
+            <div class="wanu-summary-main">
+              <span id="wanu-disabled" class="wanu-summary-value">0</span>
+              <span class="wanu-summary-unit">inactive</span>
+            </div>
+            <div class="wanu-summary-sub">Manually disabled</div>
+          </div>
+          <span class="wanu-kind-badge wanu-kind-disabled">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+              <line x1="8" y1="12" x2="16" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ================= TABLE ================= -->
+  <div class="wanu-table-section">
+    <div class="wanu-table-card">
+
+      <!-- Toolbar -->
+      <div class="wanu-toolbar">
+        <div class="wanu-toolbar-left">
+          <span class="wanu-table-title">WAN Uplink Details</span>
+          <div class="wanu-filters" id="wanu-filters">
+            <button type="button" class="wanu-filter-pill active" data-filter="all">All</button>
+            <button type="button" class="wanu-filter-pill" data-filter="connected">Connected</button>
+            <button type="button" class="wanu-filter-pill" data-filter="disconnected">Disconnected</button>
+            <button type="button" class="wanu-filter-pill" data-filter="disabled">Disabled</button>
+          </div>
+        </div>
+        <div class="wanu-search-box">
+          <svg class="wanu-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="11" cy="11" r="8"/>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input type="text" class="wanu-search-input" id="wanu-search" placeholder="Search..." autocomplete="off"/>
+        </div>
+      </div>
+
+      <!-- Table -->
+      <div class="wanu-table-scroll">
+        <table class="wanu-table">
+          <thead>
+            <tr>
+              <th data-sort="status">Status</th>
+              <th data-sort="hostname">Hostname</th>
+              <th>Serial Number</th>
+              <th>Model</th>
+              <th data-sort="location">Location</th>
+              <th>Uplink</th>
+              <th>Interface IP/Mask</th>
+              <th>Ping Destination</th>
+              <th data-sort="latency">Latency</th>
+              <th data-sort="jitter">Jitter</th>
+              <th data-sort="loss">Loss</th>
+            </tr>
+          </thead>
+          <tbody id="wanu-tbody">
+            <tr class="wanu-empty-row" data-empty="1">
+              <td colspan="11">Loading WAN uplink data...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      <div id="wanu-pagination" class="wanu-pagination" style="display:none">
+        <span id="wanu-page-info"></span>
+        <div class="wanu-page-btns" id="wanu-page-btns"></div>
       </div>
     </div>
   </div>
-</div>
-
-{# ========= TABLE ========= #}
-<div class="home-wan-table-wrap">
-  <table class="home-wan-table">
-    <thead>
-      <tr>
-        <th>Status</th>
-        <th>Hostname</th>
-        <th>Serial Number</th>
-        <th>Model</th>
-        <th>Location</th>
-        <th>Uplink</th>
-        <th>Interface IP/Mask</th>
-        <th>Ping Destination</th>
-        <th>Latency</th>
-        <th>Jitter</th>
-        <th>Loss</th>
-      </tr>
-    </thead>
-    <tbody id="home-wan-tbody">
-      <tr class="home-wan-empty-row" data-empty="1">
-        <td colspan="14" class="home-wan-nowrap home-wan-muted">Loading WAN uplink data...</td>
-      </tr>
-    </tbody>
-  </table>
-</div>
-
-{# ========= PAGINATION CONTROLS ========= #}
-<div id="home-wan-pagination" class="home-wan-pagination" style="display:none">
-  <button type="button" class="home-wan-page-btn" data-dir="prev">&laquo; Prev</button>
-  <span class="home-wan-page-info"></span>
-  <button type="button" class="home-wan-page-btn" data-dir="next">Next &raquo;</button>
 </div>
 
 <script>
 (function () {
-  const tbody = document.getElementById('home-wan-tbody');
+  "use strict";
+
+  // =========================================================================
+  // CENTRALIZED MESSAGE TEMPLATES
+  // =========================================================================
+  var MSG_COLOR = "#94a3b8";
+  var MSG_STYLE = "display:flex;align-items:center;justify-content:center;flex-direction:column;gap:6px;min-height:100px;color:" + MSG_COLOR + ";font-size:12px;font-weight:600;";
+  var MSG_ICON  = '<i class="fas fa-database" style="font-size:20px;color:#d1d5db;"></i>';
+
+  function msgNoData() {
+    return '<div style="' + MSG_STYLE + '">' + MSG_ICON + '<span>No data available</span></div>';
+  }
+
+  function msgError() {
+    return '<div style="' + MSG_STYLE + '">' + MSG_ICON + '<span>Unable to load data</span></div>';
+  }
+
+  var tbody = document.getElementById('wanu-tbody');
   if (!tbody) return;
 
   window.OW_HIDE_CHARTS = true;
 
-  const totalEl        = document.getElementById('home-wan-total');
-  const connectedEl    = document.getElementById('home-wan-connected');
-  const disconnectedEl = document.getElementById('home-wan-disconnected');
-  const disabledEl     = document.getElementById('home-wan-disabled');
+  var totalEl        = document.getElementById('wanu-total');
+  var connectedEl    = document.getElementById('wanu-connected');
+  var disconnectedEl = document.getElementById('wanu-disconnected');
+  var disabledEl     = document.getElementById('wanu-disabled');
+  var statusTextEl   = document.getElementById('wanu-status-text');
 
-  const paginationEl = document.getElementById('home-wan-pagination');
-  const pageInfoEl   = paginationEl ? paginationEl.querySelector('.home-wan-page-info') : null;
-  const prevBtn      = paginationEl ? paginationEl.querySelector('[data-dir="prev"]') : null;
-  const nextBtn      = paginationEl ? paginationEl.querySelector('[data-dir="next"]') : null;
+  var paginationEl = document.getElementById('wanu-pagination');
+  var pageInfoEl   = document.getElementById('wanu-page-info');
+  var pageBtnsEl   = document.getElementById('wanu-page-btns');
 
-  const exportBtn = document.getElementById('home-wan-export-btn');
+  var searchInput = document.getElementById('wanu-search');
+  var filtersEl   = document.getElementById('wanu-filters');
+  var exportBtn   = document.getElementById('wanu-export-btn');
+  var refreshBtn  = document.getElementById('wanu-refresh-btn');
 
-  const PAGE_SIZE = 10;
-  let allRows = [];
-  let currentPage = 1;
-  let totalPages = 1;
+  // ======= EXPORT DROPDOWN TOGGLE =======
+  var exportToggleBtn = document.getElementById('wanu-export-btn-toggle');
+  var exportDropdown  = document.getElementById('wanu-export-dropdown');
+  if (exportToggleBtn && exportDropdown) {
+    exportToggleBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      exportDropdown.classList.toggle('wanu-show');
+    });
+    document.addEventListener('click', function() {
+      exportDropdown.classList.remove('wanu-show');
+    });
+    exportDropdown.addEventListener('click', function(e) { e.stopPropagation(); });
+  }
 
+  var PAGE_SIZE = 10;
+  var allRows = [];
+  var filteredRows = [];
+  var currentPage = 1;
+  var totalPages = 1;
+  var activeFilter = 'all';
+  var searchQuery = '';
+  var sortColumn = null;
+  var sortDirection = 'asc';
+
+  // ======= HELPERS =======
   function formatBytes(bytes) {
-    if (typeof bytes !== 'number' || isNaN(bytes) || bytes < 0) return '—';
-    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-    let i = 0;
-    let val = bytes;
-    while (val >= 1024 && i < units.length - 1) {
-      val /= 1024;
-      i++;
-    }
+    if (typeof bytes !== 'number' || isNaN(bytes) || bytes < 0) return '\u2014';
+    var units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    var i = 0, val = bytes;
+    while (val >= 1024 && i < units.length - 1) { val /= 1024; i++; }
     return val.toFixed(2) + ' ' + units[i];
   }
 
-  // Abnormal removed: treat unknown statuses as "disconnected"
   function normalizeStatus(status) {
-    const s = String(status || '').toLowerCase();
+    var s = String(status || '').toLowerCase();
     if (s === 'connected' || s === 'disabled' || s === 'disconnected') return s;
-    // API may send "abnormal"/"degraded"/etc -> treat as disconnected
     return 'disconnected';
   }
 
   function humanizeStatus(status) {
-    const s = normalizeStatus(status);
+    var s = normalizeStatus(status);
     if (s === 'connected') return 'Connected';
     if (s === 'disabled') return 'Disabled';
     return 'Disconnected';
   }
 
-  function renderSummaryFromApi(summary) {
-    let total = 0, connected = 0, disconnected = 0, disabled = 0;
+  function metricClass(type, val) {
+    if (val === null || val === undefined) return '';
+    var n = parseFloat(val);
+    if (isNaN(n)) return '';
+    if (type === 'latency') return n <= 50 ? 'wanu-metric-good' : n <= 150 ? 'wanu-metric-warn' : 'wanu-metric-bad';
+    if (type === 'jitter')  return n <= 10 ? 'wanu-metric-good' : n <= 30  ? 'wanu-metric-warn' : 'wanu-metric-bad';
+    if (type === 'loss')    return n <= 1  ? 'wanu-metric-good' : n <= 5   ? 'wanu-metric-warn' : 'wanu-metric-bad';
+    return '';
+  }
 
-    if (summary) {
-      if (typeof summary.total === 'number') total = summary.total;
-      if (typeof summary.connected === 'number') connected = summary.connected;
+  // ======= SUMMARY =======
+  function renderSummary() {
+    var connected = 0, disconnected = 0, disabled = 0;
+    allRows.forEach(function (row) {
+      var st = normalizeStatus(row.status);
+      if (st === 'connected') connected++;
+      else if (st === 'disabled') disabled++;
+      else disconnected++;
+    });
 
-      // abnormal removed -> disconnected should include anything not connected/disabled
-      if (typeof summary.disconnected === 'number') disconnected = summary.disconnected;
+    if (totalEl) totalEl.textContent = allRows.length;
+    if (connectedEl) connectedEl.textContent = connected;
+    if (disconnectedEl) disconnectedEl.textContent = disconnected;
+    if (disabledEl) disabledEl.textContent = disabled;
 
-      // disabled not provided by API summary (as per your comment); compute below from rows
-    } else {
-      total = allRows.length;
+    if (statusTextEl) {
+      statusTextEl.textContent = allRows.length
+        ? allRows.length + ' uplink' + (allRows.length !== 1 ? 's' : '') + ' \u2022 ' + connected + ' online'
+        : 'No uplinks found';
     }
-
-    // Always compute disabled + recompute disconnected safely from rows
-    connected = 0; disabled = 0; disconnected = 0;
-    allRows.forEach(row => {
-      const st = normalizeStatus(row.status);
-      if (st === 'connected') connected++;
-      else if (st === 'disabled') disabled++;
-      else disconnected++;
-    });
-    total = allRows.length;
-
-    if (totalEl) totalEl.textContent = total;
-    if (connectedEl) connectedEl.textContent = connected;
-    if (disconnectedEl) disconnectedEl.textContent = disconnected;
-    if (disabledEl) disabledEl.textContent = disabled;
   }
 
-  function renderSummaryFromDom() {
-    const rows = Array.from(tbody.querySelectorAll('tr'));
-    let total = 0, connected = 0, disconnected = 0, disabled = 0;
-
-    rows.forEach(row => {
-      if (row.dataset.empty === '1') return;
-      total++;
-      const st = normalizeStatus(row.dataset.status);
-      if (st === 'connected') connected++;
-      else if (st === 'disabled') disabled++;
-      else disconnected++;
+  // ======= FILTERING =======
+  function applyFilters() {
+    var q = searchQuery.toLowerCase().trim();
+    filteredRows = allRows.filter(function (row) {
+      if (activeFilter !== 'all' && normalizeStatus(row.status) !== activeFilter) return false;
+      if (q) {
+        var haystack = [row.hostname, row.serial_number, row.model, row.location, row.interface_name, row.interface_ip, row.ping_dest]
+          .filter(Boolean).join(' ').toLowerCase();
+        if (haystack.indexOf(q) === -1) return false;
+      }
+      return true;
     });
-
-    if (totalEl) totalEl.textContent = total;
-    if (connectedEl) connectedEl.textContent = connected;
-    if (disconnectedEl) disconnectedEl.textContent = disconnected;
-    if (disabledEl) disabledEl.textContent = disabled;
+    sortFilteredRows();
+    renderPage(1);
   }
 
+  // ======= TABLE ROW =======
   function createRowEl(row) {
-    const tr = document.createElement('tr');
+    var tr = document.createElement('tr');
+    var status = normalizeStatus(row.status);
 
-    const status = normalizeStatus(row.status);
-    const statusLabel = humanizeStatus(status);
+    var uplinkName = (row.interface_name || '').toUpperCase() || '\u2014';
+    var hostname = row.hostname || '\u2014';
+    var serial = row.serial_number || '\u2014';
+    var model = row.model || '\u2014';
+    var location = row.location || '\u2014';
 
-    const uplinkName = (row.interface_name || '').toUpperCase() || '—';
-    const hostname = row.hostname || '—';
-    const serial = row.serial_number || '—';
-    const model = row.model || '—';
-    const location = row.location || '—';
-
-    let ipMask = '—';
+    var ipMask = '';
     if (row.interface_ip) {
       ipMask = row.interface_ip;
-      if (row.interface_mask !== null && row.interface_mask !== undefined) {
-        ipMask += '/' + row.interface_mask;
-      }
+      if (row.interface_mask !== null && row.interface_mask !== undefined) ipMask += '/' + row.interface_mask;
     }
 
-    const pingDest = row.ping_dest || '—';
-    const latency = (typeof row.ping_latency_ms === 'number') ? row.ping_latency_ms.toFixed(1) + ' ms' : '—';
-    const jitter  = (typeof row.ping_jitter_ms === 'number') ? row.ping_jitter_ms.toFixed(1) + ' ms' : '—';
-    const loss    = (row.ping_packet_loss !== null && row.ping_packet_loss !== undefined && row.ping_packet_loss !== '')
-      ? row.ping_packet_loss
-      : '—';
+    var pingDest = row.ping_dest || '\u2014';
 
-    // keep fields for CSV even if not shown in table
-    const txRaw = (typeof row.throughput_tx_bytes === 'number') ? row.throughput_tx_bytes
-                : ((typeof row.tx_bytes === 'number') ? row.tx_bytes : null);
-    const rxRaw = (typeof row.throughput_rx_bytes === 'number') ? row.throughput_rx_bytes
-                : ((typeof row.rx_bytes === 'number') ? row.rx_bytes : null);
+    var latVal = (typeof row.ping_latency_ms === 'number') ? row.ping_latency_ms : null;
+    var latText = latVal !== null ? latVal.toFixed(1) + ' ms' : '\u2014';
+    var latCls = metricClass('latency', latVal);
 
-    tr.dataset.status = status;
-    tr.dataset.uplink = uplinkName;
+    var jitVal = (typeof row.ping_jitter_ms === 'number') ? row.ping_jitter_ms : null;
+    var jitText = jitVal !== null ? jitVal.toFixed(1) + ' ms' : '\u2014';
+    var jitCls = metricClass('jitter', jitVal);
 
-    tr.innerHTML = `
-      <td class="home-wan-status-cell">
-        <span class="home-wan-status-dot home-wan-status-${status}"></span>
-        ${statusLabel}
-      </td>
-      <td class="home-wan-nowrap">${hostname}</td>
-      <td class="home-wan-nowrap">${serial}</td>
-      <td class="home-wan-nowrap">${model}</td>
-      <td class="home-wan-nowrap">${location}</td>
-      <td class="home-wan-nowrap"><a class="home-wan-linkish">${uplinkName}</a></td>
-      <td>
-        ${ipMask !== '—'
-          ? `<div>${ipMask} <span class="home-wan-muted">(IPV4)</span></div>`
-          : `<span class="home-wan-muted">—</span>`}
-      </td>
-      <td class="home-wan-nowrap">${pingDest}</td>
-      <td class="home-wan-nowrap">${latency}</td>
-      <td class="home-wan-nowrap">${jitter}</td>
-      <td class="home-wan-nowrap">${loss}</td>
-    `;
+    var lossRaw = (row.ping_packet_loss !== null && row.ping_packet_loss !== undefined && row.ping_packet_loss !== '')
+      ? row.ping_packet_loss : null;
+    var lossText = lossRaw !== null ? lossRaw : '\u2014';
+    var lossCls = metricClass('loss', lossRaw);
 
-    // attach raw bytes for export usage (optional)
-    tr._txRaw = txRaw;
-    tr._rxRaw = rxRaw;
+    tr.innerHTML =
+      '<td>' +
+        '<span class="wanu-status">' +
+          '<span class="wanu-dot wanu-dot-' + status + '"></span>' +
+          '<span class="wanu-status-text">' + humanizeStatus(status) + '</span>' +
+        '</span>' +
+      '</td>' +
+      '<td><span class="wanu-hostname">' + hostname + '</span></td>' +
+      '<td>' + serial + '</td>' +
+      '<td>' + model + '</td>' +
+      '<td>' + location + '</td>' +
+      '<td><span class="wanu-uplink">' + uplinkName + '</span></td>' +
+      '<td>' + (ipMask ? ipMask : '<span class="wanu-muted">\u2014</span>') + '</td>' +
+      '<td>' + pingDest + '</td>' +
+      '<td><span class="wanu-metric ' + latCls + '">' + latText + '</span></td>' +
+      '<td><span class="wanu-metric ' + jitCls + '">' + jitText + '</span></td>' +
+      '<td><span class="wanu-metric ' + lossCls + '">' + lossText + '</span></td>';
 
     return tr;
   }
 
+  // ======= PAGINATION =======
   function renderPage(page) {
     if (!tbody) return;
 
-    if (!allRows.length) {
-      tbody.innerHTML = `
-        <tr class="home-wan-empty-row" data-empty="1">
-          <td colspan="14" class="home-wan-nowrap home-wan-muted">No WAN uplink data found</td>
-        </tr>
-      `;
+    if (!filteredRows.length) {
+      var emptyMsg = msgNoData();
+      tbody.innerHTML =
+        '<tr class="wanu-empty-row" data-empty="1">' +
+          '<td colspan="11">' + emptyMsg + '</td>' +
+        '</tr>';
       if (paginationEl) paginationEl.style.display = 'none';
       return;
     }
 
-    totalPages = Math.max(1, Math.ceil(allRows.length / PAGE_SIZE));
+    totalPages = Math.max(1, Math.ceil(filteredRows.length / PAGE_SIZE));
     if (page < 1) page = 1;
     if (page > totalPages) page = totalPages;
     currentPage = page;
 
     tbody.innerHTML = '';
+    var start = (currentPage - 1) * PAGE_SIZE;
+    var end = Math.min(start + PAGE_SIZE, filteredRows.length);
+    filteredRows.slice(start, end).forEach(function (row) { tbody.appendChild(createRowEl(row)); });
 
-    const start = (currentPage - 1) * PAGE_SIZE;
-    const end = start + PAGE_SIZE;
-    const pageRows = allRows.slice(start, end);
+    if (paginationEl) {
+      paginationEl.style.display = filteredRows.length > PAGE_SIZE ? 'flex' : 'none';
+      if (pageInfoEl) pageInfoEl.textContent = 'Showing ' + (start + 1) + '\u2013' + end + ' of ' + filteredRows.length;
 
-    pageRows.forEach(row => tbody.appendChild(createRowEl(row)));
+      if (pageBtnsEl) {
+        pageBtnsEl.innerHTML = '';
 
-    if (paginationEl && allRows.length > PAGE_SIZE) {
-      paginationEl.style.display = 'flex';
-      if (pageInfoEl) pageInfoEl.textContent = `Page ${currentPage} of ${totalPages}`;
-      if (prevBtn) prevBtn.disabled = currentPage === 1;
-      if (nextBtn) nextBtn.disabled = currentPage === totalPages;
-    } else if (paginationEl) {
-      paginationEl.style.display = 'none';
+        // Prev
+        var prev = document.createElement('button');
+        prev.type = 'button';
+        prev.className = 'wanu-page-btn';
+        prev.disabled = currentPage === 1;
+        prev.textContent = '\u2039';
+        prev.addEventListener('click', function () { renderPage(currentPage - 1); });
+        pageBtnsEl.appendChild(prev);
+
+        // Page numbers
+        for (var i = 1; i <= totalPages; i++) {
+          var btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'wanu-page-btn' + (i === currentPage ? ' active' : '');
+          btn.textContent = i;
+          btn.addEventListener('click', (function (p) { return function () { renderPage(p); }; })(i));
+          pageBtnsEl.appendChild(btn);
+        }
+
+        // Next
+        var next = document.createElement('button');
+        next.type = 'button';
+        next.className = 'wanu-page-btn';
+        next.disabled = currentPage === totalPages;
+        next.textContent = '\u203a';
+        next.addEventListener('click', function () { renderPage(currentPage + 1); });
+        pageBtnsEl.appendChild(next);
+      }
     }
   }
 
-  if (prevBtn) prevBtn.addEventListener('click', () => { if (currentPage > 1) renderPage(currentPage - 1); });
-  if (nextBtn) nextBtn.addEventListener('click', () => { if (currentPage < totalPages) renderPage(currentPage + 1); });
-
-  function escapeCsvValue(value) {
-    if (value === null || value === undefined) value = '';
-    value = String(value);
-    const needsQuotes = /[",\r\n]/.test(value);
-    return needsQuotes ? '"' + value.replace(/"/g, '""') + '"' : value;
+  // ======= SEARCH =======
+  var searchTimer = null;
+  if (searchInput) {
+    searchInput.addEventListener('input', function () {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(function () {
+        searchQuery = searchInput.value;
+        applyFilters();
+      }, 200);
+    });
   }
 
-  function exportWanCsv() {
-    if (!allRows.length) {
-      alert('No WAN uplink data to export yet.');
-      return;
-    }
+  // ======= FILTER PILLS =======
+  if (filtersEl) {
+    filtersEl.addEventListener('click', function (e) {
+      var pill = e.target.closest('.wanu-filter-pill');
+      if (!pill) return;
+      filtersEl.querySelectorAll('.wanu-filter-pill').forEach(function (p) { p.classList.remove('active'); });
+      pill.classList.add('active');
+      activeFilter = pill.getAttribute('data-filter');
+      applyFilters();
+    });
+  }
 
-    const headers = [
-      'Status',
-      'Hostname',
-      'Serial Number',
-      'Model',
-      'Location',
-      'Uplink',
-      'Interface IP/Mask',
-      'Ping Destination',
-      'Throughput TX',
-      'Throughput RX',
-      'Latency',
-      'Jitter',
-      'Loss'
-    ];
+  // ======= CSV EXPORT =======
+  function escapeCsv(v) {
+    if (v === null || v === undefined) v = '';
+    v = String(v);
+    return /[",\r\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+  }
 
-    const rows = allRows.map(row => {
-      const statusLabel = humanizeStatus(row.status);
+  function exportCsv() {
+    var source = filteredRows.length ? filteredRows : allRows;
+    if (!source.length) { alert('No data to export.'); return; }
 
-      const uplinkName = (row.interface_name || '').toUpperCase() || '—';
-      const hostname = row.hostname || '—';
-      const serial = row.serial_number || '—';
-      const model = row.model || '—';
-      const location = row.location || '—';
+    var headers = ['Status','Hostname','Serial Number','Model','Location','Uplink','Interface IP/Mask','Ping Destination','Throughput TX','Throughput RX','Latency','Jitter','Loss'];
+    var lines = [headers.map(escapeCsv).join(',')];
 
-      let ipMask = '—';
+    source.forEach(function (row) {
+      var ipMask = '\u2014';
       if (row.interface_ip) {
         ipMask = row.interface_ip;
-        if (row.interface_mask !== null && row.interface_mask !== undefined) {
-          ipMask += '/' + row.interface_mask;
-        }
+        if (row.interface_mask !== null && row.interface_mask !== undefined) ipMask += '/' + row.interface_mask;
       }
+      var tx = (typeof row.throughput_tx_bytes === 'number') ? row.throughput_tx_bytes : ((typeof row.tx_bytes === 'number') ? row.tx_bytes : null);
+      var rx = (typeof row.throughput_rx_bytes === 'number') ? row.throughput_rx_bytes : ((typeof row.rx_bytes === 'number') ? row.rx_bytes : null);
 
-      const pingDest = row.ping_dest || '—';
-      const latency = (typeof row.ping_latency_ms === 'number') ? row.ping_latency_ms.toFixed(1) + ' ms' : '—';
-      const jitter  = (typeof row.ping_jitter_ms === 'number') ? row.ping_jitter_ms.toFixed(1) + ' ms' : '—';
-      const loss    = (row.ping_packet_loss !== null && row.ping_packet_loss !== undefined && row.ping_packet_loss !== '')
-        ? row.ping_packet_loss
-        : '—';
-
-      const txRaw = (typeof row.throughput_tx_bytes === 'number') ? row.throughput_tx_bytes
-                  : ((typeof row.tx_bytes === 'number') ? row.tx_bytes : null);
-      const rxRaw = (typeof row.throughput_rx_bytes === 'number') ? row.throughput_rx_bytes
-                  : ((typeof row.rx_bytes === 'number') ? row.rx_bytes : null);
-
-      const tx = txRaw !== null ? formatBytes(txRaw) : '—';
-      const rx = rxRaw !== null ? formatBytes(rxRaw) : '—';
-
-      return [
-        statusLabel,
-        hostname,
-        serial,
-        model,
-        location,
-        uplinkName,
+      lines.push([
+        humanizeStatus(row.status),
+        row.hostname || '\u2014',
+        row.serial_number || '\u2014',
+        row.model || '\u2014',
+        row.location || '\u2014',
+        (row.interface_name || '').toUpperCase() || '\u2014',
         ipMask,
-        pingDest,
-        tx,
-        rx,
-        latency,
-        jitter,
-        loss
-      ];
+        row.ping_dest || '\u2014',
+        tx !== null ? formatBytes(tx) : '\u2014',
+        rx !== null ? formatBytes(rx) : '\u2014',
+        (typeof row.ping_latency_ms === 'number') ? row.ping_latency_ms.toFixed(1) + ' ms' : '\u2014',
+        (typeof row.ping_jitter_ms === 'number') ? row.ping_jitter_ms.toFixed(1) + ' ms' : '\u2014',
+        (row.ping_packet_loss !== null && row.ping_packet_loss !== undefined && row.ping_packet_loss !== '') ? row.ping_packet_loss : '\u2014'
+      ].map(escapeCsv).join(','));
     });
 
-    const lines = [];
-    lines.push(headers.map(escapeCsvValue).join(','));
-    rows.forEach(r => lines.push(r.map(escapeCsvValue).join(',')));
-
-    const csvContent = lines.join('\r\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', 'wan_uplinks.csv');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    var blob = new Blob([lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.setAttribute('download', 'wan_uplinks.csv');
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
     URL.revokeObjectURL(url);
   }
 
-  if (exportBtn) exportBtn.addEventListener('click', exportWanCsv);
+  if (exportBtn) exportBtn.addEventListener('click', exportCsv);
 
-  async function init() {
-    const API_BASE = window.location.origin;
-    const API_URL = `${API_BASE}/api/v1/monitoring/wan-uplinks/`;
+  // ======= SKELETON LOADING =======
+  function renderSkeleton(count) {
+    if (!tbody) return;
+    var html = '';
+    var widths = ['sm','wide','med','med','med','sm','med','med','sm','sm','sm'];
+    for (var r = 0; r < count; r++) {
+      html += '<tr class="wanu-skeleton-row">';
+      for (var c = 0; c < 11; c++) {
+        html += '<td><div class="wanu-skeleton-cell wanu-skeleton-' + widths[c] + '">\u00a0</div></td>';
+      }
+      html += '</tr>';
+    }
+    tbody.innerHTML = html;
+    if (paginationEl) paginationEl.style.display = 'none';
+  }
 
-    let json;
+  // ======= COLUMN SORTING =======
+  function getSortValue(row, col) {
+    if (col === 'status') return normalizeStatus(row.status);
+    if (col === 'hostname') return (row.hostname || '').toLowerCase();
+    if (col === 'location') return (row.location || '').toLowerCase();
+    if (col === 'latency') return (typeof row.ping_latency_ms === 'number') ? row.ping_latency_ms : 99999;
+    if (col === 'jitter') return (typeof row.ping_jitter_ms === 'number') ? row.ping_jitter_ms : 99999;
+    if (col === 'loss') return parseFloat(row.ping_packet_loss) || 99999;
+    return '';
+  }
+
+  function sortFilteredRows() {
+    if (!sortColumn) return;
+    var dir = sortDirection === 'asc' ? 1 : -1;
+    filteredRows.sort(function (a, b) {
+      var va = getSortValue(a, sortColumn);
+      var vb = getSortValue(b, sortColumn);
+      if (va < vb) return -1 * dir;
+      if (va > vb) return 1 * dir;
+      return 0;
+    });
+  }
+
+  function updateSortHeaders() {
+    var ths = document.querySelectorAll('.wanu-table thead th[data-sort]');
+    ths.forEach(function (th) {
+      th.classList.remove('sort-asc', 'sort-desc');
+      if (th.getAttribute('data-sort') === sortColumn) {
+        th.classList.add(sortDirection === 'asc' ? 'sort-asc' : 'sort-desc');
+      }
+    });
+  }
+
+  document.querySelectorAll('.wanu-table thead th[data-sort]').forEach(function (th) {
+    th.addEventListener('click', function () {
+      var col = th.getAttribute('data-sort');
+      if (sortColumn === col) {
+        sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+      } else {
+        sortColumn = col;
+        sortDirection = 'asc';
+      }
+      updateSortHeaders();
+      sortFilteredRows();
+      renderPage(currentPage);
+    });
+  });
+
+  // ======= LAST UPDATED =======
+  var lastUpdatedTime = null;
+
+  function stampLastUpdated() {
+    lastUpdatedTime = new Date();
+    tickLastUpdated();
+  }
+
+  function tickLastUpdated() {
+    if (!lastUpdatedEl || !lastUpdatedTime) return;
+    var secs = Math.floor((Date.now() - lastUpdatedTime.getTime()) / 1000);
+    if (secs < 5) lastUpdatedEl.textContent = 'Updated just now';
+    else if (secs < 60) lastUpdatedEl.textContent = 'Updated ' + secs + 's ago';
+    else { var mins = Math.floor(secs / 60); lastUpdatedEl.textContent = 'Updated ' + mins + 'm ago'; }
+  }
+
+  setInterval(tickLastUpdated, 10000);
+
+  // ======= DATA FETCH =======
+  var API_BASE = window.location.origin;
+  var API_URL = API_BASE + '/api/v1/monitoring/wan-uplinks/';
+
+  async function loadData() {
+    if (statusTextEl) statusTextEl.textContent = 'Loading uplinks...';
+
+    var json;
     try {
-      const fetchOptions = (typeof buildAuthFetchOptions === 'function')
+      var fetchOptions = (typeof buildAuthFetchOptions === 'function')
         ? buildAuthFetchOptions(API_URL)
         : { credentials: 'include' };
-
-      const res = await fetch(API_URL, fetchOptions);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      var res = await fetch(API_URL, fetchOptions);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
       json = await res.json();
     } catch (e) {
       console.error('WAN uplinks API error:', e);
       if (typeof APIResponse !== 'undefined') {
         json = APIResponse;
       } else {
-        renderSummaryFromDom();
+        // API failed — show empty state
+        allRows = [];
+        renderSummary();
+        applyFilters();
+        stampLastUpdated();
         return;
       }
     }
 
-    // Share WAN data globally for other tabs
     try {
       window.WAN_UPLINK_DATA = json;
       window.dispatchEvent(new CustomEvent('wanUplinkDataLoaded', { detail: json }));
-    } catch (err) {
-      console.warn('Unable to broadcast WAN_UPLINK_DATA:', err);
-    }
+    } catch (err) {}
 
-    allRows = Array.isArray(json.rows) ? json.rows : [];
-    renderSummaryFromApi(json.summary || null);
-    renderPage(1);
+    var apiRows = Array.isArray(json.rows) ? json.rows : [];
+    allRows = apiRows;
+    // Always refresh UI and status after API call completes
+    renderSummary();
+    applyFilters();
+    stampLastUpdated();
   }
 
-  init();
+  if (refreshBtn) refreshBtn.addEventListener('click', function() {
+    refreshBtn.classList.add('wanu-spinning');
+    setTimeout(function() { refreshBtn.classList.remove('wanu-spinning'); }, 800);
+    loadData();
+  });
+
+  renderSkeleton(5);
+  loadData();
 })();
 </script>
+.
