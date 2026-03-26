@@ -93,8 +93,67 @@
   .owdu-custom-range { display: none; align-items: center; gap: 6px; }
   .owdu-custom-range.owdu-show { display: flex; }
 
-  /* Daterangepicker calendar z-index fix */
-  .daterangepicker { z-index: 1000 !important; }
+  /* Daterangepicker calendar: compact, side-by-side, right-aligned */
+  .owdu-header-right { position: relative; }
+  .daterangepicker {
+    z-index: 1000 !important;
+    font-size: 11px !important;
+    margin-top: 4px !important;
+    min-width: 460px !important;
+    right: 230px !important;
+    left: auto !important;
+  }
+  .daterangepicker .drp-calendar {
+    max-width: 230px !important;
+    padding: 6px 8px !important;
+    float: left !important;
+    clear: none !important;
+    display: inline-block !important;
+  }
+  .daterangepicker .calendar-table th,
+  .daterangepicker .calendar-table td {
+    min-width: 26px !important;
+    width: 26px !important;
+    height: 24px !important;
+    line-height: 24px !important;
+    font-size: 11px !important;
+    padding: 0 !important;
+  }
+  .daterangepicker .calendar-table { padding: 0 !important; }
+  .daterangepicker .month { font-size: 11px !important; font-weight: 600; }
+  .daterangepicker th.prev, .daterangepicker th.next { font-size: 12px !important; }
+  .daterangepicker .drp-buttons {
+    padding: 4px 8px !important;
+    border-top: 1px solid #e5e7eb;
+  }
+  .daterangepicker .drp-buttons .btn {
+    font-size: 11px !important;
+    padding: 4px 12px !important;
+    border-radius: 6px;
+  }
+  .daterangepicker .drp-buttons .btn-primary {
+    background: #24415d !important;
+    border-color: #24415d !important;
+  }
+  .daterangepicker .drp-buttons .btn-default {
+    background: #f3f4f6 !important;
+    border-color: #d1d5db !important;
+    color: #374151 !important;
+  }
+  .daterangepicker .drp-selected { font-size: 10px !important; color: #24415d; font-weight: 600; }
+  .daterangepicker td.active, .daterangepicker td.active:hover {
+    background-color: #24415d !important;
+    color: #fff !important;
+  }
+  .daterangepicker td.in-range {
+    background-color: #e8edf2 !important;
+    color: #24415d !important;
+  }
+  .daterangepicker .calendar-table .next span,
+  .daterangepicker .calendar-table .prev span {
+    border-color: #374151 !important;
+  }
+  .daterangepicker { border-radius: 10px !important; box-shadow: 0 8px 24px rgba(0,0,0,0.12) !important; border: 1px solid #e5e7eb !important; }
 
   .owdu-btn.owdu-spinning svg:first-child {
     animation: owdu-spin 0.8s linear infinite;
@@ -198,8 +257,8 @@
     background: #f3f4f6;
   }
   .owdu-dropdown-option.active {
-    background: #f0fdf4;
-    color: #059669;
+    background: #eaf0f6;
+    color: #24415d;
     font-weight: 600;
   }
   .owdu-dropdown-option + .owdu-dropdown-option {
@@ -2248,7 +2307,7 @@
       var types = ["total", "cellular", "wired", "wireless"];
       types.forEach(function (t) {
         var d = cachedSummary[t] || {};
-        lines.push(csvSafe(t) + "," + csvSafe(d.total || 0) + "," + csvSafe(d.sent || 0) + "," + csvSafe(d.received || 0));
+        lines.push(csvSafe(t) + "," + csvSafe(fmtBytes(d.total || 0)) + "," + csvSafe(fmtBytes(d.sent || 0)) + "," + csvSafe(fmtBytes(d.received || 0)));
       });
       lines.push("");
     }
@@ -2256,9 +2315,9 @@
     // Section: Top Applications
     if (cachedTopApps.length) {
       lines.push("--- Top Applications ---");
-      lines.push("Application,Traffic (bytes)");
+      lines.push("Application,Traffic");
       cachedTopApps.forEach(function (a) {
-        lines.push(csvSafe(a.label || "") + "," + csvSafe(a.traffic || 0));
+        lines.push(csvSafe(a.label || "") + "," + csvSafe(fmtBytes(a.traffic || 0)));
       });
       lines.push("");
     }
@@ -2266,9 +2325,9 @@
     // Section: Top Categories
     if (cachedTopCategories.length) {
       lines.push("--- Top Categories ---");
-      lines.push("Category,Download (bytes),Upload (bytes),Flows");
+      lines.push("Category,Download,Upload,Flows");
       cachedTopCategories.slice(0, TOP_ROWS).forEach(function (c) {
-        lines.push(csvSafe(c.category || "") + "," + csvSafe(c.total_down || 0) + "," + csvSafe(c.total_up || 0) + "," + csvSafe(c.total_flows || 0));
+        lines.push(csvSafe(c.category || "") + "," + csvSafe(fmtBytes(c.total_down || 0)) + "," + csvSafe(fmtBytes(c.total_up || 0)) + "," + csvSafe(fmtNumber(c.total_flows || 0)));
       });
       lines.push("");
     }
@@ -2276,9 +2335,9 @@
     // Section: Top Devices
     if (cachedTopDevices.length) {
       lines.push("--- Top Devices ---");
-      lines.push("Device,Total (bytes),Total (GB)");
+      lines.push("Device,Total");
       cachedTopDevices.forEach(function (d) {
-        lines.push(csvSafe(d.name || "") + "," + csvSafe(d.total_bytes || 0) + "," + csvSafe(d.total_gb || 0));
+        lines.push(csvSafe(d.name || "") + "," + csvSafe(fmtBytes(d.total_bytes || 0)));
       });
       lines.push("");
     }
@@ -2286,9 +2345,9 @@
     // Section: Top Clients
     if (cachedTopClients.length) {
       lines.push("--- Top Clients ---");
-      lines.push("IP Address,Download (bytes),Upload (bytes)");
+      lines.push("IP Address,Download,Upload");
       cachedTopClients.forEach(function (c) {
-        lines.push(csvSafe(c.ip || "") + "," + csvSafe(c.download || 0) + "," + csvSafe(c.upload || 0));
+        lines.push(csvSafe(c.ip || "") + "," + csvSafe(fmtBytes(c.download || 0)) + "," + csvSafe(fmtBytes(c.upload || 0)));
       });
       lines.push("");
     }
@@ -2855,7 +2914,7 @@
       var sumRows = [["Type", "Total", "Upload", "Download"]];
       ["total", "cellular", "wired", "wireless"].forEach(function (t) {
         var d = cachedSummary[t] || {};
-        sumRows.push([safe(t), d.total || 0, d.sent || 0, d.received || 0]);
+        sumRows.push([safe(t), fmtBytes(d.total || 0), fmtBytes(d.sent || 0), fmtBytes(d.received || 0)]);
       });
       var ws1 = XLSX.utils.aoa_to_sheet(sumRows);
       ws1["!cols"] = [{ wch: 12 }, { wch: 16 }, { wch: 16 }, { wch: 16 }];
@@ -2864,9 +2923,9 @@
 
     // Sheet 2: Top Applications
     if (cachedTopApps.length) {
-      var appRows = [["#", "Application", "Traffic (bytes)"]];
+      var appRows = [["#", "Application", "Traffic"]];
       cachedTopApps.forEach(function (a, i) {
-        appRows.push([i + 1, safe(a.label || ""), a.traffic || 0]);
+        appRows.push([i + 1, safe(a.label || ""), fmtBytes(a.traffic || 0)]);
       });
       var ws2 = XLSX.utils.aoa_to_sheet(appRows);
       ws2["!cols"] = [{ wch: 4 }, { wch: 30 }, { wch: 18 }];
@@ -2877,7 +2936,7 @@
     if (cachedTopCategories.length) {
       var catRows = [["#", "Category", "Download", "Upload", "Flows"]];
       cachedTopCategories.slice(0, TOP_ROWS).forEach(function (c, i) {
-        catRows.push([i + 1, safe(c.category || ""), c.total_down || 0, c.total_up || 0, c.total_flows || 0]);
+        catRows.push([i + 1, safe(c.category || ""), fmtBytes(c.total_down || 0), fmtBytes(c.total_up || 0), fmtNumber(c.total_flows || 0)]);
       });
       var ws3 = XLSX.utils.aoa_to_sheet(catRows);
       ws3["!cols"] = [{ wch: 4 }, { wch: 24 }, { wch: 16 }, { wch: 16 }, { wch: 10 }];
@@ -2886,9 +2945,9 @@
 
     // Sheet 4: Top Devices
     if (cachedTopDevices.length) {
-      var devRows = [["#", "Device", "Total (bytes)"]];
+      var devRows = [["#", "Device", "Total"]];
       cachedTopDevices.forEach(function (d, i) {
-        devRows.push([i + 1, safe(d.name || ""), d.total_bytes || 0]);
+        devRows.push([i + 1, safe(d.name || ""), fmtBytes(d.total_bytes || 0)]);
       });
       var ws4 = XLSX.utils.aoa_to_sheet(devRows);
       ws4["!cols"] = [{ wch: 4 }, { wch: 30 }, { wch: 18 }];
@@ -2899,7 +2958,7 @@
     if (cachedTopClients.length) {
       var cliRows = [["#", "IP Address", "Download", "Upload"]];
       cachedTopClients.forEach(function (c, i) {
-        cliRows.push([i + 1, safe(c.ip || ""), c.download || 0, c.upload || 0]);
+        cliRows.push([i + 1, safe(c.ip || ""), fmtBytes(c.download || 0), fmtBytes(c.upload || 0)]);
       });
       var ws5 = XLSX.utils.aoa_to_sheet(cliRows);
       ws5["!cols"] = [{ wch: 4 }, { wch: 20 }, { wch: 16 }, { wch: 16 }];
@@ -2912,7 +2971,7 @@
       var topApps = cachedPerWan.top_apps_by_wan || {};
       cachedPerWan.wan_links.forEach(function (l) {
         var apps = topApps[l.wan_link] || [];
-        wanRows.push([safe(l.wan_link || ""), l.total_down || 0, l.total_up || 0, safe(apps.length ? apps[0].app || "" : "")]);
+        wanRows.push([safe(l.wan_link || ""), fmtBytes(l.total_down || 0), fmtBytes(l.total_up || 0), safe(apps.length ? apps[0].app || "" : "")]);
       });
       var ws6 = XLSX.utils.aoa_to_sheet(wanRows);
       ws6["!cols"] = [{ wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 24 }];
@@ -3065,8 +3124,11 @@
           e.stopPropagation();
           var period = this.getAttribute('data-period');
           if (period === 'custom') {
-            // Close dropdown and open daterangepicker
+            // Close dropdown, update label, open daterangepicker
+            trDropdown.querySelectorAll('.owdu-dropdown-option').forEach(function(o) { o.classList.remove('active'); });
+            this.classList.add('active');
             trDropdown.classList.remove('owdu-show');
+            if (trLabel) trLabel.textContent = 'Custom Range';
             if (customInput && typeof jQuery !== 'undefined') {
               jQuery(customInput).data('daterangepicker').show();
             }
@@ -3092,6 +3154,7 @@
         endDate: now,
         maxDate: now,
         opens: 'left',
+        drops: 'down',
         parentEl: '.owdu-header-right',
         locale: {
           format: 'MM/DD/YYYY',

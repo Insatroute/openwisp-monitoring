@@ -147,7 +147,7 @@ def _window_from_request(request) -> WindowParams:
     params = getattr(request, "query_params", None)
     if params is None:
         params = getattr(request, "GET", {})
-    period = params.get("period") or params.get("time") or "24h"
+    period = params.get("period") or params.get("time") or "7d"
     start = params.get("start")
     end = params.get("end")
     return _parse_window(period, start, end)
