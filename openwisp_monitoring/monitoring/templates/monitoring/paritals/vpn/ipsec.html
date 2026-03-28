@@ -1,0 +1,55 @@
+{% load i18n static %}
+
+<div class="nx-section-card">
+  <div class="nx-section-header">
+    <svg class="nx-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
+    {% trans "IPsec Tunnels" %}
+  </div>
+  <div class="nx-section-body">
+    {% with tunnels=device_data.vpn.IPsec.tunnels %}
+      {% if tunnels and tunnels|length %}
+        <div class="nx-table-wrap">
+        <table class="disk no-stack" id="ipsec-table">
+          <thead>
+            <tr>
+              <th>{% trans "Name" %}</th>
+              <th>{% trans "Local Subnet" %}</th>
+              <th>{% trans "Remote Subnet" %}</th>
+              <th>{% trans "Remote Gateway" %}</th>
+              <th>{% trans "IKE Version" %}</th>
+              <th>{% trans "Phase 1" %}</th>
+              <th>{% trans "Phase 2" %}</th>
+              <th>{% trans "Status" %}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for t in tunnels %}
+            <tr>
+              <td data-label="{% trans 'Name' %}">{{ t.name|default:"-" }}</td>
+              <td data-label="{% trans 'Local Subnet' %}">{{ t.local_subnet|default:"-" }}</td>
+              <td data-label="{% trans 'Remote Subnet' %}">{{ t.remote_subnet|default:"-" }}</td>
+              <td data-label="{% trans 'Remote Gateway' %}">{{ t.remote_gateway|default:"-" }}</td>
+              <td data-label="{% trans 'IKE Version' %}">{{ t.ike_version|default:"-" }}</td>
+              <td data-label="{% trans 'Phase 1' %}">{{ t.phase1|default:"-" }}</td>
+              <td data-label="{% trans 'Phase 2' %}">{{ t.phase2|default:"-" }}</td>
+              <td data-label="{% trans 'Status' %}">
+                {% if t.enabled %}
+                  <span style="background:#d1fae5;color:#047857;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;">{% trans "Up" %}</span>
+                {% else %}
+                  <span style="background:#f3f4f6;color:#374151;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;">{% trans "Down" %}</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        </div>
+      {% else %}
+        <div class="nx-empty-state">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          <p>{% trans "No IPsec tunnels configured." %}</p>
+        </div>
+      {% endif %}
+    {% endwith %}
+  </div>
+</div>

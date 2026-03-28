@@ -1,0 +1,53 @@
+{% load i18n static %}
+
+<div class="nx-section-card">
+  <div class="nx-section-header">
+    <svg class="nx-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+    {% trans "GRE Tunnels" %}
+  </div>
+  <div class="nx-section-body">
+    {% with tunnels=device_data.vpn.GRE.tunnels %}
+      {% if tunnels and tunnels|length %}
+        <div class="nx-table-wrap">
+        <table class="disk no-stack" id="gre-table">
+          <thead>
+            <tr>
+              <th>{% trans "Name" %}</th>
+              <th>{% trans "Local IP" %}</th>
+              <th>{% trans "Remote IP" %}</th>
+              <th>{% trans "TTL" %}</th>
+              <th>{% trans "MTU" %}</th>
+              <th>{% trans "Service" %}</th>
+              <th>{% trans "Status" %}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for t in tunnels %}
+            <tr>
+              <td data-label="{% trans 'Name' %}">{{ t.name|default:"-" }}</td>
+              <td data-label="{% trans 'Local IP' %}">{{ t.local_ip|default:"-" }}</td>
+              <td data-label="{% trans 'Remote IP' %}">{{ t.remote_ip|default:"-" }}</td>
+              <td data-label="{% trans 'TTL' %}">{{ t.ttl|default:"-" }}</td>
+              <td data-label="{% trans 'MTU' %}">{{ t.mtu|default:"-" }}</td>
+              <td data-label="{% trans 'Service' %}">{{ t.service|default:"-" }}</td>
+              <td data-label="{% trans 'Status' %}">
+                {% if t.enabled %}
+                  <span style="background:#d1fae5;color:#047857;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;">{% trans "Up" %}</span>
+                {% else %}
+                  <span style="background:#f3f4f6;color:#374151;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;">{% trans "Down" %}</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        </div>
+      {% else %}
+        <div class="nx-empty-state">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/></svg>
+          <p>{% trans "No GRE tunnels configured." %}</p>
+        </div>
+      {% endif %}
+    {% endwith %}
+  </div>
+</div>

@@ -1,137 +1,45 @@
 {% load i18n static %}
-<h2 style="margin-top:20px;">VXLAN</h2>
 
-  <table class="disk" id="mw-rules-table">
-    <thead>
-      <tr>
-        <th>Interface Name</th>
-        <th>Interface</th>
-        <th>Vid</th>
-        <th>Peer IP</th>
-        <th>Port</th>
-        <th>IP</th>
-        <th>Service</th>
-      </tr>
-    </thead>
-    <tbody id="mw-rules-body">
-      {% for vx in device_data.network.VxLan %}
-        <tr>
-          <td data-label="Policy">{{ vx.name }}</td>
-          <td data-label="Source">{{ vx.base_interface }}</td>
-          <td data-label="Destination">{{ vx.vid }}</td>
-          <td data-label="Protocol">{{ vx.peer }}</td>
-          <td data-label="Protocol">{{ vx.port }}</td>
-          <td data-label="Protocol">{{ vx.ipaddr }}</td>
-          <td data-label="Protocol">{{ vx.service }}</td>
-
-
-
-
-        </tr>
-      {% empty %}
-        <tr><td colspan="5" class="muted">No rules found.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
-
-
-<style>.subtle {
-	color: #6b7280;
-	margin: .25rem 0 1rem
-}
-
-.card {
-	background: #fff;
-	border-radius: 8px;
-	box-shadow: 0 1px 6px rgba(0, 0, 0, .06);
-	padding: 0
-}
-
-.disk {
-	width: 100%;
-	border-collapse: collapse
-}
-
-.disk th,
-.disk td {
-	padding: 12px;
-	border-bottom: 1px solid #eef0f2;
-	text-align: left
-}
-
-.policy-name {
-	display: flex;
-	align-items: center;
-	gap: 8px
-}
-
-.policy-name .lock {
-	opacity: .8
-}
-
-.gateways-cell {
-	display: flex;
-	align-items: center;
-	gap: 10px;
-	flex-wrap: wrap
-}
-
-.policy-type {
-	display: inline-flex;
-	align-items: center;
-	gap: 6px;
-	margin-right: 8px;
-	color: #374151
-}
-
-.scale {
-	opacity: .9
-}
-
-.gateway-chip {
-	display: inline-flex;
-	align-items: center;
-	gap: 8px;
-	padding: 6px 12px;
-	border-radius: 999px;
-	background: #f3f4f6;
-	color: #111827;
-	font-weight: 600
-    margin-right: 10px;
-}
-
-.gateway-chip .dot {
-	font-weight: 700
-}
-
-.gateway-chip.on {
-	background: #d1fae5;
-	color: #047857
-}
-
-.gw-weight {
-	opacity: .85;
-	margin-left: 4px
-}
-
-.drag {
-	color: #9ca3af;
-	margin-right: 8px
-}
-
-.muted {
-	color: #6b7280
-}
-
-/* keep this table in two columns on desktop */
-.no-stack tr { display: table-row !important; }
-.no-stack th,
-.no-stack td { display: table-cell !important; vertical-align: middle; }
-.no-stack th { white-space: nowrap; }
-.gateways-cell { display: flex; gap: 10px; flex-wrap: wrap; }
-@media (max-width: 640px) {
-  .disk:not(.no-stack) tr { display: block; }
-  .disk:not(.no-stack) td, .disk:not(.no-stack) th { display: block; }
-}
-
-</style>
+<div class="nx-section-card">
+  <div class="nx-section-header">
+    <svg class="nx-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="1" width="22" height="22" rx="2"/><line x1="1" y1="8" x2="23" y2="8"/><line x1="1" y1="16" x2="23" y2="16"/><line x1="8" y1="1" x2="8" y2="23"/><line x1="16" y1="1" x2="16" y2="23"/></svg>
+    VXLAN
+  </div>
+  <div class="nx-section-body">
+    {% with vxlans=device_data.network.VxLan %}
+      {% if vxlans %}
+        <table class="disk no-stack" id="vxlan-table">
+          <thead>
+            <tr>
+              <th>{% trans "Interface Name" %}</th>
+              <th>{% trans "Interface" %}</th>
+              <th>{% trans "VID" %}</th>
+              <th>{% trans "Peer IP" %}</th>
+              <th>{% trans "Port" %}</th>
+              <th>{% trans "IP" %}</th>
+              <th>{% trans "Service" %}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for vx in vxlans %}
+            <tr>
+              <td data-label="{% trans 'Interface Name' %}">{{ vx.name|default:"-" }}</td>
+              <td data-label="{% trans 'Interface' %}">{{ vx.base_interface|default:"-" }}</td>
+              <td data-label="{% trans 'VID' %}">{{ vx.vid|default:"-" }}</td>
+              <td data-label="{% trans 'Peer IP' %}">{{ vx.peer|default:"-" }}</td>
+              <td data-label="{% trans 'Port' %}">{{ vx.port|default:"-" }}</td>
+              <td data-label="{% trans 'IP' %}">{{ vx.ipaddr|default:"-" }}</td>
+              <td data-label="{% trans 'Service' %}">{{ vx.service|default:"-" }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <div class="nx-empty-state">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="1" width="22" height="22" rx="2"/><line x1="1" y1="8" x2="23" y2="8"/><line x1="1" y1="16" x2="23" y2="16"/><line x1="8" y1="1" x2="8" y2="23"/><line x1="16" y1="1" x2="16" y2="23"/></svg>
+          <p>{% trans "No VXLAN entries configured." %}</p>
+        </div>
+      {% endif %}
+    {% endwith %}
+  </div>
+</div>

@@ -1,68 +1,63 @@
 {% load i18n static %}
 
-<h3>{% trans "OpenVPN — Configuration" %}</h3>
-<div class="table-wrap">
-  <table class="disk no-stack">
-    <thead>
-      <tr>
-        <th>{% trans "Enabled" %}</th>
-        <th>{% trans "Proto" %}</th>
-        <th>{% trans "Port" %}</th>
-        <th>{% trans "Dev type" %}</th>
-        <th>{% trans "Topology" %}</th>
-        <th>{% trans "Server" %}</th>
-        <th>{% trans "Ifconfig pool" %}</th>
-        <th>{% trans "Local networks" %}</th>
-        <th>{% trans "Public IPs" %}</th>
-        <th>{% trans "Client-to-client" %}</th>
-        <th>{% trans "TLS min" %}</th>
-        <th>{% trans "Auth" %}</th>
-        <th>{% trans "Cipher" %}</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% with cfg=device_data.vpn.OpenVPN.Configuration %}
-        {% if cfg %}
-        <tr>
-          <td>{{ cfg.enabled|default:"-" }}</td>
-          <td>{{ cfg.proto|default:"-" }}</td>
-          <td>{{ cfg.port|default:"-" }}</td>
-          <td>{{ cfg.dev_type|default:"-" }}</td>
-          <td>{{ cfg.topology|default:"-" }}</td>
-          <td>{{ cfg.server|default:"-" }}</td>
-          <td>{% if cfg.ifconfig_pool %}{{ cfg.ifconfig_pool|join:", " }}{% else %}-{% endif %}</td>
-          <td>{% if cfg.ns_local %}{{ cfg.ns_local|join:", " }}{% else %}-{% endif %}</td>
-          <td>{% if cfg.ns_public_ip %}{{ cfg.ns_public_ip|join:", " }}{% else %}-{% endif %}</td>
-          <td>{{ cfg.client_to_client|default:"-" }}</td>
-          <td>{{ cfg.tls_version_min|default:"-" }}</td>
-          <td>{{ cfg.auth|default:"-" }}</td>
-          <td>{{ cfg.cipher|default:"-" }}</td>
-        </tr>
-        {% else %}
-        <tr><td colspan="13" class="muted">{% trans "No OpenVPN configuration found." %}</td></tr>
-        {% endif %}
-      {% endwith %}
-    </tbody>
-  </table>
+<div class="nx-section-card">
+  <div class="nx-section-header">
+    <svg class="nx-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><circle cx="12" cy="10" r="3"/></svg>
+    {% trans "OpenVPN — Configuration" %}
+  </div>
+  <div class="nx-section-body">
+    {% with cfg=device_data.vpn.OpenVPN.Configuration %}
+      {% if cfg %}
+        <div class="nx-table-wrap">
+        <table class="disk no-stack">
+          <thead>
+            <tr>
+              <th>{% trans "Enabled" %}</th>
+              <th>{% trans "Proto" %}</th>
+              <th>{% trans "Port" %}</th>
+              <th>{% trans "Dev Type" %}</th>
+              <th>{% trans "Topology" %}</th>
+              <th>{% trans "Server" %}</th>
+              <th>{% trans "Pool" %}</th>
+              <th>{% trans "Local Net" %}</th>
+              <th>{% trans "Public IPs" %}</th>
+              <th>{% trans "C2C" %}</th>
+              <th>{% trans "TLS Min" %}</th>
+              <th>{% trans "Auth" %}</th>
+              <th>{% trans "Cipher" %}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td data-label="{% trans 'Enabled' %}">
+                {% if cfg.enabled %}
+                  <span style="background:#d1fae5;color:#047857;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;">{% trans "Yes" %}</span>
+                {% else %}
+                  <span style="background:#f3f4f6;color:#374151;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;">{% trans "No" %}</span>
+                {% endif %}
+              </td>
+              <td data-label="{% trans 'Proto' %}">{{ cfg.proto|default:"-" }}</td>
+              <td data-label="{% trans 'Port' %}">{{ cfg.port|default:"-" }}</td>
+              <td data-label="{% trans 'Dev Type' %}">{{ cfg.dev_type|default:"-" }}</td>
+              <td data-label="{% trans 'Topology' %}">{{ cfg.topology|default:"-" }}</td>
+              <td data-label="{% trans 'Server' %}">{{ cfg.server|default:"-" }}</td>
+              <td data-label="{% trans 'Pool' %}">{% if cfg.ifconfig_pool %}{{ cfg.ifconfig_pool|join:", " }}{% else %}-{% endif %}</td>
+              <td data-label="{% trans 'Local Net' %}">{% if cfg.ns_local %}{{ cfg.ns_local|join:", " }}{% else %}-{% endif %}</td>
+              <td data-label="{% trans 'Public IPs' %}">{% if cfg.ns_public_ip %}{{ cfg.ns_public_ip|join:", " }}{% else %}-{% endif %}</td>
+              <td data-label="{% trans 'C2C' %}">{{ cfg.client_to_client|default:"-" }}</td>
+              <td data-label="{% trans 'TLS Min' %}">{{ cfg.tls_version_min|default:"-" }}</td>
+              <td data-label="{% trans 'Auth' %}">{{ cfg.auth|default:"-" }}</td>
+              <td data-label="{% trans 'Cipher' %}">{{ cfg.cipher|default:"-" }}</td>
+            </tr>
+          </tbody>
+        </table>
+        </div>
+      {% else %}
+        <div class="nx-empty-state">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          <p>{% trans "No OpenVPN configuration found." %}</p>
+        </div>
+      {% endif %}
+    {% endwith %}
+  </div>
 </div>
-
-<style>
-.table-wrap {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-}
-.disk {
-  width: 100%;
-  border-collapse: collapse;
-  min-width: 900px; /* force scroll for small screens */
-}
-.disk th, .disk td {
-  padding: 10px 12px;
-  border-bottom: 1px solid #eef0f2;
-  text-align: left;
-  white-space: nowrap;
-}
-.no-stack tr { display: table-row !important; }
-.no-stack th, .no-stack td { display: table-cell !important; vertical-align: middle; }
-.muted { color: #6b7280; }
-</style>

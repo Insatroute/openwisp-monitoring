@@ -1,127 +1,160 @@
 {% load i18n static %}
 
 {% if device_data.interfaces %}
-    {% for interface in device_data.interfaces %}
-        <h2 class="interface-header">
-            {% trans "Interface" %}: {{ interface.name }}
-            <img
-                src="{% get_static_prefix %}admin/img/icon-{{ interface.up|yesno:'yes,no,no' }}.svg"
-                alt="{% if interface.up %}{% trans "Up" %}{% else %}{% trans "Down" %}{% endif %}"
-            >
-        </h2>
-        <div class="grid">
-            {% if interface.mac %}
-                <div class="status-card">
-                    <div class="title">{% trans "MAC Address" %}</div>
-                    <div class="value">{{ interface.mac }}</div>
-                </div>
-            {% endif %}
-            {% if interface.type %}
-                <div class="status-card">
-                    <div class="title">{% trans "Type" %}</div>
-                    <div class="value">{{ interface.type }}</div>
-                </div>
-            {% endif %}
-            {% if interface.bridge_members %}
-                <div class="status-card">
-                    <div class="title">{% trans "Bridge Member" %}</div>
-                    <div class="value">
-                        {% for element in interface.bridge_members %}
-                            <a
-                                class="bridge-member"
-                                href="javascript:scrollToElement('status-if-{{ element }}')"
-                            >
-                                {{ element }}
-                            </a>{% if not forloop.last %}, {% endif %}
-                        {% endfor %}
-                    </div>
-                </div>
-            {% endif %}
-            {% if interface.up is not None %}
-                <div class="status-card">
-                    <div class="title">{% trans "Up" %}</div>
-                    <div class="value">
-                        <img
-                            src="{% get_static_prefix %}admin/img/icon-{{ interface.up|yesno:'yes,no,no' }}.svg"
-                            alt="{% if interface.up %}{% trans "Yes" %}{% else %}{% trans "No" %}{% endif %}"
-                        >
-                    </div>
-                </div>
-            {% endif %}
-            {% if interface.multicast is not None %}
-                <div class="status-card">
-                    <div class="title">{% trans "Multicast" %}</div>
-                    <div class="value">
-                        <img
-                            src="{% get_static_prefix %}admin/img/icon-{{ interface.multicast|yesno:'yes,no,no' }}.svg"
-                            alt="{% if interface.multicast %}{% trans "Yes" %}{% else %}{% trans "No" %}{% endif %}"
-                        >
-                    </div>
-                </div>
-            {% endif %}
-            {% if interface.mtu %}
-                <div class="status-card">
-                    <div class="title">{% trans "MTU" %}</div>
-                    <div class="value">{{ interface.mtu }}</div>
-                </div>
-            {% endif %}
-            {% if interface.txqueuelen %}
-                <div class="status-card">
-                    <div class="title">{% trans "Transmit Queue Length" %}</div>
-                    <div class="value">{{ interface.txqueuelen }}</div>
-                </div>
-            {% endif %}
-            {% if interface.wireless %}
-                <div class="status-card">
-                    <div class="title">{% trans "Mode" %}</div>
-                    <div class="value">{{ interface.wireless.mode }}</div>
-                </div>
-                {% if interface.wireless.ssid %}
-                    <div class="status-card">
-                        <div class="title">{% trans "SSID" %}</div>
-                        <div class="value">{{ interface.wireless.ssid }}</div>
-                    </div>
-                {% endif %}
-                {% if interface.wireless.channel %}
-                    <div class="status-card">
-                        <div class="title">{% trans "Channel" %}</div>
-                        <div class="value">{{ interface.wireless.channel }}</div>
-                    </div>
-                {% endif %}
-            {% endif %}
-            {% if interface.speed %}
-                <div class="status-card">
-                    <div class="title">{% trans "Speed" %}</div>
-                    <div class="value">{{ interface.speed }}</div>
-                </div>
-            {% endif %}
+  {% for interface in device_data.interfaces %}
+    <div class="nx-section-card">
+      <div class="nx-section-header">
+        <svg class="nx-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        {% trans "Interface" %}: {{ interface.name }}
+        <img
+          src="{% get_static_prefix %}admin/img/icon-{{ interface.up|yesno:'yes,no,no' }}.svg"
+          alt="{% if interface.up %}{% trans 'Up' %}{% else %}{% trans 'Down' %}{% endif %}"
+          style="width:16px;height:16px;margin-left:4px;"
+        >
+      </div>
+      <div class="nx-section-body">
+        <div class="nx-card-grid">
+          {% if interface.mac %}
+          <div class="nx-info-item">
+            <div class="nx-item-icon-wrap">
+              <svg class="nx-item-icon" viewBox="0 0 24 24" fill="none" stroke="#253a5d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="10" rx="2"/><path d="M12 17v4"/><path d="M8 21h8"/></svg>
+            </div>
+            <span class="nx-info-label">{% trans "MAC" %}</span>
+            <span class="nx-info-value">{{ interface.mac }}</span>
+          </div>
+          {% endif %}
+          {% if interface.type %}
+          <div class="nx-info-item">
+            <div class="nx-item-icon-wrap">
+              <svg class="nx-item-icon" viewBox="0 0 24 24" fill="none" stroke="#253a5d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M4 17h16"/><path d="M7 4v16"/><path d="M17 4v16"/></svg>
+            </div>
+            <span class="nx-info-label">{% trans "Type" %}</span>
+            <span class="nx-info-value">{{ interface.type }}</span>
+          </div>
+          {% endif %}
+          {% if interface.bridge_members %}
+          <div class="nx-info-item">
+            <div class="nx-item-icon-wrap">
+              <svg class="nx-item-icon" viewBox="0 0 24 24" fill="none" stroke="#253a5d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            </div>
+            <span class="nx-info-label">{% trans "Bridge Member" %}</span>
+            <span class="nx-info-value">
+              {% for element in interface.bridge_members %}
+                <a class="bridge-member" href="javascript:scrollToElement('status-if-{{ element }}')">{{ element }}</a>{% if not forloop.last %}, {% endif %}
+              {% endfor %}
+            </span>
+          </div>
+          {% endif %}
+          {% if interface.up is not None %}
+          <div class="nx-info-item">
+            <div class="nx-item-icon-wrap">
+              <svg class="nx-item-icon" viewBox="0 0 24 24" fill="none" stroke="#253a5d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            </div>
+            <span class="nx-info-label">{% trans "Up" %}</span>
+            <span class="nx-info-value">
+              <img src="{% get_static_prefix %}admin/img/icon-{{ interface.up|yesno:'yes,no,no' }}.svg" alt="{% if interface.up %}{% trans 'Yes' %}{% else %}{% trans 'No' %}{% endif %}" style="width:14px;height:14px;">
+            </span>
+          </div>
+          {% endif %}
+          {% if interface.multicast is not None %}
+          <div class="nx-info-item">
+            <div class="nx-item-icon-wrap">
+              <svg class="nx-item-icon" viewBox="0 0 24 24" fill="none" stroke="#253a5d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49"/><path d="M7.76 16.24a6 6 0 0 1 0-8.49"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M4.93 19.07a10 10 0 0 1 0-14.14"/></svg>
+            </div>
+            <span class="nx-info-label">{% trans "Multicast" %}</span>
+            <span class="nx-info-value">
+              <img src="{% get_static_prefix %}admin/img/icon-{{ interface.multicast|yesno:'yes,no,no' }}.svg" alt="{% if interface.multicast %}{% trans 'Yes' %}{% else %}{% trans 'No' %}{% endif %}" style="width:14px;height:14px;">
+            </span>
+          </div>
+          {% endif %}
+          {% if interface.mtu %}
+          <div class="nx-info-item">
+            <div class="nx-item-icon-wrap">
+              <svg class="nx-item-icon" viewBox="0 0 24 24" fill="none" stroke="#253a5d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/></svg>
+            </div>
+            <span class="nx-info-label">{% trans "MTU" %}</span>
+            <span class="nx-info-value">{{ interface.mtu }}</span>
+          </div>
+          {% endif %}
+          {% if interface.txqueuelen %}
+          <div class="nx-info-item">
+            <div class="nx-item-icon-wrap">
+              <svg class="nx-item-icon" viewBox="0 0 24 24" fill="none" stroke="#253a5d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+            </div>
+            <span class="nx-info-label">{% trans "TX Queue Len" %}</span>
+            <span class="nx-info-value">{{ interface.txqueuelen }}</span>
+          </div>
+          {% endif %}
+          {% if interface.wireless %}
+          <div class="nx-info-item">
+            <div class="nx-item-icon-wrap">
+              <svg class="nx-item-icon" viewBox="0 0 24 24" fill="none" stroke="#253a5d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+            </div>
+            <span class="nx-info-label">{% trans "Mode" %}</span>
+            <span class="nx-info-value">{{ interface.wireless.mode }}</span>
+          </div>
+          {% if interface.wireless.ssid %}
+          <div class="nx-info-item">
+            <div class="nx-item-icon-wrap">
+              <svg class="nx-item-icon" viewBox="0 0 24 24" fill="none" stroke="#253a5d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+            </div>
+            <span class="nx-info-label">{% trans "SSID" %}</span>
+            <span class="nx-info-value">{{ interface.wireless.ssid }}</span>
+          </div>
+          {% endif %}
+          {% if interface.wireless.channel %}
+          <div class="nx-info-item">
+            <div class="nx-item-icon-wrap">
+              <svg class="nx-item-icon" viewBox="0 0 24 24" fill="none" stroke="#253a5d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+            </div>
+            <span class="nx-info-label">{% trans "Channel" %}</span>
+            <span class="nx-info-value">{{ interface.wireless.channel }}</span>
+          </div>
+          {% endif %}
+          {% endif %}
+          {% if interface.speed %}
+          <div class="nx-info-item">
+            <div class="nx-item-icon-wrap">
+              <svg class="nx-item-icon" viewBox="0 0 24 24" fill="none" stroke="#253a5d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            </div>
+            <span class="nx-info-label">{% trans "Speed" %}</span>
+            <span class="nx-info-value">{{ interface.speed }}</span>
+          </div>
+          {% endif %}
         </div>
 
         {% if interface.addresses %}
-            <table class="addresses">
-                <thead>
-                    <tr>
-                         <th>{% trans 'Address' %} / {% trans 'Mask' %}</th>
-                          <th>{% trans 'Protocol' %}</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for address in interface.addresses %}
-                        <tr>
-                            <td class="address-mask">
-                               
-                                {{ address.address }} / {{ address.mask }}
-                            </td>
-                            <td class="proto">
-                            
-                                {{ address.proto }}
-                            </td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        <table class="disk no-stack" style="margin-top:10px;">
+          <thead>
+            <tr>
+              <th>{% trans 'Address' %} / {% trans 'Mask' %}</th>
+              <th>{% trans 'Protocol' %}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for address in interface.addresses %}
+            <tr>
+              <td>{{ address.address }} / {{ address.mask }}</td>
+              <td>{{ address.proto }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
         {% endif %}
-    {% endfor %}
+      </div>
+    </div>
+  {% endfor %}
 {% else %}
-    <p>{% trans "No interfaces available." %}</p>
+  <div class="nx-section-card">
+    <div class="nx-section-header">
+      <svg class="nx-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+      {% trans "Interfaces" %}
+    </div>
+    <div class="nx-section-body">
+      <div class="nx-empty-state">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        <p>{% trans "No interfaces available." %}</p>
+      </div>
+    </div>
+  </div>
 {% endif %}

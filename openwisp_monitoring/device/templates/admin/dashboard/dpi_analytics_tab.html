@@ -703,6 +703,21 @@
 .dpi-map-tooltip { font-family: 'Poppins', 'Roboto', sans-serif; }
 .dpi-map-tooltip .leaflet-tooltip-content { line-height: 1.5; }
 
+/* Permanent device name labels on map */
+.dpi-map-label-tip {
+  background: rgba(255,255,255,0.9) !important;
+  border: none !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.12) !important;
+  padding: 1px 6px !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  color: #374151 !important;
+  border-radius: 4px !important;
+  white-space: nowrap !important;
+  pointer-events: none !important;
+}
+.dpi-map-label-tip::before { display: none !important; }
+
 /* ---- RESPONSIVE ---- */
 @media (max-width: 1200px) {
   .dpi-summary-row { grid-template-columns: repeat(3, 1fr); }
@@ -1614,6 +1629,16 @@ if (typeof L === "undefined") {
       // Track devices without location for skip
       var noLocationDevices = [];
 
+      // Offset overlapping devices at same coordinates
+      var coordCount = {};
+      deviceKeys.forEach(function(deviceId) {
+        var dev = devices[deviceId];
+        if (typeof dev.lat !== 'number' || typeof dev.lng !== 'number') return;
+        var key = dev.lat.toFixed(4) + ',' + dev.lng.toFixed(4);
+        if (!coordCount[key]) coordCount[key] = [];
+        coordCount[key].push(deviceId);
+      });
+
       deviceKeys.forEach(function(deviceId, idx) {
         var dev = devices[deviceId];
         // Use real coordinates from API
@@ -1622,6 +1647,16 @@ if (typeof L === "undefined") {
           return; // skip devices without location
         }
         var coords = [dev.lat, dev.lng];
+
+        // Spread out devices sharing same location
+        var key = dev.lat.toFixed(4) + ',' + dev.lng.toFixed(4);
+        var group = coordCount[key] || [];
+        if (group.length > 1) {
+          var posInGroup = group.indexOf(deviceId);
+          var angle = (2 * Math.PI * posInGroup) / group.length;
+          var offset = 0.008; // ~800m spread
+          coords = [dev.lat + offset * Math.cos(angle), dev.lng + offset * Math.sin(angle)];
+        }
 
         var totalTraffic = (dev.download || 0) + (dev.upload || 0);
         var radius = Math.max(6, Math.min(14, Math.sqrt(totalTraffic / 2048) * 1.5));
@@ -1647,16 +1682,18 @@ if (typeof L === "undefined") {
           fillOpacity: 0.9,
         }).addTo(geoMap);
 
-        // Label on marker
-        var icon = L.divIcon({
-          className: 'dpi-map-label',
-          html: '<div style="position:absolute;top:8px;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:8px;font-weight:600;color:#374151;background:rgba(255,255,255,0.85);padding:1px 4px;border-radius:3px;pointer-events:none;line-height:1.2;">' + dev.name + '</div>',
-          iconSize: [0, 0],
-          iconAnchor: [0, 0],
+        // Permanent device name label below marker
+        var labelMarker = L.circleMarker([coords[0], coords[1]], {
+          radius: 0, fillOpacity: 0, opacity: 0, interactive: false,
+        }).addTo(geoMap);
+        labelMarker.bindTooltip(dev.name, {
+          permanent: true,
+          direction: 'bottom',
+          className: 'dpi-map-label-tip',
+          offset: [0, radius + 2],
         });
-        L.marker([coords[0], coords[1]], { icon: icon, interactive: false }).addTo(geoMap);
 
-        // Rich tooltip
+        // Rich tooltip on hover (includes device name)
         marker.bindTooltip(
           '<div style="font-weight:600;font-size:14px;color:#111827;">' + dev.name + '</div>' +
           '<div style="font-size:11px;color:#6b7280;margin:4px 0 6px;">DPI Engine ' + (dev.agent_version || 'N/A') + '</div>' +

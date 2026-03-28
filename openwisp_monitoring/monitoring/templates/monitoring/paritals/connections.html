@@ -1,92 +1,81 @@
 {% load i18n static %}
-<table class="disk" id="conntrack-table">
-  <thead>
-    <tr>
-      <th>Source</th>
-      <th>Destination</th>
-      <th>Protocol</th>
-      <th>Download / Upload</th>
-      <th>State</th>
-      <th>Timeout</th>
-    </tr>
-  </thead>
-  <tbody id="conntrack-body">
-    {% for item in device_data.firewall.connections.0.data %}
-    <tr>
-      <td>{{ item.source }}:{{ item.source_port }}</td>
-      <td>{{ item.destination }}:{{ item.destination_port }}</td>
-      <td>{{ item.protocol|upper }}</td>
-      <td>{{ item.destination_stats.bytes }} B / {{ item.source_stats.bytes }} B</td>
-      <td>{{ item.state|default:"-" }}</td>
-      <td>{{ item.timeout }} s</td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
-<div id="pagination" class="pagination-controls"></div>
+
+<div class="nx-section-card">
+  <div class="nx-section-header">
+    <svg class="nx-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+    {% trans "Connections" %}
+  </div>
+  <div class="nx-section-body">
+    {% with conn_data=device_data.firewall.connections.0.data %}
+      {% if conn_data %}
+        <table class="disk no-stack" id="conntrack-table">
+          <thead>
+            <tr>
+              <th>{% trans "Source" %}</th>
+              <th>{% trans "Destination" %}</th>
+              <th>{% trans "Protocol" %}</th>
+              <th>{% trans "Download / Upload" %}</th>
+              <th>{% trans "State" %}</th>
+              <th>{% trans "Timeout" %}</th>
+            </tr>
+          </thead>
+          <tbody id="conntrack-body">
+            {% for item in conn_data %}
+            <tr>
+              <td data-label="{% trans 'Source' %}">{{ item.source }}:{{ item.source_port }}</td>
+              <td data-label="{% trans 'Destination' %}">{{ item.destination }}:{{ item.destination_port }}</td>
+              <td data-label="{% trans 'Protocol' %}">{{ item.protocol|upper }}</td>
+              <td data-label="{% trans 'Download / Upload' %}">{{ item.destination_stats.bytes }} B / {{ item.source_stats.bytes }} B</td>
+              <td data-label="{% trans 'State' %}">{{ item.state|default:"-" }}</td>
+              <td data-label="{% trans 'Timeout' %}">{{ item.timeout }} s</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        <div id="conntrack-pager" class="pager"></div>
+      {% else %}
+        <div class="nx-empty-state">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          <p>{% trans "No active connections." %}</p>
+        </div>
+      {% endif %}
+    {% endwith %}
+  </div>
+</div>
 
 <style>
-.pagination-controls {
-  margin-top: 1em;
-  text-align: center;
-}
-.page-btn {
-  margin: 0 4px;
-  padding: 6px 12px;
-  border: 1px solid #ccc;
-  background-color: white;
-  cursor: pointer;
-  border-radius: 4px;
-}
-.page-btn.active {
-  background-color: #007bff;
-  color: white;
-}
+.pager { display:flex; justify-content:space-between; align-items:center; padding:8px 12px; }
+.pager-left { display:flex; align-items:center; gap:12px; }
+.pager .show select { padding:4px 8px; border:1px solid #e5e7eb; border-radius:6px; background:#fff; }
+.pager-right { display:flex; align-items:center; gap:8px; }
+.pager button { padding:6px 10px; border:1px solid #e5e7eb; background:#fff; border-radius:6px; cursor:pointer; }
+.pager button:disabled { opacity:.5; cursor:not-allowed; }
+.pager .page-no { min-width:28px; text-align:center; border:1px solid #e5e7eb; border-radius:6px; padding:6px 10px; background:#fff; }
 </style>
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {
-  const rowsPerPage = 10;
-  const table = document.getElementById("conntrack-table");
-  const tbody = document.getElementById("conntrack-body");
-  const rows = tbody.getElementsByTagName("tr");
-  const totalPages = Math.ceil(rows.length / rowsPerPage);
-  const pagination = document.getElementById("pagination");
-
-  function showPage(page) {
-    const start = (page - 1) * rowsPerPage;
-    const end = start + rowsPerPage;
-    Array.from(rows).forEach((row, index) => {
-      row.style.display = index >= start && index < end ? "" : "none";
-    });
+  var tbody = document.getElementById("conntrack-body");
+  var pager = document.getElementById("conntrack-pager");
+  if (!tbody || !pager) return;
+  var rows = Array.from(tbody.querySelectorAll("tr"));
+  var rpp = 10, page = 1;
+  function totalPages() { return Math.max(1, Math.ceil(rows.length / rpp)); }
+  function renderRows() {
+    var s = (page - 1) * rpp, e = s + rpp;
+    rows.forEach(function(tr, i) { tr.style.display = (i >= s && i < e) ? "" : "none"; });
   }
-
-  function setupPagination() {
-    pagination.innerHTML = "";
-
-    for (let i = 1; i <= totalPages; i++) {
-      const btn = document.createElement("button");
-      btn.innerText = i;
-      btn.className = "page-btn";
-      btn.addEventListener("click", function (e) {
-        e.preventDefault();  // Prevent form submission or URL change
-        showPage(i);
-        setActivePage(i);
-      });
-      pagination.appendChild(btn);
-    }
+  function update() {
+    var t = rows.length, s = t ? (page-1)*rpp+1 : 0, e = Math.min(page*rpp, t);
+    pager.querySelector(".range").textContent = s+" - "+e+" of "+t;
+    pager.querySelector(".page-no").textContent = page;
+    pager.querySelector(".prev").disabled = (page <= 1);
+    pager.querySelector(".next").disabled = (page >= totalPages());
   }
-
-  function setActivePage(page) {
-    document.querySelectorAll(".page-btn").forEach(btn => {
-      btn.classList.remove("active");
-    });
-    const activeBtn = pagination.children[page - 1];
-    if (activeBtn) activeBtn.classList.add("active");
-  }
-
-  setupPagination();
-  showPage(1);
-  setActivePage(1);
+  pager.innerHTML = '<div class="pager-left"><span class="range"></span><label class="show">Show <select class="rpp"><option value="10">10</option><option value="25">25</option><option value="50">50</option></select></label></div><div class="pager-right"><button class="prev">‹</button><span class="page-no">1</span><button class="next">›</button></div>';
+  pager.querySelector(".prev").addEventListener("click", function(e){e.preventDefault();if(page>1){page--;renderRows();update();}});
+  pager.querySelector(".next").addEventListener("click", function(e){e.preventDefault();if(page<totalPages()){page++;renderRows();update();}});
+  pager.querySelector(".rpp").addEventListener("change", function(e){rpp=parseInt(e.target.value,10);page=1;renderRows();update();});
+  renderRows(); update();
 });
 </script>

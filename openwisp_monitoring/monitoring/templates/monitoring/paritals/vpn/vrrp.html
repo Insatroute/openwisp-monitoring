@@ -1,64 +1,51 @@
 {% load i18n static %}
 
-
-{# =========================== VRRP =========================== #}
-<h3 style="margin-top:18px;">{% trans "VRRP" %}</h3>
-<div class="table-wrap">
-  <table class="disk no-stack" id="vrrp-table">
-    <thead>
-      <tr>
-        <th>{% trans "Name" %}</th>
-        <th>{% trans "Interface" %}</th>
-        <th>{% trans "State" %}</th>
-        <th>{% trans "Service" %}</th>
-        <th>{% trans "Type" %}</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% with vrrp_list=device_data.vpn.VRRP %}
-        {% if vrrp_list and vrrp_list|length %}
-          {% for row in vrrp_list %}
-          <tr>
-            <td>{{ row.name|default:"-" }}</td>
-            <td>{{ row.interface_name|default:"-" }}</td>
-            <td>{{ row.state|default:"-" }}</td>
-            <td>{{ row.service|default:"-" }}</td>
-            <td>{{ row.type|default:"-" }}</td>
-          </tr>
-          {% endfor %}
-        {% else %}
-          <tr><td colspan="5" class="muted">{% trans "No VRRP entries found." %}</td></tr>
-        {% endif %}
-      {% endwith %}
-    </tbody>
-  </table>
+<div class="nx-section-card">
+  <div class="nx-section-header">
+    <svg class="nx-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg>
+    {% trans "VRRP" %}
+  </div>
+  <div class="nx-section-body">
+    {% with vrrp_list=device_data.vpn.VRRP %}
+      {% if vrrp_list and vrrp_list|length %}
+        <div class="nx-table-wrap">
+        <table class="disk no-stack" id="vrrp-table">
+          <thead>
+            <tr>
+              <th>{% trans "Name" %}</th>
+              <th>{% trans "Interface" %}</th>
+              <th>{% trans "State" %}</th>
+              <th>{% trans "Service" %}</th>
+              <th>{% trans "Type" %}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in vrrp_list %}
+            <tr>
+              <td data-label="{% trans 'Name' %}">{{ row.name|default:"-" }}</td>
+              <td data-label="{% trans 'Interface' %}">{{ row.interface_name|default:"-" }}</td>
+              <td data-label="{% trans 'State' %}">
+                {% if row.state == "MASTER" %}
+                  <span style="background:#d1fae5;color:#047857;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;">{{ row.state }}</span>
+                {% elif row.state == "BACKUP" %}
+                  <span style="background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;">{{ row.state }}</span>
+                {% else %}
+                  <span style="background:#f3f4f6;color:#374151;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;">{{ row.state|default:"-" }}</span>
+                {% endif %}
+              </td>
+              <td data-label="{% trans 'Service' %}">{{ row.service|default:"-" }}</td>
+              <td data-label="{% trans 'Type' %}">{{ row.type|default:"-" }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        </div>
+      {% else %}
+        <div class="nx-empty-state">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/></svg>
+          <p>{% trans "No VRRP entries found." %}</p>
+        </div>
+      {% endif %}
+    {% endwith %}
+  </div>
 </div>
-
-
-<style>
-/* Responsive wrapper (enables horizontal scroll on small screens) */
-.table-wrap {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  margin: 0;
-}
-
-/* Base table look */
-.disk {
-  width: 100%;
-  border-collapse: collapse;
-  min-width: 900px; /* encourage scroll for many columns */
-}
-.disk th, .disk td {
-  padding: 10px 12px;
-  border-bottom: 1px solid #eef0f2;
-  text-align: left;
-  white-space: nowrap;
-}
-
-/* Keep tabular layout (no vertical stacking) */
-.no-stack tr { display: table-row !important; }
-.no-stack th, .no-stack td { display: table-cell !important; vertical-align: middle; }
-
-.muted { color: #6b7280; }
-</style>

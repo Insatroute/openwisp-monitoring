@@ -1,144 +1,190 @@
 {% load i18n static %}
-<h2>{% trans 'System' %}</h2>
-<div class="grid">
-  <div class="status-card">
-    <div class="title">Local Time</div>
-    <div class="value">{{ device_data.general.local_time }}</div>
+
+{# ── System ── #}
+<div class="nx-section-card">
+  <div class="nx-section-header">
+    <svg class="nx-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+    System
   </div>
-  <div class="status-card">
-    <div class="title">Uptime</div>
-    {{ device_data.general.uptime }}
-  </div>
-  <div class="status-card">
-    <div class="title">Hostname</div>
-    <div class="value">{{ device_data.general.hostname }}</div>
-  </div>
-   <div class="status-card">
-    <div class="title">SLA %</div>
-    <div class="value">
-       {% with uptime=device_data.availability.uptime_percent %}
-          {% if uptime %}
-            <div class="uptime-card">
-              {% for label, value in uptime.items %}
-                <div class="uptime-item">
-                  <div class="uptime-label">{{ label }}</div>
-                  <div class="uptime-value">{{ value }}%</div>
-                </div>
-              {% endfor %}
-            </div>
-          {% else %}
-            <span class="muted">{% trans "No availability data." %}</span>
-          {% endif %}
-        {% endwith %}
-  
+  <div class="nx-section-body">
+    <div class="nx-card-grid">
+      <div class="nx-info-item">
+        <div class="nx-item-icon-wrap">
+          <svg class="nx-item-icon" viewBox="0 0 24 24" fill="none" stroke="#253a5d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+        <span class="nx-info-label">Local Time</span>
+        <span class="nx-info-value">{{ device_data.general.local_time }}</span>
+      </div>
+      <div class="nx-info-item">
+        <div class="nx-item-icon-wrap">
+          <svg class="nx-item-icon" viewBox="0 0 24 24" fill="none" stroke="#253a5d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        </div>
+        <span class="nx-info-label">Uptime</span>
+        <span class="nx-info-value">{{ device_data.general.uptime }}</span>
+      </div>
+      <div class="nx-info-item">
+        <div class="nx-item-icon-wrap">
+          <svg class="nx-item-icon" viewBox="0 0 24 24" fill="none" stroke="#253a5d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        </div>
+        <span class="nx-info-label">Hostname</span>
+        <span class="nx-info-value">{{ device_data.general.hostname }}</span>
+      </div>
+      <div class="nx-info-item">
+        <div class="nx-item-icon-wrap">
+          <svg class="nx-item-icon" viewBox="0 0 24 24" fill="none" stroke="#253a5d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <span class="nx-info-label">SLA %</span>
+        <span class="nx-info-value">
+          {% with uptime=device_data.availability.uptime_percent %}
+            {% if uptime %}{% for label, value in uptime.items %}{{ label }}: {{ value }}%{% if not forloop.last %}, {% endif %}{% endfor %}{% else %}-{% endif %}
+          {% endwith %}
+        </span>
+      </div>
     </div>
   </div>
 </div>
 
-<h2>{% trans 'CPU' %}</h2>
-<div class="grid">
-  <div class="status-card">
-    <div class="title">Load average:</div>
-    <div class="value">{{ device_data.resources.load|join:", &nbsp;" }}</div>
+{# ── CPU ── #}
+<div class="nx-section-card">
+  <div class="nx-section-header">
+    <svg class="nx-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></svg>
+    CPU
   </div>
-  <div class="status-card">
-    <div class="title">Cores:</div>
-    <div class="value">{{ device_data.resources.cpus }}</div>
-  </div>
-</div>
-
-<h2>{% trans 'RAM Status' %}</h2>
-<div class="grid">
-  <div class="status-card">
-    <div class="title">Total:</div>
-    <div class="value">
-      {{ device_data.resources.memory.total|filesizeformat }}
-    </div>
-  </div>
-  <div class="status-card">
-    <div class="title">Free:</div>
-    <div class="value">
-      {{ device_data.resources.memory.free|filesizeformat }}
-    </div>
-  </div>
-  <div class="status-card">
-    <div class="title">Available:</div>
-    <div class="value">
-      {{ device_data.resources.memory.available|filesizeformat }}
-    </div>
-  </div>
-  <div class="status-card">
-    <div class="title">Buffered:</div>
-    <div class="value">
-      {{ device_data.resources.memory.buffered|filesizeformat }}
-    </div>
-  </div>
-  <div class="status-card">
-    <div class="title">Shared:</div>
-    <div class="value">
-      {{ device_data.resources.memory.shared|filesizeformat }}
+  <div class="nx-section-body">
+    <div class="nx-card-grid">
+      <div class="nx-info-item">
+        <div class="nx-item-icon-wrap">
+          <svg class="nx-item-icon" viewBox="0 0 24 24" fill="none" stroke="#253a5d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        </div>
+        <span class="nx-info-label">Load Avg</span>
+        <span class="nx-info-value">{{ device_data.resources.load|join:", " }}</span>
+      </div>
+      <div class="nx-info-item">
+        <div class="nx-item-icon-wrap">
+          <svg class="nx-item-icon" viewBox="0 0 24 24" fill="none" stroke="#253a5d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/></svg>
+        </div>
+        <span class="nx-info-label">Cores</span>
+        <span class="nx-info-value">{{ device_data.resources.cpus }}</span>
+      </div>
     </div>
   </div>
 </div>
 
-<div class="inline-related">
-  <fieldset class="module aligned">
-    {% if device_data.resources %} {% if device_data.resources.disk %}
-    <h2>{% trans 'Storage' %}</h2>
+{# ── RAM Status ── #}
+<div class="nx-section-card">
+  <div class="nx-section-header">
+    <svg class="nx-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="6" width="22" height="12" rx="2"/><line x1="6" y1="10" x2="6" y2="14"/><line x1="10" y1="10" x2="10" y2="14"/><line x1="14" y1="10" x2="14" y2="14"/><line x1="18" y1="10" x2="18" y2="14"/></svg>
+    RAM Status
+  </div>
+  <div class="nx-section-body">
+    <div class="nx-card-grid">
+      <div class="nx-info-item">
+        <div class="nx-item-icon-wrap">
+          <svg class="nx-item-icon" viewBox="0 0 24 24" fill="none" stroke="#253a5d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="6" width="22" height="12" rx="2"/><line x1="6" y1="10" x2="6" y2="14"/><line x1="10" y1="10" x2="10" y2="14"/><line x1="14" y1="10" x2="14" y2="14"/><line x1="18" y1="10" x2="18" y2="14"/></svg>
+        </div>
+        <span class="nx-info-label">Total</span>
+        <span class="nx-info-value">{{ device_data.resources.memory.total|filesizeformat }}</span>
+      </div>
+      <div class="nx-info-item">
+        <div class="nx-item-icon-wrap">
+          <svg class="nx-item-icon" viewBox="0 0 24 24" fill="none" stroke="#253a5d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        </div>
+        <span class="nx-info-label">Free</span>
+        <span class="nx-info-value">{{ device_data.resources.memory.free|filesizeformat }}</span>
+      </div>
+      <div class="nx-info-item">
+        <div class="nx-item-icon-wrap">
+          <svg class="nx-item-icon" viewBox="0 0 24 24" fill="none" stroke="#253a5d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        </div>
+        <span class="nx-info-label">Available</span>
+        <span class="nx-info-value">{{ device_data.resources.memory.available|filesizeformat }}</span>
+      </div>
+      <div class="nx-info-item">
+        <div class="nx-item-icon-wrap">
+          <svg class="nx-item-icon" viewBox="0 0 24 24" fill="none" stroke="#253a5d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+        </div>
+        <span class="nx-info-label">Buffered</span>
+        <span class="nx-info-value">{{ device_data.resources.memory.buffered|filesizeformat }}</span>
+      </div>
+      <div class="nx-info-item">
+        <div class="nx-item-icon-wrap">
+          <svg class="nx-item-icon" viewBox="0 0 24 24" fill="none" stroke="#253a5d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </div>
+        <span class="nx-info-label">Shared</span>
+        <span class="nx-info-value">{{ device_data.resources.memory.shared|filesizeformat }}</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ── Storage ── #}
+{% if device_data.resources and device_data.resources.disk %}
+<div class="nx-section-card">
+  <div class="nx-section-header">
+    <svg class="nx-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+    Storage
+  </div>
+  <div class="nx-section-body">
+    <div class="nx-table-wrap">
     <table class="disk">
       <thead>
         <tr>
-          {% comment %} <th class="filesystem">{% trans 'Filesystem' %}</th> {% endcomment %}
-          <th class="used_bytes">{% trans 'Used space' %}</th>
-          <th class="available_bytes">{% trans 'Available space' %}</th>
-          <th class="size_bytes">{% trans 'Total space' %}</th>
-          <th class="used_percent">{% trans 'Percent Used' %}</th>
-          {% comment %} <th class="mount_point">{% trans 'Mounted on' %}</th> {% endcomment %}
+          <th>{% trans 'Used space' %}</th>
+          <th>{% trans 'Available space' %}</th>
+          <th>{% trans 'Total space' %}</th>
+          <th>{% trans 'Percent Used' %}</th>
         </tr>
       </thead>
       <tbody>
         {% for disk in device_data.resources.disk %}
         <tr>
-          {% comment %} <td class="filesystem">{{ disk.filesystem }}</td> {% endcomment %}
-          <td class="used_bytes">{{ disk.used_bytes|filesizeformat }}</td>
-          <td class="available_bytes">
-            {{ disk.available_bytes|filesizeformat }}
-          </td>
-          <td class="size_bytes">{{ disk.size_bytes|filesizeformat }}</td>
-          <td class="used_percent">{{ disk.used_percent }}%</td>
-          {% comment %} <td class="mount_point">{{ disk.mount_point }}</td> {% endcomment %}
+          <td>{{ disk.used_bytes|filesizeformat }}</td>
+          <td>{{ disk.available_bytes|filesizeformat }}</td>
+          <td>{{ disk.size_bytes|filesizeformat }}</td>
+          <td>{{ disk.used_percent }}%</td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
-    {% endif %} {% endif %} {% if device_data.neighbors %}
-    <h2>{% trans 'Neighbors' %}</h2>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{# ── Neighbors ── #}
+{% if device_data.neighbors %}
+<div class="nx-section-card">
+  <div class="nx-section-header">
+    <svg class="nx-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    Neighbors
+  </div>
+  <div class="nx-section-body">
     <table class="neighbors">
       <thead>
         <tr>
-          <th class="ip">{% trans 'IP Address' %}</th>
-          <th class="mac">{% trans 'MAC Address' %}</th>
+          <th>{% trans 'IP Address' %}</th>
+          <th>{% trans 'MAC Address' %}</th>
           {% if MAC_VENDOR_DETECTION %}
-          <th class="vendor">{% trans 'Vendor' %}</th>
+          <th>{% trans 'Vendor' %}</th>
           {% endif %}
-          <th class="if">{% trans 'Interface' %}</th>
-          <th class="state">{% trans 'State' %}</th>
+          <th>{% trans 'Interface' %}</th>
+          <th>{% trans 'State' %}</th>
         </tr>
       </thead>
       <tbody>
         {% for neighbor in device_data.neighbors %}
         <tr>
-          <td class="ip">{{ neighbor.ip }}</td>
-          <td class="mac">{{ neighbor.mac }}</td>
+          <td>{{ neighbor.ip }}</td>
+          <td>{{ neighbor.mac }}</td>
           {% if MAC_VENDOR_DETECTION %}
-          <td class="vendor">{{ neighbor.vendor }}</td>
+          <td>{{ neighbor.vendor }}</td>
           {% endif %}
-          <td class="if">{{ neighbor.interface }}</td>
-          <td class="state">{{ neighbor.state }}</td>
+          <td>{{ neighbor.interface }}</td>
+          <td>{{ neighbor.state }}</td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
-    {% endif %}
-  </fieldset>
+  </div>
 </div>
+{% endif %}
