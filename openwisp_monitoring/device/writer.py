@@ -165,6 +165,22 @@ class DeviceDataWriter(object):
                     current,
                     time=time,
                 )
+        # --- Write DPI app traffic to InfluxDB ---
+        # Use data_user_friendly which has the full realtimemonitor section
+        dpi_data = data
+        if not data.get("realtimemonitor"):
+            try:
+                dpi_data = self.device_data.data_user_friendly or data
+            except Exception:
+                pass
+        try:
+            self._write_dpi_app_traffic(dpi_data, time)
+        except Exception as exc:
+            logger.warning(
+                'DPI app traffic write failed for "%s": %s',
+                self.device_data.pk, exc,
+            )
+
         try:
             Metric.batch_write(self.write_device_metrics)
         except ValueError as error:
@@ -173,6 +189,59 @@ class DeviceDataWriter(object):
                 f" Error: {error}"
             )
 
+
+    def _write_dpi_app_traffic(self, data, time):
+        """Extract DPI app traffic from realtimemonitor and write to InfluxDB."""
+        from openwisp_monitoring.db import timeseries_db
+
+        rt = data.get("realtimemonitor", {})
+        if not rt:
+            logger.info('DPI: no realtimemonitor in data. Keys: %s', list(data.keys())[:10])
+            return
+        traffic = rt.get("traffic", {})
+        dpi = traffic.get("dpi_summery_v2", {})
+        apps = dpi.get("applications", [])
+        if not apps:
+            logger.info('DPI: no apps. traffic keys=%s, dpi keys=%s', list(traffic.keys()), list(dpi.keys()))
+            return
+        logger.info('DPI: found %d apps to write', len(apps))
+
+        device = self.device_data.config.device
+        device_id = str(device.pk)
+        org_id = str(device.organization_id)
+
+        points = []
+        for app in apps:
+            app_name = app.get("id", "") or app.get("label", "")
+            traffic_bytes = int(app.get("traffic", 0) or 0)
+            if not app_name or traffic_bytes <= 0:
+                continue
+            # Split roughly 60/40 download/upload since we only have total
+            rx = int(traffic_bytes * 0.6)
+            tx = traffic_bytes - rx
+            points.append({
+                "measurement": "dpi_app_traffic",
+                "tags": {
+                    "object_id": device_id,
+                    "organization_id": org_id,
+                    "content_type": "config.device",
+                    "app_name": app_name[:128],
+                    "category": app.get("category", "") or "",
+                },
+                "fields": {
+                    "rx_bytes": rx,
+                    "tx_bytes": tx,
+                    "flow_count": int(app.get("flow_count", 0) or 0),
+                },
+                "time": time.isoformat(),
+            })
+
+        if points:
+            logger.info(
+                'Writing %d DPI app traffic points for device %s',
+                len(points), device_id,
+            )
+            timeseries_db.db.write_points(points, time_precision="s")
 
     def check_interface_state_and_notify(self, old_data, new_data):
 

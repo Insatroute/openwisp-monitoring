@@ -118,6 +118,33 @@
 </style>
 
 <div class="rtt-wrap">
+<style>
+.tf-date-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 16px;padding:12px 16px;background:#fff;border:1px solid #e5e7eb;border-radius:14px;box-shadow:0 2px 8px rgba(22,34,51,.05)}
+.tf-date-bar label{font-weight:600;color:#334155;font-size:13px;white-space:nowrap}
+.tf-date-bar input[type=date]{border:1px solid #e5e7eb;border-radius:8px;padding:7px 12px;font-size:13px;background:#f8fafc;color:#334155;outline:none}
+.tf-date-bar input[type=date]:focus{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.15)}
+.tf-date-bar .tf-btn{display:inline-flex;align-items:center;gap:4px;padding:7px 16px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer}
+.tf-date-bar .tf-apply{background:#3b82f6;color:#fff}.tf-date-bar .tf-apply:hover{background:#2563eb}
+.tf-date-bar .tf-reset{background:#f1f5f9;color:#64748b;border:1px solid #e5e7eb}.tf-date-bar .tf-reset:hover{background:#e2e8f0}
+.tf-date-bar .tf-quick{display:flex;gap:4px;margin-left:8px}
+.tf-date-bar .tf-qb{padding:5px 10px;border:1px solid #e5e7eb;border-radius:6px;background:#fff;font-size:12px;cursor:pointer;color:#475569}
+.tf-date-bar .tf-qb:hover,.tf-date-bar .tf-qb.active{background:#eef2ff;border-color:#3b82f6;color:#3b82f6;font-weight:600}
+.tf-date-bar .tf-status{font-size:12px;color:#64748b;margin-left:auto}.tf-date-bar .tf-status strong{color:#334155}
+</style>
+<div class="tf-date-bar" id="rdf-bar">
+  <label>From:</label><input type="date" id="rdf-from">
+  <label>To:</label><input type="date" id="rdf-to">
+  <button type="button" class="tf-btn tf-apply" id="rdf-apply">Apply</button>
+  <button type="button" class="tf-btn tf-reset" id="rdf-reset">Reset</button>
+  <div class="tf-quick">
+    <button type="button" class="tf-qb active" data-range="today">Today</button>
+    <button type="button" class="tf-qb" data-range="yesterday">Yesterday</button>
+    <button type="button" class="tf-qb" data-range="7d">Last 7 Days</button>
+    <button type="button" class="tf-qb" data-range="30d">Last 30 Days</button>
+  </div>
+  <span class="tf-status" id="rdf-status">Showing: <strong>Today</strong></span>
+</div>
+
 
   <!-- Row 1: Applications + Protocols -->
   <div class="rtt-row two">
@@ -366,6 +393,52 @@
     filterInputSel: '#rtt-filter-hosts',
     perPage: 6
   });
+
+
+  /* ===== DATE FILTER ===== */
+  function replaceCanvas(id){var old=document.getElementById(id);if(!old)return null;var inst=Chart.getChart(old);if(inst)inst.destroy();var nw=document.createElement('canvas');nw.id=id;if(old.className)nw.className=old.className;if(old.style.cssText)nw.style.cssText=old.style.cssText;old.parentNode.replaceChild(nw,old);return nw;}
+  function _ld(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+  var _origTalkers = JSON.parse(JSON.stringify(talkers));
+
+  function _rttRender(data){
+    document.querySelectorAll('.rtt-wrap canvas').forEach(function(cv){var ch=Chart.getChart(cv);if(ch)ch.destroy();});
+    var ta2=Array.isArray(data.top_apps)?data.top_apps:[];
+    var tp2=Array.isArray(data.top_protocols)?data.top_protocols:[];
+    var th2=Array.isArray(data.top_hosts)?data.top_hosts:[];
+    function bld(cv,it,lf,vf,lg,nt){if(cv&&it.length)buildDonut({canvas:cv,items:it,labelFn:lf,valueFn:vf,legendEl:lg,noteEl:nt,topN:6});else if(lg)lg.innerHTML='<span style="color:#9ca3af;font-size:13px">No data for selected period</span>';}
+    bld(replaceCanvas('rtt-donut-apps'),ta2,function(x){return trimTwoDots(x.name||'');},function(x){return Number(x.value||0);},document.getElementById('rtt-legend-apps'),document.getElementById('rtt-note-apps'));
+    bld(replaceCanvas('rtt-donut-protos'),tp2,function(x){return trimTwoDots(x.name||'');},function(x){return Number(x.value||0);},document.getElementById('rtt-legend-protos'),document.getElementById('rtt-note-protos'));
+    bld(replaceCanvas('rtt-donut-hosts'),th2,function(x){return x.host||x.ip||'';},function(x){return Number(x&&x.totals&&x.totals.bandwidth||0);},document.getElementById('rtt-legend-hosts'),document.getElementById('rtt-note-hosts'));
+    function rT(sel,items,nf,vf){var tb=document.querySelector(sel);if(!tb)return;tb.innerHTML='';if(!items.length){tb.innerHTML='<tr><td colspan=2 style="text-align:center;color:#9ca3af;padding:20px">No data</td></tr>';return;}items.sort(function(a,b){return vf(b)-vf(a);}).slice(0,10).forEach(function(r){var tr=document.createElement('tr');tr.innerHTML='<td>'+nf(r)+'</td><td>'+fmtBytes(vf(r))+'</td>';tb.appendChild(tr);});}
+    rT('#rtt-table-apps tbody',ta2,function(r){return trimTwoDots(r.name||'');},function(r){return r.value||0;});
+    rT('#rtt-table-protos tbody',tp2,function(r){return trimTwoDots(r.name||'');},function(r){return r.value||0;});
+    rT('#rtt-table-hosts tbody',th2,function(r){return r.host||r.ip||'';},function(r){return r&&r.totals&&r.totals.bandwidth||0;});
+  }
+
+  (function(){
+    var bar=document.getElementById('rdf-bar');if(!bar)return;
+    var dfF=document.getElementById('rdf-from'),dfT=document.getElementById('rdf-to');
+    var stEl=document.getElementById('rdf-status');
+    var qbs=bar.querySelectorAll('.tf-qb');
+    var today=_ld(new Date());
+    dfF.value=today;dfT.value=today;dfF.max=today;dfT.max=today;
+    function setQ(r){qbs.forEach(function(b){b.classList.toggle('active',b.dataset.range===r);});}
+    function gR(r){var n=new Date(),t=new Date(n),f=new Date(n);f.setHours(0,0,0,0);t.setHours(23,59,59,999);if(r==='yesterday'){f.setDate(f.getDate()-1);t.setDate(t.getDate()-1);}else if(r==='7d'){f.setDate(f.getDate()-6);}else if(r==='30d'){f.setDate(f.getDate()-29);}return{from:_ld(f),to:_ld(t)};}
+    function uS(f,t){if(f===t){var d=new Date(f+'T12:00:00');stEl.innerHTML='Showing: <strong>'+d.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})+'</strong>';}else{stEl.innerHTML='Showing: <strong>'+new Date(f+'T12:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'})+' - '+new Date(t+'T12:00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})+'</strong>';}}
+    function go(){
+      var f=dfF.value,t=dfT.value;if(!f||!t)return;if(f>t){alert('From must be before To');return;}
+      uS(f,t);
+      if(f===today&&t===today){_rttRender(_origTalkers);return;}
+      var m=window.location.pathname.match(/[0-9a-fA-F-]{36}/);if(!m)return;
+      fetch('/ow-ajax/rt-traffic/'+m[0]+'/?from='+f+'&to='+t)
+        .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
+        .then(function(data){_rttRender(data);})
+        .catch(function(e){console.error('Filter error:',e);});
+    }
+    qbs.forEach(function(btn){btn.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();var d=gR(btn.dataset.range);dfF.value=d.from;dfT.value=d.to;setQ(btn.dataset.range);go();});});
+    document.getElementById('rdf-apply').addEventListener('click',function(e){e.preventDefault();e.stopPropagation();setQ('');go();});
+    document.getElementById('rdf-reset').addEventListener('click',function(e){e.preventDefault();e.stopPropagation();dfF.value=today;dfT.value=today;setQ('today');stEl.innerHTML='Showing: <strong>Today</strong>';_rttRender(_origTalkers);});
+  })();
 
 })();
 </script>
