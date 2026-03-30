@@ -1,181 +1,101 @@
 {% load i18n static %}
-<h3>FlowEdge</h3>
-<h2>Policy</h2>
-<p class="subtle">
-  List of available policies, if there are multiple WANs the default policy is mandatory and cannot be deleted.
-</p>
 
-<div class="">
-  <table class="disk no-stack" id="mw-policy-table">
-    <thead>
-      <tr>
-        <th>Policy Name</th>
-        <th>Gateways</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for policy in device_data.network.FlowEdge_Multiwan.Multiwan_Manager.Manager_Policy.values %}
-      <tr>
-        <td class="policy-name">
-          <span class="lock">🔒</span>
-          <span class="name">{{ policy.label|default:"Default" }}</span>
-        </td>
-        <td class="gateways-cell">
-          <span class="policy-type"><span class="scale">⚖</span> {{ policy.type|capfirst }}</span>
-
-          {# policy.members is a dict like {"10": [ {...}, {...} ]} #}
-          {% for metric, gws in policy.members.items %}
-            {% for gw in gws %}
-              <span class="gateway-chip {% if gw.status == 'online' %}on{% else %}off{% endif %}">
-                <span class="dot">{% if gw.status == 'online' %}✔{% else %}✖{% endif %}</span>
-                {{ gw.interface|default:"wan" }}
-                <span class="gw-weight">weight: {{ gw.weight|default:"-" }}</span>
-              </span>
+{# ── FlowEdge Policies ── #}
+<div class="nx-section-card">
+  <div class="nx-section-header">
+    <svg class="nx-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
+    {% trans "FlowEdge — Policies" %}
+  </div>
+  <div class="nx-section-body">
+    {% with policies=device_data.network.FlowEdge_Multiwan.Multiwan_Manager.Manager_Policy %}
+      {% if policies %}
+        <table class="disk no-stack" id="mw-policy-table">
+          <thead>
+            <tr>
+              <th>{% trans "Policy Name" %}</th>
+              <th>{% trans "Gateways" %}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for policy in policies.values %}
+            <tr>
+              <td data-label="{% trans 'Policy Name' %}">
+                <span style="opacity:.8;margin-right:4px;">&#128274;</span>
+                {{ policy.label|default:"Default" }}
+              </td>
+              <td data-label="{% trans 'Gateways' %}">
+                <span style="opacity:.9;margin-right:4px;">&#9878;</span>
+                {{ policy.type|capfirst }}
+                {% for metric, gws in policy.members.items %}
+                  {% for gw in gws %}
+                    <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:600;margin-left:6px;{% if gw.status == 'online' %}background:#d1fae5;color:#047857;{% else %}background:#f3f4f6;color:#374151;{% endif %}">
+                      {% if gw.status == 'online' %}&#10004;{% else %}&#10006;{% endif %}
+                      {{ gw.interface|default:"wan" }}
+                      <span style="opacity:.85;margin-left:4px;">weight: {{ gw.weight|default:"-" }}</span>
+                    </span>
+                  {% endfor %}
+                {% endfor %}
+              </td>
+            </tr>
             {% endfor %}
-          {% endfor %}
-        </td>
-      </tr>
-      {% empty %}
-      <tr><td colspan="2" class="muted">No policies found.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
+          </tbody>
+        </table>
+      {% else %}
+        <div class="nx-empty-state">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/></svg>
+          <p>{% trans "No FlowEdge policies found." %}</p>
+        </div>
+      {% endif %}
+    {% endwith %}
+  </div>
 </div>
 
-<h2 style="margin-top:20px;">Rules</h2>
-<p class="subtle">
-  Routing policies are assigned to hosts via rules. To use a different policy than the default, create a rule and place it above the default rule.
-</p>
-
-<div class="">
-  <table class="disk" id="mw-rules-table">
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>Policy</th>
-        <th>Source</th>
-        <th>Destination</th>
-        <th>Protocol</th>
-      </tr>
-    </thead>
-    <tbody id="mw-rules-body">
-      {% for r in device_data.network.FlowEdge_Multiwan.Multiwan_Manager.Manager_Rules.values %}
-        {# Each r has: label, name, policy {label, name}, sticky ... #}
-        <tr>
-          <td data-label="Policy">{{ r.policy.label|default:"Default" }}</td>
-
-          {# Your sample doesn’t include src/dst/proto; fall back to Any/All like screenshot #}
-          <td data-label="Source">{{ r.src|default:"Any" }}</td>
-          <td data-label="Destination">{{ r.dest|default:"Any" }}</td>
-          <td data-label="Protocol">{{ r.protocol|default:"All" }}</td>
-        </tr>
-      {% empty %}
-        <tr><td colspan="5" class="muted">No rules found.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
-
-  <div id="mw-rules-pager" class="pager"></div>
+{# ── FlowEdge Rules ── #}
+<div class="nx-section-card">
+  <div class="nx-section-header">
+    <svg class="nx-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+    {% trans "FlowEdge — Rules" %}
+  </div>
+  <div class="nx-section-body">
+    {% with rules=device_data.network.FlowEdge_Multiwan.Multiwan_Manager.Manager_Rules %}
+      {% if rules %}
+        <table class="disk no-stack" id="mw-rules-table">
+          <thead>
+            <tr>
+              <th>{% trans "Policy" %}</th>
+              <th>{% trans "Source" %}</th>
+              <th>{% trans "Destination" %}</th>
+              <th>{% trans "Protocol" %}</th>
+            </tr>
+          </thead>
+          <tbody id="mw-rules-body">
+            {% for r in rules.values %}
+            <tr>
+              <td data-label="{% trans 'Policy' %}">{{ r.policy.label|default:"Default" }}</td>
+              <td data-label="{% trans 'Source' %}">{{ r.src|default:"Any" }}</td>
+              <td data-label="{% trans 'Destination' %}">{{ r.dest|default:"Any" }}</td>
+              <td data-label="{% trans 'Protocol' %}">{{ r.protocol|default:"All" }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        <div id="mw-rules-pager" class="pager"></div>
+      {% else %}
+        <div class="nx-empty-state">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <p>{% trans "No FlowEdge rules found." %}</p>
+        </div>
+      {% endif %}
+    {% endwith %}
+  </div>
 </div>
 
 <style>
-.subtle {
-	color: #6b7280;
-	margin: .25rem 0 1rem
-}
-
-.card {
-	background: #fff;
-	border-radius: 8px;
-	box-shadow: 0 1px 6px rgba(0, 0, 0, .06);
-	padding: 0
-}
-
-.disk {
-	width: 100%;
-	border-collapse: collapse
-}
-
-.disk th,
-.disk td {
-	padding: 12px;
-	border-bottom: 1px solid #eef0f2;
-	text-align: left
-}
-
-.policy-name {
-	display: flex;
-	align-items: center;
-	gap: 8px
-}
-
-.policy-name .lock {
-	opacity: .8
-}
-
-.gateways-cell {
-	display: flex;
-	align-items: center;
-	gap: 10px;
-	flex-wrap: wrap
-}
-
-.policy-type {
-	display: inline-flex;
-	align-items: center;
-	gap: 6px;
-	margin-right: 8px;
-	color: #374151
-}
-
-.scale {
-	opacity: .9
-}
-
-.gateway-chip {
-  margin-left: 10px;
-	display: inline-flex;
-	align-items: center;
-	gap: 8px;
-	padding: 6px 12px;
-	border-radius: 999px;
-	background: #f3f4f6;
-	color: #111827;
-	font-weight: 600
-    margin-right: 10px;
-}
-
-.gateway-chip .dot {
-	font-weight: 700
-}
-
-.gateway-chip.on {
-	background: #d1fae5;
-	color: #047857
-}
-
-.gw-weight {
-	opacity: .85;
-	margin-left: 4px
-}
-
-.drag {
-	color: #9ca3af;
-	margin-right: 8px
-}
-
-.muted {
-	color: #6b7280
-}
-
-.no-stack tr { display: table-row !important; }
-.no-stack th,
-.no-stack td { display: table-cell !important; vertical-align: middle; }
-.no-stack th { white-space: nowrap; }
-.gateways-cell { display: flex; gap: 10px; flex-wrap: wrap; }
-@media (max-width: 640px) {
-  .disk:not(.no-stack) tr { display: block; }
-  .disk:not(.no-stack) td, .disk:not(.no-stack) th { display: block; }
-}
-
+.pager { display:flex; justify-content:space-between; align-items:center; padding:8px 12px; }
+.pager-left { display:flex; align-items:center; gap:12px; }
+.pager .show select { padding:4px 8px; border:1px solid #e5e7eb; border-radius:6px; background:#fff; }
+.pager-right { display:flex; align-items:center; gap:8px; }
+.pager button { padding:6px 10px; border:1px solid #e5e7eb; background:#fff; border-radius:6px; cursor:pointer; }
+.pager button:disabled { opacity:.5; cursor:not-allowed; }
+.pager .page-no { min-width:28px; text-align:center; border:1px solid #e5e7eb; border-radius:6px; padding:6px 10px; background:#fff; }
 </style>

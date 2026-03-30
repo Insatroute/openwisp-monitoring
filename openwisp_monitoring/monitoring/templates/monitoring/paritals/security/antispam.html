@@ -1,72 +1,53 @@
 {% load i18n static %}
 
-<h3>{% trans "Antispam" %}</h3>
-<div class="table-wrap">
-  <table class="disk no-stack" id="antispam-table">
-    <thead>
-      <tr>
-        <th>{% trans "Name" %}</th>
-        <th>{% trans "Port" %}</th>
-        <th>{% trans "Reject score" %}</th>
-        <th>{% trans "Relayhost" %}</th>
-        <th>{% trans "Service" %}</th>
-        <th>{% trans "SMTP SASL Auth Enable" %}</th>
-        <th>{% trans "SMTP TLS Wrapper Mode" %}</th>
-        <th>{% trans "SMTPD TLS Security Level" %}</th>
-        <th>{% trans "Timeout" %}</th>
-        <th>{% trans "Type" %}</th>
-        <th>{% trans "Worker Normal Socket" %}</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% with antispam=device_data.security.Antispam %}
-        {% if antispam and antispam|length %}
-          {% for config in antispam %}
+<div class="nx-section-card">
+  <div class="nx-section-header">
+    <svg class="nx-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+    {% trans "Antispam" %}
+  </div>
+  <div class="nx-section-body">
+    {% with antispam=device_data.security.Antispam %}
+      {% if antispam and antispam|length %}
+        <div class="nx-table-wrap">
+        <table class="disk no-stack" id="antispam-table">
+          <thead>
             <tr>
-              <td>{{ config.name|default:"-" }}</td>
-              <td>{{ config.port|default:"-" }}</td>
-              <td>{{ config.reject_score|default:"-" }}</td>
-              <td>{{ config.relayhost|default:"-" }}</td>
-              <td>{{ config.service|default:"-" }}</td>
-              <td>{{ config.smtp_sasl_auth_enable|default:"-" }}</td>
-              <td>{{ config.smtp_tls_wrappermode|default:"-" }}</td>
-              <td>{{ config.smtpd_tls_security_level|default:"-" }}</td>
-              <td>{{ config.timeout|default:"-" }}</td>
-              <td>{{ config.type|default:"-" }}</td>
-              <td>{{ config.worker_normal_socket|default:"-" }}</td>
+              <th>{% trans "Name" %}</th>
+              <th>{% trans "Port" %}</th>
+              <th>{% trans "Reject Score" %}</th>
+              <th>{% trans "Relayhost" %}</th>
+              <th>{% trans "Service" %}</th>
+              <th>{% trans "SASL Auth" %}</th>
+              <th>{% trans "TLS Wrapper" %}</th>
+              <th>{% trans "TLS Level" %}</th>
+              <th>{% trans "Timeout" %}</th>
+              <th>{% trans "Type" %}</th>
             </tr>
-          {% endfor %}
-        {% else %}
-          <tr>
-            <td colspan="11" class="muted">{% trans "No Antispam configuration found." %}</td>
-          </tr>
-        {% endif %}
-      {% endwith %}
-    </tbody>
-  </table>
+          </thead>
+          <tbody>
+            {% for config in antispam %}
+            <tr>
+              <td data-label="{% trans 'Name' %}">{{ config.name|default:"-" }}</td>
+              <td data-label="{% trans 'Port' %}">{{ config.port|default:"-" }}</td>
+              <td data-label="{% trans 'Reject Score' %}">{{ config.reject_score|default:"-" }}</td>
+              <td data-label="{% trans 'Relayhost' %}">{{ config.relayhost|default:"-" }}</td>
+              <td data-label="{% trans 'Service' %}">{{ config.service|default:"-" }}</td>
+              <td data-label="{% trans 'SASL Auth' %}">{{ config.smtp_sasl_auth_enable|default:"-" }}</td>
+              <td data-label="{% trans 'TLS Wrapper' %}">{{ config.smtp_tls_wrappermode|default:"-" }}</td>
+              <td data-label="{% trans 'TLS Level' %}">{{ config.smtpd_tls_security_level|default:"-" }}</td>
+              <td data-label="{% trans 'Timeout' %}">{{ config.timeout|default:"-" }}</td>
+              <td data-label="{% trans 'Type' %}">{{ config.type|default:"-" }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        </div>
+      {% else %}
+        <div class="nx-empty-state">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          <p>{% trans "No antispam configuration found." %}</p>
+        </div>
+      {% endif %}
+    {% endwith %}
+  </div>
 </div>
-
-<style>
-.table-wrap {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
-
-.disk {
-  width: 100%;
-  border-collapse: collapse;
-  min-width: 900px; 
-}
-.disk th, .disk td {
-  padding: 10px 12px;
-  border-bottom: 1px solid #eef0f2;
-  text-align: left;
-  white-space: nowrap;
-}
-
-.no-stack tr { display: table-row !important; }
-.no-stack th, .no-stack td { display: table-cell !important; vertical-align: middle; }
-
-.muted { color: #6b7280; }
-</style>

@@ -1,65 +1,45 @@
 {% load i18n static %}
 
-{# ========================= WireGuard ========================= #}
-<h3>{% trans "WireGuard — Server" %}</h3>
-<div class="table-wrap">
-  <table class="disk no-stack" id="wg-server-table">
-    <thead>
-      <tr>
-        <th>{% trans "Name" %}</th>
-        <th>{% trans "Address" %}</th>
-        <th>{% trans "Listen Port" %}</th>
-        <th>{% trans "MTU" %}</th>
-        <th>{% trans "Service" %}</th>
-        <th>{% trans "Type" %}</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% with servers=device_data.vpn.Wireguard.server %}
-        {% if servers and servers|length %}
-          {% for row in servers %}
-          <tr>
-            <td>{{ row.name|default:"-" }}</td>
-            <td>{{ row.address|default:"-" }}</td>
-            <td>{{ row.listen_port|default:"-" }}</td>
-            <td>{{ row.mtu|default:"-" }}</td>
-            <td>{{ row.service|default:"-" }}</td>
-            <td>{{ row.type|default:"-" }}</td>
-          </tr>
-          {% endfor %}
-        {% else %}
-          <tr><td colspan="6" class="muted">{% trans "No WireGuard servers found." %}</td></tr>
-        {% endif %}
-      {% endwith %}
-    </tbody>
-  </table>
+<div class="nx-section-card">
+  <div class="nx-section-header">
+    <svg class="nx-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
+    {% trans "WireGuard — Server" %}
+  </div>
+  <div class="nx-section-body">
+    {% with servers=device_data.vpn.Wireguard.server %}
+      {% if servers and servers|length %}
+        <div class="nx-table-wrap">
+        <table class="disk no-stack" id="wg-server-table">
+          <thead>
+            <tr>
+              <th>{% trans "Name" %}</th>
+              <th>{% trans "Address" %}</th>
+              <th>{% trans "Listen Port" %}</th>
+              <th>{% trans "MTU" %}</th>
+              <th>{% trans "Service" %}</th>
+              <th>{% trans "Type" %}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in servers %}
+            <tr>
+              <td data-label="{% trans 'Name' %}">{{ row.name|default:"-" }}</td>
+              <td data-label="{% trans 'Address' %}">{{ row.address|default:"-" }}</td>
+              <td data-label="{% trans 'Listen Port' %}">{{ row.listen_port|default:"-" }}</td>
+              <td data-label="{% trans 'MTU' %}">{{ row.mtu|default:"-" }}</td>
+              <td data-label="{% trans 'Service' %}">{{ row.service|default:"-" }}</td>
+              <td data-label="{% trans 'Type' %}">{{ row.type|default:"-" }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        </div>
+      {% else %}
+        <div class="nx-empty-state">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          <p>{% trans "No WireGuard servers found." %}</p>
+        </div>
+      {% endif %}
+    {% endwith %}
+  </div>
 </div>
-
-
-
-<style>
-.table-wrap {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  margin: 0;
-}
-
-
-.disk {
-  width: 100%;
-  border-collapse: collapse;
-  min-width: 900px; 
-}
-.disk th, .disk td {
-  padding: 10px 12px;
-  border-bottom: 1px solid #eef0f2;
-  text-align: left;
-  white-space: nowrap;
-}
-
-/* Keep tabular layout (no vertical stacking) */
-.no-stack tr { display: table-row !important; }
-.no-stack th, .no-stack td { display: table-cell !important; vertical-align: middle; }
-
-.muted { color: #6b7280; }
-</style>

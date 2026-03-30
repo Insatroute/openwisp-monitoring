@@ -577,20 +577,18 @@ if app_settings.WIFI_SESSIONS_ENABLED:
 # ---- Data Usage Dashboard monkey-patch ------------------------------------
 # Follows the DPI Dashboard pattern (dpi_analytics/admin.py:975-994).
 # Import here (not at top) to avoid circular imports.
-if not hasattr(DeviceAdmin, '_du_dashboard_patched'):
-    from .admin_data_usage import DataUsageDashboardAdmin
+from .admin_data_usage import DataUsageDashboardAdmin
 
-    _orig_du_get_urls = DeviceAdmin.get_urls
-    DeviceAdmin.get_urls = lambda self: (
-        DataUsageDashboardAdmin.get_urls(self) + _orig_du_get_urls(self)
-    )
-    DeviceAdmin.data_usage_dashboard_view = DataUsageDashboardAdmin.dashboard_view
-    DeviceAdmin.api_du_summary = DataUsageDashboardAdmin.api_du_summary
-    DeviceAdmin.api_du_top_apps = DataUsageDashboardAdmin.api_du_top_apps
-    DeviceAdmin.api_du_top_devices = DataUsageDashboardAdmin.api_du_top_devices
-    DeviceAdmin.api_du_device_detail = DataUsageDashboardAdmin.api_du_device_detail
-    DeviceAdmin.api_du_mobile = DataUsageDashboardAdmin.api_du_mobile
-    DeviceAdmin.api_du_wan = DataUsageDashboardAdmin.api_du_wan
-    DeviceAdmin.api_du_timeseries = DataUsageDashboardAdmin.api_du_timeseries
-    DeviceAdmin.api_du_apps_by_interface = DataUsageDashboardAdmin.api_du_apps_by_interface
-    DeviceAdmin._du_dashboard_patched = True
+_orig_du_get_urls = DeviceAdmin.get_urls
+DeviceAdmin.get_urls = lambda self: (
+    DataUsageDashboardAdmin.get_urls(self) + _orig_du_get_urls(self)
+)
+DeviceAdmin.data_usage_dashboard_view = DataUsageDashboardAdmin.dashboard_view
+DeviceAdmin.api_du_summary = DataUsageDashboardAdmin.api_du_summary
+DeviceAdmin.api_du_top_apps = DataUsageDashboardAdmin.api_du_top_apps
+DeviceAdmin.api_du_top_devices = DataUsageDashboardAdmin.api_du_top_devices
+DeviceAdmin.api_du_device_detail = DataUsageDashboardAdmin.api_du_device_detail
+DeviceAdmin.api_du_mobile = DataUsageDashboardAdmin.api_du_mobile
+DeviceAdmin.api_du_wan = DataUsageDashboardAdmin.api_du_wan
+DeviceAdmin.api_du_timeseries = DataUsageDashboardAdmin.api_du_timeseries
+DeviceAdmin.api_du_apps_by_interface = DataUsageDashboardAdmin.api_du_apps_by_interface

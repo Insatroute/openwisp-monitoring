@@ -1,78 +1,63 @@
 {% load i18n static %}
 
-
-{% for pf in device_data.firewall.port_forward %}
-  {# pf.redirects is a dict mapping dest_ip → list of rules #}
-  {% for dest_ip, rules in pf.redirects.items %}
-    <div class="destination-label">
-      {% trans "Destination" %}: {{ dest_ip }}
+{% with pf_list=device_data.firewall.port_forward %}
+  {% if pf_list %}
+    {% for pf in pf_list %}
+      {% for dest_ip, rules in pf.redirects.items %}
+        <div class="nx-section-card">
+          <div class="nx-section-header">
+            <svg class="nx-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><line x1="21" y1="3" x2="14" y2="10"/><polyline points="9 21 3 21 3 15"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+            {% trans "Port Forward" %} — {% trans "Destination" %}: {{ dest_ip }}
+          </div>
+          <div class="nx-section-body">
+            <table class="disk no-stack" id="port-forward-table-{{ dest_ip|slugify }}">
+              <thead>
+                <tr>
+                  <th>{% trans "Name" %}</th>
+                  <th>{% trans "Source port" %}</th>
+                  <th>{% trans "Dest port" %}</th>
+                  <th>{% trans "Protocols" %}</th>
+                  <th>{% trans "WAN IP" %}</th>
+                  <th>{% trans "Restrict from" %}</th>
+                  <th>{% trans "Status" %}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for rule in rules %}
+                <tr>
+                  <td data-label="{% trans 'Name' %}">{{ rule.name }}</td>
+                  <td data-label="{% trans 'Source port' %}">{{ rule.source_port }}{% if rule.source_port_name %} ({{ rule.source_port_name }}){% endif %}</td>
+                  <td data-label="{% trans 'Dest port' %}">{{ rule.destination_port }}</td>
+                  <td data-label="{% trans 'Protocols' %}">{{ rule.protocol|join:", "|upper }}</td>
+                  <td data-label="{% trans 'WAN IP' %}">{{ rule.wan|capfirst }}</td>
+                  <td data-label="{% trans 'Restrict from' %}">{% if rule.restrict %}{{ rule.restrict }}{% else %}–{% endif %}</td>
+                  <td data-label="{% trans 'Status' %}">
+                    {% if rule.enabled %}
+                      <span style="background:#d1fae5;color:#047857;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;">{% trans "Enabled" %}</span>
+                    {% else %}
+                      <span style="background:#f3f4f6;color:#374151;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;">{% trans "Disabled" %}</span>
+                    {% endif %}
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      {% endfor %}
+    {% endfor %}
+  {% else %}
+    <div class="nx-section-card">
+      <div class="nx-section-header">
+        <svg class="nx-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><line x1="21" y1="3" x2="14" y2="10"/><polyline points="9 21 3 21 3 15"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+        {% trans "Port Forward" %}
+      </div>
+      <div class="nx-section-body">
+        <div class="nx-empty-state">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><line x1="21" y1="3" x2="14" y2="10"/><polyline points="9 21 3 21 3 15"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+          <p>{% trans "No port forward rules configured." %}</p>
+        </div>
+      </div>
     </div>
-
-    <table class="disk" id="port-forward-table-{{ dest_ip|slugify }}">
-      <thead>
-        <tr>
-          <th>{% trans "Name" %}</th>
-          <th>{% trans "Source port" %}</th>
-          <th>{% trans "Destination port" %}</th>
-          <th>{% trans "Protocols" %}</th>
-          <th>{% trans "WAN IP" %}</th>
-          <th>{% trans "Restrict access from" %}</th>
-          <th>{% trans "Status" %}</th>
-        </tr>
-      </thead>
-      <tbody id="port-forward-body-{{ dest_ip|slugify }}">
-        {% for rule in rules %}
-        <tr>
-          <td data-label="{% trans 'Name' %}">
-            {{ rule.name }}
-          </td>
-          <td data-label="{% trans 'Source port' %}">
-            {{ rule.source_port }}
-            {% if rule.source_port_name %} ({{ rule.source_port_name }}){% endif %}
-          </td>
-          <td data-label="{% trans 'Destination port' %}">
-            {{ rule.destination_port }}
-          </td>
-          <td data-label="{% trans 'Protocols' %}">
-            {{ rule.protocol|join:", "|upper }}
-          </td>
-          <td data-label="{% trans 'WAN IP' %}">
-            {{ rule.wan|capfirst }}
-          </td>
-          <td data-label="{% trans 'Restrict access from' %}">
-            {% if rule.restrict %}
-              {{ rule.restrict }}
-            {% else %}
-              –
-            {% endif %}
-          </td>
-          <td data-label="{% trans 'Status' %}">
-            {% if rule.enabled %}
-              <span class="status-icon enabled">✔</span>
-              {% trans "Enabled" %}
-            {% else %}
-              <span class="status-icon disabled">✖</span>
-              {% trans "Disabled" %}
-            {% endif %}
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-
-    {# Pagination controls (reuse the same JS/pattern as before) #}
-    <div id="pf-pagination-{{ dest_ip|slugify }}" class="pagination-controls"></div>
-  {% endfor %}
-{% endfor %}
-
-<style>
-.destination-label{
-    color: white;
-    background-color: #253a5d;
-    width: 180px;
-    font-weight: 500;
-    padding: 2px 0px 2px 10px;
-    border-radius: 0px 20px 0px 0px;
-    }
-
-</style>
+  {% endif %}
+{% endwith %}

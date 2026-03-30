@@ -1,37 +1,45 @@
 {% load i18n static %}
 
-{# Ensure your view passes: render(..., {"device_data": data.data_user_friendly}) #}
-
-<table class="disk no-stack" id="snmp-table">
-  <thead>
-    <tr>
-      <th>{% trans "Version" %}</th>
-      <th>{% trans "Port" %}</th>
-      <th>{% trans "Type" %}</th>
-      <th>{% trans "IP" %}</th>
-    </tr>
-  </thead>
-  <tbody id="snmp-body">
-    {# Grab the list once; if any segment is missing this becomes empty #}
+<div class="nx-section-card">
+  <div class="nx-section-header">
+    <svg class="nx-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+    SNMP
+  </div>
+  <div class="nx-section-body">
     {% with snmp_list=device_data.system.snmp %}
       {% if snmp_list %}
-        {% for row in snmp_list %}
-          {% if row.type == 'snmp' %}
-          <tr>
-            <td data-label="{% trans 'Version' %}">{{ row.version|default:"-" }}</td>
-            <td data-label="{% trans 'Port' %}">
-              {% if row.snmpv3_port %}{{ row.snmpv3_port }}
-              {% elif row.port %}{{ row.port }}
-              {% else %}-{% endif %}
-            </td>
-            <td data-label="{% trans 'Type' %}">{{ row.type|default:"-" }}</td>
-            <td data-label="{% trans 'snmpv3_clientaddr' %}">{{ row.snmpv3_clientaddr|default:"-" }}</td>
-          </tr>
-          {% endif %}
-        {% endfor %}
+        <table class="disk no-stack" id="snmp-table">
+          <thead>
+            <tr>
+              <th>{% trans "Version" %}</th>
+              <th>{% trans "Port" %}</th>
+              <th>{% trans "Type" %}</th>
+              <th>{% trans "IP" %}</th>
+            </tr>
+          </thead>
+          <tbody id="snmp-body">
+            {% for row in snmp_list %}
+              {% if row.type == 'snmp' %}
+              <tr>
+                <td data-label="{% trans 'Version' %}">{{ row.version|default:"-" }}</td>
+                <td data-label="{% trans 'Port' %}">
+                  {% if row.snmpv3_port %}{{ row.snmpv3_port }}
+                  {% elif row.port %}{{ row.port }}
+                  {% else %}-{% endif %}
+                </td>
+                <td data-label="{% trans 'Type' %}">{{ row.type|default:"-" }}</td>
+                <td data-label="{% trans 'snmpv3_clientaddr' %}">{{ row.snmpv3_clientaddr|default:"-" }}</td>
+              </tr>
+              {% endif %}
+            {% endfor %}
+          </tbody>
+        </table>
       {% else %}
-        <tr><td colspan="4">{% trans "No SNMP entries." %}</td></tr>
+        <div class="nx-empty-state">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          <p>{% trans "No SNMP entries configured." %}</p>
+        </div>
       {% endif %}
     {% endwith %}
-  </tbody>
-</table>
+  </div>
+</div>

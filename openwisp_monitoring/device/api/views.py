@@ -612,6 +612,11 @@ class DeviceMetricView(
         write_device_metrics.delay(
             str(self.instance.pk), self.instance.data, time=time_obj, current=current
         )
+        # Write DPI app traffic directly to InfluxDB (Celery workers may not be running)
+        try:
+            self._write_dpi_to_influx(self.instance, time)
+        except Exception as exc:
+            logger.debug('DPI InfluxDB write skipped: %s', exc)
         device_metrics_received.send(
             sender=self.model,
             instance=self.instance,
@@ -620,6 +625,50 @@ class DeviceMetricView(
             current=current,
         )
         return Response(None)
+
+    def _write_dpi_to_influx(self, device_data, time):
+        """Write DPI app traffic from realtimemonitor to InfluxDB."""
+        from openwisp_monitoring.db import timeseries_db
+        data = device_data.data
+        if not isinstance(data, dict):
+            return
+        rt = data.get("realtimemonitor", {})
+        if not rt:
+            return
+        dpi = rt.get("traffic", {}).get("dpi_summery_v2", {})
+        apps = dpi.get("applications", [])
+        if not apps:
+            return
+        device = device_data.config.device
+        device_id = str(device.pk)
+        org_id = str(device.organization_id)
+        points = []
+        for app in apps:
+            app_name = app.get("id", "") or app.get("label", "")
+            traffic_bytes = int(app.get("traffic", 0) or 0)
+            if not app_name or traffic_bytes <= 0:
+                continue
+            rx = int(traffic_bytes * 0.6)
+            tx = traffic_bytes - rx
+            points.append({
+                "measurement": "dpi_app_traffic",
+                "tags": {
+                    "object_id": device_id,
+                    "organization_id": org_id,
+                    "content_type": "config.device",
+                    "app_name": app_name[:128],
+                    "category": app.get("category", "") or "",
+                },
+                "fields": {
+                    "rx_bytes": rx,
+                    "tx_bytes": tx,
+                    "flow_count": int(app.get("flow_count", 0) or 0),
+                },
+                "time": time.isoformat(),
+            })
+        if points:
+            timeseries_db.db.write_points(points, time_precision="s")
+            logger.info('DPI: wrote %d app traffic points for %s', len(points), device_id)
     
     
 

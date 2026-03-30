@@ -1,0 +1,53 @@
+{% load i18n static %}
+
+<div class="nx-section-card">
+  <div class="nx-section-header">
+    <svg class="nx-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+    {% trans "ZeroTier Networks" %}
+  </div>
+  <div class="nx-section-body">
+    {% with networks=device_data.vpn.Zerotier.networks %}
+      {% if networks and networks|length %}
+        <div class="nx-table-wrap">
+        <table class="disk no-stack" id="zerotier-table">
+          <thead>
+            <tr>
+              <th>{% trans "Network ID" %}</th>
+              <th>{% trans "Name" %}</th>
+              <th>{% trans "Assigned IPs" %}</th>
+              <th>{% trans "Bridge" %}</th>
+              <th>{% trans "MAC" %}</th>
+              <th>{% trans "MTU" %}</th>
+              <th>{% trans "Status" %}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for net in networks %}
+            <tr>
+              <td data-label="{% trans 'Network ID' %}">{{ net.nwid|default:net.network_id|default:"-" }}</td>
+              <td data-label="{% trans 'Name' %}">{{ net.name|default:"-" }}</td>
+              <td data-label="{% trans 'Assigned IPs' %}">{% if net.assigned_addresses %}{{ net.assigned_addresses|join:", " }}{% else %}-{% endif %}</td>
+              <td data-label="{% trans 'Bridge' %}">{{ net.bridge|default:"-" }}</td>
+              <td data-label="{% trans 'MAC' %}">{{ net.mac|default:"-" }}</td>
+              <td data-label="{% trans 'MTU' %}">{{ net.mtu|default:"-" }}</td>
+              <td data-label="{% trans 'Status' %}">
+                {% if net.status == "OK" or net.enabled %}
+                  <span style="background:#d1fae5;color:#047857;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;">{{ net.status|default:"Up" }}</span>
+                {% else %}
+                  <span style="background:#f3f4f6;color:#374151;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;">{{ net.status|default:"Down" }}</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        </div>
+      {% else %}
+        <div class="nx-empty-state">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/></svg>
+          <p>{% trans "No ZeroTier networks configured." %}</p>
+        </div>
+      {% endif %}
+    {% endwith %}
+  </div>
+</div>
