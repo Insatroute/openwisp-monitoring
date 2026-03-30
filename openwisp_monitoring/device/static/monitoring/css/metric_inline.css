@@ -1,0 +1,77 @@
+/* Put "name" and "is_healthy" on the same row ONLY inside the first fieldset */
+.inline-group .inline-related fieldset.metric-one-line .form-row.field-name,
+.inline-group .inline-related fieldset.metric-one-line .form-row.field-is_healthy {
+  display: inline-block;
+  width: 48%;
+  vertical-align: top;
+  box-sizing: border-box;
+}
+
+/* Remove the default "new line" behavior */
+.inline-group .inline-related fieldset.metric-one-line .form-row.field-name,
+.inline-group .inline-related fieldset.metric-one-line .form-row.field-is_healthy {
+  clear: none;
+}
+
+/* Optional: make spacing nicer */
+.inline-group .inline-related fieldset.metric-one-line .form-row.field-is_healthy {
+  margin-left: 2%;
+}
+
+
+/* ===========================
+   Alert Settings inline cleanup
+   =========================== */
+
+/* Hide the ugly "AlertSettings object(...)" original column */
+.alertsettings-inline th.original,
+.alertsettings-inline td.original {
+  display: none !important;
+}
+
+/* Remove extra left padding caused by original col removal */
+.alertsettings-inline table {
+  width: 100% !important;
+}
+
+/* Make the inline table look compact */
+.alertsettings-inline .tabular {
+  margin-top: 6px;
+}
+
+.alertsettings-inline .tabular td,
+.alertsettings-inline .tabular th {
+  padding: 10px 12px;
+  vertical-align: middle;
+}
+
+/* Make inputs/selects fit nicely */
+.alertsettings-inline input[type="text"],
+.alertsettings-inline input[type="number"],
+.alertsettings-inline select {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box;
+}
+
+/* Checkbox column align center */
+.alertsettings-inline td.field-is_active {
+  text-align: center;
+  width: 120px;
+}
+
+/* Operator column width */
+.alertsettings-inline td.field-custom_operator {
+  width: 180px;
+}
+
+/* Threshold columns more balanced */
+.alertsettings-inline td.field-custom_threshold,
+.alertsettings-inline td.field-custom_tolerance {
+  width: 220px;
+}
+
+/* Hide nested inline header spacing (optional, makes it cleaner) */
+.alertsettings-inline h3 {
+  display: none !important;
+}
