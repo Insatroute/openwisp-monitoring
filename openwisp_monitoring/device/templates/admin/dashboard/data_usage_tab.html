@@ -1745,7 +1745,21 @@
 
     // Donut ring: only 3 breakdown segments (Cellular, Wired, Wi-Fi)
     var donutLabels = ["Cellular", "Wired", "Wi-Fi"];
-    var donutValues = [cellularTotal, wiredTotal, wifiTotal];
+    var donutRealValues = [cellularTotal, wiredTotal, wifiTotal];
+
+    // Enforce minimum visible slice (3%) for non-zero segments so tiny
+    // slices (e.g. 858 MB vs 2.78 TB) remain visible in the donut.
+    // The real values are preserved for labels, tooltips, and percentages.
+    var MIN_SLICE_PCT = 0.03;
+    var donutValues = (function (real) {
+      var nonZero = real.filter(function (v) { return v > 0; });
+      if (nonZero.length <= 1) return real.slice(); // nothing to adjust
+      var sum = real.reduce(function (a, b) { return a + b; }, 0) || 1;
+      var minVal = sum * MIN_SLICE_PCT;
+      var adjusted = real.map(function (v) { return v > 0 ? Math.max(v, minVal) : 0; });
+      return adjusted;
+    })(donutRealValues);
+
     var donutBg    = ["#16a34a", "rgba(66,133,244,0.85)", "#fb923c"];
     var donutHover = ["#15803d", "rgba(56,113,214,0.95)", "#f97316"];
 
@@ -1778,7 +1792,8 @@
     canvas.style.height = '180px';
     var ctx = canvas.getContext("2d");
 
-    var donutTotal = donutValues.reduce(function (a, b) { return a + b; }, 0) || 1;
+    // Use real values for percentage/label calculations, adjusted values for chart sizing
+    var donutRealTotal = donutRealValues.reduce(function (a, b) { return a + b; }, 0) || 1;
 
     // Segment label plugin — draws percentage + value ON each donut arc
     var segmentLabelPlugin = {
@@ -1796,10 +1811,10 @@
         var gap = Math.round(outerR * 0.07);
 
         meta.data.forEach(function (arc, i) {
-          var val = donutValues[i];
+          var val = donutRealValues[i]; // Use real values for display
           if (!val || val <= 0) return;
 
-          var pct = (val / donutTotal * 100).toFixed(1) + '%';
+          var pct = (val / donutRealTotal * 100).toFixed(1) + '%';
           var byteLabel = fmtBytes(val);
 
           var startAngle = arc.startAngle;
@@ -1877,9 +1892,9 @@
                 return items[0] ? items[0].label : '';
               },
               label: function (context) {
-                var val = context.parsed || 0;
-                var pct = (val / donutTotal * 100).toFixed(1);
-                return context.label + ': ' + fmtBytes(val) + ' (' + pct + '%)';
+                var realVal = donutRealValues[context.dataIndex] || 0;
+                var pct = (realVal / donutRealTotal * 100).toFixed(1);
+                return context.label + ': ' + fmtBytes(realVal) + ' (' + pct + '%)';
               },
             },
           },

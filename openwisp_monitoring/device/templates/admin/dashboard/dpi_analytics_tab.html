@@ -1014,7 +1014,7 @@ if (typeof L === "undefined") {
 
       <!-- GEO MAP — Network Device Map -->
       <div class="dpi-section" style="margin-top: 8px;">
-        <div class="dpi-section-title" style="display:flex;align-items:center;justify-content:space-between;"><span><i class="fas fa-globe-americas"></i> Network Geo Map</span><a href="/admin/dpi_analytics/dpisnapshot/dashboard/map/" target="_blank" style="display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:500;color:#3b82f6;text-decoration:none;padding:4px 10px;border:1px solid #bfdbfe;border-radius:6px;background:#eff6ff;transition:all 0.15s;" onmouseover="this.style.background='#dbeafe'" onmouseout="this.style.background='#eff6ff'"><i class="fas fa-expand-arrows-alt" style="font-size:11px;"></i> Full Map</a></div>
+        <div class="dpi-section-title" style="display:flex;align-items:center;justify-content:space-between;"><span><i class="fas fa-globe-americas"></i> Network Geo Map</span><a href="/admin/dpi_analytics/dpisnapshot/dashboard/map/" style="display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:500;color:#3b82f6;text-decoration:none;padding:4px 10px;border:1px solid #bfdbfe;border-radius:6px;background:#eff6ff;transition:all 0.15s;" onmouseover="this.style.background='#dbeafe'" onmouseout="this.style.background='#eff6ff'"><i class="fas fa-expand-arrows-alt" style="font-size:11px;"></i> Full Map</a></div>
         <div style="border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 14px 14px; overflow: hidden;">
           <div id="dpi-geo-map" style="height: 420px; width: 100%; background: #f8fafc;"></div>
         </div>
@@ -1613,9 +1613,30 @@ if (typeof L === "undefined") {
   }
 
   function loadGeoMapData() {
-    fetch('/api/v1/dpi/stats/geo-map/')
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
+    // Fetch GeoJSON for fallback coordinates (DeviceLocation records)
+    var geoJsonCoords = {};
+    var geoJsonPromise = fetch('/api/v1/monitoring/geojson/', { credentials: 'same-origin', headers: { Accept: 'application/json' } })
+      .then(function(r) { return r.ok ? r.json() : {}; })
+      .then(function(geojson) {
+        var features = (geojson && geojson.features) || [];
+        features.forEach(function(f) {
+          var props = f.properties || {};
+          var geom = f.geometry || {};
+          var c = geom.coordinates; // [lng, lat]
+          if (c && c.length >= 2 && props.name) {
+            geoJsonCoords[props.name] = [c[1], c[0]]; // [lat, lng]
+          }
+        });
+      })
+      .catch(function() {});
+
+    Promise.all([
+      geoJsonPromise,
+      fetch('/api/v1/dpi/stats/geo-map/', { credentials: 'same-origin', headers: { Accept: 'application/json' } })
+        .then(function(r) { return r.json(); })
+    ])
+    .then(function(results) {
+      var data = results[1];
       var devices = data.devices || {};
       var deviceKeys = Object.keys(devices);
       if (deviceKeys.length === 0) {
@@ -1626,8 +1647,18 @@ if (typeof L === "undefined") {
 
       var bounds = [];
       var fleetRows = '';
-      // Track devices without location for skip
-      var noLocationDevices = [];
+
+      // Resolve coordinates: prefer API lat/lng, then GeoJSON, then fallback
+      deviceKeys.forEach(function(deviceId, idx) {
+        var dev = devices[deviceId];
+        if (typeof dev.lat === 'number' && typeof dev.lng === 'number') return; // already has coords
+        // Try GeoJSON fallback by device name
+        var fallback = geoJsonCoords[dev.name];
+        if (fallback) {
+          dev.lat = fallback[0];
+          dev.lng = fallback[1];
+        }
+      });
 
       // Offset overlapping devices at same coordinates
       var coordCount = {};
@@ -1641,11 +1672,8 @@ if (typeof L === "undefined") {
 
       deviceKeys.forEach(function(deviceId, idx) {
         var dev = devices[deviceId];
-        // Use real coordinates from API
-        if (typeof dev.lat !== 'number' || typeof dev.lng !== 'number') {
-          noLocationDevices.push(dev.name);
-          return; // skip devices without location
-        }
+        // Use coordinates from API or GeoJSON fallback; skip only if truly no location
+        if (typeof dev.lat !== 'number' || typeof dev.lng !== 'number') return;
         var coords = [dev.lat, dev.lng];
 
         // Spread out devices sharing same location
@@ -1654,7 +1682,7 @@ if (typeof L === "undefined") {
         if (group.length > 1) {
           var posInGroup = group.indexOf(deviceId);
           var angle = (2 * Math.PI * posInGroup) / group.length;
-          var offset = 0.008; // ~800m spread
+          var offset = 0.006 + (group.length * 0.004); // wider spread for more devices
           coords = [dev.lat + offset * Math.cos(angle), dev.lng + offset * Math.sin(angle)];
         }
 
@@ -1682,15 +1710,21 @@ if (typeof L === "undefined") {
           fillOpacity: 0.9,
         }).addTo(geoMap);
 
-        // Permanent device name label below marker
+        // Permanent device name label — alternate directions to reduce overlap
+        var directions = ['bottom', 'top', 'right', 'left'];
+        var labelDir = directions[idx % directions.length];
+        var labelOffset = labelDir === 'bottom' ? [0, radius + 2]
+                        : labelDir === 'top'    ? [0, -(radius + 2)]
+                        : labelDir === 'right'  ? [radius + 4, 0]
+                        :                         [-(radius + 4), 0];
         var labelMarker = L.circleMarker([coords[0], coords[1]], {
           radius: 0, fillOpacity: 0, opacity: 0, interactive: false,
         }).addTo(geoMap);
         labelMarker.bindTooltip(dev.name, {
           permanent: true,
-          direction: 'bottom',
+          direction: labelDir,
           className: 'dpi-map-label-tip',
-          offset: [0, radius + 2],
+          offset: labelOffset,
         });
 
         // Rich tooltip on hover (includes device name)
@@ -1763,10 +1797,10 @@ if (typeof L === "undefined") {
               '</tr></thead>' +
               '<tbody>' + fleetRows + '</tbody>' +
             '</table>';
-        } else if (noLocationDevices.length > 0) {
+        } else if (deviceKeys.length > 0 && bounds.length === 0) {
           fleetEl.innerHTML = '<div style="text-align:center;padding:16px;color:#6b7280;font-size:12px;">' +
             '<i class="fas fa-map-marker-alt" style="font-size:20px;color:#d1d5db;display:block;margin-bottom:6px;"></i>' +
-            noLocationDevices.length + ' device(s) found but no location data configured</div>';
+            deviceKeys.length + ' device(s) found but no location data configured</div>';
         } else {
           fleetEl.innerHTML = msgNoData();
         }
