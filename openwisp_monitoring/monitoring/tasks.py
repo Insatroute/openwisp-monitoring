@@ -109,3 +109,68 @@ def migrate_timeseries_database():
     )
 
     migrate_influxdb_structure()
+
+
+@shared_task(bind=True, ignore_result=True)
+def delayed_alert_check(self, metric_id, notification_type, device_id, alert_config_id):
+    """Re-check metric status after delay period.
+
+    Called by _notify_users when email_timing="after_retries".
+    After interval*retry minutes, checks if the metric is STILL in the same state.
+    If yes → fires notification. If recovered → cancels silently.
+    """
+    import logging
+    from django.core.cache import cache
+
+    logger = logging.getLogger(__name__)
+    pending_key = f"alert_pending:{notification_type}:{device_id}"
+
+    try:
+        Metric = load_model("monitoring", "Metric")
+        metric = Metric.objects.select_related("alertsettings").get(pk=metric_id)
+    except ObjectDoesNotExist:
+        cache.delete(pending_key)
+        return
+
+    # Check current health state
+    is_problem_type = notification_type.endswith("_problem") or notification_type in (
+        "connection_is_not_working", "interface_is_down", "tunnel_down",
+    )
+    is_recovery_type = notification_type.endswith("_recovery") or notification_type in (
+        "connection_is_working", "interface_is_up", "tunnel_up",
+    )
+
+    # Determine if the condition still holds
+    still_in_state = False
+    if is_problem_type and metric.is_healthy is False:
+        still_in_state = True
+    elif is_recovery_type and metric.is_healthy is True:
+        still_in_state = True
+
+    cache.delete(pending_key)
+
+    if not still_in_state:
+        logger.info(
+            "Delayed alert cancelled: %s for device %s — state changed",
+            notification_type, device_id
+        )
+        return
+
+    # State still holds after delay — fire notification
+    logger.info(
+        "Delayed alert firing: %s for device %s — state confirmed after retry period",
+        notification_type, device_id
+    )
+
+    try:
+        from email_templates.models import AlertConfiguration
+        alert_config = AlertConfiguration.objects.filter(pk=alert_config_id).first()
+    except Exception:
+        alert_config = None
+
+    try:
+        alert_settings = metric.alertsettings
+    except ObjectDoesNotExist:
+        alert_settings = None
+
+    metric._send_notification(notification_type, alert_settings, metric.content_object, alert_config)

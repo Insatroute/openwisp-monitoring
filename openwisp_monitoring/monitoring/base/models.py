@@ -502,29 +502,66 @@ class AbstractMetric(TimeStampedEditableModel):
     def _notify_users(self, notification_type, alert_settings):
         """Creates notifications for users.
 
-        Checks AlertConfiguration for custom email timing and recipients
-        if available. Falls back to default notify.send() behavior.
+        Checks AlertConfiguration for retry-based alerting:
+        - If email_timing="after_retries": schedules a delayed check.
+          After interval*retry minutes, re-checks the metric. If still
+          in the same state → fires notification. If recovered → cancels.
+        - If email_timing="immediate": fires on first call.
+        - If is_enabled=False: uses default system behavior.
+        - If no AlertConfig: fires immediately (default).
         """
+        from django.core.cache import cache
+
         target = self.content_object
         alert_config = self._get_alert_configuration(notification_type, target)
 
-        # If AlertConfiguration exists and is disabled, skip notification entirely
+        # If AlertConfig exists but disabled, ignore it
         if alert_config and not alert_config.is_enabled:
+            alert_config = None
+
+        # Retry-based: schedule delayed verification
+        if alert_config and alert_config.email_timing == "after_retries":
+            device_id = str(target.pk) if target else "unknown"
+            metric_id = str(self.pk)
+            delay_seconds = alert_config.alert_after_minutes * 60
+            pending_key = f"alert_pending:{notification_type}:{device_id}"
+
+            # If already pending, don't schedule again
+            if cache.get(pending_key):
+                return
+
+            # Mark as pending
+            cache.set(pending_key, notification_type, delay_seconds + 120)
+
+            # Schedule delayed check via Celery
+            try:
+                from openwisp_monitoring.monitoring.tasks import delayed_alert_check
+                delayed_alert_check.apply_async(
+                    args=[metric_id, notification_type, device_id, str(alert_config.pk)],
+                    countdown=delay_seconds,
+                )
+            except Exception as e:
+                logger.warning("Failed to schedule delayed alert: %s", e)
+                cache.delete(pending_key)
+                # Fall through to immediate send
+                self._send_notification(notification_type, alert_settings, target, alert_config)
             return
 
+        # Immediate or no config: fire now
+        self._send_notification(notification_type, alert_settings, target, alert_config)
+
+    def _send_notification(self, notification_type, alert_settings, target, alert_config):
+        """Actually send the notification via notify.send()."""
         opts = dict(sender=self, type=notification_type, action_object=alert_settings)
         if target is not None:
             opts["target"] = target
 
-        # If AlertConfiguration has email_timing="disabled", we still send web
-        # notification but will suppress email in the email handler
         if alert_config:
             opts["data"] = opts.get("data", {})
             if not isinstance(opts["data"], dict):
                 opts["data"] = {}
             opts["data"]["_alert_config_id"] = str(alert_config.pk)
             opts["data"]["_email_timing"] = alert_config.email_timing
-            # Add custom recipients
             custom = alert_config.get_custom_recipient_list()
             if custom:
                 opts["data"]["_custom_recipients"] = custom
@@ -977,8 +1014,8 @@ class AbstractAlertSettings(TimeStampedEditableModel):
 
     @property
     def threshold(self):
-        """Threshold value. Checks AlertConfiguration first,
-        then custom_threshold, then default from config_dict."""
+        """Threshold value. Checks AlertConfiguration for custom_threshold,
+        then custom_threshold on AlertSettings, then default from config_dict."""
         ac = self._get_alert_config()
         if ac and ac.custom_threshold is not None:
             return ac.custom_threshold
@@ -988,23 +1025,28 @@ class AbstractAlertSettings(TimeStampedEditableModel):
 
     @property
     def tolerance(self):
-        """Tolerance in minutes. Checks AlertConfiguration first,
-        then custom_tolerance, then default from config_dict."""
+        """Tolerance in minutes.
+        If AlertConfiguration exists with after_retries or immediate:
+          return 0 (detect state change immediately, retry handled in _notify_users)
+        If AlertConfiguration has custom_tolerance (threshold-based):
+          return custom_tolerance
+        Otherwise: system default."""
         ac = self._get_alert_config()
         if ac:
-            # For threshold-based types (CPU, memory, disk): use custom_tolerance
+            # Threshold-based (CPU, memory, disk): use custom_tolerance
             if ac.custom_tolerance is not None:
                 return ac.custom_tolerance
-            # For interval-based types (ping, connection): use interval * retry
-            if ac.check_interval and ac.retry_count:
-                return ac.alert_after_minutes
+            # Retry-based or immediate: detect state change immediately
+            # _notify_users handles the retry counting
+            if ac.email_timing in ("after_retries", "immediate"):
+                return 0
         if self.custom_tolerance is None:
             return self.config_dict["tolerance"]
         return self.custom_tolerance
 
     def _get_alert_config(self):
         """Look up AlertConfiguration for this metric's device org.
-        Returns AlertConfiguration instance or None."""
+        Checks both _problem and _recovery for any enabled config."""
         try:
             metric = self.metric
             target = metric.content_object
@@ -1014,12 +1056,33 @@ class AbstractAlertSettings(TimeStampedEditableModel):
             if not org_id:
                 return None
             config_name = metric.configuration
-            notification_type = f"{config_name}_problem"
+            from email_templates.models import AlertConfiguration
+
+            for suffix in ("_problem", "_recovery"):
+                ac = AlertConfiguration.objects.filter(
+                    organization_id=org_id,
+                    notification_type=f"{config_name}{suffix}",
+                    is_enabled=True,
+                ).first()
+                if ac:
+                    return ac
+            return None
+        except Exception:
+            return None
+
+    @staticmethod
+    def _get_alert_configuration(notification_type, target):
+        """Static lookup by notification_type + target device org. Used by _notify_users."""
+        if target is None:
+            return None
+        org_id = getattr(target, "organization_id", None)
+        if not org_id:
+            return None
+        try:
             from email_templates.models import AlertConfiguration
             return AlertConfiguration.objects.filter(
                 organization_id=org_id,
                 notification_type=notification_type,
-                is_enabled=True,
             ).first()
         except Exception:
             return None
