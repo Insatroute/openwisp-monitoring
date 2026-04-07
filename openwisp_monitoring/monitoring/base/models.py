@@ -500,11 +500,53 @@ class AbstractMetric(TimeStampedEditableModel):
         return timeseries_db.read(**options)
 
     def _notify_users(self, notification_type, alert_settings):
-        """creates notifications for users"""
+        """Creates notifications for users.
+
+        Checks AlertConfiguration for custom email timing and recipients
+        if available. Falls back to default notify.send() behavior.
+        """
+        target = self.content_object
+        alert_config = self._get_alert_configuration(notification_type, target)
+
+        # If AlertConfiguration exists and is disabled, skip notification entirely
+        if alert_config and not alert_config.is_enabled:
+            return
+
         opts = dict(sender=self, type=notification_type, action_object=alert_settings)
-        if self.content_object is not None:
-            opts["target"] = self.content_object
+        if target is not None:
+            opts["target"] = target
+
+        # If AlertConfiguration has email_timing="disabled", we still send web
+        # notification but will suppress email in the email handler
+        if alert_config:
+            opts["data"] = opts.get("data", {})
+            if not isinstance(opts["data"], dict):
+                opts["data"] = {}
+            opts["data"]["_alert_config_id"] = str(alert_config.pk)
+            opts["data"]["_email_timing"] = alert_config.email_timing
+            # Add custom recipients
+            custom = alert_config.get_custom_recipient_list()
+            if custom:
+                opts["data"]["_custom_recipients"] = custom
+
         notify.send(**opts)
+
+    @staticmethod
+    def _get_alert_configuration(notification_type, target):
+        """Look up AlertConfiguration for this notification type and device org."""
+        if target is None:
+            return None
+        org_id = getattr(target, "organization_id", None)
+        if not org_id:
+            return None
+        try:
+            from email_templates.models import AlertConfiguration
+            return AlertConfiguration.objects.filter(
+                organization_id=org_id,
+                notification_type=notification_type,
+            ).first()
+        except Exception:
+            return None
 
 
 class AbstractChart(TimeStampedEditableModel):
@@ -935,15 +977,52 @@ class AbstractAlertSettings(TimeStampedEditableModel):
 
     @property
     def threshold(self):
+        """Threshold value. Checks AlertConfiguration first,
+        then custom_threshold, then default from config_dict."""
+        ac = self._get_alert_config()
+        if ac and ac.custom_threshold is not None:
+            return ac.custom_threshold
         if self.custom_threshold is None:
             return self.config_dict["threshold"]
         return self.custom_threshold
 
     @property
     def tolerance(self):
+        """Tolerance in minutes. Checks AlertConfiguration first,
+        then custom_tolerance, then default from config_dict."""
+        ac = self._get_alert_config()
+        if ac:
+            # For threshold-based types (CPU, memory, disk): use custom_tolerance
+            if ac.custom_tolerance is not None:
+                return ac.custom_tolerance
+            # For interval-based types (ping, connection): use interval * retry
+            if ac.check_interval and ac.retry_count:
+                return ac.alert_after_minutes
         if self.custom_tolerance is None:
             return self.config_dict["tolerance"]
         return self.custom_tolerance
+
+    def _get_alert_config(self):
+        """Look up AlertConfiguration for this metric's device org.
+        Returns AlertConfiguration instance or None."""
+        try:
+            metric = self.metric
+            target = metric.content_object
+            if target is None:
+                return None
+            org_id = getattr(target, "organization_id", None)
+            if not org_id:
+                return None
+            config_name = metric.configuration
+            notification_type = f"{config_name}_problem"
+            from email_templates.models import AlertConfiguration
+            return AlertConfiguration.objects.filter(
+                organization_id=org_id,
+                notification_type=notification_type,
+                is_enabled=True,
+            ).first()
+        except Exception:
+            return None
 
     @property
     def operator(self):
