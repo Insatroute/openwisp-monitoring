@@ -63,6 +63,11 @@ urlpatterns = [
         name="api_device_wan_uplink_summary"
     ),
     re_path(
+        r'^api/v1/monitoring/device/(?P<device_id>[^/]+)/underlay-performance/$',
+        views_realdata.underlay_performance_data,
+        name="api_device_underlay_performance"
+    ),
+    re_path(
         r'^api/v1/monitoring/device/(?P<device_id>[^/]+)/cellular-summary/$',
         views_realdata.cellular_summary_data,
         name="api_device_cellular_summary"

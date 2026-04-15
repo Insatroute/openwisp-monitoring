@@ -32,22 +32,27 @@
 
   /* ===== New: LAN/WAN tile colors for ETH ===== */
   .wp-lan-up .wp-icon {
-    background:#f5c857;           /* yellow */
-    border-color:#eab308;
+    background:#f59e0b;           /* orange — LAN connected */
+    border-color:#d97706;
     box-shadow:none;
   }
   .wp-lan-down .wp-icon {
-    background:#e5e7eb;           /* grey */
+    background:#e5e7eb;           /* grey — not connected */
     border-color:#cbd5e1;
   }
 
   .wp-wan-up .wp-icon {
-    background:#22c55e;           /* green */
+    background:#22c55e;           /* green — online */
     border-color:#16a34a;
     box-shadow:none;
   }
+  .wp-wan-connected .wp-icon {
+    background:#f59e0b;           /* orange — connected but no internet */
+    border-color:#d97706;
+    box-shadow:none;
+  }
   .wp-wan-down .wp-icon {
-    background:#e62727;           /* red */
+    background:#e62727;           /* red — offline */
     border-color:#b91c1c;
     box-shadow:none;
   }
@@ -73,11 +78,12 @@
   .wp-dot-gray  { background:#cbd5e1; }
 
   /* Status dot colors for Ethernet LAN/WAN only */
-  .wp-dot-lan-up   { background:#facc15; }  /* yellow */
+  .wp-dot-lan-up   { background:#f59e0b; }  /* orange */
   .wp-dot-lan-down { background:#cbd5e1; }  /* grey */
 
-  .wp-dot-wan-up   { background:#22c55e; }  /* green */
-  .wp-dot-wan-down { background:#ef4444; }  /* red */
+  .wp-dot-wan-up        { background:#22c55e; }  /* green — online */
+  .wp-dot-wan-connected { background:#f59e0b; }  /* orange — connected but no internet */
+  .wp-dot-wan-down      { background:#ef4444; }  /* red — offline */
 
   .wp-linkish { color:#11274b; font-weight:700; text-decoration:none; }
   .wp-linkish:hover { text-decoration:underline; }
@@ -135,6 +141,168 @@
     z-index:20;
     text-transform: none;
   }
+
+  /* ===== WAN Distribution Overview ===== */
+  .wp-dist-panel { background:#fff; border:1px solid #eaecef; border-radius:12px; box-shadow:0 6px 20px rgba(0,0,0,.06); margin:16px 0; }
+  .wp-dist-hd { padding:10px 16px; border-bottom:1px solid #eef0f3; display:flex; justify-content:space-between; align-items:center; }
+  .wp-dist-title { font-weight:700; color:#1f2937; font-size:14px; }
+  .wp-dist-badge {
+    display:inline-flex; align-items:center; gap:5px;
+    padding:3px 10px; border-radius:999px; font-size:11px; font-weight:600;
+    background:rgba(34,197,94,.1); color:#16a34a; border:1px solid rgba(34,197,94,.2);
+  }
+  .wp-dist-badge.wp-none { background:rgba(148,163,184,.1); color:#64748b; border-color:rgba(148,163,184,.2); }
+  .wp-dist-bd { padding:12px 16px; }
+
+  /* Master time-range filter bar (single filter for all underlay panel cards) */
+  .wp-master-filter {
+    display:flex; align-items:center; justify-content:flex-end; gap:10px;
+    background:#fff; border:1px solid #eaecef; border-radius:12px;
+    box-shadow:0 6px 20px rgba(0,0,0,.06);
+    padding:10px 16px; margin:16px 0;
+  }
+  .wp-master-filter-label {
+    font-size:11px; font-weight:700; color:#6b7280;
+    text-transform:uppercase; letter-spacing:.04em; margin-right:auto;
+  }
+
+  /* Time range pills */
+  .wp-time-pills { display:flex; gap:2px; background:#f1f5f9; border-radius:6px; padding:2px; }
+  .wp-time-pill {
+    padding:2px 8px; border-radius:4px; font-size:10px; font-weight:600;
+    border:none; background:transparent; color:#64748b;
+    cursor:pointer; transition:all .12s ease;
+  }
+  .wp-time-pill:hover { color:#334155; }
+  .wp-time-pill.wp-tp-on { background:#fff; color:#0f172a; box-shadow:0 1px 3px rgba(0,0,0,.1); }
+
+  /* Time range dropdown */
+  .wp-time-select {
+    appearance:none; -webkit-appearance:none; -moz-appearance:none;
+    padding:4px 26px 4px 10px; border-radius:6px; font-size:11px; font-weight:600;
+    border:1px solid #e5e7eb; background:#fff; color:#0f172a; cursor:pointer;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 20 20' fill='%2364748b'><path d='M5 7l5 6 5-6z'/></svg>");
+    background-repeat:no-repeat; background-position:right 8px center; background-size:10px 10px;
+    transition:border-color .12s ease, box-shadow .12s ease;
+  }
+  .wp-time-select:hover { border-color:#cbd5e1; }
+  .wp-time-select:focus { outline:none; border-color:#60a5fa; box-shadow:0 0 0 2px rgba(96,165,250,.2); }
+
+  /* Layout: cards left, donut right */
+  .wp-dist-layout { display:flex; gap:16px; align-items:center; }
+  .wp-dist-cards-col { flex:1; min-width:0; display:flex; flex-direction:column; gap:6px; }
+  .wp-dist-donut-col { flex-shrink:0; width:190px; display:flex; flex-direction:column; align-items:center; gap:8px; }
+  @media (max-width:768px) { .wp-dist-layout { flex-direction:column-reverse; } .wp-dist-donut-col { align-self:center; } }
+
+  /* Donut */
+  .wp-dist-donut-wrap { position:relative; width:150px; height:150px; }
+  .wp-dist-donut-label {
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    text-align:center; line-height:1.2;
+  }
+  .wp-dist-donut-total { font-size:20px; font-weight:800; color:#0f172a; }
+  .wp-dist-donut-sub { font-size:9px; color:#6b7280; font-weight:500; }
+  .wp-dist-donut-traffic { font-size:9px; color:#94a3b8; font-weight:500; margin-top:1px; }
+
+  /* Legend */
+  .wp-overlay-legend { display:flex; flex-direction:column; gap:3px; width:100%; }
+  .wp-overlay-legend-item { display:flex; align-items:center; gap:6px; font-size:11px; color:#334155; font-weight:500; padding:2px 0; }
+  .wp-overlay-legend-color { width:8px; height:8px; border-radius:2px; display:inline-block; flex-shrink:0; }
+  .wp-overlay-legend-pct { font-weight:700; margin-left:auto; color:#0f172a; white-space:nowrap; font-size:11px; }
+
+  /* Compact WAN cards */
+  .wp-wan-cards { display:flex; flex-direction:column; gap:6px; }
+  .wp-wan-card {
+    background:#fafbfc; border:1px solid #e5e7eb; border-radius:8px;
+    padding:8px 10px 8px 14px; cursor:default; position:relative; overflow:hidden;
+  }
+  .wp-wan-card:hover { background:#f5f7fa; }
+  .wp-wan-card::before {
+    content:''; position:absolute; top:0; left:0; width:3px; height:100%;
+    background:var(--wan-color, #cbd5e1);
+  }
+  .wp-wan-card.wp-wan-active { border-color:#d1fae5; }
+  .wp-wan-card.wp-wan-idle { border-color:#fef3c7; }
+
+  .wp-wan-card-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:2px; }
+  .wp-wan-card-name { font-size:12px; font-weight:700; color:#1e293b; display:flex; align-items:center; gap:5px; }
+  .wp-wan-status-chip {
+    font-size:8px; font-weight:700; padding:1px 6px; border-radius:999px;
+    text-transform:uppercase; letter-spacing:.03em;
+  }
+  .wp-wan-status-chip.wp-sc-active { background:rgba(34,197,94,.1); color:#16a34a; }
+  .wp-wan-status-chip.wp-sc-idle { background:rgba(245,158,11,.1); color:#d97706; }
+  .wp-wan-status-chip.wp-sc-off { background:rgba(148,163,184,.1); color:#64748b; }
+
+  .wp-wan-status-dot { width:6px; height:6px; border-radius:50%; display:inline-block; flex-shrink:0; }
+  .wp-wan-status-dot.wp-s-active { background:#22c55e; }
+  .wp-wan-status-dot.wp-s-idle { background:#f59e0b; }
+  .wp-wan-status-dot.wp-s-off { background:#cbd5e1; }
+
+  .wp-wan-pct-row { display:flex; align-items:baseline; gap:3px; margin-bottom:2px; }
+  .wp-wan-pct { font-size:20px; font-weight:800; color:#0f172a; line-height:1; }
+  .wp-wan-pct-sign { font-size:11px; font-weight:500; color:#94a3b8; }
+
+  .wp-wan-vol { font-size:10px; color:#6b7280; margin-bottom:4px; }
+
+  /* Mini bar */
+  .wp-wan-mini-bar { height:3px; background:#f1f5f9; border-radius:2px; overflow:hidden; }
+  .wp-wan-mini-fill { height:100%; border-radius:2px; transition:width .5s ease; }
+
+  /* DL/UL */
+  .wp-wan-split { display:flex; gap:10px; margin-top:4px; }
+  .wp-wan-split-item { font-size:9px; color:#64748b; display:flex; align-items:center; gap:2px; }
+  .wp-wan-split-arrow { display:inline-block; width:0; height:0; border-left:3px solid transparent; border-right:3px solid transparent; }
+  .wp-wan-split-dl { border-bottom:4px solid #93c5fd; }
+  .wp-wan-split-ul { border-top:4px solid #c4b5fd; }
+
+  /* Path label tag */
+  .wp-pl-tag {
+    display:inline-flex; align-items:center; gap:3px;
+    font-size:9px; font-weight:600; padding:1px 6px; border-radius:4px;
+    border:1px solid rgba(0,0,0,.08); background:#f8fafc; color:#475569;
+  }
+  .wp-pl-dot { width:6px; height:6px; border-radius:50%; display:inline-block; }
+  .wp-pl-none { color:#94a3b8; font-style:italic; }
+  .wp-pl-select {
+    font-size:11px; padding:2px 6px; border:1px solid #e2e8f0; border-radius:4px;
+    background:#fff; color:#334155; cursor:pointer; min-width:80px;
+  }
+  .wp-pl-select:focus { border-color:#60a5fa; outline:none; }
+  .wp-pl-saving { opacity:.5; pointer-events:none; }
+
+  /* WAN members section in underlay */
+  .wp-wm-table { width:100%; border-collapse:collapse; font-size:11px; }
+  .wp-wm-table th { font-size:10px; text-transform:uppercase; letter-spacing:.03em; color:#6b7280; padding:5px 8px; border-bottom:1px solid #eef0f3; text-align:left; font-weight:600; }
+  .wp-wm-table td { padding:5px 8px; border-bottom:1px solid #f5f5f5; color:#334155; }
+
+  /* Empty */
+  .wp-dist-empty { text-align:center; padding:20px 12px; color:#94a3b8; }
+  .wp-dist-empty svg { width:28px; height:28px; margin-bottom:6px; opacity:.4; }
+  .wp-dist-empty-text { font-size:12px; }
+
+  /* WAN Health metrics row inside card */
+  .wp-wan-health { display:flex; gap:10px; margin-top:8px; padding-top:8px; border-top:1px dashed #e5e7eb; flex-wrap:wrap; }
+  .wp-wan-health-item { font-size:10px; color:#64748b; display:flex; align-items:center; gap:3px; }
+  .wp-wan-health-val { font-weight:700; color:#334155; }
+  .wp-wan-health-val.wp-h-bad { color:#ef4444; }
+  .wp-wan-health-val.wp-h-warn { color:#f59e0b; }
+  .wp-wan-health-val.wp-h-good { color:#22c55e; }
+
+  /* Overlay tunnel status bar */
+  .wp-overlay-status {
+    display:flex; align-items:center; gap:14px; padding:10px 16px;
+    background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px;
+    margin-top:14px; font-size:12px; color:#334155;
+  }
+  .wp-overlay-status.wp-ovl-off { background:#fef2f2; border-color:#fecaca; }
+  .wp-overlay-status-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+  .wp-overlay-status-dot.wp-ovl-on { background:#22c55e; box-shadow:0 0 6px rgba(34,197,94,.4); }
+  .wp-overlay-status-dot.wp-ovl-off-dot { background:#ef4444; }
+  .wp-overlay-status-item { display:flex; align-items:center; gap:4px; }
+  .wp-overlay-status-label { color:#6b7280; }
+  .wp-overlay-status-val { font-weight:700; }
+
 
 </style>
 
@@ -422,8 +590,9 @@
 
             <!-- WAN Column -->
             <div>
-              <span><i class="wp-dot wp-dot-wan-up"></i>WAN Up</span><br>
-              <span><i class="wp-dot wp-dot-wan-down"></i>WAN Down</span>
+              <span><i class="wp-dot wp-dot-wan-up"></i>WAN Online</span><br>
+              <span><i class="wp-dot wp-dot-wan-connected"></i>WAN Connected (No Internet)</span><br>
+              <span><i class="wp-dot wp-dot-wan-down"></i>WAN Offline</span>
             </div>
 
             {% if "irx100-5g" in model_lc or "ir11004gd" in model_lc or "ir11004gdw" in model_lc or "ir11004gs" in model_lc %}
@@ -501,11 +670,13 @@
               {% endif %}
             >
               <td class="wp-nowrap">
+                {% with ws=iface.wan_status|default_if_none:"" %}
                 <span
-                  class="wp-status-dot {% if iface.up %}wp-dot-green{% else %}wp-dot-gray{% endif %}"
+                  class="wp-status-dot {% if ws == 'online' %}wp-dot-wan-up{% elif ws == 'connected' %}wp-dot-wan-connected{% elif iface.up %}wp-dot-wan-up{% else %}wp-dot-gray{% endif %}"
                   id="wp-status-{{ iface.name }}"
                 ></span>
-                {% if iface.up %}Online{% else %}Offline{% endif %}
+                {% if ws == 'online' %}Online{% elif ws == 'connected' %}Connected{% elif ws == 'offline' %}Offline{% elif iface.up %}Online{% else %}Offline{% endif %}
+                {% endwith %}
               </td>
               <td class="wp-nowrap">
                 {% if iface.type == 'mobile' %}
@@ -521,7 +692,7 @@
                     <span>-</span>
                   {% endif %}
                 {% else %}
-                  <span>-</span>
+                  <span class="wp-pl-select-wrap" data-iface="{{ iface.name }}">-</span>
                 {% endif %}
               </td>
               <td class="wp-nowrap">
@@ -585,6 +756,243 @@
   </table>
 </div>
 
+{# ================= WAN Distribution Overview ================= #}
+{# ================= Underlay Performance — Separate Cards ================= #}
+<style>
+  .wp-card { background:#fff; border:1px solid #eaecef; border-radius:12px; box-shadow:0 6px 20px rgba(0,0,0,.06); margin:16px 0; }
+  .wp-card-hd { padding:10px 16px; border-bottom:1px solid #eef0f3; display:flex; justify-content:space-between; align-items:center; }
+  .wp-card-title { font-weight:700; color:#1f2937; font-size:14px; }
+  .wp-card-bd { padding:12px 16px; }
+  .wp-card-row { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  @media (max-width:768px) { .wp-card-row { grid-template-columns:1fr; } }
+
+  /* WAN Timeline graph (SVG line chart) */
+  .wp-tl-graph-wrap { margin-top:10px; border-top:1px dashed #eef0f3; padding-top:10px; }
+  .wp-tl-graph-title { font-size:10px; text-transform:uppercase; letter-spacing:.03em; color:#6b7280; font-weight:700; margin-bottom:6px; }
+  .wp-tl-chart-svg { width:100%; height:220px; display:block; background:#fafbfc; border:1px solid #eef0f3; border-radius:6px; }
+  .wp-tl-chart-legend { display:flex; flex-wrap:wrap; gap:12px; margin-top:8px; font-size:10px; color:#64748b; }
+  .wp-tl-chart-legend .wp-tl-lg { display:inline-flex; align-items:center; gap:4px; }
+  .wp-tl-chart-legend .wp-tl-lg .wp-tl-lg-sw { width:14px; height:3px; border-radius:2px; display:inline-block; }
+  .wp-tl-chart-legend .wp-tl-lg .wp-tl-lg-pct { font-weight:700; color:#334155; }
+  .wp-tl-chart-legend .wp-tl-lg .wp-tl-lg-pct.wp-tl-low { color:#dc2626; }
+  .wp-tl-axis-line { stroke:#e5e7eb; stroke-width:1; }
+  .wp-tl-grid-line { stroke:#f1f5f9; stroke-width:1; stroke-dasharray:2,3; }
+  .wp-tl-tick-text { font-size:9px; fill:#94a3b8; font-family:Inter,system-ui,sans-serif; }
+  .wp-tl-series-line { fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+  .wp-tl-graph-empty { padding:24px 12px; text-align:center; color:#94a3b8; font-size:11px; background:#fafbfc; border:1px dashed #e5e7eb; border-radius:6px; }
+
+  /* WAN Timeline */
+  .wp-tl-row { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+  .wp-tl-label { width:48px; font-size:11px; font-weight:700; color:#334155; text-align:right; flex-shrink:0; }
+  .wp-tl-bar { flex:1; height:16px; display:flex; border-radius:4px; overflow:hidden; background:#f1f5f9; }
+  .wp-tl-seg { min-width:1px; transition:width .3s; }
+  .wp-tl-seg.wp-tl-up { background:#86efac; }
+  .wp-tl-seg.wp-tl-down { background:#fca5a5; }
+  .wp-tl-pct { width:40px; font-size:10px; font-weight:700; color:#16a34a; text-align:left; flex-shrink:0; }
+  .wp-tl-pct.wp-tl-low { color:#dc2626; }
+  .wp-tl-legend { display:flex; gap:14px; margin-top:6px; font-size:10px; color:#64748b; }
+  .wp-tl-legend-dot { width:8px; height:8px; border-radius:2px; display:inline-block; margin-right:3px; }
+
+  /* Path Switch table */
+  .wp-ps-table { width:100%; border-collapse:collapse; font-size:11px; }
+  .wp-ps-table th { font-size:10px; text-transform:uppercase; letter-spacing:.03em; color:#6b7280; padding:6px 8px; border-bottom:1px solid #eef0f3; text-align:left; font-weight:600; }
+  .wp-ps-table td { padding:6px 8px; border-bottom:1px solid #f5f5f5; color:#334155; }
+  .wp-ps-table tr:hover td { background:#f8fafc; }
+  .wp-ps-reason { font-size:9px; font-weight:700; padding:2px 6px; border-radius:4px; text-transform:uppercase; }
+  .wp-ps-reason.wp-r-link_down { background:#fee2e2; color:#dc2626; }
+  .wp-ps-reason.wp-r-quality_degradation { background:#fef3c7; color:#d97706; }
+  .wp-ps-reason.wp-r-link_recovery { background:#d1fae5; color:#059669; }
+  .wp-ps-reason.wp-r-load_balance { background:#dbeafe; color:#2563eb; }
+  .wp-ps-reason.wp-r-manual { background:#e0e7ff; color:#4338ca; }
+  .wp-ps-reason.wp-r-unknown { background:#f1f5f9; color:#64748b; }
+  .wp-ps-arrow { color:#94a3b8; font-weight:700; }
+  .wp-ps-empty { text-align:center; padding:16px; color:#94a3b8; font-size:12px; }
+
+  /* SLA card */
+  .wp-sla-cards { display:flex; gap:10px; flex-wrap:wrap; }
+  .wp-sla-card { background:#f8fafc; border:1px solid #e5e7eb; border-radius:8px; padding:10px 14px; flex:1; min-width:180px; }
+  .wp-sla-card-title { font-size:10px; font-weight:700; color:#6b7280; text-transform:uppercase; margin-bottom:6px; }
+  .wp-sla-card-val { font-size:12px; font-weight:600; color:#1e293b; }
+  .wp-sla-threshold { display:inline-flex; align-items:center; gap:4px; font-size:10px; color:#475569; margin-right:10px; }
+  .wp-sla-threshold b { color:#0f172a; }
+
+  /* Live health */
+  .wp-lh-row { display:flex; gap:8px; flex-wrap:wrap; }
+  .wp-lh-card { background:#f8fafc; border:1px solid #e5e7eb; border-radius:8px; padding:8px 12px; min-width:120px; flex:1; }
+  .wp-lh-name { font-size:11px; font-weight:700; color:#334155; margin-bottom:4px; display:flex; align-items:center; gap:4px; }
+  .wp-lh-dot { width:6px; height:6px; border-radius:50%; display:inline-block; }
+  .wp-lh-dot.wp-lh-ok { background:#22c55e; }
+  .wp-lh-dot.wp-lh-bad { background:#ef4444; }
+  .wp-lh-metrics { font-size:10px; color:#64748b; display:flex; flex-direction:column; gap:2px; }
+  .wp-lh-val { font-weight:700; color:#334155; }
+
+  /* Live underlay traffic chart */
+  .wp-ul-chart-wrap { margin-top:12px; }
+  .wp-ul-chart-hd { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+  .wp-ul-chart-title { font-size:11px; font-weight:700; color:#334155; text-transform:uppercase; letter-spacing:.03em; }
+  .wp-ul-chart-legend { display:flex; gap:10px; flex-wrap:wrap; font-size:10px; color:#64748b; }
+  .wp-ul-chart-legend .wp-ul-lg { display:inline-flex; align-items:center; gap:4px; }
+  .wp-ul-chart-legend .wp-ul-sw { width:10px; height:3px; border-radius:2px; display:inline-block; }
+  .wp-ul-chart-svg { width:100%; height:180px; display:block; background:#fafbfc; border:1px solid #eef0f3; border-radius:8px; cursor:crosshair; }
+  .wp-ul-hover-line { stroke:#94a3b8; stroke-width:1; stroke-dasharray:3,3; display:none; }
+  .wp-ul-hover-dot { fill:#fff; stroke-width:1.8; display:none; }
+  .wp-ul-chart-empty { padding:24px 12px; text-align:center; color:#94a3b8; font-size:11px; background:#fafbfc; border:1px dashed #e5e7eb; border-radius:8px; }
+  .wp-ul-axis { stroke:#e5e7eb; stroke-width:1; }
+  .wp-ul-grid { stroke:#f1f5f9; stroke-width:1; stroke-dasharray:2,3; }
+  .wp-ul-tick { font-size:9px; fill:#94a3b8; font-family:Inter,system-ui,sans-serif; }
+  .wp-ul-line { fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+
+  /* WAN Usage bars */
+  .wp-usage-row { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
+  .wp-usage-label { width:48px; font-size:11px; font-weight:700; color:#334155; text-align:right; flex-shrink:0; }
+  .wp-usage-bar { flex:1; height:20px; background:#f1f5f9; border-radius:6px; overflow:hidden; position:relative; }
+  .wp-usage-fill { height:100%; border-radius:6px; display:flex; align-items:center; justify-content:flex-end; padding-right:6px; font-size:9px; font-weight:700; color:#fff; transition:width .5s ease; min-width:0; }
+  .wp-usage-info { width:90px; font-size:10px; color:#6b7280; flex-shrink:0; text-align:right; }
+
+  /* WAN Performance Matrix */
+  .wp-wpm-head-row { display:grid; grid-template-columns:70px repeat(4,1fr); gap:10px; padding:0 6px 8px 6px; border-bottom:1px solid #eef0f3; }
+  .wp-wpm-head-row .wp-wpm-h { font-size:11px; font-weight:700; color:#334155; text-transform:uppercase; letter-spacing:.03em; text-align:center; }
+  .wp-wpm-head-row .wp-wpm-h-iface { text-align:left; padding-left:4px; }
+  .wp-wpm-row { display:grid; grid-template-columns:70px repeat(4,1fr); gap:10px; padding:10px 6px; align-items:stretch; border-bottom:1px dashed #f1f5f9; }
+  .wp-wpm-row:last-child { border-bottom:none; }
+  .wp-wpm-row-label { display:flex; flex-direction:column; justify-content:center; font-size:12px; font-weight:700; color:#1e293b; padding-left:4px; }
+  .wp-wpm-row-label .wp-wpm-row-sub { font-size:9px; font-weight:600; color:#94a3b8; text-transform:uppercase; margin-top:2px; letter-spacing:.03em; }
+  .wp-wpm-cell { background:#fafbfc; border:1px solid #eef0f3; border-radius:6px; padding:4px 6px 2px 6px; display:flex; flex-direction:column; min-height:72px; position:relative; }
+  .wp-wpm-cell:hover { border-color:#cbd5e1; }
+  .wp-wpm-cell-svg { cursor:crosshair; }
+  .wp-wpm-tip { position:absolute; pointer-events:none; background:rgba(15,23,42,.95); color:#f8fafc; font-size:10px; font-weight:600; padding:5px 8px; border-radius:5px; white-space:nowrap; z-index:10; box-shadow:0 4px 10px rgba(0,0,0,.15); transform:translate(-50%,-100%); display:none; }
+  .wp-wpm-tip::after { content:''; position:absolute; left:50%; top:100%; transform:translateX(-50%); border:4px solid transparent; border-top-color:rgba(15,23,42,.95); }
+  .wp-wpm-tip-t { color:#94a3b8; font-weight:500; font-size:9px; display:block; margin-bottom:1px; }
+  .wp-wpm-tip-row { display:flex; gap:6px; align-items:center; }
+  .wp-wpm-tip-row .wp-wpm-tip-sw { width:8px; height:8px; border-radius:2px; display:inline-block; }
+  .wp-wpm-hover-line { stroke:#94a3b8; stroke-width:1; stroke-dasharray:2,2; display:none; }
+  .wp-wpm-hover-dot { fill:#fff; stroke-width:1.5; display:none; }
+  .wp-wpm-cell-top { display:flex; justify-content:space-between; align-items:center; font-size:9px; font-weight:700; color:#64748b; }
+  .wp-wpm-cell-top .wp-wpm-val { color:#1e293b; }
+  .wp-wpm-cell-top .wp-wpm-val-warn { color:#d97706; }
+  .wp-wpm-cell-top .wp-wpm-val-bad { color:#dc2626; }
+  .wp-wpm-cell-svg { width:100%; height:42px; flex:1; margin-top:2px; display:block; }
+  .wp-wpm-cell-empty { display:flex; align-items:center; justify-content:center; font-size:9px; color:#cbd5e1; font-style:italic; height:42px; }
+  .wp-wpm-empty { padding:20px; text-align:center; color:#94a3b8; font-size:11px; }
+  .wp-wpm-line { fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+  .wp-wpm-area { stroke:none; opacity:.18; }
+  @media (max-width:900px){
+    .wp-wpm-head-row, .wp-wpm-row { grid-template-columns:56px repeat(4,1fr); gap:6px; }
+    .wp-wpm-cell { min-height:64px; }
+    .wp-wpm-cell-svg { height:36px; }
+  }
+</style>
+
+<div id="wp-underlay-panel">
+
+  {# ============= Master time-range filter (controls all cards below) ============= #}
+  <div class="wp-master-filter">
+    <div class="wp-master-filter-label">Time range</div>
+    <div class="wp-time-pills wp-ul-pills-group" id="wp-ul-time-pills">
+      <button type="button" class="wp-time-pill wp-tp-on" data-hours="24">1d</button>
+      <button type="button" class="wp-time-pill" data-hours="72">3d</button>
+      <button type="button" class="wp-time-pill" data-hours="168">7d</button>
+      <button type="button" class="wp-time-pill" data-hours="720">30d</button>
+      <button type="button" class="wp-time-pill" data-hours="2160">90d</button>
+    </div>
+  </div>
+
+  {# ============= WAN Performance Matrix ============= #}
+  <div class="wp-card" id="wp-wpm-card">
+    <div class="wp-card-hd">
+      <div class="wp-card-title">WAN Performance</div>
+    </div>
+    <div class="wp-card-bd">
+      <div class="wp-wpm-head-row">
+        <div class="wp-wpm-h wp-wpm-h-iface">Interface</div>
+        <div class="wp-wpm-h">Bandwidth</div>
+        <div class="wp-wpm-h">Latency</div>
+        <div class="wp-wpm-h">Jitter</div>
+        <div class="wp-wpm-h">Packet Loss</div>
+      </div>
+      <div id="wp-wpm-body">
+        <div class="wp-wpm-empty">Loading WAN performance data…</div>
+      </div>
+    </div>
+  </div>
+
+  {# ns-bonding / SD-WAN only: every card below this point is skipped entirely #}
+  {# (not hidden via CSS or JS) when the device has no NsBondDevice row. The #}
+  {# parent template passes `is_sdwan` via {% include ... with is_sdwan=... %}. #}
+  {% if is_sdwan %}
+  <div class="wp-card">
+    <div class="wp-card-hd">
+      <div class="wp-card-title">Underlay Performance</div>
+    </div>
+    <div class="wp-card-bd">
+      <div class="wp-lh-row" id="wp-lh-row">
+        <div style="color:#94a3b8;font-size:11px;">Loading...</div>
+      </div>
+      <div class="wp-ul-chart-wrap">
+        <div class="wp-ul-chart-hd">
+          <div class="wp-ul-chart-title">Live WAN Throughput</div>
+          <div class="wp-ul-chart-legend" id="wp-ul-chart-legend"></div>
+        </div>
+        <div id="wp-ul-chart-host">
+          <div class="wp-ul-chart-empty">Loading live traffic…</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# Row: Traffic Load + Uptime side by side #}
+  <div class="wp-card-row">
+    <div class="wp-card">
+      <div class="wp-card-hd">
+        <div class="wp-card-title">WAN Traffic Load</div>
+      </div>
+      <div class="wp-card-bd">
+        <div id="wp-wan-usage">
+          <div style="color:#94a3b8;font-size:11px;">Loading...</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="wp-card">
+      <div class="wp-card-hd">
+        <div class="wp-card-title" id="wp-uptime-label">WAN Uptime</div>
+      </div>
+      <div class="wp-card-bd">
+        <div id="wp-timeline-notice" style="display:none;margin-bottom:8px;padding:6px 10px;background:#fef3c7;border:1px solid #fde68a;border-radius:6px;color:#92400e;font-size:11px;"></div>
+        <div id="wp-timeline-graph">
+          <div class="wp-tl-graph-empty">Loading...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# Applied SLA #}
+  <div class="wp-card">
+    <div class="wp-card-hd">
+      <div class="wp-card-title">Applied SLA</div>
+    </div>
+    <div class="wp-card-bd">
+      <div id="wp-sla">
+        <div style="color:#94a3b8;font-size:11px;">Loading...</div>
+      </div>
+    </div>
+  </div>
+
+  {# Path Switch History #}
+  <div class="wp-card">
+    <div class="wp-card-hd">
+      <div class="wp-card-title">Path Switch History</div>
+    </div>
+    <div class="wp-card-bd">
+      <div id="wp-path-switches">
+        <div style="color:#94a3b8;font-size:11px;">Loading...</div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+</div> {# /wp-underlay-panel #}
+
 <script>
   // Build a richer snapshot so we can detect LAN/WAN
   var IFACES = [
@@ -594,6 +1002,7 @@
         "type": "{{ iface.type }}",
         "up": {% if iface.up %}true{% else %}false{% endif %},
         "is_wan": {% if iface.is_wan %}true{% else %}false{% endif %},
+        "wan_status": "{{ iface.wan_status|default_if_none:'' }}",
         "role": "{{ iface.role|default_if_none:'' }}",
         {% if iface.bridge_members %}
           "bridge_members": [
@@ -658,19 +1067,28 @@
     var isUp = !!(m && m.up);
     var role = roleOf(name);   // "LAN" / "WAN" / "-"
 
+    var wanStatus = m ? (m.wan_status || '').toLowerCase() : '';
+
     if (tile) {
       tile.classList.remove(
         'wp-connected', 'wp-disconnected',
         'wp-lan-up', 'wp-lan-down',
-        'wp-wan-up', 'wp-wan-down'
+        'wp-wan-up', 'wp-wan-down', 'wp-wan-connected'
       );
 
       if (role === 'LAN') {
         tile.classList.add(isUp ? 'wp-lan-up' : 'wp-lan-down');
       } else if (role === 'WAN') {
-        tile.classList.add(isUp ? 'wp-wan-up' : 'wp-wan-down');
+        if (wanStatus === 'online') {
+          tile.classList.add('wp-wan-up');
+        } else if (wanStatus === 'connected') {
+          tile.classList.add('wp-wan-connected');
+        } else if (wanStatus === 'offline' || !isUp) {
+          tile.classList.add('wp-wan-down');
+        } else {
+          tile.classList.add(isUp ? 'wp-wan-up' : 'wp-wan-down');
+        }
       } else {
-        // fallback: old behavior if role is unknown
         tile.classList.add(isUp ? 'wp-connected' : 'wp-disconnected');
       }
     }
@@ -711,7 +1129,6 @@
 
   // Status dots for Ethernet LAN/WAN only (SIM/Wi-Fi untouched)
   IFACES.forEach(function(i){
-    // Only handle plain ethernet ifaces (no subinterfaces or special names)
     if (i.type !== 'ethernet') return;
     if (i.name.indexOf('.') !== -1 || i.name.indexOf('-') !== -1) return;
 
@@ -719,20 +1136,28 @@
     if (!dot) return;
 
     var isUp = !!i.up;
-    var role = roleOf(i.name);   // "LAN", "WAN" or "-"
+    var wanStatus = (i.wan_status || '').toLowerCase();
+    var role = roleOf(i.name);
 
-    // Remove any previous special classes
     dot.classList.remove(
       'wp-dot-lan-up', 'wp-dot-lan-down',
-      'wp-dot-wan-up', 'wp-dot-wan-down'
+      'wp-dot-wan-up', 'wp-dot-wan-down', 'wp-dot-wan-connected',
+      'wp-dot-green', 'wp-dot-gray'
     );
 
     if (role === 'LAN') {
-      dot.classList.remove('wp-dot-green', 'wp-dot-gray');
       dot.classList.add(isUp ? 'wp-dot-lan-up' : 'wp-dot-lan-down');
     } else if (role === 'WAN') {
-      dot.classList.remove('wp-dot-green', 'wp-dot-gray');
-      dot.classList.add(isUp ? 'wp-dot-wan-up' : 'wp-dot-wan-down');
+      if (wanStatus === 'online') {
+        dot.classList.add('wp-dot-wan-up');
+      } else if (wanStatus === 'connected') {
+        dot.classList.add('wp-dot-wan-connected');
+      } else if (wanStatus === 'offline') {
+        dot.classList.add('wp-dot-wan-down');
+      } else {
+        // wan_status missing/unknown — mirror server template: fall back to link state
+        dot.classList.add(isUp ? 'wp-dot-wan-up' : 'wp-dot-wan-down');
+      }
     }
     // else role "-" -> keep original green/gray from template
   });
@@ -942,4 +1367,1665 @@
   });
 </script>
 
+{# ================= WAN Distribution Logic ================= #}
+<script>
+(function () {
+  // Soft, muted palette — easy on the eyes
+  var WAN_COLORS = ['#60a5fa','#6ee7b7','#fbbf24','#a78bfa','#f87171','#67e8f9','#f9a8d4','#5eead4'];
 
+  // Identify WAN interfaces from the IFACES array (built by Django template above)
+  var wanIfaces = [];
+  if (typeof IFACES !== 'undefined') {
+    wanIfaces = IFACES.filter(function (i) {
+      if (i.type !== 'ethernet' && i.type !== 'mobile') return false;
+      if (i.name.indexOf('.') !== -1 || i.name.indexOf('-') !== -1) return false;
+      return i.is_wan || (i.role && i.role.toLowerCase() === 'wan') || i.type === 'mobile';
+    });
+  }
+
+  // Get device UUID
+  var path = new URL(window.location.href, window.location.origin).pathname;
+  var uuidMatch = path.match(/[0-9a-fA-F-]{36}/);
+  var deviceUuid = uuidMatch ? uuidMatch[0] : null;
+
+  if (!deviceUuid) {
+    renderDistEmpty('Device UUID not found');
+    return;
+  }
+
+  var apiBase = window.location.origin +
+    '/api/v1/monitoring/device/' + deviceUuid + '/wan-uplink-summary/';
+  var selectedRange = '';
+
+  // Time range pill click
+  var pills = document.getElementById('wp-time-pills');
+  if (pills) {
+    pills.addEventListener('click', function (e) {
+      var btn = e.target.closest('.wp-time-pill');
+      if (!btn) return;
+      selectedRange = btn.getAttribute('data-range') || '';
+      pills.querySelectorAll('.wp-time-pill').forEach(function (b) { b.classList.remove('wp-tp-on'); });
+      btn.classList.add('wp-tp-on');
+      fetchAndRender();
+    });
+  }
+
+  // Fetch and render
+  function fetchAndRender() {
+    var apiUrl = apiBase + (selectedRange ? '?range=' + selectedRange : '');
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', apiUrl);
+    xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+    xhr.withCredentials = true;
+    xhr.onload = function () {
+      if (xhr.status !== 200) {
+        renderDistEmpty('Failed to load traffic data');
+        return;
+      }
+      try {
+        var json = JSON.parse(xhr.responseText);
+        var wanUplink = json.wan_uplink || {};
+        // WAN Distribution removed — skip if not SD-WAN
+        if (!wanUplink.is_sdwan) return;
+      } catch (e) {
+        renderDistEmpty('Error parsing traffic data');
+      }
+    };
+    xhr.onerror = function () { renderDistEmpty('Network error'); };
+    xhr.send();
+  }
+
+  // Initial fetch
+  fetchAndRender();
+
+  // Auto-refresh every 60s — only when tab is visible and page is not hidden
+  var _distRefreshTimer = null;
+  function startDistRefresh() {
+    if (_distRefreshTimer) return;
+    _distRefreshTimer = setInterval(function () {
+      // Only refresh if the WAN Distribution panel is visible in the viewport
+      var panel = document.getElementById('wp-dist-panel');
+      if (!panel) return;
+      if (document.hidden) return;
+      fetchAndRender();
+    }, 60000);
+  }
+  function stopDistRefresh() {
+    if (_distRefreshTimer) { clearInterval(_distRefreshTimer); _distRefreshTimer = null; }
+  }
+  startDistRefresh();
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) stopDistRefresh(); else startDistRefresh();
+  });
+
+  function computeAndRender(wanTraffic, linkQuality, overlay, influxTraffic) {
+    var wanStats = [];
+    var grandTotal = 0;
+    var useInflux = influxTraffic && Object.keys(influxTraffic).length > 0;
+
+    var allWanNames = {};
+    wanIfaces.forEach(function (i) { allWanNames[i.name] = true; });
+    Object.keys(wanTraffic).forEach(function (k) { allWanNames[k] = true; });
+    if (useInflux) Object.keys(influxTraffic).forEach(function (k) { allWanNames[k] = true; });
+
+    Object.keys(allWanNames).forEach(function (name) {
+      var ifaceInfo = null;
+      if (typeof IFACES !== 'undefined') {
+        ifaceInfo = IFACES.find(function (i) { return i.name === name; });
+      }
+      var isUp = ifaceInfo ? !!ifaceInfo.up : false;
+      var totalVal = 0, hasNonZero = false, dlSum = 0, ulSum = 0;
+
+      if (useInflux && influxTraffic[name]) {
+        dlSum = influxTraffic[name].rx_bytes || 0;
+        ulSum = influxTraffic[name].tx_bytes || 0;
+        totalVal = dlSum + ulSum;
+        hasNonZero = totalVal > 0;
+      } else {
+        var traffic = wanTraffic[name];
+        if (traffic && traffic.result && traffic.result.data) {
+          var data = traffic.result.data;
+          Object.keys(data).forEach(function (k) {
+            var dl = parseFloat(data[k]['1']) || 0;
+            var ul = parseFloat(data[k]['2']) || 0;
+            dlSum += dl; ulSum += ul; totalVal += dl + ul;
+            if (dl > 0 || ul > 0) hasNonZero = true;
+          });
+        }
+      }
+
+      var lq = linkQuality[name] || null;
+      if (!lq) {
+        var wanIdx = Object.keys(allWanNames).sort().indexOf(name);
+        var lqKey = wanIdx === 0 ? 'wan' : ('wan' + (wanIdx + 1));
+        lq = linkQuality[lqKey] || null;
+      }
+
+      var status = 'off';
+      if (lq && lq.healthy) status = 'active';
+      else if (hasNonZero) status = 'active';
+      else if (isUp || wanTraffic[name]) status = 'idle';
+
+      wanStats.push({
+        name: name, status: status, total: totalVal, isUp: isUp,
+        dlTotal: dlSum, ulTotal: ulSum, health: lq, useBytes: useInflux
+      });
+      grandTotal += totalVal;
+    });
+
+    // Sort: active first, then by traffic volume descending
+    wanStats.sort(function (a, b) {
+      if (a.status === 'active' && b.status !== 'active') return -1;
+      if (a.status !== 'active' && b.status === 'active') return 1;
+      return b.total - a.total;
+    });
+
+    // Calculate percentage for each WAN
+    wanStats.forEach(function (w) {
+      w.pct = grandTotal > 0 ? (w.total / grandTotal) * 100 : 0;
+    });
+
+    renderDistribution(wanStats, grandTotal);
+    renderOverlay(overlay);
+  }
+
+  function formatTraffic(val, isBytes) {
+    if (isBytes) {
+      if (val >= 1073741824) return (val / 1073741824).toFixed(1) + ' GB';
+      if (val >= 1048576) return (val / 1048576).toFixed(1) + ' MB';
+      if (val >= 1024) return (val / 1024).toFixed(1) + ' KB';
+      return val + ' B';
+    }
+    if (val >= 1000000) return (val / 1000000).toFixed(1) + ' Gbps';
+    if (val >= 1000) return (val / 1000).toFixed(1) + ' Mbps';
+    return val.toFixed(1) + ' Kbps';
+  }
+
+  // SVG donut with dual overlay rings
+  function renderDonut(wanStats) {
+    var svg = document.getElementById('wp-donut');
+    var totalEl = document.getElementById('wp-donut-total');
+    var trafficEl = document.getElementById('wp-donut-traffic');
+    if (!svg) return;
+    svg.innerHTML = '';
+
+    var cx = 75, cy = 75, r = 58, sw = 16;
+    var circ = 2 * Math.PI * r;
+
+    var activeCount = wanStats.filter(function (w) { return w.status === 'active'; }).length;
+    if (totalEl) totalEl.textContent = activeCount + '/' + wanStats.length;
+
+    var grandTotal = 0;
+    wanStats.forEach(function (w) { grandTotal += w.total || 0; });
+    var _useBytes = wanStats.length > 0 && wanStats[0].useBytes;
+    if (trafficEl) trafficEl.textContent = grandTotal > 0 ? formatTraffic(grandTotal, _useBytes) : '';
+
+    // Background ring
+    var bg = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    bg.setAttribute('cx', cx); bg.setAttribute('cy', cy); bg.setAttribute('r', r);
+    bg.setAttribute('fill', 'none'); bg.setAttribute('stroke', '#f1f5f9'); bg.setAttribute('stroke-width', sw);
+    svg.appendChild(bg);
+
+    if (wanStats.length === 0) return;
+
+    var hasTraffic = wanStats.some(function (w) { return w.pct > 0; });
+    var offset = 0;
+
+    if (!hasTraffic) {
+      var equalPct = 100 / wanStats.length;
+      wanStats.forEach(function (w, idx) {
+        var seg = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        var dash = (equalPct / 100) * circ;
+        seg.setAttribute('cx', cx); seg.setAttribute('cy', cy); seg.setAttribute('r', r);
+        seg.setAttribute('fill', 'none');
+        seg.setAttribute('stroke', w.status === 'off' ? '#e2e8f0' : WAN_COLORS[idx % WAN_COLORS.length]);
+        seg.setAttribute('stroke-width', sw);
+        seg.setAttribute('stroke-dasharray', Math.max(dash - 2, 0) + ' ' + (circ - dash + 2));
+        seg.setAttribute('stroke-dashoffset', -offset);
+        seg.setAttribute('stroke-linecap', 'round');
+        seg.setAttribute('transform', 'rotate(-90 ' + cx + ' ' + cy + ')');
+        seg.style.transition = 'stroke-dasharray .6s ease';
+        svg.appendChild(seg);
+        offset += dash;
+      });
+    } else {
+      wanStats.forEach(function (w, idx) {
+        if (w.pct < 0.3) return;
+        var seg = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        var dash = (w.pct / 100) * circ;
+        seg.setAttribute('cx', cx); seg.setAttribute('cy', cy); seg.setAttribute('r', r);
+        seg.setAttribute('fill', 'none');
+        seg.setAttribute('stroke', WAN_COLORS[idx % WAN_COLORS.length]);
+        seg.setAttribute('stroke-width', sw);
+        seg.setAttribute('stroke-dasharray', Math.max(dash - 2, 0) + ' ' + (circ - dash + 2));
+        seg.setAttribute('stroke-dashoffset', -offset);
+        seg.setAttribute('stroke-linecap', 'round');
+        seg.setAttribute('transform', 'rotate(-90 ' + cx + ' ' + cy + ')');
+        seg.style.transition = 'stroke-dasharray .6s ease';
+        svg.appendChild(seg);
+        offset += dash;
+      });
+    }
+  }
+
+  function renderDistribution(wanStats, grandTotal) {
+    var activeCount = wanStats.filter(function (w) { return w.status === 'active'; }).length;
+    var totalWans = wanStats.length;
+
+    // Badge
+    var badgeEl = document.getElementById('wp-dist-badge');
+    if (badgeEl) {
+      badgeEl.textContent = activeCount + ' of ' + totalWans + ' WAN' + (totalWans !== 1 ? 's' : '') + ' Active';
+      badgeEl.classList.remove('wp-none');
+      if (activeCount === 0) badgeEl.classList.add('wp-none');
+    }
+
+    // Donut chart
+    renderDonut(wanStats);
+
+    // Legend (below donut, right column)
+    var legendEl = document.getElementById('wp-overlay-legend');
+    if (legendEl) {
+      legendEl.innerHTML = '';
+      wanStats.forEach(function (w, idx) {
+        var item = document.createElement('div');
+        item.className = 'wp-overlay-legend-item';
+        var pctText = grandTotal > 0 ? w.pct.toFixed(1) + '%' : '—';
+        item.innerHTML =
+          '<span class="wp-overlay-legend-color" style="background:' + WAN_COLORS[idx % WAN_COLORS.length] + '"></span>' +
+          '<span>' + w.name.toUpperCase() + '</span>' +
+          '<span class="wp-overlay-legend-pct">' + pctText + '</span>';
+        legendEl.appendChild(item);
+      });
+    }
+
+    // WAN detail cards
+    var cardsEl = document.getElementById('wp-wan-cards');
+    if (!cardsEl) return;
+    cardsEl.innerHTML = '';
+
+    if (wanStats.length === 0) {
+      cardsEl.innerHTML =
+        '<div class="wp-dist-empty">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9.172 14.828L12 12m0 0l2.828-2.828M12 12l2.828 2.828M12 12L9.172 9.172"/><circle cx="12" cy="12" r="10"/></svg>' +
+          '<div class="wp-dist-empty-text">No WAN interfaces detected.</div>' +
+        '</div>';
+      return;
+    }
+
+    wanStats.forEach(function (w, idx) {
+      var card = document.createElement('div');
+      var cardClass = w.status === 'active' ? 'wp-wan-active' : (w.status === 'idle' ? 'wp-wan-idle' : 'wp-wan-off');
+      card.className = 'wp-wan-card ' + cardClass;
+      // Set color for the left border via CSS custom property
+      card.style.setProperty('--wan-color', WAN_COLORS[idx % WAN_COLORS.length]);
+      card.querySelector; // force layout
+
+      var dotClass = w.status === 'active' ? 'wp-s-active' : (w.status === 'idle' ? 'wp-s-idle' : 'wp-s-off');
+      var statusLabel = w.status === 'active' ? 'Active' : (w.status === 'idle' ? 'Idle' : 'Disabled');
+      var chipClass = w.status === 'active' ? 'wp-sc-active' : (w.status === 'idle' ? 'wp-sc-idle' : 'wp-sc-off');
+      var color = WAN_COLORS[idx % WAN_COLORS.length];
+
+      // Calculate DL and UL totals for this WAN
+      var dlTotal = 0, ulTotal = 0;
+      if (w.dlTotal !== undefined) { dlTotal = w.dlTotal; ulTotal = w.ulTotal; }
+
+      card.innerHTML =
+        '<div class="wp-wan-card-top">' +
+          '<div class="wp-wan-card-name">' +
+            '<span class="wp-wan-status-dot ' + dotClass + '"></span>' +
+            w.name.toUpperCase() +
+          '</div>' +
+          '<span class="wp-wan-status-chip ' + chipClass + '">' + statusLabel + '</span>' +
+        '</div>' +
+        '<div class="wp-wan-pct-row">' +
+          '<div class="wp-wan-pct">' + w.pct.toFixed(1) + '</div>' +
+          '<div class="wp-wan-pct-sign">%</div>' +
+        '</div>' +
+        '<div class="wp-wan-vol">Total: ' + formatTraffic(w.total, w.useBytes) + '</div>' +
+        '<div class="wp-wan-mini-bar">' +
+          '<div class="wp-wan-mini-fill" style="width:' + Math.min(w.pct, 100) + '%;background:' + color + ';"></div>' +
+        '</div>' +
+        (w.dlTotal !== undefined ?
+          '<div class="wp-wan-split">' +
+            '<div class="wp-wan-split-item"><span class="wp-wan-split-arrow wp-wan-split-dl"></span>' + formatTraffic(w.dlTotal, w.useBytes) + ' DL</div>' +
+            '<div class="wp-wan-split-item"><span class="wp-wan-split-arrow wp-wan-split-ul"></span>' + formatTraffic(w.ulTotal, w.useBytes) + ' UL</div>' +
+          '</div>'
+        : '') +
+        // Health metrics from wan_link_quality
+        (w.health ?
+          '<div class="wp-wan-health">' +
+            '<div class="wp-wan-health-item">RTT <span class="wp-wan-health-val ' + rttClass(w.health.rtt_ms) + '">' + fmtMs(w.health.rtt_ms) + '</span></div>' +
+            '<div class="wp-wan-health-item">Loss <span class="wp-wan-health-val ' + lossClass(w.health.loss_pct) + '">' + fmtPct(w.health.loss_pct) + '</span></div>' +
+            '<div class="wp-wan-health-item">Jitter <span class="wp-wan-health-val ' + jitterClass(w.health.jitter_ms) + '">' + fmtMs(w.health.jitter_ms) + '</span></div>' +
+            '<div class="wp-wan-health-item">Score <span class="wp-wan-health-val ' + scoreClass(w.health.score) + '">' + fmtScore(w.health.score) + '</span></div>' +
+          '</div>'
+        : '');
+
+      cardsEl.appendChild(card);
+    });
+  }
+
+  // Health metric formatters
+  function fmtMs(v) { return v != null ? (v < 1 ? '<1ms' : Math.round(v) + 'ms') : '—'; }
+  function fmtPct(v) { return v != null ? (v === 0 ? '0%' : v.toFixed(1) + '%') : '—'; }
+  function fmtScore(v) {
+    if (v == null) return '—';
+    if (v >= 9999) return 'Down';
+    return Math.round(v).toString();
+  }
+  function rttClass(v) { if (v == null) return ''; return v <= 50 ? 'wp-h-good' : (v <= 150 ? 'wp-h-warn' : 'wp-h-bad'); }
+  function lossClass(v) { if (v == null) return ''; return v === 0 ? 'wp-h-good' : (v <= 2 ? 'wp-h-warn' : 'wp-h-bad'); }
+  function jitterClass(v) { if (v == null) return ''; return v <= 10 ? 'wp-h-good' : (v <= 50 ? 'wp-h-warn' : 'wp-h-bad'); }
+  function scoreClass(v) { if (v == null) return ''; if (v >= 9999) return 'wp-h-bad'; return v <= 100 ? 'wp-h-good' : (v <= 500 ? 'wp-h-warn' : 'wp-h-bad'); }
+
+  function fmtUptime(secs) {
+    if (!secs || secs <= 0) return '0s';
+    var d = Math.floor(secs / 86400);
+    var h = Math.floor((secs % 86400) / 3600);
+    var m = Math.floor((secs % 3600) / 60);
+    if (d > 0) return d + 'd ' + h + 'h';
+    if (h > 0) return h + 'h ' + m + 'm';
+    return m + 'm';
+  }
+
+  // P3: Overlay tunnel status
+  function renderOverlay(overlay) {
+    var el = document.getElementById('wp-overlay-status');
+    if (!el) return;
+    if (!overlay || !overlay.connected) {
+      // No overlay data or not connected
+      if (overlay && overlay.connected === false) {
+        el.style.display = 'flex';
+        el.className = 'wp-overlay-status wp-ovl-off';
+        el.innerHTML =
+          '<span class="wp-overlay-status-dot wp-ovl-off-dot"></span>' +
+          '<span style="font-weight:600;">Overlay Tunnel</span>' +
+          '<span style="color:#ef4444;font-weight:600;">Disconnected</span>';
+      }
+      return;
+    }
+    el.style.display = 'flex';
+    el.className = 'wp-overlay-status';
+    el.innerHTML =
+      '<span class="wp-overlay-status-dot wp-ovl-on"></span>' +
+      '<span style="font-weight:600;">Overlay Tunnel</span>' +
+      '<div class="wp-overlay-status-item"><span class="wp-overlay-status-label">Tunnels:</span><span class="wp-overlay-status-val">' + (overlay.active_tunnels || 0) + '</span></div>' +
+      '<div class="wp-overlay-status-item"><span class="wp-overlay-status-label">Uptime:</span><span class="wp-overlay-status-val">' + fmtUptime(overlay.uptime_secs) + '</span></div>' +
+      '<div class="wp-overlay-status-item"><span class="wp-overlay-status-label">TX:</span><span class="wp-overlay-status-val">' + (overlay.tx_packets || 0) + ' pkts</span></div>' +
+      '<div class="wp-overlay-status-item"><span class="wp-overlay-status-label">RX:</span><span class="wp-overlay-status-val">' + (overlay.rx_packets || 0) + ' pkts</span></div>' +
+      (overlay.fec_recovered ? '<div class="wp-overlay-status-item"><span class="wp-overlay-status-label">FEC:</span><span class="wp-overlay-status-val">' + overlay.fec_recovered + ' recovered</span></div>' : '');
+  }
+
+  function renderDistEmpty(msg) {
+    var cardsEl = document.getElementById('wp-wan-cards');
+    if (cardsEl) {
+      cardsEl.innerHTML =
+        '<div class="wp-dist-empty">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>' +
+          '<div class="wp-dist-empty-text">' + msg + '</div>' +
+        '</div>';
+    }
+    renderDonut([]);
+  }
+
+  // ===== Underlay Performance =====
+  var ulApiBase = window.location.origin +
+    '/api/v1/monitoring/device/' + deviceUuid + '/underlay-performance/';
+  var ulSelectedHours = 24;
+
+  // Time filter click handler — syncs all pill groups (Underlay / Traffic Load / Uptime)
+  function syncAllUlPills(hours) {
+    var groups = document.querySelectorAll('.wp-ul-pills-group');
+    groups.forEach(function (group) {
+      group.querySelectorAll('.wp-time-pill').forEach(function (b) {
+        var h = parseInt(b.getAttribute('data-hours'), 10);
+        if (h === hours) b.classList.add('wp-tp-on');
+        else b.classList.remove('wp-tp-on');
+      });
+    });
+  }
+  document.querySelectorAll('.wp-ul-pills-group').forEach(function (group) {
+    group.addEventListener('click', function (e) {
+      var btn = e.target.closest('.wp-time-pill');
+      if (!btn) return;
+      ulSelectedHours = parseInt(btn.getAttribute('data-hours'), 10) || 24;
+      syncAllUlPills(ulSelectedHours);
+      fetchUnderlay();
+    });
+  });
+
+  function hoursToLabel(h) {
+    return h <= 24 ? 'last 1d'
+         : h <= 72 ? 'last 3d'
+         : h <= 168 ? 'last 7d'
+         : h <= 720 ? 'last 30d'
+         : 'last 90d';
+  }
+
+  function fetchUnderlayOnce(hours, cb) {
+    var xhr = new XMLHttpRequest();
+    // Cache-buster in the URL so the browser never serves a stale response
+    // for the same time-range pill (the endpoint is not safe to cache).
+    var url = ulApiBase + '?hours=' + hours + '&_=' + Date.now();
+    xhr.open('GET', url);
+    xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+    xhr.setRequestHeader('Cache-Control', 'no-cache');
+    xhr.setRequestHeader('Pragma', 'no-cache');
+    xhr.withCredentials = true;
+    xhr.onload = function () {
+      if (xhr.status !== 200) { cb(null); return; }
+      try { cb(JSON.parse(xhr.responseText)); }
+      catch (e) { cb(null); }
+    };
+    xhr.onerror = function () { cb(null); };
+    xhr.send();
+  }
+
+  function hasTimelineData(d) {
+    var tl = d && d.wan_timeline;
+    if (!tl || typeof tl !== 'object') return false;
+    var keys = Object.keys(tl);
+    for (var i = 0; i < keys.length; i++) {
+      if (Array.isArray(tl[keys[i]]) && tl[keys[i]].length > 0) return true;
+    }
+    return false;
+  }
+
+  function applyUnderlay(d, effectiveHours, selectedHours, timelineOnlyWiden) {
+    var panel = document.getElementById('wp-underlay-panel');
+    if (!d) {
+      if (panel) panel.style.display = 'none';
+      return;
+    }
+    // The panel itself is always visible — WAN Performance + master filter
+    // work on any device with `traffic` samples, even non-SD-WAN ones.
+    if (panel) panel.style.display = '';
+
+    // SD-WAN-only cards (Underlay Performance, WAN Traffic Load, WAN Uptime,
+    // Applied SLA, Path Switch History) are rendered server-side via a Django
+    // is_sdwan condition in this template. No runtime show/hide here — if the
+    // current device is not SD-WAN, those DOM elements simply do not exist.
+    // Downstream renderers below are still called but will no-op when their
+    // target element is missing.
+
+    // The WAN Uptime card title reflects the effective timeline window (may be
+    // widened), but every other section is labeled with the user-selected window.
+    var uptimeLabel = document.getElementById('wp-uptime-label');
+    if (uptimeLabel) uptimeLabel.textContent = 'WAN Uptime (' + hoursToLabel(effectiveHours) + ')';
+
+    // Fallback notice appears ONLY in the uptime card body and ONLY when we
+    // actually had to widen for timeline data. It must never imply that the
+    // rest of the page is showing widened data, because it isn't.
+    var noticeEl = document.getElementById('wp-timeline-notice');
+    if (noticeEl) {
+      if (timelineOnlyWiden && effectiveHours !== selectedHours) {
+        noticeEl.style.display = 'block';
+        noticeEl.textContent =
+          'No uptime samples in the ' + hoursToLabel(selectedHours) + ' window — showing most recent available timeline (' + hoursToLabel(effectiveHours) + '). Other charts still use the selected ' + hoursToLabel(selectedHours) + ' window.';
+      } else {
+        noticeEl.style.display = 'none';
+        noticeEl.textContent = '';
+      }
+    }
+
+    // WAN Performance runs on every device — bandwidth always works, latency /
+    // jitter / loss will be "no data" on non-SD-WAN devices.
+    renderWanPerformance(d.wan_performance || {});
+
+    // SD-WAN-only renderers. Safe to call with empty data on non-SD-WAN
+    // devices because the cards are hidden above, but we avoid the work.
+    if (d.is_sdwan) {
+      renderLiveHealth(d.live_health || {});
+      renderWanUsage(d.wan_usage || {});
+      populateUplinkPathLabels(d.wan_members || [], d.available_path_labels || [], d.topology_id);
+      renderTimelineGraph(d.wan_timeline || {}, d.link_uptime || {});
+      renderSla(d.sla);
+      renderPathSwitches(d.path_switches || []);
+    }
+  }
+
+  function fetchUnderlay() {
+    if (!deviceUuid) return;
+    var selected = ulSelectedHours;
+    fetchUnderlayOnce(selected, function (d) {
+      if (!d) return;
+      // Non-SD-WAN devices have no wan_timeline to widen; render directly.
+      // SD-WAN devices with non-empty timeline data also render directly.
+      if (!d.is_sdwan || hasTimelineData(d)) {
+        applyUnderlay(d, selected, selected);
+        return;
+      }
+      // The uptime timeline is empty for the selected window — widen to 90d to
+      // fetch historical wan_timeline / link_uptime ONLY, so the uptime card
+      // doesn't look broken. All other sections (WAN Performance, Traffic Load,
+      // Live Throughput, etc.) MUST stay bound to the user-selected window so
+      // clicking "1d" never silently renders 90d data elsewhere.
+      fetchUnderlayOnce(2160, function (d2) {
+        if (d2 && hasTimelineData(d2)) {
+          var merged = Object.assign({}, d, {
+            wan_timeline: d2.wan_timeline,
+            link_uptime: d2.link_uptime,
+          });
+          applyUnderlay(merged, 2160, selected, /*timelineOnlyWiden=*/true);
+        } else {
+          applyUnderlay(d, selected, selected);
+        }
+      });
+    });
+  }
+
+  // Live underlay throughput chart (SVG, no external deps)
+  var UL_CHART_COLORS = ['#60a5fa','#6ee7b7','#fbbf24','#a78bfa','#f87171','#67e8f9','#f9a8d4','#5eead4'];
+
+  function renderUnderlayChartEmpty(msg) {
+    var host = document.getElementById('wp-ul-chart-host');
+    var legend = document.getElementById('wp-ul-chart-legend');
+    if (!host) return;
+    host.innerHTML = '<div class="wp-ul-chart-empty">' + (msg || 'No live traffic data') + '</div>';
+    if (legend) legend.innerHTML = '';
+  }
+
+  function normalizeUlSeries(result) {
+    var labelsMap = (result && result.labels) || {};
+    var data = (result && result.data) || {};
+    var keys = Object.keys(labelsMap).sort(function (a, b) {
+      return Number(labelsMap[a]) - Number(labelsMap[b]);
+    });
+    var times = [], totals = [];
+    keys.forEach(function (k) {
+      var ts = Number(labelsMap[k]) * 1000;
+      var dl = Number((data[k] && data[k]['1']) || 0);
+      var ul = Number((data[k] && data[k]['2']) || 0);
+      times.push(ts);
+      totals.push(dl + ul);
+    });
+    return { times: times, values: totals };
+  }
+
+  function pickUlUnit(maxVal) {
+    // Heuristic matching other charts on this page
+    if (maxVal > 1000000) return { scale: 8 / 1000000, unit: 'Mbps' }; // bytes/s -> Mbps
+    if (maxVal > 1000)    return { scale: 1 / 1000,    unit: 'Mbps' }; // kbps -> Mbps
+    return { scale: 1, unit: 'Mbps' };
+  }
+
+  function renderUnderlayChart(wanTraffic) {
+    var host = document.getElementById('wp-ul-chart-host');
+    var legend = document.getElementById('wp-ul-chart-legend');
+    if (!host) return;
+
+    var names = Object.keys(wanTraffic || {}).sort();
+    if (!names.length) { renderUnderlayChartEmpty('No live traffic data'); return; }
+
+    var series = [];
+    var maxRaw = 0;
+    var maxLen = 0;
+    var anyNonZero = false;
+
+    names.forEach(function (name) {
+      var result = wanTraffic[name] && wanTraffic[name].result;
+      if (!result) return;
+      var s = normalizeUlSeries(result);
+      if (s.times.length === 0) return;
+      for (var i = 0; i < s.values.length; i++) {
+        if (s.values[i] > maxRaw) maxRaw = s.values[i];
+        if (s.values[i] > 0) anyNonZero = true;
+      }
+      if (s.times.length > maxLen) maxLen = s.times.length;
+      series.push({ name: name, times: s.times, values: s.values });
+    });
+
+    if (!series.length || !anyNonZero) {
+      renderUnderlayChartEmpty('No live traffic data');
+      return;
+    }
+
+    var conv = pickUlUnit(maxRaw);
+    var scaledMax = 0;
+    series.forEach(function (s) {
+      s.scaled = s.values.map(function (v) { return +(v * conv.scale).toFixed(3); });
+      for (var i = 0; i < s.scaled.length; i++) {
+        if (s.scaled[i] > scaledMax) scaledMax = s.scaled[i];
+      }
+    });
+    if (scaledMax <= 0) scaledMax = 1;
+    // Round max up to a nicer value
+    var niceMax = scaledMax;
+    var pow = Math.pow(10, Math.floor(Math.log10(scaledMax)));
+    niceMax = Math.ceil(scaledMax / pow) * pow;
+
+    // SVG dimensions (viewBox-based, scales to container width)
+    var W = 800, H = 180;
+    var padL = 42, padR = 12, padT = 10, padB = 24;
+    var plotW = W - padL - padR;
+    var plotH = H - padT - padB;
+
+    function xAt(i, n) {
+      if (n <= 1) return padL + plotW / 2;
+      return padL + (i / (n - 1)) * plotW;
+    }
+    function yAt(v) {
+      return padT + plotH - (v / niceMax) * plotH;
+    }
+
+    var svg = '';
+    svg += '<svg class="wp-ul-chart-svg" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">';
+
+    // Gridlines + y-ticks (4 divisions)
+    for (var g = 0; g <= 4; g++) {
+      var gv = niceMax * (1 - g / 4);
+      var gy = padT + (g / 4) * plotH;
+      svg += '<line class="wp-ul-grid" x1="' + padL + '" y1="' + gy + '" x2="' + (padL + plotW) + '" y2="' + gy + '"/>';
+      svg += '<text class="wp-ul-tick" x="' + (padL - 6) + '" y="' + (gy + 3) + '" text-anchor="end">' + gv.toFixed(gv < 10 ? 1 : 0) + '</text>';
+    }
+    // Axes
+    svg += '<line class="wp-ul-axis" x1="' + padL + '" y1="' + padT + '" x2="' + padL + '" y2="' + (padT + plotH) + '"/>';
+    svg += '<line class="wp-ul-axis" x1="' + padL + '" y1="' + (padT + plotH) + '" x2="' + (padL + plotW) + '" y2="' + (padT + plotH) + '"/>';
+
+    // x-axis time ticks: first, middle, last
+    var refTimes = series[0].times;
+    if (refTimes.length) {
+      var tickIdx = [0];
+      if (refTimes.length > 2) tickIdx.push(Math.floor(refTimes.length / 2));
+      if (refTimes.length > 1) tickIdx.push(refTimes.length - 1);
+      tickIdx.forEach(function (idx) {
+        var tx = xAt(idx, refTimes.length);
+        var d = new Date(refTimes[idx]);
+        var label = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        svg += '<text class="wp-ul-tick" x="' + tx + '" y="' + (padT + plotH + 14) + '" text-anchor="middle">' + label + '</text>';
+      });
+    }
+
+    // y-axis unit label
+    svg += '<text class="wp-ul-tick" x="' + padL + '" y="' + (padT - 2) + '" text-anchor="start">' + conv.unit + '</text>';
+
+    // Series lines
+    series.forEach(function (s, idx) {
+      var color = UL_CHART_COLORS[idx % UL_CHART_COLORS.length];
+      s.color = color;
+      var n = s.scaled.length;
+      if (n === 0) return;
+      var d = '';
+      for (var i = 0; i < n; i++) {
+        var x = xAt(i, n);
+        var y = yAt(s.scaled[i]);
+        d += (i === 0 ? 'M' : 'L') + x.toFixed(1) + ' ' + y.toFixed(1) + ' ';
+      }
+      svg += '<path class="wp-ul-line" d="' + d.trim() + '" stroke="' + color + '"/>';
+    });
+
+    // Hover overlay — crosshair + one dot per series (hidden until mousemove)
+    svg += '<line class="wp-ul-hover-line" x1="0" y1="' + padT + '" x2="0" y2="' + (padT + plotH) + '"/>';
+    series.forEach(function (s) {
+      svg += '<circle class="wp-ul-hover-dot" cx="0" cy="0" r="3.5" stroke="' + s.color + '"/>';
+    });
+
+    svg += '</svg>';
+    host.innerHTML = svg;
+
+    // Stash meta for hover handler
+    UL_CHART_META = {
+      series: series,          // each has .name, .color, .times, .scaled
+      unit: conv.unit,
+      niceMax: niceMax,
+      W: W, H: H,
+      padL: padL, padR: padR, padT: padT, padB: padB,
+      plotW: plotW, plotH: plotH,
+    };
+    ulAttachHoverHandler();
+
+    // Legend
+    if (legend) {
+      var lhtml = '';
+      series.forEach(function (s, idx) {
+        var color = s.color;
+        lhtml += '<span class="wp-ul-lg"><span class="wp-ul-sw" style="background:' + color + '"></span>' + s.name.toUpperCase() + '</span>';
+      });
+      legend.innerHTML = lhtml;
+    }
+  }
+
+  var UL_CHART_META = null;
+
+  function ulAttachHoverHandler() {
+    var svg = document.querySelector('#wp-ul-chart-host svg.wp-ul-chart-svg');
+    if (!svg || !UL_CHART_META) return;
+    svg.addEventListener('mousemove', ulHandleHover);
+    svg.addEventListener('mouseleave', function () {
+      wpmEnsureTip().style.display = 'none';
+      var hl = svg.querySelector('.wp-ul-hover-line');
+      if (hl) hl.style.display = 'none';
+      svg.querySelectorAll('.wp-ul-hover-dot').forEach(function (d) { d.style.display = 'none'; });
+    });
+  }
+
+  function ulHandleHover(e) {
+    var svg = e.currentTarget;
+    var meta = UL_CHART_META;
+    if (!meta || !meta.series.length) return;
+    var rect = svg.getBoundingClientRect();
+    var relX = e.clientX - rect.left;
+    if (rect.width <= 0) return;
+    var vbX = (relX / rect.width) * meta.W;
+
+    // Use the longest series to pick the x-bucket (series may differ in length)
+    var refSeries = meta.series[0];
+    for (var s = 0; s < meta.series.length; s++) {
+      if (meta.series[s].scaled.length > refSeries.scaled.length) refSeries = meta.series[s];
+    }
+    var n = refSeries.scaled.length;
+    if (!n) return;
+    function xAtIdx(i, len) { return meta.padL + (i / Math.max(len - 1, 1)) * meta.plotW; }
+    var bestIdx = 0, bestDx = Infinity;
+    for (var i = 0; i < n; i++) {
+      var sx = xAtIdx(i, n);
+      var dx = Math.abs(sx - vbX);
+      if (dx < bestDx) { bestDx = dx; bestIdx = i; }
+    }
+    var sxPx = xAtIdx(bestIdx, n);
+    var tRef = refSeries.times[bestIdx];
+
+    // Update crosshair line
+    var hl = svg.querySelector('.wp-ul-hover-line');
+    if (hl) {
+      hl.setAttribute('x1', sxPx);
+      hl.setAttribute('x2', sxPx);
+      hl.style.display = '';
+    }
+
+    // For each series, find its point closest to tRef and place a dot
+    var dots = svg.querySelectorAll('.wp-ul-hover-dot');
+    var tipRows = '';
+    meta.series.forEach(function (ser, idx) {
+      var dot = dots[idx];
+      if (!ser.scaled.length) { if (dot) dot.style.display = 'none'; return; }
+      // Find closest index in this series by time
+      var m = ser.scaled.length;
+      var bi = 0, bd = Infinity;
+      for (var j = 0; j < m; j++) {
+        var d = Math.abs(ser.times[j] - tRef);
+        if (d < bd) { bd = d; bi = j; }
+      }
+      var sxp = xAtIdx(bi, m);
+      var yp = meta.padT + meta.plotH - (ser.scaled[bi] / meta.niceMax) * meta.plotH;
+      if (dot) {
+        dot.setAttribute('cx', sxp);
+        dot.setAttribute('cy', yp);
+        dot.style.display = '';
+      }
+      tipRows +=
+        '<div class="wp-wpm-tip-row">' +
+          '<span class="wp-wpm-tip-sw" style="background:' + ser.color + '"></span>' +
+          ser.name.toUpperCase() + ' ' + ser.scaled[bi].toFixed(2) + ' ' + meta.unit +
+        '</div>';
+    });
+
+    var tip = wpmEnsureTip();
+    var tStr = new Date(tRef).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    tip.innerHTML =
+      '<span class="wp-wpm-tip-t">Live WAN Throughput · ' + tStr + '</span>' + tipRows;
+
+    // Position just above the topmost dot
+    var svgRect = svg.getBoundingClientRect();
+    var topY = meta.padT + meta.plotH;
+    dots.forEach(function (d) {
+      if (d.style.display === 'none') return;
+      var cy = parseFloat(d.getAttribute('cy'));
+      if (isFinite(cy) && cy < topY) topY = cy;
+    });
+    var pxX = svgRect.left + (sxPx / meta.W) * svgRect.width;
+    var pxY = svgRect.top + (topY / meta.H) * svgRect.height;
+    tip.style.display = 'block';
+    tip.style.left = (pxX + window.scrollX) + 'px';
+    tip.style.top = (pxY + window.scrollY - 6) + 'px';
+  }
+
+  function fetchUnderlayLiveTraffic() {
+    if (!deviceUuid) { renderUnderlayChartEmpty('Device UUID not found'); return; }
+    var url = window.location.origin + '/api/v1/monitoring/device/' + deviceUuid + '/wan-uplink-summary/';
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', url);
+    xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+    xhr.withCredentials = true;
+    xhr.onload = function () {
+      if (xhr.status !== 200) { renderUnderlayChartEmpty('Unable to load live traffic'); return; }
+      try {
+        var json = JSON.parse(xhr.responseText);
+        var uplink = json.wan_uplink || {};
+        renderUnderlayChart(uplink.wan_traffic || {});
+      } catch (e) {
+        renderUnderlayChartEmpty('Error parsing live traffic');
+      }
+    };
+    xhr.onerror = function () { renderUnderlayChartEmpty('Network error'); };
+    xhr.send();
+  }
+
+  // Kick off live traffic fetch + auto-refresh every 30s while visible
+  fetchUnderlayLiveTraffic();
+  var _ulChartTimer = setInterval(function () {
+    if (document.hidden) return;
+    fetchUnderlayLiveTraffic();
+  }, 30000);
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden) fetchUnderlayLiveTraffic();
+  });
+
+  // Live WAN Health
+  function renderLiveHealth(health) {
+    var el = document.getElementById('wp-lh-row');
+    if (!el) return;
+    var links = Object.keys(health);
+    if (!links.length) { el.innerHTML = '<div style="color:#94a3b8;font-size:11px;">No live data</div>'; return; }
+    el.innerHTML = '';
+    links.forEach(function (name) {
+      var h = health[name];
+      var ok = h.healthy;
+      var card = document.createElement('div');
+      card.className = 'wp-lh-card';
+      card.innerHTML =
+        '<div class="wp-lh-name"><span class="wp-lh-dot ' + (ok ? 'wp-lh-ok' : 'wp-lh-bad') + '"></span>' + name.toUpperCase() + '</div>' +
+        '<div class="wp-lh-metrics">' +
+          '<div>RTT: <span class="wp-lh-val">' + fmtMs(h.rtt_ms) + '</span></div>' +
+          '<div>Loss: <span class="wp-lh-val">' + fmtPct(h.loss_pct) + '</span></div>' +
+          '<div>Jitter: <span class="wp-lh-val">' + fmtMs(h.jitter_ms) + '</span></div>' +
+        '</div>';
+      el.appendChild(card);
+    });
+  }
+
+  // WAN Traffic Usage
+  var USAGE_COLORS = ['#60a5fa','#6ee7b7','#fbbf24','#a78bfa','#f87171','#67e8f9'];
+  function renderWanUsage(usage) {
+    var el = document.getElementById('wp-wan-usage');
+    if (!el) return;
+    var ifaces = Object.keys(usage);
+    if (!ifaces.length) { el.innerHTML = '<div style="color:#94a3b8;font-size:11px;">No traffic data</div>'; return; }
+
+    // Sort by total descending
+    ifaces.sort(function (a, b) { return (usage[b].total || 0) - (usage[a].total || 0); });
+
+    el.innerHTML = '';
+    ifaces.forEach(function (name, idx) {
+      var u = usage[name];
+      var pct = u.pct || 0;
+      var color = USAGE_COLORS[idx % USAGE_COLORS.length];
+      var total = u.total || 0;
+      var totalStr = total >= 1073741824 ? (total / 1073741824).toFixed(1) + ' GB'
+                   : total >= 1048576 ? (total / 1048576).toFixed(1) + ' MB'
+                   : total >= 1024 ? (total / 1024).toFixed(1) + ' KB'
+                   : total + ' B';
+
+      var row = document.createElement('div');
+      row.className = 'wp-usage-row';
+      row.innerHTML =
+        '<div class="wp-usage-label">' + name.toUpperCase() + '</div>' +
+        '<div class="wp-usage-bar">' +
+          '<div class="wp-usage-fill" style="width:' + Math.max(pct, 2) + '%;background:' + color + ';">' +
+            (pct >= 10 ? pct.toFixed(1) + '%' : '') +
+          '</div>' +
+        '</div>' +
+        '<div class="wp-usage-info">' + pct.toFixed(1) + '% · ' + totalStr + '</div>';
+      el.appendChild(row);
+    });
+  }
+
+  // WAN Members with Path Labels
+  function renderWanMembers(members, labels) {
+    var el = document.getElementById('wp-wan-members');
+    if (!el) return;
+    if (!members.length) { el.innerHTML = '<div style="color:#94a3b8;font-size:11px;">No WAN members configured</div>'; return; }
+    var html = '<table class="wp-wm-table"><thead><tr>' +
+      '<th>Interface</th><th>Weight</th><th>Priority</th><th>Status</th><th>Path Label</th>' +
+      '</tr></thead><tbody>';
+    members.forEach(function (m) {
+      var plHtml = '';
+      if (m.path_label) {
+        plHtml = '<span class="wp-pl-tag"><span class="wp-pl-dot" style="background:' + m.path_label.color + '"></span>' + m.path_label.name + '</span>';
+      } else {
+        plHtml = '<span class="wp-pl-none">No label</span>';
+      }
+      html += '<tr>' +
+        '<td><b>' + (m.interface || '—') + '</b></td>' +
+        '<td>' + (m.weight || 0) + '</td>' +
+        '<td>' + (m.priority || 0) + '</td>' +
+        '<td>' + (m.enabled ? '<span style="color:#16a34a;font-weight:600;">Enabled</span>' : '<span style="color:#94a3b8;">Disabled</span>') + '</td>' +
+        '<td>' + plHtml + '</td>' +
+        '</tr>';
+    });
+    html += '</tbody></table>';
+    if (labels.length) {
+      html += '<div style="margin-top:6px;font-size:10px;color:#94a3b8;">Available labels: ';
+      labels.forEach(function (l, i) {
+        html += '<span class="wp-pl-tag" style="margin-right:4px;"><span class="wp-pl-dot" style="background:' + l.color + '"></span>' + l.name + '</span>';
+      });
+      html += '</div>';
+    }
+    el.innerHTML = html;
+  }
+
+  // Populate path label dropdowns in the Uplink table
+  function populateUplinkPathLabels(members, labels, topoId) {
+    var wraps = document.querySelectorAll('.wp-pl-select-wrap');
+    if (!wraps.length || !labels.length) return;
+
+    // Build ordered list of WAN members and Uplink rows
+    // Map by position: 1st WAN row → 1st member, 2nd row → 2nd member
+    var sortedMembers = members.slice().sort(function (a, b) {
+      return (a.interface || '').localeCompare(b.interface || '');
+    });
+
+    wraps.forEach(function (wrap, rowIdx) {
+      var ifaceName = wrap.getAttribute('data-iface');
+      if (!ifaceName) return;
+
+      // Match by index: 1st uplink row → 1st WAN member
+      var member = sortedMembers[rowIdx] || null;
+
+      var currentLabelId = (member && member.path_label) ? member.path_label.id : '';
+      var memberId = member ? member.id : null;
+
+      // Build select
+      var select = document.createElement('select');
+      select.className = 'wp-pl-select';
+
+      var emptyOpt = document.createElement('option');
+      emptyOpt.value = '';
+      emptyOpt.textContent = '— No Label —';
+      select.appendChild(emptyOpt);
+
+      labels.forEach(function (l) {
+        var opt = document.createElement('option');
+        opt.value = l.id;
+        opt.textContent = l.name;
+        opt.style.color = l.color;
+        if (l.id === currentLabelId) opt.selected = true;
+        select.appendChild(opt);
+      });
+
+      // Disable if no matching WAN member
+      if (!memberId) {
+        select.disabled = true;
+        select.title = 'No WAN member configured for this interface';
+      }
+
+      // On change: call update_wan_label API
+      select.addEventListener('change', function () {
+        if (!memberId || !topoId) return;
+        select.classList.add('wp-pl-saving');
+        var labelId = select.value || null;
+        var csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+        var csrf = csrfToken ? csrfToken.value : '';
+
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', window.location.origin + '/api/v1/nsbond/topology/' + topoId + '/update_wan_label/');
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.setRequestHeader('X-CSRFToken', csrf);
+        xhr.withCredentials = true;
+        xhr.onload = function () {
+          select.classList.remove('wp-pl-saving');
+          if (xhr.status === 200) {
+            // Refresh underlay data
+            fetchUnderlay();
+          }
+        };
+        xhr.onerror = function () { select.classList.remove('wp-pl-saving'); };
+        xhr.send(JSON.stringify({ wan_member_id: memberId, path_label_id: labelId }));
+      });
+
+      wrap.innerHTML = '';
+      wrap.appendChild(select);
+    });
+  }
+
+  // WAN Uptime Timeline
+  function renderTimeline(timeline, linkUptime) {
+    var el = document.getElementById('wp-timeline');
+    if (!el) return;
+    var links = Object.keys(timeline);
+
+    // If no timeline from wan_link_quality, try link_uptime from path switch events
+    if (!links.length && linkUptime && Object.keys(linkUptime).length) {
+      el.innerHTML = '';
+      Object.keys(linkUptime).forEach(function (name) {
+        var u = linkUptime[name];
+        var pct = u.uptime_pct || 0;
+        var row = document.createElement('div');
+        row.className = 'wp-tl-row';
+        row.innerHTML =
+          '<div class="wp-tl-label">' + name.toUpperCase() + '</div>' +
+          '<div class="wp-tl-bar">' +
+            '<div class="wp-tl-seg wp-tl-up" style="width:' + pct + '%" title="Up ' + pct + '%"></div>' +
+            '<div class="wp-tl-seg wp-tl-down" style="width:' + (100 - pct) + '%" title="Down ' + (100 - pct).toFixed(1) + '%"></div>' +
+          '</div>' +
+          '<div class="wp-tl-pct ' + (pct < 90 ? 'wp-tl-low' : '') + '">' + pct + '%</div>';
+        el.appendChild(row);
+      });
+      return;
+    }
+
+    if (!links.length) { el.innerHTML = '<div style="color:#94a3b8;font-size:11px;">No timeline data</div>'; return; }
+    el.innerHTML = '';
+    links.forEach(function (name) {
+      var points = timeline[name];
+      if (!points.length) return;
+      // Use link_uptime if available (more accurate), else calculate from samples
+      var u = linkUptime && linkUptime[name];
+      var pct = u ? u.uptime_pct : Math.round((points.filter(function (p) { return p.healthy; }).length / points.length) * 100);
+      var row = document.createElement('div');
+      row.className = 'wp-tl-row';
+      var barHtml = '';
+      var segs = [];
+      var curr = { healthy: points[0].healthy, count: 1 };
+      for (var i = 1; i < points.length; i++) {
+        if (points[i].healthy === curr.healthy) { curr.count++; }
+        else { segs.push(curr); curr = { healthy: points[i].healthy, count: 1 }; }
+      }
+      segs.push(curr);
+      segs.forEach(function (s) {
+        var w = (s.count / points.length) * 100;
+        barHtml += '<div class="wp-tl-seg ' + (s.healthy ? 'wp-tl-up' : 'wp-tl-down') + '" style="width:' + w + '%" title="' + (s.healthy ? 'Up' : 'Down') + ' (' + s.count + ' samples)"></div>';
+      });
+      var extraInfo = u ? ' (' + (u.up_count || 0) + '/' + (u.samples || 0) + ' samples)' : '';
+      row.innerHTML =
+        '<div class="wp-tl-label">' + name.toUpperCase() + '</div>' +
+        '<div class="wp-tl-bar">' + barHtml + '</div>' +
+        '<div class="wp-tl-pct ' + (pct < 90 ? 'wp-tl-low' : '') + '">' + pct + '%' + extraInfo + '</div>';
+      el.appendChild(row);
+    });
+  }
+
+  // ===== WAN Performance Matrix =====
+  // Renders a 4-column grid (Bandwidth / Latency / Jitter / Packet Loss) with one row
+  // per WAN interface. Each cell is a small SVG line/area chart (no external deps).
+  //
+  // Data shape (from underlay-performance API):
+  //   wan_performance = {
+  //     "eth1": {
+  //       bandwidth: [{t, rx_bps, tx_bps}, ...],
+  //       latency:   [{t, v}, ...],
+  //       jitter:    [{t, v}, ...],
+  //       loss:      [{t, v}, ...]
+  //     }, ...
+  //   }
+  var WPM_COLORS = {
+    bandwidth_rx: '#60a5fa',
+    bandwidth_tx: '#111827',
+    latency: '#7dd3fc',
+    jitter: '#34d399',
+    loss: '#6b7280',
+  };
+
+  function wpmFormatBps(bps) {
+    bps = Number(bps) || 0;
+    if (bps >= 1e9) return (bps / 1e9).toFixed(1) + ' Gbps';
+    if (bps >= 1e6) return (bps / 1e6).toFixed(1) + ' Mbps';
+    if (bps >= 1e3) return (bps / 1e3).toFixed(1) + ' kbps';
+    return bps.toFixed(0) + ' bps';
+  }
+  function wpmFormatMs(v) {
+    v = Number(v);
+    if (!isFinite(v)) return '—';
+    if (v < 1) return v.toFixed(2) + ' ms';
+    if (v < 100) return v.toFixed(1) + ' ms';
+    return v.toFixed(0) + ' ms';
+  }
+  function wpmFormatPct(v) {
+    v = Number(v);
+    if (!isFinite(v)) return '—';
+    return v.toFixed(1) + ' %';
+  }
+
+  function wpmParseT(t) {
+    // InfluxDB returns ISO strings; allow epoch-ms too
+    if (typeof t === 'number') return t;
+    var ms = new Date(t).getTime();
+    return isFinite(ms) ? ms : null;
+  }
+
+  // Build one small SVG chart for a series of {t, v1, [v2]} points.
+  // opts: { color, color2, fill, area, yMinZero, kind }
+  // Returns { html, meta } where meta holds normalized series for hover lookup.
+  //
+  // Behavior for sparse data:
+  //   - 0 points  → synthesize a flat line at y=0 across full width (user asked
+  //                 for "direct 0" on no-data cells instead of empty placeholder).
+  //   - 1 point   → draw a horizontal line across the full width at that value
+  //                 so the cell is not blank (the old code emitted an M-only
+  //                 zero-length path which rendered invisibly).
+  //   - 2+ points → normal time-series line/area.
+  function wpmBuildCellSvg(points, accessor1, accessor2, opts) {
+    opts = opts || {};
+
+    var W = 300, H = 42, padL = 2, padR = 2, padT = 3, padB = 3;
+    var plotW = W - padL - padR;
+    var plotH = H - padT - padB;
+
+    // Normalize incoming points
+    var times = [], v1s = [], v2s = [];
+    var n = (points || []).length;
+    for (var i = 0; i < n; i++) {
+      var p = points[i];
+      var t = wpmParseT(p && p.t);
+      if (t == null) continue;
+      var a = accessor1(p);
+      if (a == null || !isFinite(a)) continue;
+      times.push(t);
+      v1s.push(a);
+      if (accessor2) {
+        var b = accessor2(p);
+        v2s.push((b != null && isFinite(b)) ? b : 0);
+      }
+    }
+
+    // Zero-data fallback: synthesize a 2-point flat line at y=0 so every
+    // cell shows a visible baseline instead of "no data" text.
+    if (times.length === 0) {
+      var nowTs = Date.now();
+      times = [nowTs - 1, nowTs];
+      v1s = [0, 0];
+      if (accessor2) v2s = [0, 0];
+    } else if (times.length === 1) {
+      // Single-point fallback: duplicate the point at t-1 so the line has
+      // non-zero length and draws as a flat horizontal line at its value.
+      times = [times[0] - 1, times[0]];
+      v1s = [v1s[0], v1s[0]];
+      if (accessor2) v2s = [v2s[0], v2s[0]];
+    }
+
+    var tMin = times[0], tMax = times[times.length - 1];
+    if (tMax === tMin) tMax = tMin + 1;
+
+    var all = v1s.concat(v2s);
+    var yMax = Math.max.apply(null, all);
+    var yMin = opts.yMinZero ? 0 : Math.min.apply(null, all);
+    if (yMax === yMin) yMax = yMin + 1;
+    // Add a little headroom so lines don't touch the top edge
+    yMax = yMax + (yMax - yMin) * 0.15;
+
+    function xAt(i) {
+      return padL + ((times[i] - tMin) / (tMax - tMin)) * plotW;
+    }
+    function yAt(v) {
+      return padT + plotH - ((v - yMin) / (yMax - yMin)) * plotH;
+    }
+
+    var svg = '<svg class="wp-wpm-cell-svg" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">';
+
+    // Primary line + (optional) area fill
+    var d1 = '';
+    for (var j = 0; j < v1s.length; j++) {
+      var x = xAt(j).toFixed(2);
+      var y = yAt(v1s[j]).toFixed(2);
+      d1 += (j === 0 ? 'M' : 'L') + x + ' ' + y + ' ';
+    }
+    if (opts.area) {
+      var areaD = d1 + 'L' + xAt(v1s.length - 1).toFixed(2) + ' ' + (padT + plotH).toFixed(2) + ' '
+                      + 'L' + xAt(0).toFixed(2) + ' ' + (padT + plotH).toFixed(2) + ' Z';
+      svg += '<path class="wp-wpm-area" d="' + areaD.trim() + '" fill="' + opts.color + '"/>';
+    }
+    svg += '<path class="wp-wpm-line" d="' + d1.trim() + '" stroke="' + opts.color + '"/>';
+
+    // Secondary line (for bandwidth rx/tx)
+    if (accessor2 && v2s.length === v1s.length) {
+      var d2 = '';
+      for (var k = 0; k < v2s.length; k++) {
+        var x2 = xAt(k).toFixed(2);
+        var y2 = yAt(v2s[k]).toFixed(2);
+        d2 += (k === 0 ? 'M' : 'L') + x2 + ' ' + y2 + ' ';
+      }
+      svg += '<path class="wp-wpm-line" d="' + d2.trim() + '" stroke="' + (opts.color2 || '#111827') + '"/>';
+    }
+
+    // Hover overlay (updated via JS on mousemove)
+    svg += '<line class="wp-wpm-hover-line" x1="0" y1="' + padT + '" x2="0" y2="' + (padT + plotH) + '"/>';
+    svg += '<circle class="wp-wpm-hover-dot" cx="0" cy="0" r="3" stroke="' + opts.color + '"/>';
+    if (accessor2) {
+      svg += '<circle class="wp-wpm-hover-dot" cx="0" cy="0" r="3" stroke="' + (opts.color2 || '#111827') + '"/>';
+    }
+
+    svg += '</svg>';
+
+    return {
+      html: svg,
+      meta: {
+        kind: opts.kind || 'single',
+        times: times, v1s: v1s, v2s: v2s,
+        tMin: tMin, tMax: tMax, yMin: yMin, yMax: yMax,
+        W: W, H: H, padL: padL, padR: padR, padT: padT, padB: padB,
+        color: opts.color, color2: opts.color2,
+      }
+    };
+  }
+
+  function wpmPctClass(kind, v) {
+    v = Number(v);
+    if (!isFinite(v)) return '';
+    if (kind === 'latency')   return v > 150 ? 'wp-wpm-val-bad' : (v > 50 ? 'wp-wpm-val-warn' : '');
+    if (kind === 'jitter')    return v > 30  ? 'wp-wpm-val-bad' : (v > 10 ? 'wp-wpm-val-warn' : '');
+    if (kind === 'loss')      return v > 5   ? 'wp-wpm-val-bad' : (v > 1  ? 'wp-wpm-val-warn' : '');
+    return '';
+  }
+
+  // Cache of chart metadata keyed by cell DOM id. Used by the hover handler
+  // to translate mouse coordinates to data values without re-parsing SVG.
+  var WPM_META = {};
+  var WPM_TIP_EL = null;
+  var WPM_CELL_COUNTER = 0;
+
+  function wpmEnsureTip() {
+    if (WPM_TIP_EL) return WPM_TIP_EL;
+    WPM_TIP_EL = document.createElement('div');
+    WPM_TIP_EL.className = 'wp-wpm-tip';
+    document.body.appendChild(WPM_TIP_EL);
+    return WPM_TIP_EL;
+  }
+
+  function wpmFormatTipTime(ts) {
+    var d = new Date(ts);
+    return d.toLocaleDateString([], { day: '2-digit', month: 'short' }) + ' ' +
+           d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+
+  function renderWanPerformance(wanPerf) {
+    var body = document.getElementById('wp-wpm-body');
+    if (!body) return;
+    WPM_META = {};  // reset caches on each re-render
+    var ifaces = Object.keys(wanPerf || {}).sort();
+    if (!ifaces.length) {
+      body.innerHTML = '<div class="wp-wpm-empty">No WAN performance data for this period.</div>';
+      return;
+    }
+
+    var html = '';
+    ifaces.forEach(function (iface) {
+      var d = wanPerf[iface] || {};
+      var bw = d.bandwidth || [];
+      var lat = d.latency || [];
+      var jit = d.jitter || [];
+      var loss = d.loss || [];
+
+      // Latest values for the cell header
+      var lastBw = bw.length ? bw[bw.length - 1] : null;
+      var lastLat = lat.length ? lat[lat.length - 1] : null;
+      var lastJit = jit.length ? jit[jit.length - 1] : null;
+      var lastLoss = loss.length ? loss[loss.length - 1] : null;
+
+      // Empty cells show "0" (not an em-dash) per product spec — every cell
+      // always shows a number + a visible flat line at its baseline.
+      var latStr  = lastLat  ? wpmFormatMs(lastLat.v)  : wpmFormatMs(0);
+      var jitStr  = lastJit  ? wpmFormatMs(lastJit.v)  : wpmFormatMs(0);
+      var lossStr = lastLoss ? wpmFormatPct(lastLoss.v) : wpmFormatPct(0);
+      var bwStr   = lastBw   ? '▲ ' + wpmFormatBps(lastBw.tx_bps) + '  ▼ ' + wpmFormatBps(lastBw.rx_bps)
+                              : '▲ ' + wpmFormatBps(0) + '  ▼ ' + wpmFormatBps(0);
+
+      var latClass  = wpmPctClass('latency',  lastLat  && lastLat.v);
+      var jitClass  = wpmPctClass('jitter',   lastJit  && lastJit.v);
+      var lossClass = wpmPctClass('loss',     lastLoss && lastLoss.v);
+
+      var bwRes = wpmBuildCellSvg(bw,
+        function (p) { return p.rx_bps; },
+        function (p) { return p.tx_bps; },
+        { color: WPM_COLORS.bandwidth_rx, color2: WPM_COLORS.bandwidth_tx, area: true, yMinZero: true, kind: 'bandwidth' });
+      var latRes = wpmBuildCellSvg(lat,
+        function (p) { return p.v; }, null,
+        { color: WPM_COLORS.latency, area: true, yMinZero: true, kind: 'latency' });
+      var jitRes = wpmBuildCellSvg(jit,
+        function (p) { return p.v; }, null,
+        { color: WPM_COLORS.jitter, area: true, yMinZero: true, kind: 'jitter' });
+      var lossRes = wpmBuildCellSvg(loss,
+        function (p) { return p.v; }, null,
+        { color: WPM_COLORS.loss, area: true, yMinZero: true, kind: 'loss' });
+
+      var bwId = 'wp-wpm-c-' + (++WPM_CELL_COUNTER);
+      var latId = 'wp-wpm-c-' + (++WPM_CELL_COUNTER);
+      var jitId = 'wp-wpm-c-' + (++WPM_CELL_COUNTER);
+      var lossId = 'wp-wpm-c-' + (++WPM_CELL_COUNTER);
+      if (bwRes.meta)   WPM_META[bwId]   = Object.assign({ label: iface.toUpperCase() + ' • Bandwidth' }, bwRes.meta);
+      if (latRes.meta)  WPM_META[latId]  = Object.assign({ label: iface.toUpperCase() + ' • Latency'   }, latRes.meta);
+      if (jitRes.meta)  WPM_META[jitId]  = Object.assign({ label: iface.toUpperCase() + ' • Jitter'    }, jitRes.meta);
+      if (lossRes.meta) WPM_META[lossId] = Object.assign({ label: iface.toUpperCase() + ' • Loss'      }, lossRes.meta);
+
+      html +=
+        '<div class="wp-wpm-row">' +
+          '<div class="wp-wpm-row-label">' +
+            iface.toUpperCase() +
+            '<span class="wp-wpm-row-sub">WAN</span>' +
+          '</div>' +
+          '<div class="wp-wpm-cell" id="' + bwId + '" data-wpm-kind="bandwidth">' +
+            '<div class="wp-wpm-cell-top"><span>Mbps</span><span class="wp-wpm-val">' + bwStr + '</span></div>' +
+            bwRes.html +
+          '</div>' +
+          '<div class="wp-wpm-cell" id="' + latId + '" data-wpm-kind="latency">' +
+            '<div class="wp-wpm-cell-top"><span>ms</span><span class="wp-wpm-val ' + latClass + '">' + latStr + '</span></div>' +
+            latRes.html +
+          '</div>' +
+          '<div class="wp-wpm-cell" id="' + jitId + '" data-wpm-kind="jitter">' +
+            '<div class="wp-wpm-cell-top"><span>ms</span><span class="wp-wpm-val ' + jitClass + '">' + jitStr + '</span></div>' +
+            jitRes.html +
+          '</div>' +
+          '<div class="wp-wpm-cell" id="' + lossId + '" data-wpm-kind="loss">' +
+            '<div class="wp-wpm-cell-top"><span>%</span><span class="wp-wpm-val ' + lossClass + '">' + lossStr + '</span></div>' +
+            lossRes.html +
+          '</div>' +
+        '</div>';
+    });
+    body.innerHTML = html;
+    wpmAttachHoverHandlers();
+  }
+
+  // Install hover handlers on every rendered cell. Uses direct mouse events on
+  // each cell's SVG (delegation is awkward because we need the cell's getBoundingClientRect).
+  function wpmAttachHoverHandlers() {
+    var cells = document.querySelectorAll('#wp-wpm-body .wp-wpm-cell');
+    cells.forEach(function (cell) {
+      var svg = cell.querySelector('svg.wp-wpm-cell-svg');
+      if (!svg) return;
+      var meta = WPM_META[cell.id];
+      if (!meta) return;
+      svg.addEventListener('mousemove', function (e) { wpmHandleHover(e, cell, svg, meta); });
+      svg.addEventListener('mouseleave', function () { wpmHideTip(svg); });
+    });
+  }
+
+  function wpmHideTip(svg) {
+    wpmEnsureTip().style.display = 'none';
+    if (!svg) return;
+    var hl = svg.querySelector('.wp-wpm-hover-line');
+    var dots = svg.querySelectorAll('.wp-wpm-hover-dot');
+    if (hl) hl.style.display = 'none';
+    dots.forEach(function (d) { d.style.display = 'none'; });
+  }
+
+  function wpmHandleHover(e, cell, svg, meta) {
+    var rect = svg.getBoundingClientRect();
+    var relX = e.clientX - rect.left;
+    if (rect.width <= 0) return;
+    // Convert rendered pixel x to SVG viewBox x
+    var vbX = (relX / rect.width) * meta.W;
+
+    // Find the nearest sample index by linear scan (series are short, ~100-400 pts)
+    var n = meta.times.length;
+    if (!n) return;
+    var bestIdx = 0;
+    var bestDx = Infinity;
+    var plotW = meta.W - meta.padL - meta.padR;
+    for (var i = 0; i < n; i++) {
+      var sx = meta.padL + ((meta.times[i] - meta.tMin) / (meta.tMax - meta.tMin)) * plotW;
+      var dx = Math.abs(sx - vbX);
+      if (dx < bestDx) { bestDx = dx; bestIdx = i; }
+    }
+
+    var plotH = meta.H - meta.padT - meta.padB;
+    function yAt(v) {
+      return meta.padT + plotH - ((v - meta.yMin) / (meta.yMax - meta.yMin)) * plotH;
+    }
+    var sxPx = meta.padL + ((meta.times[bestIdx] - meta.tMin) / (meta.tMax - meta.tMin)) * plotW;
+    var v1 = meta.v1s[bestIdx];
+    var v2 = meta.v2s.length ? meta.v2s[bestIdx] : null;
+    var y1Px = yAt(v1);
+    var y2Px = (v2 != null && isFinite(v2)) ? yAt(v2) : null;
+
+    // Update overlay line + dots inside the SVG
+    var hl = svg.querySelector('.wp-wpm-hover-line');
+    var dots = svg.querySelectorAll('.wp-wpm-hover-dot');
+    if (hl) {
+      hl.setAttribute('x1', sxPx);
+      hl.setAttribute('x2', sxPx);
+      hl.style.display = '';
+    }
+    if (dots[0]) {
+      dots[0].setAttribute('cx', sxPx);
+      dots[0].setAttribute('cy', y1Px);
+      dots[0].style.display = '';
+    }
+    if (dots[1] && y2Px != null) {
+      dots[1].setAttribute('cx', sxPx);
+      dots[1].setAttribute('cy', y2Px);
+      dots[1].style.display = '';
+    } else if (dots[1]) {
+      dots[1].style.display = 'none';
+    }
+
+    // Build tooltip body based on kind
+    var rows;
+    if (meta.kind === 'bandwidth') {
+      rows =
+        '<div class="wp-wpm-tip-row"><span class="wp-wpm-tip-sw" style="background:' + meta.color + '"></span>RX ' + wpmFormatBps(v1) + '</div>' +
+        '<div class="wp-wpm-tip-row"><span class="wp-wpm-tip-sw" style="background:' + meta.color2 + '"></span>TX ' + wpmFormatBps(v2 || 0) + '</div>';
+    } else if (meta.kind === 'loss') {
+      rows = '<div class="wp-wpm-tip-row"><span class="wp-wpm-tip-sw" style="background:' + meta.color + '"></span>' + wpmFormatPct(v1) + '</div>';
+    } else {
+      // latency / jitter
+      rows = '<div class="wp-wpm-tip-row"><span class="wp-wpm-tip-sw" style="background:' + meta.color + '"></span>' + wpmFormatMs(v1) + '</div>';
+    }
+
+    var tip = wpmEnsureTip();
+    tip.innerHTML =
+      '<span class="wp-wpm-tip-t">' + (meta.label || '') + ' · ' + wpmFormatTipTime(meta.times[bestIdx]) + '</span>' +
+      rows;
+
+    // Position tooltip just above the hover point, clamped to viewport
+    var svgRect = svg.getBoundingClientRect();
+    var pxX = svgRect.left + (sxPx / meta.W) * svgRect.width;
+    var pxY = svgRect.top + (Math.min(y1Px, y2Px != null ? y2Px : y1Px) / meta.H) * svgRect.height;
+    tip.style.display = 'block';
+    tip.style.left = (pxX + window.scrollX) + 'px';
+    tip.style.top = (pxY + window.scrollY - 6) + 'px';
+  }
+
+  // WAN Uptime time-series line chart (single consolidated SVG, one line per link)
+  var TL_CHART_COLORS = ['#60a5fa','#34d399','#fbbf24','#a78bfa','#f87171','#67e8f9','#f9a8d4','#5eead4'];
+
+  function renderTimelineGraph(timeline, linkUptime) {
+    var host = document.getElementById('wp-timeline-graph');
+    var axisEl = document.getElementById('wp-timeline-graph-axis');
+    if (!host) return;
+    if (axisEl) axisEl.innerHTML = '';
+
+    var links = Object.keys(timeline || {}).filter(function (k) {
+      return Array.isArray(timeline[k]) && timeline[k].length > 0;
+    });
+    if (!links.length) {
+      host.innerHTML = '<div class="wp-tl-graph-empty">No WAN link quality samples recorded for this period.</div>';
+      return;
+    }
+    linkUptime = linkUptime || {};
+
+    // Parse + sort each series; collect global time range
+    var series = [];
+    var globalMin = Infinity, globalMax = -Infinity;
+    links.forEach(function (name) {
+      var pts = timeline[name].slice()
+        .map(function (p) {
+          return { t: p && p.time ? new Date(p.time).getTime() : NaN, up: p && p.healthy ? 1 : 0 };
+        })
+        .filter(function (p) { return isFinite(p.t); })
+        .sort(function (a, b) { return a.t - b.t; });
+      if (!pts.length) return;
+      pts.forEach(function (p) {
+        if (p.t < globalMin) globalMin = p.t;
+        if (p.t > globalMax) globalMax = p.t;
+      });
+      series.push({ name: name, points: pts });
+    });
+
+    if (!series.length || !isFinite(globalMin) || !isFinite(globalMax) || globalMin === globalMax) {
+      host.innerHTML = '<div class="wp-tl-graph-empty">Insufficient timeline data</div>';
+      return;
+    }
+
+    var span = globalMax - globalMin;
+
+    // SVG layout matching the Live WAN Throughput chart
+    var W = 800, H = 220;
+    var padL = 42, padR = 12, padT = 14, padB = 24;
+    var plotW = W - padL - padR;
+    var plotH = H - padT - padB;
+
+    function xAt(t) { return padL + ((t - globalMin) / span) * plotW; }
+    function yAt(v) {
+      // v in [0,1] where 1 = Up (top), 0 = Down (bottom)
+      return padT + plotH - v * plotH;
+    }
+
+    var svg = '';
+    svg += '<svg class="wp-tl-chart-svg" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">';
+
+    // Horizontal grid lines at Up (1) and Down (0)
+    var gridYs = [
+      { v: 1, label: 'Up' },
+      { v: 0.5, label: '' },
+      { v: 0, label: 'Down' }
+    ];
+    gridYs.forEach(function (g) {
+      var y = yAt(g.v);
+      svg += '<line class="wp-tl-grid-line" x1="' + padL + '" y1="' + y + '" x2="' + (padL + plotW) + '" y2="' + y + '"/>';
+      if (g.label) {
+        svg += '<text class="wp-tl-tick-text" x="' + (padL - 6) + '" y="' + (y + 3) + '" text-anchor="end">' + g.label + '</text>';
+      }
+    });
+    // Axes
+    svg += '<line class="wp-tl-axis-line" x1="' + padL + '" y1="' + padT + '" x2="' + padL + '" y2="' + (padT + plotH) + '"/>';
+    svg += '<line class="wp-tl-axis-line" x1="' + padL + '" y1="' + (padT + plotH) + '" x2="' + (padL + plotW) + '" y2="' + (padT + plotH) + '"/>';
+
+    // X-axis time ticks: 5 evenly spaced
+    var fmtTime = function (ts) {
+      var d = new Date(ts);
+      if (span > 24 * 3600 * 1000) {
+        return d.toLocaleDateString([], { day: '2-digit', month: 'short' }) + ' ' +
+               d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      }
+      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    };
+    var nTicks = 5;
+    for (var ti = 0; ti < nTicks; ti++) {
+      var frac = ti / (nTicks - 1);
+      var ts = globalMin + frac * span;
+      var tx = padL + frac * plotW;
+      var anchor = ti === 0 ? 'start' : ti === nTicks - 1 ? 'end' : 'middle';
+      svg += '<text class="wp-tl-tick-text" x="' + tx + '" y="' + (padT + plotH + 14) + '" text-anchor="' + anchor + '">' + fmtTime(ts) + '</text>';
+    }
+
+    // Step lines per link
+    series.forEach(function (s, idx) {
+      var color = TL_CHART_COLORS[idx % TL_CHART_COLORS.length];
+      var pts = s.points;
+      var d = '';
+      for (var i = 0; i < pts.length; i++) {
+        var x = xAt(pts[i].t);
+        var y = yAt(pts[i].up);
+        if (i === 0) {
+          d += 'M' + x.toFixed(1) + ' ' + y.toFixed(1) + ' ';
+        } else {
+          // Step: horizontal from prev x at prev y, then vertical to new y
+          var prevY = yAt(pts[i - 1].up);
+          d += 'L' + x.toFixed(1) + ' ' + prevY.toFixed(1) + ' ';
+          d += 'L' + x.toFixed(1) + ' ' + y.toFixed(1) + ' ';
+        }
+      }
+      // Extend last segment to right edge
+      if (pts.length) {
+        var lastX = xAt(globalMax);
+        var lastY = yAt(pts[pts.length - 1].up);
+        d += 'L' + lastX.toFixed(1) + ' ' + lastY.toFixed(1) + ' ';
+      }
+      svg += '<path class="wp-tl-series-line" d="' + d.trim() + '" stroke="' + color + '"/>';
+    });
+
+    svg += '</svg>';
+
+    // Legend: ETH1 ..  with uptime %
+    var legendHtml = '<div class="wp-tl-chart-legend">';
+    series.forEach(function (s, idx) {
+      var color = TL_CHART_COLORS[idx % TL_CHART_COLORS.length];
+      var name = s.name;
+      var upCount = 0;
+      s.points.forEach(function (p) { if (p.up) upCount++; });
+      var pct = linkUptime[name] && linkUptime[name].uptime_pct != null
+        ? linkUptime[name].uptime_pct
+        : Math.round((upCount / s.points.length) * 100);
+      var pctClass = pct < 90 ? 'wp-tl-low' : '';
+      var samples = linkUptime[name] && linkUptime[name].samples != null
+        ? linkUptime[name].samples
+        : s.points.length;
+      var ups = linkUptime[name] && linkUptime[name].up_count != null
+        ? linkUptime[name].up_count
+        : upCount;
+      legendHtml +=
+        '<span class="wp-tl-lg" title="' + ups + '/' + samples + ' samples">' +
+          '<span class="wp-tl-lg-sw" style="background:' + color + '"></span>' +
+          name.toUpperCase() +
+          ' <span class="wp-tl-lg-pct ' + pctClass + '">' + (Math.round(pct * 10) / 10) + '%</span>' +
+        '</span>';
+    });
+    legendHtml += '</div>';
+
+    host.innerHTML = svg + legendHtml;
+  }
+
+  // Applied SLA
+  function renderSla(sla) {
+    var el = document.getElementById('wp-sla');
+    if (!el) return;
+    if (!sla) { el.innerHTML = '<div style="color:#94a3b8;font-size:11px;">No SLA configured</div>'; return; }
+    var html = '<div class="wp-sla-cards">';
+    if (sla.link_monitor) {
+      var lm = sla.link_monitor;
+      html += '<div class="wp-sla-card">' +
+        '<div class="wp-sla-card-title">Link Monitor</div>' +
+        '<div class="wp-sla-card-val">' + lm.name + '</div>' +
+        '<div style="margin-top:4px;">' +
+          '<span class="wp-sla-threshold">Protocol: <b>' + lm.protocol.toUpperCase() + '</b></span>' +
+          '<span class="wp-sla-threshold">Target: <b>' + lm.server + '</b></span>' +
+          '<span class="wp-sla-threshold">Fail: <b>' + lm.failtime + 's</b></span>' +
+          '<span class="wp-sla-threshold">Recover: <b>' + lm.recovertime + 's</b></span>' +
+        '</div></div>';
+    }
+    if (sla.path_monitors && sla.path_monitors.length) {
+      sla.path_monitors.forEach(function (pm) {
+        html += '<div class="wp-sla-card">' +
+          '<div class="wp-sla-card-title">SLA: ' + pm.name + '</div>' +
+          '<div style="margin-top:2px;">' +
+            '<span class="wp-sla-threshold">Latency: <b>&le;' + pm.latency_max + 'ms</b></span>' +
+            '<span class="wp-sla-threshold">Jitter: <b>&le;' + pm.jitter_max + 'ms</b></span>' +
+            '<span class="wp-sla-threshold">Loss: <b>&le;' + pm.loss_max + '%</b></span>' +
+            (pm.mos_min ? '<span class="wp-sla-threshold">MOS: <b>&ge;' + pm.mos_min + '</b></span>' : '') +
+          '</div></div>';
+      });
+    }
+    html += '</div>';
+    el.innerHTML = html;
+  }
+
+  // Path Switch History
+  function renderPathSwitches(events) {
+    var el = document.getElementById('wp-path-switches');
+    if (!el) return;
+    if (!events.length) { el.innerHTML = '<div class="wp-ps-empty">No path switch events recorded</div>'; return; }
+    var html = '<table class="wp-ps-table"><thead><tr>' +
+      '<th>Path Switch</th><th>Reason</th><th>Latency</th><th>Loss</th><th>Jitter</th><th>Time</th>' +
+      '</tr></thead><tbody>';
+    events.slice(0, 20).forEach(function (e) {
+      var ts = new Date(e.timestamp);
+      var timeStr = ts.toLocaleDateString([], {day:'2-digit',month:'short'}) + ' ' + ts.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+      html += '<tr>' +
+        '<td><b>' + e.from_link + '</b> <span class="wp-ps-arrow">&rarr;</span> <b>' + e.to_link + '</b></td>' +
+        '<td><span class="wp-ps-reason wp-r-' + e.reason + '">' + e.reason.replace('_', ' ') + '</span></td>' +
+        '<td>' + (e.latency_before != null ? e.latency_before.toFixed(1) + ' &rarr; ' + (e.latency_after != null ? e.latency_after.toFixed(1) : '—') + 'ms' : '—') + '</td>' +
+        '<td>' + (e.loss_before != null ? e.loss_before.toFixed(1) + '%' : '—') + '</td>' +
+        '<td>' + (e.jitter_before != null ? e.jitter_before.toFixed(1) + 'ms' : '—') + '</td>' +
+        '<td style="color:#6b7280;white-space:nowrap;">' + timeStr + '</td>' +
+        '</tr>';
+    });
+    html += '</tbody></table>';
+    if (events.length > 20) html += '<div style="text-align:center;padding:6px;font-size:10px;color:#94a3b8;">Showing 20 of ' + events.length + ' events</div>';
+    el.innerHTML = html;
+  }
+
+  // Fetch on load
+  fetchUnderlay();
+
+})();
+</script>

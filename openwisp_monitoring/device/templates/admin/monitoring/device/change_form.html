@@ -62,7 +62,10 @@
             {% include 'monitoring/traffic/real_time_traffic.html' %}
           </div>
           <div id="traffic-wan-uplinks" class="traffic-sub-content">
-            {% include 'monitoring/traffic/wan_uplinks.html' %}
+            {# Pass is_sdwan into the include so the child template can conditionally #}
+            {# render ns-bonding-only cards (Underlay Perf / Traffic Load row / SLA / #}
+            {# Path Switch History). Truthy when the device has any NsBondDevice row. #}
+            {% include 'monitoring/traffic/wan_uplinks.html' with is_sdwan=device_data.config.device.nsbond_memberships.all %}
           </div>
           {% if device_data.device_type != '4g_5g_router' %}
           <div id="traffic-security" class="traffic-sub-content">

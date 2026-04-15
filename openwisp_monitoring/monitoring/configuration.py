@@ -183,6 +183,27 @@ DEFAULT_METRICS = {
             },
         },
     },
+    "wan_ping": {
+        # Per-interface ping health (latency / jitter / packet loss / availability).
+        # Populated by DeviceDataWriter._write_wan_ping from
+        # device_data.interfaces[].ping. Schema-isolated from the device-level
+        # "ping" metric above (different tags: ifname, no content_type-only).
+        # No chart definitions — the WAN Performance card on the device page
+        # renders this data directly from the endpoint, so built-in OWM charts
+        # would be redundant.
+        "label": _("WAN Ping"),
+        "name": "{name}",
+        "key": "{key}",
+        "field_name": "latency_ms",
+        "related_fields": [
+            "jitter_ms",
+            "packet_loss",
+            "availability_percent",
+            "uptime_sec",
+            "downtime_sec",
+            "status_up",
+        ],
+    },
     "traffic": {
         "label": _("Traffic"),
         "name": "{name}",

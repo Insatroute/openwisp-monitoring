@@ -117,6 +117,20 @@ class DeviceDataWriter(object):
                 )
                 if created:
                     self._create_traffic_chart(metric)
+            # Per-interface ping health (latency / jitter / loss / availability).
+            # Written as a dedicated `wan_ping` InfluxDB measurement so the WAN
+            # Performance card on the device monitoring page can render latency /
+            # jitter / packet loss for non-SD-WAN devices. Shape is sourced from
+            # `device_data.interfaces[].ping` (populated by the router agent).
+            try:
+                self._write_wan_ping(
+                    interface, ifname, ct, device_extra_tags, current, time=time,
+                )
+            except Exception as exc:
+                logger.warning(
+                    'wan_ping write failed for device=%s ifname=%s: %s',
+                    self.device_data.pk, ifname, exc,
+                )
             try:
                 clients = interface["wireless"]["clients"]
             except KeyError:
@@ -190,6 +204,91 @@ class DeviceDataWriter(object):
                 f" Error: {error}"
             )
 
+
+    def _write_wan_ping(
+        self, interface, ifname, ct, device_extra_tags, current=False, time=None,
+    ):
+        """Register a per-interface `wan_ping` metric and queue its data point
+        through the standard Metric.batch_write pipeline.
+
+        Follows the exact same pattern as the traffic write above:
+        `Metric._get_or_create(...)` → `_append_metric_data(...)`. The batched
+        flush at the end of `write()` sends all queued metrics to InfluxDB in
+        one call, so this helper does NOT touch the DB directly.
+
+        Source: `device_data.interfaces[].ping`, populated by the router agent.
+        Example payload::
+
+            {
+              "availability_percent": 100,
+              "uptime_sec": 3000,
+              "jitter_ms": 0.168,
+              "dest_ip": "8.8.8.8",
+              "latency_ms": 3.988,
+              "packet_loss": 0,
+              "status": "up",
+              "start_time": 1776248833,
+              "target": "192.168.40.11",
+              "downtime_sec": 0
+            }
+
+        Primary field is `latency_ms` (registered in
+        ``openwisp_monitoring.monitoring.configuration.DEFAULT_METRICS["wan_ping"]``),
+        related fields are jitter / loss / availability / uptime / downtime /
+        status_up. Tagged by ifname so the WAN Performance card can query by
+        interface the same way it queries the `traffic` measurement.
+        """
+        ping = interface.get("ping")
+        if not isinstance(ping, dict):
+            return
+
+        latency = ping.get("latency_ms")
+        if latency is None:
+            # Primary field missing — skip. Metric.batch_write requires a value.
+            return
+        try:
+            primary_value = float(latency)
+        except (TypeError, ValueError):
+            return
+
+        # Build extra_values for related_fields (everything except latency_ms).
+        extra_values = {}
+        for src, dst, cast in (
+            ("jitter_ms", "jitter_ms", float),
+            ("packet_loss", "packet_loss", float),
+            ("availability_percent", "availability_percent", float),
+            ("uptime_sec", "uptime_sec", float),
+            ("downtime_sec", "downtime_sec", float),
+        ):
+            raw = ping.get(src)
+            if raw is None:
+                continue
+            try:
+                extra_values[dst] = cast(raw)
+            except (TypeError, ValueError):
+                continue
+        status = ping.get("status")
+        if status is not None:
+            extra_values["status_up"] = 1 if str(status).lower() == "up" else 0
+
+        name = f"{ifname} wan_ping"
+        metric, created = Metric._get_or_create(
+            object_id=self.device_data.pk,
+            content_type_id=ct.id,
+            configuration="wan_ping",
+            name=name,
+            key="wan_ping",
+            main_tags={"ifname": Metric._makekey(ifname)},
+            extra_tags=device_extra_tags,
+        )
+        self._append_metric_data(
+            metric, primary_value, current, time=time, extra_values=extra_values,
+        )
+        if created:
+            logger.debug(
+                "wan_ping metric registered: device=%s ifname=%s",
+                self.device_data.pk, ifname,
+            )
 
     def _write_dpi_app_traffic(self, data, time):
         """Extract DPI app traffic from realtimemonitor and write to InfluxDB."""
