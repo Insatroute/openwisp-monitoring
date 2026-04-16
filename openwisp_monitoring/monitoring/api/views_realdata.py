@@ -446,7 +446,7 @@ def wan_uplink_summary_data(request, device_id: str):
 def underlay_performance_data(request, device_id: str):
     """Underlay performance: WAN uptime timeline, path switch history, SLA, live health."""
     device = get_object_or_404(Device, pk=device_id)
-    hours = min(int(request.GET.get("hours", 24)), 2160)  # max 90 days
+    hours = min(int(request.GET.get("hours", 24)), 8760)  # max 365 days
 
     result = {
         "is_sdwan": False,
@@ -583,8 +583,10 @@ def underlay_performance_data(request, device_id: str):
             bucket_s = 1800         # 30m -> 336 pts / 7d
         elif hours <= 720:
             bucket_s = 10800        # 3h  -> 240 pts / 30d
-        else:
+        elif hours <= 2160:
             bucket_s = 21600        # 6h  -> 360 pts / 90d
+        else:
+            bucket_s = 86400        # 1d  -> 365 pts / 365d
 
         wan_performance = {}
         # Reuse the same WAN whitelist as wan_timeline / wan_usage — remote-hub

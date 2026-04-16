@@ -285,12 +285,24 @@ class DeviceAdmin(BaseDeviceAdmin, NestedModelAdmin):
             )
             if MONITORING_API_BASEURL:
                 api_url = urljoin(MONITORING_API_BASEURL, api_url)
+            # Check if this device is part of any SD-WAN topology.
+            # Passed into the wan_uplinks.html template to conditionally
+            # render ns-bonding-only cards.
+            is_sdwan = False
+            try:
+                from sdwan_tunnel.models.nsbond_device import NsBondDevice
+                is_sdwan = NsBondDevice.objects.filter(
+                    device_id=uuid.UUID(pk)
+                ).exists()
+            except Exception:
+                pass
             ctx.update(
                 {
                     "device_data": device_data.data_user_friendly,
                     "api_url": api_url,
                     "default_time": Chart.DEFAULT_TIME,
                     "MAC_VENDOR_DETECTION": app_settings.MAC_VENDOR_DETECTION,
+                    "is_sdwan": is_sdwan,
                 }
             )
         return ctx

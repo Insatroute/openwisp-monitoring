@@ -154,7 +154,7 @@
   .wp-dist-badge.wp-none { background:rgba(148,163,184,.1); color:#64748b; border-color:rgba(148,163,184,.2); }
   .wp-dist-bd { padding:12px 16px; }
 
-  /* Master time-range filter bar (single filter for all underlay panel cards) */
+  /* Master time-range filter bar */
   .wp-master-filter {
     display:flex; align-items:center; justify-content:flex-end; gap:10px;
     background:#fff; border:1px solid #eaecef; border-radius:12px;
@@ -164,6 +164,26 @@
   .wp-master-filter-label {
     font-size:11px; font-weight:700; color:#6b7280;
     text-transform:uppercase; letter-spacing:.04em; margin-right:auto;
+  }
+  /* Improved native dropdown for time range */
+  .wp-time-select {
+    appearance:none; -webkit-appearance:none; -moz-appearance:none;
+    padding:9px 36px 9px 14px;
+    border-radius:10px; font-size:13px; font-weight:600;
+    font-family:Inter, system-ui, -apple-system, sans-serif;
+    border:1px solid #d1d5db; background:#fff; color:#1f2937;
+    cursor:pointer; min-width:180px;
+    box-shadow:0 1px 4px rgba(0,0,0,.06);
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 20 20' fill='%236b7280'><path d='M5 7l5 6 5-6z'/></svg>");
+    background-repeat:no-repeat; background-position:right 12px center; background-size:12px 12px;
+    transition:border-color .15s ease, box-shadow .15s ease, background .15s ease;
+    line-height:1.4;
+    letter-spacing:0.01em;
+  }
+  .wp-time-select:hover { border-color:#9ca3af; background:#fafbfc; }
+  .wp-time-select:focus { outline:none; border-color:#3b82f6; box-shadow:0 0 0 3px rgba(59,130,246,.12); background:#fff; }
+  .wp-time-select option {
+    padding:10px 14px; font-size:13px; font-weight:500; color:#374151;
   }
 
   /* Time range pills */
@@ -678,23 +698,7 @@
                 {% if ws == 'online' %}Online{% elif ws == 'connected' %}Connected{% elif ws == 'offline' %}Offline{% elif iface.up %}Online{% else %}Offline{% endif %}
                 {% endwith %}
               </td>
-              <td class="wp-nowrap">
-                {% if iface.type == 'mobile' %}
-                  {% if iface.name == 'modem' %}
-                    <span>
-                      {% if iface.mobile and iface.mobile.operator_name %}{{ iface.mobile.operator_name }}{% else %}-{% endif %}
-                    </span>
-                  {% elif iface.name == 'modem2' %}
-                    <span>
-                      {% if iface.mobile and iface.mobile.operator_name %}{{ iface.mobile.operator_name }}{% else %}-{% endif %}
-                    </span>
-                  {% else %}
-                    <span>-</span>
-                  {% endif %}
-                {% else %}
-                  <span class="wp-pl-select-wrap" data-iface="{{ iface.name }}">-</span>
-                {% endif %}
-              </td>
+              <td class="wp-nowrap">-</td>
               <td class="wp-nowrap">
                 {% if iface.type == 'mobile' %}
                   {% if iface.name == 'modem' %}
@@ -738,9 +742,9 @@
                 </span>
               </td>
 
-              <td class="wp-nowrap">{{ iface.ping.latency_ms|default:0 }}</td>
-              <td class="wp-nowrap">{{ iface.ping.jitter_ms|default:0 }}</td>
-              <td class="wp-nowrap">{{ iface.ping.packet_loss|default:"0%" }}</td>
+              <td class="wp-nowrap">{{ iface.ping.latency_ms|default:0|floatformat:1 }}</td>
+              <td class="wp-nowrap">{{ iface.ping.jitter_ms|default:0|floatformat:1 }}</td>
+              <td class="wp-nowrap">{{ iface.ping.packet_loss|default:0|floatformat:1 }}%</td>
             </tr>
           {% endif %}
         {% endif %}
@@ -888,13 +892,14 @@
   {# ============= Master time-range filter (controls all cards below) ============= #}
   <div class="wp-master-filter">
     <div class="wp-master-filter-label">Time range</div>
-    <div class="wp-time-pills wp-ul-pills-group" id="wp-ul-time-pills">
-      <button type="button" class="wp-time-pill wp-tp-on" data-hours="24">1d</button>
-      <button type="button" class="wp-time-pill" data-hours="72">3d</button>
-      <button type="button" class="wp-time-pill" data-hours="168">7d</button>
-      <button type="button" class="wp-time-pill" data-hours="720">30d</button>
-      <button type="button" class="wp-time-pill" data-hours="2160">90d</button>
-    </div>
+    <select class="wp-time-select" id="wp-ul-time-select" aria-label="Time range">
+      <option value="24" selected>Last 1 Day</option>
+      <option value="72">Last 3 Days</option>
+      <option value="168">Last 7 Days</option>
+      <option value="720">Last 30 Days</option>
+      <option value="2160">Last 90 Days</option>
+      <option value="8760">Last 365 Days</option>
+    </select>
   </div>
 
   {# ============= WAN Performance Matrix ============= #}
@@ -925,9 +930,6 @@
       <div class="wp-card-title">Underlay Performance</div>
     </div>
     <div class="wp-card-bd">
-      <div class="wp-lh-row" id="wp-lh-row">
-        <div style="color:#94a3b8;font-size:11px;">Loading...</div>
-      </div>
       <div class="wp-ul-chart-wrap">
         <div class="wp-ul-chart-hd">
           <div class="wp-ul-chart-title">Live WAN Throughput</div>
@@ -962,18 +964,6 @@
         <div id="wp-timeline-graph">
           <div class="wp-tl-graph-empty">Loading...</div>
         </div>
-      </div>
-    </div>
-  </div>
-
-  {# Applied SLA #}
-  <div class="wp-card">
-    <div class="wp-card-hd">
-      <div class="wp-card-title">Applied SLA</div>
-    </div>
-    <div class="wp-card-bd">
-      <div id="wp-sla">
-        <div style="color:#94a3b8;font-size:11px;">Loading...</div>
       </div>
     </div>
   </div>
@@ -1774,33 +1764,22 @@
     '/api/v1/monitoring/device/' + deviceUuid + '/underlay-performance/';
   var ulSelectedHours = 24;
 
-  // Time filter click handler — syncs all pill groups (Underlay / Traffic Load / Uptime)
-  function syncAllUlPills(hours) {
-    var groups = document.querySelectorAll('.wp-ul-pills-group');
-    groups.forEach(function (group) {
-      group.querySelectorAll('.wp-time-pill').forEach(function (b) {
-        var h = parseInt(b.getAttribute('data-hours'), 10);
-        if (h === hours) b.classList.add('wp-tp-on');
-        else b.classList.remove('wp-tp-on');
-      });
-    });
-  }
-  document.querySelectorAll('.wp-ul-pills-group').forEach(function (group) {
-    group.addEventListener('click', function (e) {
-      var btn = e.target.closest('.wp-time-pill');
-      if (!btn) return;
-      ulSelectedHours = parseInt(btn.getAttribute('data-hours'), 10) || 24;
-      syncAllUlPills(ulSelectedHours);
+  // Time filter — single dropdown controls all cards
+  var ulTimeSelect = document.getElementById('wp-ul-time-select');
+  if (ulTimeSelect) {
+    ulTimeSelect.addEventListener('change', function () {
+      ulSelectedHours = parseInt(ulTimeSelect.value, 10) || 24;
       fetchUnderlay();
     });
-  });
+  }
 
   function hoursToLabel(h) {
-    return h <= 24 ? 'last 1d'
-         : h <= 72 ? 'last 3d'
-         : h <= 168 ? 'last 7d'
-         : h <= 720 ? 'last 30d'
-         : 'last 90d';
+    return h <= 24 ? 'last 1 day'
+         : h <= 72 ? 'last 3 days'
+         : h <= 168 ? 'last 7 days'
+         : h <= 720 ? 'last 30 days'
+         : h <= 2160 ? 'last 90 days'
+         : 'last 365 days';
   }
 
   function fetchUnderlayOnce(hours, cb) {
@@ -2305,77 +2284,25 @@
     el.innerHTML = html;
   }
 
-  // Populate path label dropdowns in the Uplink table
+  // Show path label as static text (read-only) in the Uplink table
   function populateUplinkPathLabels(members, labels, topoId) {
     var wraps = document.querySelectorAll('.wp-pl-select-wrap');
-    if (!wraps.length || !labels.length) return;
+    if (!wraps.length) return;
 
-    // Build ordered list of WAN members and Uplink rows
-    // Map by position: 1st WAN row → 1st member, 2nd row → 2nd member
-    var sortedMembers = members.slice().sort(function (a, b) {
+    var sortedMembers = (members || []).slice().sort(function (a, b) {
       return (a.interface || '').localeCompare(b.interface || '');
     });
 
     wraps.forEach(function (wrap, rowIdx) {
-      var ifaceName = wrap.getAttribute('data-iface');
-      if (!ifaceName) return;
-
-      // Match by index: 1st uplink row → 1st WAN member
       var member = sortedMembers[rowIdx] || null;
-
-      var currentLabelId = (member && member.path_label) ? member.path_label.id : '';
-      var memberId = member ? member.id : null;
-
-      // Build select
-      var select = document.createElement('select');
-      select.className = 'wp-pl-select';
-
-      var emptyOpt = document.createElement('option');
-      emptyOpt.value = '';
-      emptyOpt.textContent = '— No Label —';
-      select.appendChild(emptyOpt);
-
-      labels.forEach(function (l) {
-        var opt = document.createElement('option');
-        opt.value = l.id;
-        opt.textContent = l.name;
-        opt.style.color = l.color;
-        if (l.id === currentLabelId) opt.selected = true;
-        select.appendChild(opt);
-      });
-
-      // Disable if no matching WAN member
-      if (!memberId) {
-        select.disabled = true;
-        select.title = 'No WAN member configured for this interface';
+      if (member && member.path_label && member.path_label.name) {
+        wrap.textContent = member.path_label.name;
+        wrap.style.color = member.path_label.color || '#334155';
+        wrap.style.fontWeight = '600';
+      } else {
+        wrap.textContent = '-';
+        wrap.style.color = '#94a3b8';
       }
-
-      // On change: call update_wan_label API
-      select.addEventListener('change', function () {
-        if (!memberId || !topoId) return;
-        select.classList.add('wp-pl-saving');
-        var labelId = select.value || null;
-        var csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
-        var csrf = csrfToken ? csrfToken.value : '';
-
-        var xhr = new XMLHttpRequest();
-        xhr.open('POST', window.location.origin + '/api/v1/nsbond/topology/' + topoId + '/update_wan_label/');
-        xhr.setRequestHeader('Content-Type', 'application/json');
-        xhr.setRequestHeader('X-CSRFToken', csrf);
-        xhr.withCredentials = true;
-        xhr.onload = function () {
-          select.classList.remove('wp-pl-saving');
-          if (xhr.status === 200) {
-            // Refresh underlay data
-            fetchUnderlay();
-          }
-        };
-        xhr.onerror = function () { select.classList.remove('wp-pl-saving'); };
-        xhr.send(JSON.stringify({ wan_member_id: memberId, path_label_id: labelId }));
-      });
-
-      wrap.innerHTML = '';
-      wrap.appendChild(select);
     });
   }
 
