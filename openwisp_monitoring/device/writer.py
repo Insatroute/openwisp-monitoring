@@ -242,32 +242,82 @@ class DeviceDataWriter(object):
         if not isinstance(ping, dict):
             return
 
+        # Throttle: write wan_ping at most once per 5 minutes per interface.
+        # Device data pushes arrive every ~60s but we don't need that resolution
+        # for uptime/latency tracking.
+        from django.core.cache import cache as django_cache
+        throttle_key = f"wan_ping_throttle:{self.device_data.pk}:{ifname}"
+        if django_cache.get(throttle_key):
+            return
+        django_cache.set(throttle_key, True, 300)
+
+        # latency_ms is the primary field. When the link is down the router
+        # reports latency_ms=None — we still need to write the point so the
+        # "down" state is recorded in InfluxDB (otherwise stale "up" samples
+        # make a down link appear healthy). Use 0 as the latency value when
+        # the link is down.
         latency = ping.get("latency_ms")
+        status = ping.get("status")
+        link_is_down = (status is not None and str(status).lower() != "up")
         if latency is None:
-            # Primary field missing — skip. Metric.batch_write requires a value.
-            return
-        try:
-            primary_value = float(latency)
-        except (TypeError, ValueError):
-            return
+            if link_is_down:
+                primary_value = 0.0
+            else:
+                return
+        else:
+            try:
+                primary_value = float(latency)
+            except (TypeError, ValueError):
+                return
 
         # Build extra_values for related_fields (everything except latency_ms).
+        # When the link is down, null fields get written as 0 so the down
+        # state is explicitly recorded rather than leaving stale "up" values.
+        #
+        # uptime_sec and downtime_sec are CUMULATIVE counters from the router
+        # that reset at midnight daily. We store the DELTA (increment since
+        # last sample) — same pattern as rx_bytes/tx_bytes in the traffic
+        # measurement. This way SELECT SUM(uptime_sec) across any window
+        # gives the correct total.
         extra_values = {}
+
+        # Get previous ping data for increment calculation
+        prev_ping = {}
+        try:
+            prev_iface = self._previous_data.get("interfaces_dict", {}).get(ifname, {})
+            prev_ping = prev_iface.get("ping", {}) or {}
+        except (KeyError, AttributeError):
+            pass
+
         for src, dst, cast in (
             ("jitter_ms", "jitter_ms", float),
             ("packet_loss", "packet_loss", float),
             ("availability_percent", "availability_percent", float),
-            ("uptime_sec", "uptime_sec", float),
-            ("downtime_sec", "downtime_sec", float),
         ):
             raw = ping.get(src)
             if raw is None:
+                if link_is_down:
+                    extra_values[dst] = 0.0 if dst != "packet_loss" else 100.0
                 continue
             try:
                 extra_values[dst] = cast(raw)
             except (TypeError, ValueError):
                 continue
-        status = ping.get("status")
+
+        # uptime_sec / downtime_sec → store raw value as reported by router.
+        # The router tracks these counters itself (resets at midnight daily).
+        # We store the exact value — no delta calculation.
+        for src in ("uptime_sec", "downtime_sec"):
+            raw = ping.get(src)
+            if raw is None:
+                if link_is_down:
+                    extra_values[src] = 0.0
+                continue
+            try:
+                extra_values[src] = float(raw)
+            except (TypeError, ValueError):
+                continue
+
         if status is not None:
             extra_values["status_up"] = 1 if str(status).lower() == "up" else 0
 

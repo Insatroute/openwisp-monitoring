@@ -562,6 +562,112 @@ def underlay_performance_data(request, device_id: str):
     except Exception as exc:
         logger.debug("underlay wan_usage query failed: %s", exc)
 
+    # 1b-ii. WAN load distribution: configured weight vs actual traffic share.
+    # Combines the configured weight (from router's get-status cached in Redis)
+    # with actual traffic percentage (from the wan_usage query above) so the
+    # frontend can show "configured 50/50 but actual 73/27".
+    try:
+        from sdwan_tunnel.cache import get_device_status
+        cached_status = get_device_status(str(device_id)) or {}
+        cached_links = cached_status.get("links", {})
+        wan_usage_result = result.get("wan_usage", {})
+
+        # Step 1: Check if the device itself is online (reachable by controller).
+        # If the device is offline, all WANs show "offline" — no point checking
+        # per-WAN health when the device isn't reporting.
+        device_online = False
+        try:
+            dm = DeviceData.objects.filter(pk=device_id).first()
+            if dm:
+                from openwisp_monitoring.device.models import DeviceMonitoring
+                dev_mon = DeviceMonitoring.objects.filter(device_id=device_id).first()
+                device_online = dev_mon.status in ("ok", "problem") if dev_mon else False
+        except Exception:
+            pass
+
+        # Step 2: If device is online, get per-WAN health from wan_ping (underlay).
+        ping_health = {}
+        if device_online:
+            try:
+                ping_rows = _influx_grouped_points(
+                    "SELECT LAST(status_up) AS up, LAST(packet_loss) AS loss, "
+                    "LAST(latency_ms) AS lat "
+                    "FROM wan_ping "
+                    f"WHERE object_id = '{device_id}' "
+                    "GROUP BY ifname"
+                )
+                for row in ping_rows:
+                    ifname = row.get("ifname", "")
+                    if ifname:
+                        ping_health[ifname] = {
+                            "up": bool(row.get("up")),
+                            "loss": row.get("loss"),
+                            "latency": row.get("lat"),
+                        }
+            except Exception:
+                pass
+
+        wan_load = {}
+        for ifname, usage in wan_usage_result.items():
+            wan_name = None
+            for wn, en in wan_to_eth.items():
+                if en == ifname:
+                    wan_name = wn
+                    break
+            link_info = cached_links.get(wan_name, {}) if wan_name else {}
+
+            # Health status hierarchy for load balancing:
+            # 1. Device offline → "offline" (gray)
+            # 2. WAN link down (wan_ping.status_up=0) → "down" (red)
+            # 3. WAN link up + effective_weight > 0 → "active" (green)
+            #    (carrying traffic in load balance pool)
+            # 4. WAN link up + effective_weight = 0 → "standby" (yellow)
+            #    (configured but not currently carrying traffic — e.g. spilled)
+            eff_weight = int(link_info.get("effective_weight", 0)) if isinstance(link_info, dict) else 0
+            conf_weight = int(link_info.get("weight", 0)) if isinstance(link_info, dict) else 0
+
+            if not device_online:
+                healthy = False
+                health_status = "offline"
+            else:
+                ph = ping_health.get(ifname)
+                if ph is not None:
+                    healthy = ph["up"]
+                elif isinstance(link_info, dict):
+                    healthy = link_info.get("healthy", False)
+                else:
+                    healthy = False
+
+                if not healthy:
+                    health_status = "down"
+                elif eff_weight > 0:
+                    health_status = "active"
+                elif conf_weight > 0 and eff_weight == 0:
+                    health_status = "standby"
+                else:
+                    health_status = "active"
+
+            wan_load[ifname] = {
+                "configured_weight": conf_weight,
+                "effective_weight": eff_weight,
+                "actual_pct": usage.get("pct", 0),
+                "total_bytes": usage.get("total", 0),
+                "rx_bytes": usage.get("rx_bytes", 0),
+                "tx_bytes": usage.get("tx_bytes", 0),
+                "healthy": healthy,
+                "health_status": health_status,
+                "score": link_info.get("score") if isinstance(link_info, dict) else None,
+            }
+
+        # Calculate configured weight as percentage
+        total_weight = sum(v["configured_weight"] for v in wan_load.values())
+        for v in wan_load.values():
+            v["configured_pct"] = round((v["configured_weight"] / total_weight) * 100, 1) if total_weight > 0 else 0
+
+        result["wan_load_distribution"] = wan_load
+    except Exception as exc:
+        logger.debug("wan_load_distribution failed: %s", exc)
+
     # 1c. WAN performance matrix: per-WAN time-series for bandwidth, latency, jitter, loss.
     # Frontend renders as a 4-column grid (one row per WAN) mirroring a per-pair matrix UI.
     # Data source is one-dimensional (per local WAN) because the router / InfluxDB don't
@@ -593,48 +699,11 @@ def underlay_performance_data(request, device_id: str):
         # probe links are excluded so only this device's own WAN interfaces appear.
         wan_eth_names_perf = set(wan_to_eth.values())
 
-        # Latency / jitter / loss — primary source: wan_link_quality (SD-WAN).
-        lq_rows = _influx_grouped_points(
-            "SELECT MEAN(rtt_ms) AS rtt, MEAN(jitter_ms) AS jitter, MEAN(loss_pct) AS loss "
-            "FROM wan_link_quality "
-            f"WHERE device_id = '{device_id}' AND time > now() - {hours}h "
-            f"GROUP BY link, time({bucket_s}s) fill(none) "
-            "ORDER BY time ASC"
-        )
-        # Track which (iface, bucket_time) slots wan_link_quality already filled
-        # so wan_ping doesn't double-write them.
+        # Latency / jitter / loss — PRIMARY source: wan_ping (every device).
+        # wan_ping measures actual underlay WAN health (real ICMP pings to
+        # 8.8.8.8 from each interface). This is what users care about in the
+        # WAN Performance card — "can this WAN reach the internet?"
         filled_slots = {}  # {ifname: {metric: set(times)}}
-        for row in lq_rows:
-            link = normalize_link_name(row.get("link", ""))
-            if not link:
-                continue
-            if wan_eth_names_perf and link not in wan_eth_names_perf:
-                continue
-            slot = wan_performance.setdefault(link, {
-                "latency": [], "jitter": [], "loss": [], "bandwidth": [],
-            })
-            t = row.get("time")
-            rtt = row.get("rtt")
-            jit = row.get("jitter")
-            los = row.get("loss")
-            if t is None:
-                continue
-            slot_filled = filled_slots.setdefault(link, {
-                "latency": set(), "jitter": set(), "loss": set(),
-            })
-            if rtt is not None:
-                slot["latency"].append({"t": t, "v": round(float(rtt), 2)})
-                slot_filled["latency"].add(t)
-            if jit is not None:
-                slot["jitter"].append({"t": t, "v": round(float(jit), 2)})
-                slot_filled["jitter"].add(t)
-            if los is not None:
-                slot["loss"].append({"t": t, "v": round(float(los), 2)})
-                slot_filled["loss"].add(t)
-
-        # Latency / jitter / loss — fallback source: wan_ping (every device).
-        # Keyed by ifname directly (already eth name). Fills gaps left by
-        # wan_link_quality and is the sole source for non-SD-WAN devices.
         wp_rows = _influx_grouped_points(
             "SELECT MEAN(latency_ms) AS rtt, MEAN(jitter_ms) AS jitter, MEAN(packet_loss) AS loss "
             "FROM wan_ping "
@@ -658,6 +727,46 @@ def underlay_performance_data(request, device_id: str):
             if t is None:
                 continue
             slot_filled = filled_slots.setdefault(ifname, {
+                "latency": set(), "jitter": set(), "loss": set(),
+            })
+            if rtt is not None:
+                slot["latency"].append({"t": t, "v": round(float(rtt), 2)})
+                slot_filled["latency"].add(t)
+            if jit is not None:
+                slot["jitter"].append({"t": t, "v": round(float(jit), 2)})
+                slot_filled["jitter"].add(t)
+            if los is not None:
+                slot["loss"].append({"t": t, "v": round(float(los), 2)})
+                slot_filled["loss"].add(t)
+
+        # Latency / jitter / loss — FALLBACK source: wan_link_quality (SD-WAN).
+        # Fills gaps where wan_ping has no data. wan_link_quality measures
+        # overlay tunnel health (ns-bonding daemon probes) which may differ
+        # from underlay health — e.g. overlay reports loss=100% when the
+        # tunnel is disconnected even though the WAN itself is fine.
+        lq_rows = _influx_grouped_points(
+            "SELECT MEAN(rtt_ms) AS rtt, MEAN(jitter_ms) AS jitter, MEAN(loss_pct) AS loss "
+            "FROM wan_link_quality "
+            f"WHERE device_id = '{device_id}' AND time > now() - {hours}h "
+            f"GROUP BY link, time({bucket_s}s) fill(none) "
+            "ORDER BY time ASC"
+        )
+        for row in lq_rows:
+            link = normalize_link_name(row.get("link", ""))
+            if not link:
+                continue
+            if wan_eth_names_perf and link not in wan_eth_names_perf:
+                continue
+            slot = wan_performance.setdefault(link, {
+                "latency": [], "jitter": [], "loss": [], "bandwidth": [],
+            })
+            t = row.get("time")
+            rtt = row.get("rtt")
+            jit = row.get("jitter")
+            los = row.get("loss")
+            if t is None:
+                continue
+            slot_filled = filled_slots.setdefault(link, {
                 "latency": set(), "jitter": set(), "loss": set(),
             })
             if rtt is not None and t not in slot_filled["latency"]:
@@ -722,9 +831,79 @@ def underlay_performance_data(request, device_id: str):
     except Exception as exc:
         logger.debug("underlay wan_performance query failed: %s", exc)
 
-    # Everything below this point is SD-WAN-only (depends on NsBondDevice /
-    # ns-bonding RPCD state). Non-SD-WAN devices get `wan_performance` +
-    # `wan_usage` above and nothing else.
+    # 1d. Calculate per-WAN uptime — works for ALL devices (not just SD-WAN)
+    # using router-reported uptime_sec / downtime_sec from wan_ping.
+    try:
+        wan_eth_names_up = set(wan_to_eth.values())
+        link_uptime = {}
+        window_seconds = hours * 3600
+
+        configured_since = {}
+        first_rows = _influx_grouped_points(
+            "SELECT FIRST(rx_bytes) "
+            "FROM traffic "
+            f"WHERE object_id = '{device_id}' "
+            "GROUP BY ifname"
+        )
+        for row in first_rows:
+            ifname = row.get("ifname", "")
+            if not ifname:
+                continue
+            if wan_eth_names_up and ifname not in wan_eth_names_up:
+                continue
+            t = row.get("time")
+            if t:
+                configured_since[ifname] = t
+
+        wan_usage_keys = set(result.get("wan_usage", {}).keys())
+        uptime_rows = _influx_grouped_points(
+            "SELECT LAST(uptime_sec) AS up, LAST(downtime_sec) AS down "
+            "FROM wan_ping "
+            f"WHERE object_id = '{device_id}' AND time > now() - {hours}h "
+            f"GROUP BY ifname, time(1d) fill(none)"
+        )
+        iface_totals = {}
+        for row in uptime_rows:
+            ifname = row.get("ifname", "")
+            if not ifname:
+                continue
+            if wan_eth_names_up and ifname not in wan_eth_names_up:
+                continue
+            up = float(row.get("up") or 0)
+            down = float(row.get("down") or 0)
+            totals = iface_totals.setdefault(ifname, {"up": 0, "down": 0})
+            totals["up"] += up
+            totals["down"] += down
+
+        all_ifaces = wan_usage_keys if wan_usage_keys else set(
+            list(configured_since.keys()) + list(iface_totals.keys())
+        )
+        for ifname in sorted(all_ifaces):
+            if wan_eth_names_up and ifname not in wan_eth_names_up:
+                continue
+            conf_time = configured_since.get(ifname)
+            totals = iface_totals.get(ifname, {"up": 0, "down": 0})
+            up_seconds = totals["up"]
+            down_seconds = totals["down"]
+            total_elapsed = up_seconds + down_seconds
+            if total_elapsed <= 0:
+                total_elapsed = window_seconds
+                up_seconds = 0
+                down_seconds = total_elapsed
+            uptime_pct = round((up_seconds / total_elapsed) * 100, 1) if total_elapsed > 0 else 0
+            uptime_pct = min(uptime_pct, 100.0)
+            link_uptime[ifname] = {
+                "configured_since": conf_time,
+                "total_elapsed_secs": round(total_elapsed),
+                "up_seconds": round(up_seconds),
+                "down_seconds": round(down_seconds),
+                "uptime_pct": uptime_pct,
+            }
+        result["link_uptime"] = link_uptime
+    except Exception as exc:
+        logger.debug("underlay link_uptime calculation failed: %s", exc)
+
+    # Everything below this point is SD-WAN-only.
     if not is_sdwan:
         return Response(result)
 
@@ -758,53 +937,7 @@ def underlay_performance_data(request, device_id: str):
     except Exception as exc:
         logger.debug("underlay path_switches query failed: %s", exc)
 
-    # 2b. Calculate per-link uptime % from InfluxDB wan_link_quality.healthy
-    #
-    # Each data point has healthy=0 or healthy=1 per link, sampled every ~5 min.
-    # uptime_pct = (count of healthy=1 / total samples) * 100
-    try:
-        timeline = result.get("wan_timeline", {})
-        link_uptime = {}
-        for link_name, points in timeline.items():
-            if not points:
-                continue
-            total = len(points)
-            up_count = sum(1 for p in points if p.get("healthy"))
-            link_uptime[link_name] = {
-                "samples": total,
-                "up_count": up_count,
-                "down_count": total - up_count,
-                "uptime_pct": round((up_count / total) * 100, 1) if total else 0,
-            }
-        # Also calculate from path_switch_event if wan_link_quality has no data
-        if not link_uptime:
-            influx_ps = _influx_grouped_points(
-                "SELECT COUNT(event) AS switches "
-                "FROM path_switch_event "
-                f"WHERE device_id = '{device_id}' AND time > now() - {hours}h "
-                "GROUP BY from_link, to_link"
-            )
-            switch_counts = {}
-            for row in influx_ps:
-                fl = row.get("from_link", "")
-                tl = row.get("to_link", "")
-                cnt = row.get("switches", 0)
-                if fl:
-                    switch_counts[fl] = switch_counts.get(fl, 0) + cnt
-                if tl:
-                    switch_counts[tl] = switch_counts.get(tl, 0) + cnt
-            if switch_counts:
-                total_switches = sum(switch_counts.values())
-                for lk, cnt in switch_counts.items():
-                    # More switches away from a link = less uptime
-                    link_uptime[lk] = {
-                        "switches_away": cnt,
-                        "total_switches": total_switches,
-                        "uptime_pct": round(max(100 - (cnt / max(total_switches, 1)) * 100, 0), 1),
-                    }
-        result["link_uptime"] = link_uptime
-    except Exception as exc:
-        logger.debug("underlay link_uptime calculation failed: %s", exc)
+    # (link_uptime already calculated above, before the is_sdwan check)
 
     # 3. Applied SLA — find NsBondDevice → PathMonitor/LinkMonitor
     try:
