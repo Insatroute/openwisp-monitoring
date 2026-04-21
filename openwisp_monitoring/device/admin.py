@@ -289,11 +289,15 @@ class DeviceAdmin(BaseDeviceAdmin, NestedModelAdmin):
             # Passed into the wan_uplinks.html template to conditionally
             # render ns-bonding-only cards.
             is_sdwan = False
+            nsbond_device_url = None
             try:
                 from sdwan_tunnel.models.nsbond_device import NsBondDevice
-                is_sdwan = NsBondDevice.objects.filter(
+                nsd = NsBondDevice.objects.filter(
                     device_id=uuid.UUID(pk)
-                ).exists()
+                ).first()
+                if nsd:
+                    is_sdwan = True
+                    nsbond_device_url = f"/admin/sdwan_tunnel/nsbonddevice/{nsd.pk}/change/"
             except Exception:
                 pass
             ctx.update(
@@ -303,6 +307,7 @@ class DeviceAdmin(BaseDeviceAdmin, NestedModelAdmin):
                     "default_time": Chart.DEFAULT_TIME,
                     "MAC_VENDOR_DETECTION": app_settings.MAC_VENDOR_DETECTION,
                     "is_sdwan": is_sdwan,
+                    "nsbond_device_url": nsbond_device_url,
                 }
             )
         return ctx

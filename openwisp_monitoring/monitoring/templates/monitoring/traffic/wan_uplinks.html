@@ -863,8 +863,8 @@
   .wp-ld-donut-center { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); text-align:center; pointer-events:none; }
   .wp-ld-donut-total { font-size:12px; font-weight:800; color:#1e293b; line-height:1.2; word-break:break-word; max-width:65px; }
   .wp-ld-donut-label { font-size:6px; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:.05em; margin-top:1px; }
-  .wp-ld-details { flex:1; min-width:0; }
-  .wp-ld-row { display:flex; align-items:center; gap:8px; padding:6px 0; border-bottom:1px dashed #f1f5f9; }
+  .wp-ld-details { flex:1; min-width:0; padding-right:8px; }
+  .wp-ld-row { display:flex; align-items:center; gap:10px; padding:8px 6px; border-bottom:1px dashed #f1f5f9; }
   .wp-ld-row:last-child { border-bottom:none; }
   .wp-ld-color-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
   .wp-ld-name { font-size:11px; font-weight:700; color:#1e293b; width:40px; flex-shrink:0; overflow:hidden; text-overflow:ellipsis; }
@@ -874,7 +874,14 @@
   .wp-ld-bar-fill { height:100%; border-radius:4px; transition:width .5s ease; min-width:2px; }
   .wp-ld-meta { display:flex; flex-direction:column; gap:1px; margin-top:3px; }
   .wp-ld-pct { font-size:11px; font-weight:800; color:#1e293b; }
-  .wp-ld-bytes { font-size:9px; color:#94a3b8; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .wp-ld-bytes { font-size:10px; color:#64748b; display:flex; flex-wrap:nowrap; align-items:center; gap:0; line-height:1.4; white-space:nowrap; overflow:hidden; }
+  .wp-ld-stat { display:inline-flex; align-items:center; gap:3px; font-weight:500; white-space:nowrap; color:#64748b; }
+  .wp-ld-stat svg { flex-shrink:0; vertical-align:middle; width:11px; height:11px; }
+  .wp-ld-stat-up svg { color:#22c55e; }
+  .wp-ld-stat-down svg { color:#ef4444; }
+  .wp-ld-stat-offline svg { color:#94a3b8; }
+  .wp-ld-stat-total svg { color:#64748b; }
+  .wp-ld-sep { color:#cbd5e1; margin:0 6px; }
   .wp-ld-health { display:flex; align-items:center; gap:4px; font-size:9px; font-weight:600; flex-shrink:0; padding-left:4px; min-width:50px; }
   .wp-ld-health-dot { width:6px; height:6px; border-radius:50%; display:inline-block; }
   .wp-ld-empty { padding:16px; text-align:center; color:#94a3b8; font-size:11px; }
@@ -2725,13 +2732,17 @@
 
   function fmtDuration(secs) {
     secs = Math.round(Number(secs) || 0);
-    if (secs <= 0) return '0 Min';
+    if (secs <= 0) return '0 M';
     var d = Math.floor(secs / 86400);
     var h = Math.floor((secs % 86400) / 3600);
     var m = Math.floor((secs % 3600) / 60);
-    if (d > 0) return d + (d === 1 ? ' Day ' : ' Days ') + h + (h === 1 ? ' Hour' : ' Hours');
-    if (h > 0) return h + (h === 1 ? ' Hour ' : ' Hours ') + m + ' Min';
-    return m + ' Min';
+    if (d > 0) {
+      var s = d + ' D ' + h + ' H';
+      if (h === 0 && m > 0) s += ' ' + m + ' M';
+      return s;
+    }
+    if (h > 0) return h + ' H ' + m + ' M';
+    return m + ' M';
   }
 
   function buildDonutSvg(slices, size) {
@@ -2889,6 +2900,7 @@
         samples: u.samples || 0,
         up_seconds: u.up_seconds || 0,
         down_seconds: u.down_seconds || 0,
+        offline_seconds: u.offline_seconds || 0,
         configured_since: u.configured_since || '',
         total_elapsed_secs: u.total_elapsed_secs || 0,
         color: UT_COLORS[idx % UT_COLORS.length],
@@ -2896,16 +2908,29 @@
     });
     avgUptime = ifaces.length ? avgUptime / ifaces.length : 0;
 
-    // Each WAN gets equal arc space (100%/N). Within that space, the colored
-    // portion = uptime %, gray portion = downtime %. This shows per-WAN
-    // uptime vs downtime individually — e.g. 3 WANs each get 33.3% of the ring.
+    // Each WAN gets equal arc space (100%/N). Within that space the arc is
+    // split into three parts proportional to (up / down / offline):
+    //   green  = up time
+    //   red    = reported down time
+    //   gray   = offline (no data received from router)
+    var UT_UP_COLOR = '#86efac';
+    var UT_DOWN_COLOR = '#fda4af';
+    var UT_OFFLINE_COLOR = '#e2e8f0';
     var donutSlices = [];
     slices.forEach(function (s) {
       var arcPct = 100 / slices.length;
-      var fillPct = (s.pct / 100) * arcPct;
-      var gapPct = arcPct - fillPct;
-      donutSlices.push({ pct: fillPct, color: s.color, label: s.iface.toUpperCase() + ' — ' + s.pct.toFixed(1) + '% uptime' });
-      if (gapPct > 0.1) donutSlices.push({ pct: gapPct, color: '#f1f5f9', label: s.iface.toUpperCase() + ' — ' + (100 - s.pct).toFixed(1) + '% downtime' });
+      var total = (s.up_seconds || 0) + (s.down_seconds || 0) + (s.offline_seconds || 0);
+      var label = s.iface.toUpperCase();
+      if (total <= 0) {
+        donutSlices.push({ pct: arcPct, color: UT_OFFLINE_COLOR, label: label + ' — no data' });
+        return;
+      }
+      var upPct = (s.up_seconds / total) * arcPct;
+      var downPct = (s.down_seconds / total) * arcPct;
+      var offlinePct = arcPct - upPct - downPct;
+      if (upPct > 0.1) donutSlices.push({ pct: upPct, color: UT_UP_COLOR, label: label + ' — ' + ((s.up_seconds/total)*100).toFixed(1) + '% up' });
+      if (downPct > 0.1) donutSlices.push({ pct: downPct, color: UT_DOWN_COLOR, label: label + ' — ' + ((s.down_seconds/total)*100).toFixed(1) + '% down' });
+      if (offlinePct > 0.1) donutSlices.push({ pct: offlinePct, color: UT_OFFLINE_COLOR, label: label + ' — ' + ((s.offline_seconds/total)*100).toFixed(1) + '% offline' });
     });
 
     var html = '<div class="wp-ld-layout">';
@@ -2927,7 +2952,10 @@
 
       var upSecs = s.up_seconds || 0;
       var downSecs = s.down_seconds || 0;
-      var totalSecs = upSecs + downSecs;
+      var offlineSecs = s.offline_seconds || 0;
+      // Total = real elapsed window (clamped to min(window, now - configured_since)
+      // on the backend). up + down + offline == total.
+      var totalSecs = s.total_elapsed_secs || (upSecs + downSecs + offlineSecs);
 
       html +=
         '<div class="wp-ld-row">' +
@@ -2943,7 +2971,25 @@
             '<div class="wp-ld-meta">' +
               '<div class="wp-ld-pct"' + pctClass + '>' + s.pct.toFixed(1) + '%</div>' +
               '<div class="wp-ld-bytes">' +
-                'Up ' + fmtDuration(upSecs) + '  |  Down ' + fmtDuration(downSecs) + '  |  Total ' + fmtDuration(totalSecs) +
+                '<span class="wp-ld-stat wp-ld-stat-up" title="Link up time">' +
+                  '<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 2L3 8h3v6h4V8h3L8 2z"/></svg>' +
+                  ' Up ' + fmtDuration(upSecs) +
+                '</span>' +
+                '<span class="wp-ld-sep"> | </span>' +
+                '<span class="wp-ld-stat wp-ld-stat-down" title="Link down time">' +
+                  '<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 14l5-6h-3V2H6v6H3l5 6z"/></svg>' +
+                  ' Down ' + fmtDuration(downSecs) +
+                '</span>' +
+                '<span class="wp-ld-sep"> | </span>' +
+                '<span class="wp-ld-stat wp-ld-stat-offline" title="No data received from router">' +
+                  '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M4 10.5c-1.1 0-2-0.9-2-2s0.9-2 2-2c0.2 0 0.4 0 0.5 0.1M5.5 6.4C6.1 4.9 7.4 4 9 4c2 0 3.5 1.5 3.5 3.5v0.1c1.1 0.1 2 1 2 2.1 0 0.6-0.2 1.1-0.6 1.5" fill="none"/><line x1="3" y1="13" x2="13" y2="3" stroke-width="1.8"/></svg>' +
+                  ' Offline ' + fmtDuration(offlineSecs) +
+                '</span>' +
+                '<span class="wp-ld-sep"> | </span>' +
+                '<span class="wp-ld-stat wp-ld-stat-total" title="Total filter window">' +
+                  '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="5.5"/><line x1="8" y1="5" x2="8" y2="8"/><line x1="8" y1="8" x2="10.5" y2="9.5"/></svg>' +
+                  ' Total ' + fmtDuration(totalSecs) +
+                '</span>' +
               '</div>' +
             '</div>' +
           '</div>' +

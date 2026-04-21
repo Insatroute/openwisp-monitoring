@@ -205,6 +205,36 @@ class DeviceDataWriter(object):
             )
 
 
+    def _get_prev_router_value(self, ifname, field):
+        """Return the previous router-reported counter value for this
+        (ifname, field), pulled from the prior snapshot (_previous_data)."""
+        try:
+            prev = self._previous_data["interfaces_dict"][ifname]["ping"][field]
+            return float(prev) if prev is not None else 0.0
+        except (KeyError, TypeError, ValueError):
+            return 0.0
+
+    def _last_stored_cumulative(self, ifname, field):
+        """Fetch LAST(field) for this (device, ifname) from InfluxDB.
+
+        Used as the seed for the running-total calculation. Returns 0.0 if
+        there's no prior row for this interface (first write ever).
+        """
+        try:
+            from openwisp_monitoring.db import timeseries_db
+            q = (
+                f"SELECT LAST({field}) AS v FROM wan_ping "
+                f"WHERE object_id = '{self.device_data.pk}' "
+                f"AND ifname = '{Metric._makekey(ifname)}'"
+            )
+            result = timeseries_db.query(q)
+            points = list(result.get_points())
+            if points and points[0].get("v") is not None:
+                return float(points[0]["v"])
+        except Exception as exc:
+            logger.debug("wan_last_cumulative query failed: %s", exc)
+        return 0.0
+
     def _write_wan_ping(
         self, interface, ifname, ct, device_extra_tags, current=False, time=None,
     ):
@@ -274,20 +304,7 @@ class DeviceDataWriter(object):
         # When the link is down, null fields get written as 0 so the down
         # state is explicitly recorded rather than leaving stale "up" values.
         #
-        # uptime_sec and downtime_sec are CUMULATIVE counters from the router
-        # that reset at midnight daily. We store the DELTA (increment since
-        # last sample) — same pattern as rx_bytes/tx_bytes in the traffic
-        # measurement. This way SELECT SUM(uptime_sec) across any window
-        # gives the correct total.
         extra_values = {}
-
-        # Get previous ping data for increment calculation
-        prev_ping = {}
-        try:
-            prev_iface = self._previous_data.get("interfaces_dict", {}).get(ifname, {})
-            prev_ping = prev_iface.get("ping", {}) or {}
-        except (KeyError, AttributeError):
-            pass
 
         for src, dst, cast in (
             ("jitter_ms", "jitter_ms", float),
@@ -304,19 +321,38 @@ class DeviceDataWriter(object):
             except (TypeError, ValueError):
                 continue
 
-        # uptime_sec / downtime_sec → store raw value as reported by router.
-        # The router tracks these counters itself (resets at midnight daily).
-        # We store the exact value — no delta calculation.
+        # uptime_sec / downtime_sec: router reports CUMULATIVE counters that
+        # reset on daemon restart / midnight (23:59:59 → 00:00:00).
+        # The router value is already cumulative within a session, so no
+        # incrementing is needed per-sample — we just mirror the router
+        # value plus a baseline offset that accumulates pre-reset peaks:
+        #
+        #   normal tick (router_now >= prev_router):
+        #       stored = baseline + router_now   (baseline unchanged)
+        #   reset (router_now < prev_router):
+        #       baseline += prev_router          (bank the pre-reset peak)
+        #       stored = baseline + router_now
+        #
+        # Result: stored column is monotonic forever. LAST(uptime_sec) gives
+        # total uptime since WAN was configured.
         for src in ("uptime_sec", "downtime_sec"):
             raw = ping.get(src)
             if raw is None:
                 if link_is_down:
-                    extra_values[src] = 0.0
+                    extra_values[src] = self._last_stored_cumulative(ifname, src)
                 continue
             try:
-                extra_values[src] = float(raw)
+                router_now = float(raw)
             except (TypeError, ValueError):
                 continue
+            prev_router = self._get_prev_router_value(ifname, src)
+            last_cum = self._last_stored_cumulative(ifname, src)
+            # baseline = last_cum - prev_router (the offset the prior write used)
+            baseline = max(0.0, last_cum - prev_router)
+            if router_now < prev_router:
+                # Reset: bank the pre-reset peak into the baseline.
+                baseline += prev_router
+            extra_values[src] = baseline + router_now
 
         if status is not None:
             extra_values["status_up"] = 1 if str(status).lower() == "up" else 0

@@ -6,6 +6,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from swapper import load_model
 
 logger = logging.getLogger(__name__)
@@ -856,11 +857,15 @@ def underlay_performance_data(request, device_id: str):
                 configured_since[ifname] = t
 
         wan_usage_keys = set(result.get("wan_usage", {}).keys())
+        # uptime_sec / downtime_sec in wan_ping are already stored as
+        # cumulative running totals by the controller writer. So the
+        # latest sample within the filter window directly gives the
+        # accumulated up/down seconds for that interface.
         uptime_rows = _influx_grouped_points(
-            "SELECT LAST(uptime_sec) AS up, LAST(downtime_sec) AS down "
+            "SELECT LAST(uptime_sec) AS lu, LAST(downtime_sec) AS ld "
             "FROM wan_ping "
             f"WHERE object_id = '{device_id}' AND time > now() - {hours}h "
-            f"GROUP BY ifname, time(1d) fill(none)"
+            f"GROUP BY ifname"
         )
         iface_totals = {}
         for row in uptime_rows:
@@ -869,15 +874,14 @@ def underlay_performance_data(request, device_id: str):
                 continue
             if wan_eth_names_up and ifname not in wan_eth_names_up:
                 continue
-            up = float(row.get("up") or 0)
-            down = float(row.get("down") or 0)
-            totals = iface_totals.setdefault(ifname, {"up": 0, "down": 0})
-            totals["up"] += up
-            totals["down"] += down
+            lu = float(row.get("lu") or 0)
+            ld = float(row.get("ld") or 0)
+            iface_totals[ifname] = {"up": max(0.0, lu), "down": max(0.0, ld)}
 
         all_ifaces = wan_usage_keys if wan_usage_keys else set(
             list(configured_since.keys()) + list(iface_totals.keys())
         )
+        now = timezone.now()
         for ifname in sorted(all_ifaces):
             if wan_eth_names_up and ifname not in wan_eth_names_up:
                 continue
@@ -885,18 +889,38 @@ def underlay_performance_data(request, device_id: str):
             totals = iface_totals.get(ifname, {"up": 0, "down": 0})
             up_seconds = totals["up"]
             down_seconds = totals["down"]
-            total_elapsed = up_seconds + down_seconds
-            if total_elapsed <= 0:
+
+            # total_elapsed = min(selected window, time since first configured).
+            if conf_time:
+                try:
+                    conf_dt = datetime.fromisoformat(
+                        conf_time.replace("Z", "+00:00")
+                    )
+                    since_configured = (now - conf_dt).total_seconds()
+                    total_elapsed = max(0, min(window_seconds, since_configured))
+                except (ValueError, AttributeError):
+                    total_elapsed = window_seconds
+            else:
                 total_elapsed = window_seconds
-                up_seconds = 0
-                down_seconds = total_elapsed
-            uptime_pct = round((up_seconds / total_elapsed) * 100, 1) if total_elapsed > 0 else 0
+
+            # Up and Down are from the router's reported counters.
+            # Offline = elapsed time with no wan_ping samples (controller
+            # heard nothing from the router during those seconds).
+            up_seconds = min(up_seconds, total_elapsed)
+            down_seconds = min(down_seconds, total_elapsed - up_seconds)
+            offline_seconds = max(0, total_elapsed - up_seconds - down_seconds)
+
+            if total_elapsed > 0:
+                uptime_pct = round((up_seconds / total_elapsed) * 100, 1)
+            else:
+                uptime_pct = 0
             uptime_pct = min(uptime_pct, 100.0)
             link_uptime[ifname] = {
                 "configured_since": conf_time,
                 "total_elapsed_secs": round(total_elapsed),
                 "up_seconds": round(up_seconds),
                 "down_seconds": round(down_seconds),
+                "offline_seconds": round(offline_seconds),
                 "uptime_pct": uptime_pct,
             }
         result["link_uptime"] = link_uptime
