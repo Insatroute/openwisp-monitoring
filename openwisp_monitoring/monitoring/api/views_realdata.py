@@ -470,15 +470,26 @@ def underlay_performance_data(request, device_id: str):
         is_sdwan = False
     result["is_sdwan"] = is_sdwan
 
-    # Build wan_name → eth_name mapping from device interfaces (wan_info)
+    # Build wan_name → eth_name mapping from device interfaces.
+    # An interface is considered WAN when role == "wan" or is_wan == True
+    # (router marks these explicitly in device_data). wan_info.iface carries
+    # the logical name (wan/wan2) when present, falling back to the physical
+    # interface name (eth1/eth2) otherwise.
     wan_to_eth = {}
     try:
         device_data_obj = DeviceData.objects.filter(config=device.config).first()
         if device_data_obj and isinstance(device_data_obj.data_user_friendly, dict):
             for iface in device_data_obj.data_user_friendly.get("interfaces", []):
-                wi = iface.get("wan_info")
-                if wi and isinstance(wi, dict) and wi.get("iface") and iface.get("name"):
-                    wan_to_eth[wi["iface"]] = iface["name"]
+                name = iface.get("name")
+                if not name:
+                    continue
+                role = str(iface.get("role") or "").lower()
+                is_wan = bool(iface.get("is_wan"))
+                if role != "wan" and not is_wan:
+                    continue
+                wi = iface.get("wan_info") or {}
+                logical = wi.get("iface") if isinstance(wi, dict) else None
+                wan_to_eth[logical or name] = name
     except Exception:
         pass
 
@@ -878,9 +889,18 @@ def underlay_performance_data(request, device_id: str):
             ld = float(row.get("ld") or 0)
             iface_totals[ifname] = {"up": max(0.0, lu), "down": max(0.0, ld)}
 
-        all_ifaces = wan_usage_keys if wan_usage_keys else set(
-            list(configured_since.keys()) + list(iface_totals.keys())
-        )
+        # Only list actual WAN uplinks. wan_eth_names_up is built from
+        # device_data interfaces with role == "wan" or is_wan == True.
+        # If the device hasn't reported role/is_wan yet (empty set), show
+        # nothing rather than falling back to all interfaces (which would
+        # include br_lan / nsbond0 / lo).
+        if wan_eth_names_up:
+            all_ifaces = (
+                set(list(configured_since.keys()) + list(iface_totals.keys()))
+                | wan_usage_keys
+            ) & wan_eth_names_up
+        else:
+            all_ifaces = set()
         now = timezone.now()
         for ifname in sorted(all_ifaces):
             if wan_eth_names_up and ifname not in wan_eth_names_up:

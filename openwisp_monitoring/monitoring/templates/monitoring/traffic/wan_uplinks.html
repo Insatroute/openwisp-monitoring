@@ -1932,7 +1932,7 @@
     var host = document.getElementById('wp-ul-chart-host');
     var legend = document.getElementById('wp-ul-chart-legend');
     if (!host) return;
-    host.innerHTML = '<div class="wp-ul-chart-empty">' + (msg || 'No live traffic data') + '</div>';
+    host.innerHTML = '<div class="wp-ul-chart-empty">' + (msg || 'No active WAN uplinks configured on this device.') + '</div>';
     if (legend) legend.innerHTML = '';
   }
 
@@ -1966,7 +1966,7 @@
     if (!host) return;
 
     var names = Object.keys(wanTraffic || {}).sort();
-    if (!names.length) { renderUnderlayChartEmpty('No live traffic data'); return; }
+    if (!names.length) { renderUnderlayChartEmpty('No active WAN uplinks configured on this device.'); return; }
 
     var series = [];
     var maxRaw = 0;
@@ -1987,7 +1987,7 @@
     });
 
     if (!series.length || !anyNonZero) {
-      renderUnderlayChartEmpty('No live traffic data');
+      renderUnderlayChartEmpty('No active WAN uplinks configured on this device.');
       return;
     }
 
@@ -2634,7 +2634,7 @@
     WPM_META = {};  // reset caches on each re-render
     var ifaces = Object.keys(wanPerf || {}).sort();
     if (!ifaces.length) {
-      body.innerHTML = '<div class="wp-wpm-empty">No WAN performance data available for the selected time range. The device may not have reported monitoring data yet.</div>';
+      body.innerHTML = '<div class="wp-wpm-empty">No active WAN uplinks configured on this device.</div>';
       return;
     }
 
@@ -2778,7 +2778,7 @@
     if (!body) return;
     var ifaces = Object.keys(dist || {}).sort();
     if (!ifaces.length) {
-      body.innerHTML = '<div class="wp-ld-empty">No WAN traffic data available for the selected time range.</div>';
+      body.innerHTML = '<div class="wp-ld-empty">No active WAN uplinks configured on this device.</div>';
       return;
     }
 
@@ -2865,7 +2865,7 @@
     if (!ifaces.length && loadDist) {
       ifaces = Object.keys(loadDist).sort();
       if (!ifaces.length) {
-        body.innerHTML = '<div class="wp-ld-empty">No uptime data available for the selected time range.</div>';
+        body.innerHTML = '<div class="wp-ld-empty">No active WAN uplinks configured on this device.</div>';
         return;
       }
       // Build placeholder uptime from health status
@@ -2883,7 +2883,7 @@
     }
 
     if (!ifaces.length) {
-      body.innerHTML = '<div class="wp-ld-empty">No uptime data available for the selected time range.</div>';
+      body.innerHTML = '<div class="wp-ld-empty">No active WAN uplinks configured on this device.</div>';
       return;
     }
 
@@ -2908,41 +2908,7 @@
     });
     avgUptime = ifaces.length ? avgUptime / ifaces.length : 0;
 
-    // Each WAN gets equal arc space (100%/N). Within that space the arc is
-    // split into three parts proportional to (up / down / offline):
-    //   green  = up time
-    //   red    = reported down time
-    //   gray   = offline (no data received from router)
-    var UT_UP_COLOR = '#86efac';
-    var UT_DOWN_COLOR = '#fda4af';
-    var UT_OFFLINE_COLOR = '#e2e8f0';
-    var donutSlices = [];
-    slices.forEach(function (s) {
-      var arcPct = 100 / slices.length;
-      var total = (s.up_seconds || 0) + (s.down_seconds || 0) + (s.offline_seconds || 0);
-      var label = s.iface.toUpperCase();
-      if (total <= 0) {
-        donutSlices.push({ pct: arcPct, color: UT_OFFLINE_COLOR, label: label + ' — no data' });
-        return;
-      }
-      var upPct = (s.up_seconds / total) * arcPct;
-      var downPct = (s.down_seconds / total) * arcPct;
-      var offlinePct = arcPct - upPct - downPct;
-      if (upPct > 0.1) donutSlices.push({ pct: upPct, color: UT_UP_COLOR, label: label + ' — ' + ((s.up_seconds/total)*100).toFixed(1) + '% up' });
-      if (downPct > 0.1) donutSlices.push({ pct: downPct, color: UT_DOWN_COLOR, label: label + ' — ' + ((s.down_seconds/total)*100).toFixed(1) + '% down' });
-      if (offlinePct > 0.1) donutSlices.push({ pct: offlinePct, color: UT_OFFLINE_COLOR, label: label + ' — ' + ((s.offline_seconds/total)*100).toFixed(1) + '% offline' });
-    });
-
     var html = '<div class="wp-ld-layout">';
-
-    // Donut
-    html += '<div class="wp-ld-donut-wrap">';
-    html += buildDonutSvg(donutSlices, 100);
-    html += '<div class="wp-ld-donut-center">';
-    html += '<div class="wp-ld-donut-total">' + avgUptime.toFixed(1) + '%</div>';
-    html += '<div class="wp-ld-donut-label">Avg Uptime</div>';
-    html += '</div>';
-    html += '</div>';
 
     // Detail rows
     html += '<div class="wp-ld-details">';
