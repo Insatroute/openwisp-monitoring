@@ -290,10 +290,12 @@ class DeviceDataWriter(object):
         status = ping.get("status")
         link_is_down = (status is not None and str(status).lower() != "up")
         if latency is None:
-            if link_is_down:
-                primary_value = 0.0
-            else:
-                return
+            # Always write the row, even when the router did not measure
+            # a latency sample this tick. status / uptime_sec /
+            # downtime_sec / availability_percent are still valid and
+            # need to be recorded; otherwise a healthy link with a
+            # missing latency sample would be invisible in InfluxDB.
+            primary_value = 0.0
         else:
             try:
                 primary_value = float(latency)

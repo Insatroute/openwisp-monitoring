@@ -684,15 +684,12 @@ def underlay_performance_data(request, device_id: str):
     # Frontend renders as a 4-column grid (one row per WAN) mirroring a per-pair matrix UI.
     # Data source is one-dimensional (per local WAN) because the router / InfluxDB don't
     # track (src_wan, dst_wan) pairs. Bandwidth comes from `traffic` (bytes → bps).
-    # Latency / jitter / loss have two sources merged in priority order:
-    #   1. `wan_link_quality` — SD-WAN devices, written by the controller's
-    #      poll_nsbond_device_status task every ~5 minutes.
-    #   2. `wan_ping`         — every openwisp-monitoring device, written by
-    #      DeviceDataWriter._write_wan_ping from device_data.interfaces[].ping
-    #      whenever the router pushes monitoring data.
-    # If a WAN appears in both, wan_link_quality wins for any overlapping
-    # bucket (it has a richer score field). wan_ping fills any gaps and is
-    # the sole source on non-SD-WAN devices.
+    # Latency / jitter / loss come exclusively from `wan_ping` — the underlay
+    # WAN ICMP probe written by DeviceDataWriter._write_wan_ping. We do NOT
+    # merge in `wan_link_quality` (overlay tunnel health) because its loss
+    # field reports 100% on overlay disconnects even when the underlay WAN
+    # is fine, which contradicts the wan_ping packet_loss series. WAN
+    # Performance must reflect WAN-underlay health only.
     try:
         # Choose bucket width so each chart has ~100-400 points regardless of window
         if hours <= 24:
@@ -711,11 +708,10 @@ def underlay_performance_data(request, device_id: str):
         # probe links are excluded so only this device's own WAN interfaces appear.
         wan_eth_names_perf = set(wan_to_eth.values())
 
-        # Latency / jitter / loss — PRIMARY source: wan_ping (every device).
+        # Latency / jitter / loss — sole source: wan_ping (every device).
         # wan_ping measures actual underlay WAN health (real ICMP pings to
         # 8.8.8.8 from each interface). This is what users care about in the
         # WAN Performance card — "can this WAN reach the internet?"
-        filled_slots = {}  # {ifname: {metric: set(times)}}
         wp_rows = _influx_grouped_points(
             "SELECT MEAN(latency_ms) AS rtt, MEAN(jitter_ms) AS jitter, MEAN(packet_loss) AS loss "
             "FROM wan_ping "
@@ -738,62 +734,12 @@ def underlay_performance_data(request, device_id: str):
             los = row.get("loss")
             if t is None:
                 continue
-            slot_filled = filled_slots.setdefault(ifname, {
-                "latency": set(), "jitter": set(), "loss": set(),
-            })
             if rtt is not None:
                 slot["latency"].append({"t": t, "v": round(float(rtt), 2)})
-                slot_filled["latency"].add(t)
             if jit is not None:
                 slot["jitter"].append({"t": t, "v": round(float(jit), 2)})
-                slot_filled["jitter"].add(t)
             if los is not None:
                 slot["loss"].append({"t": t, "v": round(float(los), 2)})
-                slot_filled["loss"].add(t)
-
-        # Latency / jitter / loss — FALLBACK source: wan_link_quality (SD-WAN).
-        # Fills gaps where wan_ping has no data. wan_link_quality measures
-        # overlay tunnel health (ns-bonding daemon probes) which may differ
-        # from underlay health — e.g. overlay reports loss=100% when the
-        # tunnel is disconnected even though the WAN itself is fine.
-        lq_rows = _influx_grouped_points(
-            "SELECT MEAN(rtt_ms) AS rtt, MEAN(jitter_ms) AS jitter, MEAN(loss_pct) AS loss "
-            "FROM wan_link_quality "
-            f"WHERE device_id = '{device_id}' AND time > now() - {hours}h "
-            f"GROUP BY link, time({bucket_s}s) fill(none) "
-            "ORDER BY time ASC"
-        )
-        for row in lq_rows:
-            link = normalize_link_name(row.get("link", ""))
-            if not link:
-                continue
-            if wan_eth_names_perf and link not in wan_eth_names_perf:
-                continue
-            slot = wan_performance.setdefault(link, {
-                "latency": [], "jitter": [], "loss": [], "bandwidth": [],
-            })
-            t = row.get("time")
-            rtt = row.get("rtt")
-            jit = row.get("jitter")
-            los = row.get("loss")
-            if t is None:
-                continue
-            slot_filled = filled_slots.setdefault(link, {
-                "latency": set(), "jitter": set(), "loss": set(),
-            })
-            if rtt is not None and t not in slot_filled["latency"]:
-                slot["latency"].append({"t": t, "v": round(float(rtt), 2)})
-            if jit is not None and t not in slot_filled["jitter"]:
-                slot["jitter"].append({"t": t, "v": round(float(jit), 2)})
-            if los is not None and t not in slot_filled["loss"]:
-                slot["loss"].append({"t": t, "v": round(float(los), 2)})
-
-        # wan_ping rows are already in time order within each ifname group but
-        # we merged them after wan_link_quality without sorting the combined list.
-        # Sort each slot by time so the frontend draws lines in order.
-        for series in wan_performance.values():
-            for metric in ("latency", "jitter", "loss"):
-                series[metric].sort(key=lambda p: p.get("t") or "")
 
         # Bandwidth — from `traffic` measurement keyed by ifname (already eth names).
         # Restrict to real WAN interfaces. The authoritative source is the wan_to_eth
@@ -868,26 +814,79 @@ def underlay_performance_data(request, device_id: str):
                 configured_since[ifname] = t
 
         wan_usage_keys = set(result.get("wan_usage", {}).keys())
-        # uptime_sec / downtime_sec in wan_ping are already stored as
-        # cumulative running totals by the controller writer. So the
-        # latest sample within the filter window directly gives the
-        # accumulated up/down seconds for that interface.
-        uptime_rows = _influx_grouped_points(
-            "SELECT LAST(uptime_sec) AS lu, LAST(downtime_sec) AS ld "
+        # Compute up/down per WAN from wan_ping uptime_sec / downtime_sec.
+        #
+        # Two modes depending on window length:
+        #
+        #   * window < 24h: DELTA within window
+        #         down = max(0, LAST(downtime_sec) - FIRST(downtime_sec))
+        #         up   = sampled_seconds - down
+        #     where sampled_seconds = (number of samples * 5min interval).
+        #     A 1h window with no new outages reads down=0; up reflects how
+        #     much of the window was actually sampled (rest is "offline").
+        #
+        #   * window >= 24h: CUMULATIVE up to the latest sample
+        #         down = LAST(downtime_sec)
+        #         up   = LAST(uptime_sec)        (capped at window - down)
+        #     so a 24h / 3d / 7d view reflects the router's lifetime
+        #     up/down totals (matches what users see in the wan_ping table).
+        #     Anything left in the window is "offline" — gaps where the
+        #     controller did not receive samples.
+        WAN_PING_INTERVAL_S = 300
+        cumulative_mode = hours >= 24
+        last_rows = _influx_grouped_points(
+            "SELECT LAST(downtime_sec) AS d, LAST(uptime_sec) AS u "
             "FROM wan_ping "
             f"WHERE object_id = '{device_id}' AND time > now() - {hours}h "
             f"GROUP BY ifname"
         )
-        iface_totals = {}
-        for row in uptime_rows:
+        first_rows = []
+        if not cumulative_mode:
+            first_rows = _influx_grouped_points(
+                "SELECT FIRST(downtime_sec) AS d "
+                "FROM wan_ping "
+                f"WHERE object_id = '{device_id}' AND time > now() - {hours}h "
+                f"GROUP BY ifname"
+            )
+        count_rows = _influx_grouped_points(
+            "SELECT COUNT(status_up) AS n "
+            "FROM wan_ping "
+            f"WHERE object_id = '{device_id}' AND time > now() - {hours}h "
+            f"GROUP BY ifname"
+        )
+        last_d = {}
+        last_u = {}
+        for row in last_rows:
             ifname = row.get("ifname", "")
-            if not ifname:
+            if not ifname or (wan_eth_names_up and ifname not in wan_eth_names_up):
                 continue
-            if wan_eth_names_up and ifname not in wan_eth_names_up:
+            last_d[ifname] = float(row.get("d") or 0)
+            last_u[ifname] = float(row.get("u") or 0)
+        first_d = {}
+        for row in first_rows:
+            ifname = row.get("ifname", "")
+            if not ifname or (wan_eth_names_up and ifname not in wan_eth_names_up):
                 continue
-            lu = float(row.get("lu") or 0)
-            ld = float(row.get("ld") or 0)
-            iface_totals[ifname] = {"up": max(0.0, lu), "down": max(0.0, ld)}
+            first_d[ifname] = float(row.get("d") or 0)
+        sample_counts = {}
+        for row in count_rows:
+            ifname = row.get("ifname", "")
+            if not ifname or (wan_eth_names_up and ifname not in wan_eth_names_up):
+                continue
+            sample_counts[ifname] = max(0, int(row.get("n") or 0))
+        iface_totals = {}
+        for ifname in set(last_d) | set(first_d) | set(sample_counts):
+            if cumulative_mode:
+                down = last_d.get(ifname, 0.0)
+                up_router = last_u.get(ifname, 0.0)
+            else:
+                down = max(0.0, last_d.get(ifname, 0.0) - first_d.get(ifname, 0.0))
+                up_router = None  # not used in delta mode
+            iface_totals[ifname] = {
+                "down": down,
+                "up_router": up_router,
+                "samples": sample_counts.get(ifname, 0),
+            }
 
         # Only list actual WAN uplinks. wan_eth_names_up is built from
         # device_data interfaces with role == "wan" or is_wan == True.
@@ -906,9 +905,10 @@ def underlay_performance_data(request, device_id: str):
             if wan_eth_names_up and ifname not in wan_eth_names_up:
                 continue
             conf_time = configured_since.get(ifname)
-            totals = iface_totals.get(ifname, {"up": 0, "down": 0})
-            up_seconds = totals["up"]
+            totals = iface_totals.get(ifname, {"down": 0.0, "up_router": None, "samples": 0})
             down_seconds = totals["down"]
+            up_router = totals["up_router"]
+            samples = totals["samples"]
 
             # total_elapsed = min(selected window, time since first configured).
             if conf_time:
@@ -923,12 +923,20 @@ def underlay_performance_data(request, device_id: str):
             else:
                 total_elapsed = window_seconds
 
-            # Up and Down are from the router's reported counters.
-            # Offline = elapsed time with no wan_ping samples (controller
-            # heard nothing from the router during those seconds).
-            up_seconds = min(up_seconds, total_elapsed)
-            down_seconds = min(down_seconds, total_elapsed - up_seconds)
-            offline_seconds = max(0, total_elapsed - up_seconds - down_seconds)
+            if cumulative_mode:
+                # Trust router-reported cumulative uptime_sec / downtime_sec.
+                # Cap up at (window - down) so up + down never exceeds window;
+                # remainder is offline (gaps with no wan_ping samples).
+                down_seconds = min(down_seconds, total_elapsed)
+                up_seconds = min(up_router or 0.0, max(0, total_elapsed - down_seconds))
+                offline_seconds = max(0, total_elapsed - up_seconds - down_seconds)
+            else:
+                # Delta mode: derive up from sample coverage; down is the
+                # counter delta within the window.
+                sampled_seconds = min(total_elapsed, samples * WAN_PING_INTERVAL_S)
+                offline_seconds = max(0, total_elapsed - sampled_seconds)
+                down_seconds = min(down_seconds, sampled_seconds)
+                up_seconds = max(0, sampled_seconds - down_seconds)
 
             if total_elapsed > 0:
                 uptime_pct = round((up_seconds / total_elapsed) * 100, 1)
