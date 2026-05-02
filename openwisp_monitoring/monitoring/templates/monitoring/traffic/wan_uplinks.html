@@ -871,8 +871,8 @@
   @media (max-width:768px) {
     .wp-ld-layout { flex-direction:column; align-items:stretch; min-height:auto; gap:12px; }
   }
-  /* Load Dist card: donut on left + stacked rows on right.
-     Uptime card: stacked rows only (no donut, no aggregate metric). */
+  /* Both cards: donut on left + stacked rows on right.
+     Identical layout for visual parity. */
   #wp-load-dist-card .wp-ld-layout,
   #wp-uptime-dist-card .wp-ld-layout {
     display:flex;
@@ -882,7 +882,8 @@
     padding:0;
   }
   @media (max-width:768px) {
-    #wp-load-dist-card .wp-ld-layout { flex-direction:column; align-items:stretch; }
+    #wp-load-dist-card .wp-ld-layout,
+    #wp-uptime-dist-card .wp-ld-layout { flex-direction:column; align-items:stretch; }
   }
   /* Donut block — fixed size, doesn't shrink (Load Dist only) */
   #wp-load-dist-card .wp-ld-donut-wrap {
@@ -918,8 +919,8 @@
   .wp-ut-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
   .wp-ut-iface { font-size:13px; font-weight:700; color:#1e293b; }
   .wp-ut-sub { font-size:9px; font-weight:600; color:#94a3b8; text-transform:uppercase; letter-spacing:.04em; }
-  .wp-ut-health { display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:600; padding:4px 10px; border-radius:9999px; }
-  .wp-ut-health-dot { width:6px; height:6px; border-radius:50%; display:inline-block; }
+  .wp-ut-health { display:inline-flex; align-items:center; gap:4px; font-size:10px; font-weight:600; padding:2px 7px; border-radius:9999px; line-height:1.4; }
+  .wp-ut-health-dot { width:5px; height:5px; border-radius:50%; display:inline-block; }
   .wp-ut-health-good { color:#16a34a; background:#dcfce7; }
   .wp-ut-health-good .wp-ut-health-dot { background:#22c55e; }
   .wp-ut-health-fair { color:#d97706; background:#fef3c7; }
@@ -2855,10 +2856,15 @@
   var LD_COLORS = WAN_CARD_COLORS;
 
   function fmtBytes(b) {
+    // Decimal (SI) base 1000 — matches the Plotly Traffic chart's units
+    // (and the rest of the openwisp-monitoring admin charts) so card values
+    // line up with chart values shown for the same interface.
     b = Number(b) || 0;
-    if (b >= 1073741824) return (b / 1073741824).toFixed(1) + ' GB';
-    if (b >= 1048576)    return (b / 1048576).toFixed(1) + ' MB';
-    if (b >= 1024)       return (b / 1024).toFixed(1) + ' KB';
+    if (b >= 1e15) return (b / 1e15).toFixed(2) + ' PB';
+    if (b >= 1e12) return (b / 1e12).toFixed(2) + ' TB';
+    if (b >= 1e9)  return (b / 1e9).toFixed(2) + ' GB';
+    if (b >= 1e6)  return (b / 1e6).toFixed(2) + ' MB';
+    if (b >= 1e3)  return (b / 1e3).toFixed(2) + ' KB';
     return b + ' B';
   }
 
@@ -2932,14 +2938,14 @@
       });
     });
 
-    // Layout: donut on left (showing distribution + total in center),
-    // stacked rows on right with per-interface details.
+    // Layout: donut on left (always shown — distribution % for multi-WAN,
+    // single full ring for one WAN), stacked rows on right.
     var html = '<div class="wp-ld-layout">';
     html += '<div class="wp-ld-donut-wrap">';
     html += buildDonutSvg(slices, 110);
     html += '<div class="wp-ld-donut-center">';
     html += '<div class="wp-ld-donut-total">' + fmtBytes(grandTotal) + '</div>';
-    html += '<div class="wp-ld-donut-label">Total Traffic</div>';
+    // html += '<div class="wp-ld-donut-label">Total Traffic</div>';
     html += '</div>';
     html += '</div>';
     html += '<div class="wp-ut-rows">';
@@ -3050,10 +3056,9 @@
         color: UT_COLORS[idx % UT_COLORS.length],
       });
     });
-    // No donut on Uptime card — averaging across WANs is context-dependent
-    // and misleads users. Rows speak for themselves.
+    // No donut on Uptime card — averaging across WANs is misleading.
+    // Rows speak for themselves with per-interface health pills.
     var html = '<div class="wp-ld-layout">';
-    // Stacked rows on right
     html += '<div class="wp-ut-rows">';
     slices.forEach(function (s) {
       var barColor = s.pct >= 90 ? '#22c55e' : (s.pct >= 50 ? '#f59e0b' : '#ef4444');

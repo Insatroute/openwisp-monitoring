@@ -543,10 +543,27 @@ def underlay_performance_data(request, device_id: str):
     try:
         wan_eth_names = set(wan_to_eth.values())
         skip_ifaces = {"br_lan", "lo", "vxlan", "wg0", "nsbond0", "nsbond0_ipsec", "eth0"}
+        # Divide bytes in InfluxQL (matches the Plotly Traffic chart's
+        # `SUM(...) / 1000000000` formula exactly). Returned values are in
+        # decimal-SI gigabytes; the JS formatter just chooses unit prefix.
+        #
+        # Time window must match the chart's calendar-aligned cutoff
+        # (openwisp-monitoring's Metric._get_time()): for windows > 3 days
+        # the chart anchors `now` to today's midnight UTC and counts back.
+        # We replicate that here so the card and chart sum identical bytes.
+        days = hours / 24.0
+        if days > 3:
+            today_utc = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+            cutoff = today_utc - timedelta(days=int(days))
+            cutoff_str = cutoff.strftime("%Y-%m-%dT%H:%M:%SZ")
+            time_filter = f"time >= '{cutoff_str}'"
+        else:
+            time_filter = f"time > now() - {hours}h"
         usage_rows = _influx_grouped_points(
-            "SELECT SUM(rx_bytes) AS rx, SUM(tx_bytes) AS tx "
+            "SELECT SUM(rx_bytes) / 1000000000 AS rx, "
+            "SUM(tx_bytes) / 1000000000 AS tx "
             "FROM traffic "
-            f"WHERE object_id = '{device_id}' AND time > now() - {hours}h "
+            f"WHERE object_id = '{device_id}' AND {time_filter} "
             "GROUP BY ifname"
         )
         wan_usage = {}
@@ -561,8 +578,13 @@ def underlay_performance_data(request, device_id: str):
                     continue
             elif ifname in skip_ifaces:
                 continue
-            rx = row.get("rx") or 0
-            tx = row.get("tx") or 0
+            # rx/tx are in GB after the InfluxQL division. Convert back to bytes
+            # (multiply by 1e9) so the JS formatter receives the raw byte count
+            # consistent with the rest of its API.
+            rx_gb = row.get("rx") or 0
+            tx_gb = row.get("tx") or 0
+            rx = float(rx_gb) * 1e9
+            tx = float(tx_gb) * 1e9
             if rx == 0 and tx == 0:
                 continue
             wan_usage[ifname] = {"rx_bytes": rx, "tx_bytes": tx, "total": rx + tx}
