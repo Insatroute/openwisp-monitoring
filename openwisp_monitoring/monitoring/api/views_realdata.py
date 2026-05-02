@@ -631,12 +631,16 @@ def underlay_performance_data(request, device_id: str):
             # Health status hierarchy for load balancing:
             # 1. Device offline → "offline" (gray)
             # 2. WAN link down (wan_ping.status_up=0) → "down" (red)
-            # 3. WAN link up + effective_weight > 0 → "active" (green)
-            #    (carrying traffic in load balance pool)
-            # 4. WAN link up + effective_weight = 0 → "standby" (yellow)
-            #    (configured but not currently carrying traffic — e.g. spilled)
+            # 3. WAN link up + actually carrying traffic → "active" (green)
+            #    Detected by either effective_weight > 0 OR observed actual_pct > 0
+            #    (the latter handles the single-WAN case where the daemon may
+            #    report effective_weight=0 even though that WAN is the sole
+            #    uplink and carrying 100% of traffic).
+            # 4. WAN link up + configured but no traffic flowing → "standby"
+            #    (in a multi-WAN load-balance pool but currently spilled).
             eff_weight = int(link_info.get("effective_weight", 0)) if isinstance(link_info, dict) else 0
             conf_weight = int(link_info.get("weight", 0)) if isinstance(link_info, dict) else 0
+            actual_pct = float(usage.get("pct", 0) or 0)
 
             if not device_online:
                 healthy = False
@@ -652,9 +656,12 @@ def underlay_performance_data(request, device_id: str):
 
                 if not healthy:
                     health_status = "down"
-                elif eff_weight > 0:
+                elif eff_weight > 0 or actual_pct > 0:
+                    # Carrying traffic right now — green.
                     health_status = "active"
-                elif conf_weight > 0 and eff_weight == 0:
+                elif conf_weight > 0:
+                    # Configured but no traffic flowing AND no effective weight
+                    # — sitting in the pool waiting for spillover.
                     health_status = "standby"
                 else:
                     health_status = "active"
@@ -796,10 +803,17 @@ def underlay_performance_data(request, device_id: str):
         link_uptime = {}
         window_seconds = hours * 3600
 
+        # configured_since = timestamp of the OLDEST wan_ping sample for this
+        # interface (NOT the oldest traffic sample). Reason: total_elapsed
+        # represents the window we have monitoring evidence for. If wan_ping
+        # data only started N days ago (e.g. writer.py was fixed N days ago),
+        # we cannot honestly report uptime/downtime/offline beyond N days.
+        # Using `traffic` instead would inflate "Off" to days that simply
+        # had no wan_ping monitoring at all.
         configured_since = {}
         first_rows = _influx_grouped_points(
-            "SELECT FIRST(rx_bytes) "
-            "FROM traffic "
+            "SELECT FIRST(uptime_sec) "
+            "FROM wan_ping "
             f"WHERE object_id = '{device_id}' "
             "GROUP BY ifname"
         )
