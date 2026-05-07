@@ -1,0 +1,637 @@
+{# wan_uplink.html - WAN Uplink tab: single summary card + table #}
+
+<style>
+    /* ======= SUMMARY CARD (LIKE DATA USAGE SUMMARY) ======= */
+    .wan-summary-wrap {
+        /* max-width: 1200px; */
+        margin: 10px auto 18px;
+        font-family: inherit;
+    }
+
+    .wan-summary-title {
+        margin: 0 0 6px 0;
+        font-size: 14px;
+        font-weight: 600;
+        color: #4b5563;
+    }
+
+    .wan-summary-card {
+        background: #ffffff;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(15, 23, 42, .08);
+        border: 1px solid #f3f4f6;
+        padding: 14px 18px;
+        display: flex;
+        gap: 0;
+    }
+
+    .wan-summary-item {
+        flex: 1 1 0;
+        padding: 4px 18px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .wan-summary-item+.wan-summary-item {
+        border-left: 1px solid #e5e7eb;
+        /* vertical dash between items */
+    }
+
+    .wan-summary-label {
+        font-size: 13px;
+        color: #6b7280;
+    }
+
+    .wan-summary-main {
+        display: flex;
+        align-items: baseline;
+        gap: 4px;
+    }
+
+    .wan-summary-value {
+        font-size: 20px;
+        font-weight: 700;
+        color: #111827;
+    }
+
+    .wan-summary-unit {
+        font-size: 12px;
+        color: #9ca3af;
+    }
+
+    .wan-summary-sub {
+        font-size: 11px;
+        color: #9ca3af;
+    }
+
+    .wan-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 999px;
+        display: inline-block;
+        margin-right: 4px;
+    }
+
+    .wan-dot-green {
+        background: #22c55e;
+    }
+
+    .wan-dot-amber {
+        background: #f59e0b;
+    }
+
+    .wan-dot-gray {
+        background: #9ca3af;
+    }
+
+    .wan-dot-silver {
+        background: #d1d5db;
+    }
+
+    @media (max-width: 900px) {
+        .wan-summary-card {
+            flex-direction: column;
+        }
+
+        .wan-summary-item+.wan-summary-item {
+            border-left: none;
+            border-top: 1px solid #e5e7eb;
+        }
+    }
+
+    /* ========= TABLE SHELL ========= */
+    .home-wan-table-wrap {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 6px 18px rgba(15, 23, 42, .06);
+        margin: 0 0 0;
+        overflow-x: auto;
+        /* <<< allow horizontal scroll */
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .home-wan-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        font-size: 12px;
+        min-width: 1100px;
+        /* <<< ensure all columns fit; scroll when needed */
+    }
+
+    .home-wan-table thead th {
+        text-align: left;
+        padding: 10px 12px;
+        border-bottom: 1px solid #eef0f3;
+        background: #f9fafb;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: .03em;
+        color: #6b7280;
+        white-space: nowrap;
+    }
+
+    .home-wan-table tbody td {
+        padding: 10px 12px;
+        border-bottom: 1px solid #f1f5f9;
+        vertical-align: middle;
+        white-space: nowrap;
+    }
+
+    .home-wan-table tbody tr:last-child td {
+        border-bottom: none;
+    }
+
+    .home-wan-status-cell {
+        white-space: nowrap;
+    }
+
+    .home-wan-status-dot {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        margin-right: 6px;
+        vertical-align: middle;
+    }
+
+    .home-wan-status-connected {
+        background: #22c55e;
+    }
+
+    .home-wan-status-disconnected {
+        background: #9ca3af;
+    }
+
+    .home-wan-status-abnormal {
+        background: #f59e0b;
+    }
+
+    .home-wan-status-disabled {
+        background: #d1d5db;
+    }
+
+    .home-wan-linkish {
+        color: #0b63c5;
+        font-weight: 600;
+        text-decoration: none;
+    }
+
+    .home-wan-linkish:hover {
+        text-decoration: underline;
+    }
+
+    .home-wan-throughput {
+        white-space: nowrap;
+    }
+
+    .home-wan-kp {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        margin-right: 12px;
+    }
+
+    .home-wan-kp i {
+        display: inline-block;
+        width: 0;
+        height: 0;
+        border-left: 4px solid transparent;
+        border-right: 4px solid transparent;
+    }
+
+    .home-wan-kp-up i {
+        border-bottom: 7px solid #22c55e;
+    }
+
+    .home-wan-kp-down i {
+        border-top: 7px solid #9ca3af;
+    }
+
+    .home-wan-muted {
+        color: #9ca3af;
+    }
+
+    .home-wan-nowrap {
+        white-space: nowrap;
+    }
+
+    /* "No data" row */
+    .home-wan-empty-row td {
+        text-align: center;
+    }
+
+    @media (max-width: 900px) {
+        .home-wan-table thead {
+            font-size: 11px;
+        }
+    }
+
+    /* ========= PAGINATION ========= */
+    .home-wan-pagination {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+        padding: 8px 4px;
+        margin-top: 6px;
+    }
+
+    .home-wan-page-btn {
+        padding: 4px 10px;
+        border-radius: 999px;
+        border: 1px solid #d1d5db;
+        background: #ffffff;
+        cursor: pointer;
+        font-size: 12px;
+    }
+
+    .home-wan-page-btn[disabled] {
+        opacity: .5;
+        cursor: default;
+    }
+</style>
+
+{# ====== SINGLE SUMMARY CARD ====== #}
+<div class="wan-summary-wrap">
+    <div class="wan-summary-title">Summary</div>
+    <div class="wan-summary-card">
+        <!-- Total -->
+        <div class="wan-summary-item">
+            <div class="wan-summary-label">Total WAN Uplinks</div>
+            <div class="wan-summary-main">
+                <span class="wan-summary-value" id="home-wan-total">0</span>
+                <span class="wan-summary-unit">links</span>
+            </div>
+            <div class="wan-summary-sub">All WAN interfaces</div>
+        </div>
+
+        <!-- Connected -->
+        <div class="wan-summary-item">
+            <div class="wan-summary-label">Connected</div>
+            <div class="wan-summary-main">
+                <span class="wan-dot wan-dot-green"></span>
+                <span class="wan-summary-value" id="home-wan-connected">0</span>
+            </div>
+            <div class="wan-summary-sub">Currently online</div>
+        </div>
+
+        <!-- Abnormal -->
+        <div class="wan-summary-item">
+            <div class="wan-summary-label">Abnormal</div>
+            <div class="wan-summary-main">
+                <span class="wan-dot wan-dot-amber"></span>
+                <span class="wan-summary-value" id="home-wan-abnormal">0</span>
+            </div>
+            <div class="wan-summary-sub">Degraded / error state</div>
+        </div>
+
+        <!-- Disconnected + Disabled -->
+        <div class="wan-summary-item">
+            <div class="wan-summary-label">Disconnected</div>
+            <div class="wan-summary-main">
+                <span class="wan-dot wan-dot-gray"></span>
+                <span class="wan-summary-value" id="home-wan-disconnected">0</span>
+            </div>
+            <div class="wan-summary-sub">
+                <span class="wan-dot wan-dot-silver"></span>
+                Disabled:
+                <span id="home-wan-disabled">0</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# ========= TABLE ========= #}
+<div class="home-wan-table-wrap">
+    <table class="home-wan-table">
+        <thead>
+            <tr>
+                <th>Status</th>
+                <th>Hostname</th>
+                <th>Serial Number</th>
+                <th>Model</th>
+                <th>Location</th>
+                {% comment %} <th>Path Label</th> {% endcomment %}
+                <th>Uplink</th>
+                {% comment %} <th>Uptime</th> {% endcomment %}
+                <th>Interface IP/Mask</th>
+                <th>Ping Destination</th>
+                <th>Throughput</th>
+                <th>Latency</th>
+                <th>Jitter</th>
+                <th>Loss</th>
+            </tr>
+        </thead>
+        <tbody id="home-wan-tbody">
+            <tr class="home-wan-empty-row" data-empty="1">
+                <td colspan="14" class="home-wan-nowrap home-wan-muted">Loading WAN uplink data...</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+{# ========= PAGINATION CONTROLS ========= #}
+<div id="home-wan-pagination" class="home-wan-pagination" style="display:none">
+    <button type="button" class="home-wan-page-btn" data-dir="prev">&laquo; Prev</button>
+    <span class="home-wan-page-info"></span>
+    <button type="button" class="home-wan-page-btn" data-dir="next">Next &raquo;</button>
+</div>
+
+<script>
+    (function () {
+        const tbody = document.getElementById('home-wan-tbody');
+        if (!tbody) return;
+
+        window.OW_HIDE_CHARTS = true;
+        console.log('WAN uplink tab script loaded, OW_HIDE_CHARTS set to true.=====', window.OW_HIDE_CHARTS);
+        const totalEls = document.querySelectorAll('.home-wan-total');
+        const connectedEls = document.querySelectorAll('.home-wan-connected');
+
+
+        const totalEl = document.getElementById('home-wan-total');
+        const connectedEl = document.getElementById('home-wan-connected');
+        const abnormalEl = document.getElementById('home-wan-abnormal');
+        const disconnectedEl = document.getElementById('home-wan-disconnected');
+        const disabledEl = document.getElementById('home-wan-disabled');
+
+        const paginationEl = document.getElementById('home-wan-pagination');
+        const pageInfoEl = paginationEl ? paginationEl.querySelector('.home-wan-page-info') : null;
+        const prevBtn = paginationEl ? paginationEl.querySelector('[data-dir="prev"]') : null;
+        const nextBtn = paginationEl ? paginationEl.querySelector('[data-dir="next"]') : null;
+
+        const PAGE_SIZE = 10;
+        let allRows = [];
+        let currentPage = 1;
+        let totalPages = 1;
+
+        function formatBytes(bytes) {
+            if (typeof bytes !== 'number' || isNaN(bytes) || bytes < 0) return '—';
+            const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+            let i = 0;
+            let val = bytes;
+            while (val >= 1024 && i < units.length - 1) {
+                val /= 1024;
+                i++;
+            }
+            return val.toFixed(2) + ' ' + units[i];
+        }
+
+        function humanizeStatus(status) {
+            const s = (status || '').toLowerCase();
+            if (s === 'connected') return 'Connected';
+            if (s === 'abnormal') return 'Abnormal';
+            if (s === 'disabled') return 'Disabled';
+            if (s === 'disconnected') return 'Disconnected';
+            return s ? s.charAt(0).toUpperCase() + s.slice(1) : 'Unknown';
+        }
+
+        function normalizeStatus(status) {
+            const s = (status || '').toLowerCase();
+            if (s === 'connected' || s === 'abnormal' || s === 'disabled' || s === 'disconnected') return s;
+            return 'disconnected';
+        }
+
+        function renderSummaryFromApi(summary) {
+            let total = 0, connected = 0, abnormal = 0, disconnected = 0, disabled = 0;
+
+            if (summary) {
+                if (typeof summary.total === 'number') total = summary.total;
+                if (typeof summary.connected === 'number') connected = summary.connected;
+                if (typeof summary.abnormal === 'number') abnormal = summary.abnormal;
+                if (typeof summary.disconnected === 'number') disconnected = summary.disconnected;
+            } else {
+                total = allRows.length;
+                allRows.forEach(row => {
+                    const st = normalizeStatus(row.status);
+                    if (st === 'connected') connected++;
+                    else if (st === 'abnormal') abnormal++;
+                    else if (st === 'disconnected') disconnected++;
+                    else if (st === 'disabled') disabled++;
+                });
+            }
+
+            // disabled is not in API summary, so always compute from rows:
+            allRows.forEach(row => {
+                const st = normalizeStatus(row.status);
+                if (st === 'disabled') disabled++;
+            });
+
+            totalEls.forEach(el => el.textContent = total);
+            connectedEls.forEach(el => el.textContent = connected);
+
+
+            if (totalEl) totalEl.textContent = total;
+            if (connectedEl) connectedEl.textContent = connected;
+            if (abnormalEl) abnormalEl.textContent = abnormal;
+            if (disconnectedEl) disconnectedEl.textContent = disconnected;
+            if (disabledEl) disabledEl.textContent = disabled;
+        }
+
+        function renderSummaryFromDom() {
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+            let total = 0, connected = 0, abnormal = 0, disconnected = 0, disabled = 0;
+
+            rows.forEach(row => {
+                // skip the "no data" row
+                if (row.dataset.empty === '1') {
+                    return;
+                }
+                total++;
+                const st = (row.dataset.status || '').toLowerCase();
+                if (st === 'connected') connected++;
+                else if (st === 'abnormal') abnormal++;
+                else if (st === 'disconnected') disconnected++;
+                else if (st === 'disabled') disabled++;
+            });
+
+            if (totalEl) totalEl.textContent = total;
+            if (connectedEl) connectedEl.textContent = connected;
+            if (abnormalEl) abnormalEl.textContent = abnormal;
+            if (disconnectedEl) disconnectedEl.textContent = disconnected;
+            if (disabledEl) disabledEl.textContent = disabled;
+        }
+
+        function createRowEl(row) {
+            const tr = document.createElement('tr');
+
+            const status = normalizeStatus(row.status);
+            const statusLabel = humanizeStatus(status);
+            const uplinkName = (row.interface_name || '').toUpperCase() || '—';
+            const hostname = row.hostname || '—';
+            const serial = row.serial_number || '—';
+            const model = row.model || '—';
+            const location = row.location || '—';
+
+            let pathLabel = row.path_label || '';
+            if (!pathLabel) {
+                if (row.uplink_type === 'mobile' || row.uplink_type === 'cellular') pathLabel = 'Cellular Path';
+                else if (row.uplink_type === 'ethernet') pathLabel = '-';
+            }
+            if (!pathLabel) pathLabel = '—';
+
+            const uptime = row.uptime || '—';
+
+            let ipMask = '—';
+            if (row.interface_ip) {
+                ipMask = row.interface_ip;
+                if (row.interface_mask !== null && row.interface_mask !== undefined) {
+                    ipMask += '/' + row.interface_mask;
+                }
+            }
+
+            const pingDest = row.ping_dest || '—';
+            const latency = (typeof row.ping_latency_ms === 'number')
+                ? row.ping_latency_ms.toFixed(1) + ' ms'
+                : '—';
+            const jitter = (typeof row.ping_jitter_ms === 'number')
+                ? row.ping_jitter_ms.toFixed(1) + ' ms'
+                : '—';
+            const loss = (row.ping_packet_loss !== null && row.ping_packet_loss !== undefined && row.ping_packet_loss !== '')
+                ? row.ping_packet_loss
+                : '—';
+
+            const txRaw = (typeof row.throughput_tx_bytes === 'number')
+                ? row.throughput_tx_bytes
+                : ((typeof row.tx_bytes === 'number') ? row.tx_bytes : null);
+            const rxRaw = (typeof row.throughput_rx_bytes === 'number')
+                ? row.throughput_rx_bytes
+                : ((typeof row.rx_bytes === 'number') ? row.rx_bytes : null);
+
+            const tx = txRaw !== null ? formatBytes(txRaw) : '—';
+            const rx = rxRaw !== null ? formatBytes(rxRaw) : '—';
+
+            tr.dataset.status = status;
+            tr.dataset.uplink = uplinkName;
+
+            tr.innerHTML = `
+                <td class="home-wan-status-cell">
+                    <span class="home-wan-status-dot home-wan-status-${status}"></span>
+                    ${statusLabel}
+                </td>
+                <td class="home-wan-nowrap">${hostname}</td>
+                <td class="home-wan-nowrap">${serial}</td>
+                <td class="home-wan-nowrap">${model}</td>
+                <td class="home-wan-nowrap">${location}</td>
+                <td class="home-wan-nowrap"><a class="home-wan-linkish">${uplinkName}</a></td>
+                <td>
+                    ${ipMask !== '—'
+                    ? `<div>${ipMask} <span class="home-wan-muted">(IPV4)</span></div>`
+                    : `<span class="home-wan-muted">—</span>`}
+                </td>
+                <td class="home-wan-nowrap">${pingDest}</td>
+                <td class="home-wan-throughput">
+                    <span class="home-wan-kp home-wan-kp-up"><i></i>${tx}</span>
+                    <span class="home-wan-kp home-wan-kp-down"><i></i>${rx}</span>
+                </td>
+                <td class="home-wan-nowrap">${latency}</td>
+                <td class="home-wan-nowrap">${jitter}</td>
+                <td class="home-wan-nowrap">${loss}</td>
+            `;
+
+            return tr;
+        }
+
+        function renderPage(page) {
+            if (!tbody) return;
+
+            // If there is no data at all from API, show a single "no data" row
+            if (!allRows.length) {
+                tbody.innerHTML = `
+                    <tr class="home-wan-empty-row" data-empty="1">
+                        <td colspan="14" class="home-wan-nowrap home-wan-muted">No WAN uplink data found</td>
+                    </tr>
+                `;
+                if (paginationEl) {
+                    paginationEl.style.display = 'none';
+                }
+                return;
+            }
+
+            totalPages = Math.max(1, Math.ceil(allRows.length / PAGE_SIZE));
+
+            if (page < 1) page = 1;
+            if (page > totalPages) page = totalPages;
+            currentPage = page;
+
+            tbody.innerHTML = '';
+
+            const start = (currentPage - 1) * PAGE_SIZE;
+            const end = start + PAGE_SIZE;
+            const pageRows = allRows.slice(start, end);
+
+            pageRows.forEach(row => {
+                tbody.appendChild(createRowEl(row));
+            });
+
+            if (paginationEl && allRows.length > PAGE_SIZE) {
+                paginationEl.style.display = 'flex';
+                if (pageInfoEl) pageInfoEl.textContent = `Page ${currentPage} of ${totalPages}`;
+                if (prevBtn) prevBtn.disabled = currentPage === 1;
+                if (nextBtn) nextBtn.disabled = currentPage === totalPages;
+            } else if (paginationEl) {
+                paginationEl.style.display = 'none';
+            }
+        }
+
+        if (prevBtn) {
+            prevBtn.addEventListener('click', function () {
+                if (currentPage > 1) renderPage(currentPage - 1);
+            });
+        }
+
+        if (nextBtn) {
+            nextBtn.addEventListener('click', function () {
+                if (currentPage < totalPages) renderPage(currentPage + 1);
+            });
+        }
+
+        async function init() {
+
+            // Use your API base, in the same style you gave
+            const API_URL = `https://controller.nexapp.co.in/api/v1/monitoring/wan-uplinks/`;
+
+            let json;
+
+            try {
+                const fetchOptions = (typeof buildAuthFetchOptions === 'function')
+                    ? buildAuthFetchOptions(API_URL)
+                    : { credentials: 'include' };
+
+                const res = await fetch(API_URL, fetchOptions);
+                console.log('WAN uplinks API response status:=====', res);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                json = await res.json();
+            } catch (e) {
+                console.error('WAN uplinks API error:', e);
+                // fall back to any provided object if it exists
+                if (typeof APIResponse !== 'undefined') {
+                    json = APIResponse;
+                } else {
+                    // if we can't get JSON at all, keep server-rendered rows + summary
+                    renderSummaryFromDom();
+                    return;
+                }
+            }
+
+            // ====== SHARE WAN DATA GLOBALLY FOR OTHER TABS (e.g. Overview) ======
+            try {
+                window.WAN_UPLINK_DATA = json;
+                window.dispatchEvent(new CustomEvent('wanUplinkDataLoaded', { detail: json }));
+            } catch (err) {
+                console.warn('Unable to broadcast WAN_UPLINK_DATA:', err);
+            }
+
+            allRows = Array.isArray(json.rows) ? json.rows : [];
+            renderSummaryFromApi(json.summary || null);
+            renderPage(1);
+        }
+
+        // Kick everything off
+        init();
+    })();
+</script>

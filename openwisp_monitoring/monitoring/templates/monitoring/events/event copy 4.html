@@ -1,4 +1,4 @@
-{% load i18n tz static %}
+{% load i18n tz %}
 
 <style>
     .event-title-wrap{
@@ -297,7 +297,6 @@
 
   <!-- Export buttons -->
   <div class="event-export-btns">
-    <button type="button" class="export-btn" id="view-charts-btn">{% trans "View Charts" %}</button>
     <button type="button" class="export-btn" id="export-excel">{% trans "Export Excel" %}</button>
     <button type="button" class="export-btn" id="export-pdf">{% trans "Export PDF" %}</button>
   </div>
@@ -449,20 +448,17 @@
     // "device registration" = first UP, fallback to firstStartMs if never up
     const deviceBirthMs = firstUpStartMs !== null ? firstUpStartMs : firstStartMs;
 
-   function fmtDuration(seconds) {
-  seconds = Math.max(0, Math.floor(seconds)); // better than round here
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = seconds % 60;
-
-  const parts = [];
-  if (h) parts.push(h + 'h');
-  if (m || h) parts.push(m + 'm');     // show minutes if any
-  parts.push(s + 's');                 // ALWAYS show seconds
-
-  return parts.join(' ');
-}
-
+    function fmtDuration(seconds) {
+      seconds = Math.max(0, Math.round(seconds));
+      const h = Math.floor(seconds / 3600);
+      const m = Math.floor((seconds % 3600) / 60);
+      const s = seconds % 60;
+      const parts = [];
+      if (h) parts.push(h + 'h');
+      if (m) parts.push(m + 'm');
+      if (!h && !m) parts.push(s + 's');
+      return parts.join(' ') || '0s';
+    }
 
     function fmtDateTime(ms) {
       const d = new Date(ms);
@@ -554,8 +550,7 @@
         if (r._endMs <= startMs || r._startMs >= endMs) return;
         const ovStart = Math.max(r._startMs, startMs);
         const ovEnd = Math.min(r._endMs, endMs);
-        const sec = Math.max(0, Math.floor((ovEnd - ovStart) / 1000));
-
+        const sec = Math.max(0, Math.round((ovEnd - ovStart) / 1000));
         if (!sec) return;
 
         if ((r.status || '').toLowerCase() === 'up') upSec += sec;
@@ -832,15 +827,6 @@
     filtered = initial.rows;
     renderSummary(initial.summary);
     renderTable();
-
-    // Hook for the View Charts modal — read-only access to current state
-    window.__eventsChartGetData = function () {
-      return {
-        rows: filtered.slice(),
-        window: { startMs: currentWindow.startMs, endMs: currentWindow.endMs },
-        summary: currentSummary
-      };
-    };
   })();
 </script>
 
@@ -862,392 +848,5 @@
 
   document.addEventListener('DOMContentLoaded', toggleSubmitRow);
   window.addEventListener('hashchange', toggleSubmitRow);
-})();
-</script>
-
-<style>
-  .ec-modal-backdrop {
-    position: fixed; inset: 0; background: rgba(15,23,42,.55);
-    display: none; align-items: center; justify-content: center;
-    z-index: 9999; padding: 16px;
-  }
-  .ec-modal-backdrop.open { display: flex; }
-  .ec-modal {
-    background: #fff; border-radius: 12px; width: 100%; max-width: 1100px;
-    max-height: 92vh; display: flex; flex-direction: column;
-    box-shadow: 0 20px 60px rgba(0,0,0,.35); overflow: hidden;
-  }
-  .ec-modal-hd {
-    display: flex; align-items: center; gap: .75rem;
-    padding: 12px 16px; border-bottom: 1px solid #e5e7eb;
-  }
-  .ec-modal-title { font-weight: 800; font-size: 14px; color: #111827; }
-  .ec-modal-close {
-    margin-left: auto; background: transparent; border: 0; font-size: 22px;
-    line-height: 1; cursor: pointer; color: #6b7280; padding: 4px 10px;
-    border-radius: 6px;
-  }
-  .ec-modal-close:hover { background: #f3f4f6; color: #111827; }
-  .ec-modal-stats {
-    display: flex; flex-wrap: wrap; gap: .75rem; padding: 10px 16px;
-    border-bottom: 1px solid #e5e7eb; font-size: 12px; color: #4b5563;
-    background: #f9fafb;
-  }
-  .ec-modal-stats span strong { font-weight: 700; color: #111827; }
-  .ec-modal-body { padding: 16px; overflow: auto; }
-  .ec-chart-wrap { position: relative; height: 220px; width: 100%; }
-  .ec-chart-wrap.tall { height: 260px; margin-top: 18px; }
-  .ec-chart-wrap.xtall { height: 380px; }
-  .ec-zoom-reset {
-    margin-left: auto; background: #24415d; color: #f9fafb; border: 0;
-    border-radius: 6px; padding: 5px 12px; font-size: 12px; cursor: pointer;
-  }
-  .ec-zoom-reset:hover { background: #1e3a52; }
-  .ec-zoom-reset:disabled { background: #cbd5e1; color: #fff; cursor: not-allowed; }
-  .ec-zoom-hint {
-    margin-left: auto; color: #6b7280; font-size: 11px;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  }
-  /* close button no longer auto-margins to the right since reset-zoom takes that slot */
-  .ec-modal-hd .ec-modal-close { margin-left: 6px; }
-  .ec-section-title {
-    font-size: 12px; font-weight: 700; color: #374151;
-    text-transform: uppercase; letter-spacing: .04em;
-    margin: 6px 2px;
-  }
-  .ec-legend {
-    display: flex; gap: 1rem; font-size: 12px; color: #4b5563;
-    margin: 4px 2px 12px 2px;
-  }
-  .ec-legend-dot {
-    display: inline-block; width: 10px; height: 10px; border-radius: 50%;
-    margin-right: 6px; vertical-align: middle;
-  }
-  .ec-legend-up { background: #10b981; }
-  .ec-legend-down { background: #ef4444; }
-  .ec-empty {
-    padding: 32px; text-align: center; color: #6b7280;
-    border: 1px dashed #d1d5db; border-radius: 8px; margin: 6px;
-  }
-</style>
-
-<div class="ec-modal-backdrop" id="events-chart-modal" role="dialog" aria-modal="true" aria-labelledby="events-chart-title">
-  <div class="ec-modal">
-    <div class="ec-modal-hd">
-      <div class="ec-modal-title" id="events-chart-title">{% trans "Up / Down Timeline" %}</div>
-      <button type="button" class="ec-zoom-reset" id="events-chart-reset" title="{% trans 'Reset zoom' %}">{% trans "Reset Zoom" %}</button>
-      <button type="button" class="ec-modal-close" id="events-chart-close" aria-label="{% trans 'Close' %}">&times;</button>
-    </div>
-    <div class="ec-modal-stats" id="events-chart-stats"></div>
-    <div class="ec-modal-body">
-      <div class="ec-legend">
-        <span><span class="ec-legend-dot ec-legend-up"></span>{% trans "Up" %}</span>
-        <span><span class="ec-legend-dot ec-legend-down"></span>{% trans "Down" %}</span>
-        <span class="ec-zoom-hint">{% trans "Scroll to zoom · Drag to crop a window · Hold Shift + drag to pan" %}</span>
-      </div>
-      <div class="ec-chart-wrap xtall"><canvas id="events-timeline-canvas"></canvas></div>
-      <div class="ec-empty" id="events-chart-empty" style="display:none;">{% trans "No events available for the selected range." %}</div>
-    </div>
-  </div>
-</div>
-
-<script>
-(function () {
-  var openBtn = document.getElementById('view-charts-btn');
-  var modal = document.getElementById('events-chart-modal');
-  var closeBtn = document.getElementById('events-chart-close');
-  var resetBtn = document.getElementById('events-chart-reset');
-  var statsEl = document.getElementById('events-chart-stats');
-  var emptyEl = document.getElementById('events-chart-empty');
-  var timelineCanvas = document.getElementById('events-timeline-canvas');
-
-  if (!openBtn || !modal) return;
-
-  var timelineChart = null;
-  var libsReady = null;
-
-  function loadScript(src) {
-    return new Promise(function (resolve, reject) {
-      var existing = document.querySelector('script[data-ec-src="' + src + '"]');
-      if (existing) {
-        if (existing.dataset.loaded === '1') return resolve();
-        existing.addEventListener('load', function () { resolve(); });
-        existing.addEventListener('error', reject);
-        return;
-      }
-      var s = document.createElement('script');
-      s.src = src;
-      s.async = true;
-      s.dataset.ecSrc = src;
-      s.onload = function () { s.dataset.loaded = '1'; resolve(); };
-      s.onerror = reject;
-      document.head.appendChild(s);
-    });
-  }
-
-  var CHART_JS_URL = '{% static "monitoring/js/events/chart.umd.min.js" %}';
-  var ZOOM_PLUGIN_URL = '{% static "monitoring/js/events/chartjs-plugin-zoom.min.js" %}';
-  var zoomPluginRegistered = false;
-
-  function ensureLibs() {
-    if (libsReady) return libsReady;
-    var chartReady = (window.Chart && typeof window.Chart === 'function')
-      ? Promise.resolve()
-      : loadScript(CHART_JS_URL).then(function () {
-          if (!window.Chart || typeof window.Chart !== 'function') {
-            throw new Error('Chart.js loaded but window.Chart is not a constructor (url=' + CHART_JS_URL + ')');
-          }
-        });
-    libsReady = chartReady.then(function () {
-      if (zoomPluginRegistered) return;
-      return loadScript(ZOOM_PLUGIN_URL).then(function () {
-        // Plugin auto-registers via Chart.register in v2; if not, find it on window.
-        var plugin = window.ChartZoom || (window.Chart && window.Chart.Zoom);
-        if (plugin && window.Chart && typeof window.Chart.register === 'function') {
-          try { window.Chart.register(plugin); } catch (e) { /* already registered */ }
-        }
-        zoomPluginRegistered = true;
-      });
-    });
-    return libsReady;
-  }
-
-  function parseMs(s) {
-    return Date.parse(String(s).replace(' ', 'T'));
-  }
-
-  function fmtDur(seconds) {
-    seconds = Math.max(0, Math.floor(seconds));
-    var h = Math.floor(seconds / 3600);
-    var m = Math.floor((seconds % 3600) / 60);
-    var s = seconds % 60;
-    var parts = [];
-    if (h) parts.push(h + 'h');
-    if (m || h) parts.push(m + 'm');
-    parts.push(s + 's');
-    return parts.join(' ');
-  }
-
-  // Build a step-line series: y=1 when Up, y=0 when Down. Two points per
-  // interval (start, end) so segments are horizontal between adjacent points
-  // and vertical at status changes.
-  function buildStepSeries(rows, winStart, winEnd) {
-    var pts = [];
-    var sorted = rows.map(function (r) {
-      return {
-        sMs: parseMs(r.start),
-        eMs: parseMs(r.end),
-        status: (r.status || '').toLowerCase(),
-        human: r.duration_human
-      };
-    }).filter(function (r) { return !isNaN(r.sMs) && !isNaN(r.eMs) && r.eMs > r.sMs; })
-      .sort(function (a, b) { return a.sMs - b.sMs; });
-
-    if (!sorted.length) return pts;
-
-    sorted.forEach(function (r, i) {
-      var y = r.status === 'up' ? 1 : 0;
-      // start of this interval
-      pts.push({ x: r.sMs, y: y, _status: r.status, _human: r.human });
-      // end of this interval
-      pts.push({ x: r.eMs, y: y, _status: r.status, _human: r.human });
-    });
-
-    return pts;
-  }
-
-  function renderStats(state) {
-    var s = state.summary;
-    if (!s) { statsEl.innerHTML = ''; return; }
-    var upPct = (s.uptime_percent !== null && s.uptime_percent !== undefined) ? s.uptime_percent + '%' : 'n/a';
-    statsEl.innerHTML =
-      '<span><strong>{% trans "Uptime" %}:</strong> ' + upPct + '</span>' +
-      '<span><strong>{% trans "Total Up" %}:</strong> ' + (s.uptime_human || '0s') + '</span>' +
-      '<span><strong>{% trans "Total Down" %}:</strong> ' + (s.downtime_human || '0s') + '</span>' +
-      '<span><strong>{% trans "Window" %}:</strong> ' + (s.window_start || '') + ' → ' + (s.window_end || '') + '</span>' +
-      '<span><strong>{% trans "Events" %}:</strong> ' + state.rows.length + '</span>';
-  }
-
-  function destroyCharts() {
-    if (timelineChart) { timelineChart.destroy(); timelineChart = null; }
-  }
-
-  function fmtTickShort(ms, span) {
-    var d = new Date(ms);
-    var pad = function (n) { return n < 10 ? '0' + n : '' + n; };
-    var oneDay = 24 * 3600 * 1000;
-    if (span <= 2 * oneDay) {
-      return pad(d.getMonth() + 1) + '/' + pad(d.getDate()) + ' ' +
-             pad(d.getHours()) + ':' + pad(d.getMinutes());
-    }
-    if (span <= 60 * oneDay) {
-      return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
-    }
-    return d.getFullYear() + '-' + pad(d.getMonth() + 1);
-  }
-
-  function fmtTooltipTime(ms) {
-    var d = new Date(ms);
-    var pad = function (n) { return n < 10 ? '0' + n : '' + n; };
-    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) +
-           ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
-  }
-
-  function renderCharts() {
-    if (typeof window.__eventsChartGetData !== 'function') return;
-    var state = window.__eventsChartGetData();
-    renderStats(state);
-
-    destroyCharts();
-
-    if (!state.rows.length) {
-      emptyEl.style.display = 'block';
-      timelineCanvas.style.display = 'none';
-      if (resetBtn) resetBtn.disabled = true;
-      return;
-    }
-    emptyEl.style.display = 'none';
-    timelineCanvas.style.display = '';
-    if (resetBtn) resetBtn.disabled = false;
-
-    var winStart = state.window.startMs;
-    var winEnd = state.window.endMs;
-    var pts = buildStepSeries(state.rows, winStart, winEnd);
-
-    timelineChart = new Chart(timelineCanvas.getContext('2d'), {
-      type: 'line',
-      data: {
-        datasets: [{
-          label: '{% trans "Status" %}',
-          data: pts,
-          parsing: false,
-          stepped: 'before',
-          borderWidth: 2,
-          pointRadius: 0,
-          pointHoverRadius: 4,
-          pointHoverBackgroundColor: '#0f172a',
-          fill: { target: 'origin', above: 'rgba(16, 185, 129, 0.30)', below: 'rgba(239, 68, 68, 0.30)' },
-          borderColor: 'rgba(16, 185, 129, 1)',
-          segment: {
-            borderColor: function (ctx) {
-              var y = ctx.p0 && ctx.p0.parsed ? ctx.p0.parsed.y : 1;
-              return y >= 1 ? 'rgba(16, 185, 129, 1)' : 'rgba(239, 68, 68, 1)';
-            }
-          }
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        animation: false,
-        interaction: { mode: 'nearest', intersect: false, axis: 'x' },
-        scales: {
-          x: {
-            type: 'linear',
-            min: winStart,
-            max: winEnd,
-            grid: { color: 'rgba(0,0,0,0.05)' },
-            ticks: {
-              maxTicksLimit: 10,
-              autoSkip: true,
-              callback: function (val) {
-                var x = (timelineChart && timelineChart.scales && timelineChart.scales.x) ? timelineChart.scales.x : null;
-                var span = x ? (x.max - x.min) : (winEnd - winStart);
-                return fmtTickShort(val, span);
-              }
-            }
-          },
-          y: {
-            min: -0.05,
-            max: 1.2,
-            ticks: {
-              stepSize: 1,
-              callback: function (val) {
-                if (val === 1) return '{% trans "Up" %}';
-                if (val === 0) return '{% trans "Down" %}';
-                return '';
-              }
-            },
-            grid: { color: 'rgba(0,0,0,0.08)' }
-          }
-        },
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            callbacks: {
-              title: function (items) {
-                if (!items.length) return '';
-                return fmtTooltipTime(items[0].parsed.x);
-              },
-              label: function (ctx) {
-                var raw = ctx.raw || {};
-                var status = raw._status === 'up' ? '{% trans "Up" %}' : '{% trans "Down" %}';
-                var line = '{% trans "Status" %}: ' + status;
-                if (raw._human) line += '  ·  ' + raw._human;
-                return line;
-              }
-            }
-          },
-          zoom: {
-            limits: {
-              x: { min: winStart, max: winEnd, minRange: Math.max(60 * 1000, (winEnd - winStart) / 1000) }
-            },
-            pan: {
-              enabled: true,
-              mode: 'x',
-              modifierKey: 'shift'
-            },
-            zoom: {
-              wheel: { enabled: true, speed: 0.1 },
-              pinch: { enabled: true },
-              drag: {
-                enabled: true,
-                backgroundColor: 'rgba(15, 23, 42, 0.12)',
-                borderColor: 'rgba(15, 23, 42, 0.4)',
-                borderWidth: 1,
-                threshold: 4
-              },
-              mode: 'x'
-            }
-          }
-        }
-      }
-    });
-  }
-
-  function resetZoom() {
-    if (timelineChart && typeof timelineChart.resetZoom === 'function') {
-      timelineChart.resetZoom();
-    }
-  }
-
-  function showErr(prefix, err) {
-    var msg = (err && (err.message || err.type)) ? (err.message || err.type) : String(err);
-    if (window.console && console.error) console.error('[events-chart] ' + prefix + ':', err);
-    statsEl.innerHTML = '<span style="color:#b91c1c;">' + prefix + ': ' + msg + '</span>';
-  }
-
-  function openModal() {
-    modal.classList.add('open');
-    ensureLibs().then(function () {
-      try { renderCharts(); }
-      catch (e) { showErr('Chart render failed', e); }
-    }).catch(function (err) {
-      showErr('Unable to load chart library', err);
-    });
-  }
-
-  function closeModal() {
-    modal.classList.remove('open');
-    destroyCharts();
-  }
-
-  openBtn.addEventListener('click', openModal);
-  closeBtn.addEventListener('click', closeModal);
-  if (resetBtn) resetBtn.addEventListener('click', resetZoom);
-  modal.addEventListener('click', function (e) { if (e.target === modal) closeModal(); });
-  document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape' && modal.classList.contains('open')) closeModal();
-  });
 })();
 </script>

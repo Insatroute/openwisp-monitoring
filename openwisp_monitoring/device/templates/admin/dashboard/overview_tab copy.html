@@ -1,0 +1,898 @@
+{% load leaflet_tags i18n %}
+{% load i18n %}
+{% load static %}
+<script type="text/javascript">
+  window._owGeoMapConfig = {
+    geoJsonUrl: '{{ monitoring_location_geojson_url }}',
+    locationDeviceUrl: '{{ monitoring_device_list_url }}?page_size=5'
+  }
+</script>
+
+<!-- Chart.js v3+ -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+
+<script type="text/javascript" src={% static 'monitoring/js/lib/netjsongraph.min.js' %}></script>
+<script type="text/javascript" src={% static 'monitoring/js/lib/leaflet.fullscreen.min.js' %}></script>
+
+<div id='leaflet-config'>
+  {% autoescape on %}{% leaflet_json_config %}{% endautoescape %}
+</div>
+
+<!-- ================= OVERVIEW PAGE WRAP ================= -->
+<div class="overview-page-wrap">
+
+  <div class="map-view overview-map-view">
+    <div id="device-map-container">
+      <div class="no-data">
+        <p>{% trans 'No map data to show' %}.</p>
+        <p><a class="button submit" href="#close">Close</a></p>
+      </div>
+      <div class="ow-loading-spinner"></div>
+    </div>
+  </div>
+
+  <div class="card-grid overview-card-grid">
+    <!-- Devices Card -->
+    <div class="card overview-card">
+      <h4>Devices</h4>
+      <div class="stats overview-stats">
+        <div class="stat-item overview-stat-item">
+          <span class="badge badge-gray" id="total-devices">0</span>
+          <span class="card-label">Total</span>
+        </div>
+        <div class="stat-item overview-stat-item">
+          <span class="badge badge-green" id="monitoring-ok">0</span>
+          <span class="card-label">Online</span>
+        </div>
+        <div class="stat-item overview-stat-item">
+          <span class="badge badge-red" id="monitoring-critical">0</span>
+          <span class="card-label">Offline</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tunnels Card -->
+    <div class="card overview-card">
+      <h4>Tunnels</h4>
+      <div class="stats overview-stats">
+        <div class="stat-item overview-stat-item">
+          <span class="badge badge-gray" id="spoke-total">0</span>
+          <span class="card-label">Total</span>
+        </div>
+        <div class="stat-item overview-stat-item">
+          <span class="badge badge-green" id="spoke-active">0</span>
+          <span class="card-label">Active</span>
+        </div>
+        <div class="stat-item overview-stat-item">
+          <span class="badge badge-yellow" id="spoke-pending">0</span>
+          <span class="card-label">Pending</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Total Links Card -->
+    <div class="card overview-card">
+      <h4>Total Links</h4>
+      <div class="stats overview-stats">
+        <div class="stat-item overview-stat-item">
+          <span class="badge badge-gray home-wan-total">0</span>
+          <span class="card-label">Links</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Active Links Card -->
+    <div class="card overview-card">
+      <h4>Active Links</h4>
+      <div class="stats overview-stats">
+        <div class="stat-item overview-stat-item">
+          <span class="badge badge-green home-wan-connected">0</span>
+          <span class="label">Active</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- built-in OpenWISP charts -->
+  <div id="plot-container"></div>
+
+  <!-- ===== your three matching cards ===== -->
+  <div id="custom-distribution-row" class="overview-distribution-row">
+    <div class="custom-distribution-grid overview-distribution-grid">
+
+      <div class="ow-mini-card overview-mini-card Carrier-Distribution-div">
+        <h4 class="ow-mini-title overview-mini-title Carrier-Distribution-span">Carrier Distribution</h4>
+        <div class="ow-mini-inner overview-mini-inner">
+          <div id="Carrier-Distribution-chart" class="ow-mini-plot overview-mini-plot"></div>
+        </div>
+        <div class="ow-mini-legend overview-mini-legend" id="Carrier-Distribution-legend"></div>
+      </div>
+
+      <div class="ow-mini-card overview-mini-card Network-Distribution-div">
+        <h4 class="ow-mini-title overview-mini-title Network-Distribution-span">Network Distribution</h4>
+        <div class="ow-mini-inner overview-mini-inner">
+          <div id="Network-Distribution-chart" class="ow-mini-plot overview-mini-plot"></div>
+        </div>
+        <div class="ow-mini-legend overview-mini-legend" id="Network-Distribution-legend"></div>
+      </div>
+
+      <div class="ow-mini-card overview-mini-card Interface-Distribution-div">
+        <h4 class="ow-mini-title overview-mini-title Interface-Distribution-span">Interface Distribution</h4>
+        <div class="ow-mini-inner overview-mini-inner">
+          <div id="Interface-Distribution-chart" class="ow-mini-plot overview-mini-plot"></div>
+        </div>
+        <div class="ow-mini-legend overview-mini-legend" id="Interface-Distribution-legend"></div>
+      </div>
+
+    </div>
+  </div>
+  <!-- =============================================== -->
+
+
+  <div id="ow-chart-inner-container">
+    <script type="text/javascript" src="{% static 'monitoring/js/lib/daterangepicker.min.js' %}"></script>
+    <span id="monitoring-timeseries-api-url" data-value="{{ api_url }}"></span>
+    <span id="monitoring-timeseries-original-key" data-value="{{ original.key }}"></span>
+    <span id="monitoring-timeseries-default-time" data-value="{{ default_time }}"></span>
+    <div id="ow-chart-utils">
+      <span>
+        <a id="daterangepicker-widget">
+          <span class="button"></span>
+        </a>
+        <a id="ow-chart-export" class="button export">{% trans 'export data' %}</a>
+      </span>
+      <span style="display:none" ;>
+        <select name="org-selector" id="org-selector">
+          <option></option>
+        </select>
+      </span>
+    </div>
+    <div id="chart-loading-overlay">
+      <div class="ow-loading-spinner"></div>
+    </div>
+    <div id="ow-chart-contents"></div>
+    <div id="ow-chart-fallback" class="form-row">
+      {% trans 'Insufficient data for selected time period' %}.
+    </div>
+    {% if chart_quick_links %}
+    {{ chart_quick_links|json_script:"monitoring-chart-quick-links" }}
+    {% endif %}
+  </div>
+
+</div> <!-- /overview-page-wrap -->
+
+<script>
+  /* ---------- Donut with clickable legend to hide/show slices ---------- */
+  function renderDonutWithLegend(opts) {
+    const { elId, legendId, labels, values, colors, redirectUrl } = opts;
+
+    const el = document.getElementById(elId);
+    const legendRoot = document.getElementById(legendId);
+    if (!el || !legendRoot) return;
+
+    // baseValues = real data (can be 0)
+    const baseValues = (Array.isArray(values) ? values : []).map(v => Number(v) || 0);
+
+    // which slices are "on"
+    let active = baseValues.map(v => v > 0);
+    // if everything is zero, keep first slice active so chart still shows a ring
+    if (active.every(a => !a) && active.length) {
+      active[0] = true;
+    }
+
+    function totalActive() {
+      return baseValues.reduce((acc, v, i) => acc + (active[i] ? v : 0), 0);
+    }
+
+    // values actually sent to Plotly (we need non-zero to draw a ring)
+    function makePlotValues() {
+      const masked = baseValues.map((v, i) => (active[i] ? v : 0));
+      const hasPositive = masked.some(v => v > 0);
+      if (hasPositive) return masked;
+
+      if (!masked.length) return masked;
+
+      const clone = masked.slice();
+      // draw a fake 1-unit slice just so donut is visible
+      clone[0] = 1;
+      return clone;
+    }
+
+    const plotValues = makePlotValues();
+
+    const rect = el.getBoundingClientRect();
+    const data = [{
+      type: 'pie',
+      labels: labels,
+      values: plotValues,
+      hole: 0.69,
+      sort: false,
+      direction: 'clockwise',
+      texttemplate: '%{value} (%{percent})',
+      textposition: 'inside',
+      insidetextorientation: 'auto',
+      textfont: { size: 9, color: '#ffffff' },
+      textinfo: 'none',
+      hoverinfo: 'label+value+percent',
+      marker: { colors: colors || [] }
+    }];
+    const layout = {
+      height: Math.max(140, Math.floor(rect.height || 150)),
+      width: rect.width || el.clientWidth || 200,
+      margin: { l: 6, r: 6, t: 6, b: 6 },
+      showlegend: false,
+      paper_bgcolor: 'rgba(0,0,0,0)',
+      plot_bgcolor: 'rgba(0,0,0,0)',
+      annotations: [{
+        showarrow: false,
+        text: String(totalActive() || 0),   // center will still show real total (0)
+        x: 0.5, y: 0.5,
+        font: { size: 13, color: '#2b2f36' }
+      }]
+    };
+    if (typeof Plotly === 'undefined') return;
+
+    Plotly.newPlot(el, data, layout, { responsive: true, displayModeBar: false });
+
+    // OPTIONAL redirect or tab-switch on click
+    if (redirectUrl) {
+      // Carrier / Network -> go to admin/config/device/
+      el.on('plotly_click', function () {
+        window.location.href = redirectUrl;
+      });
+    } else if (elId === 'Interface-Distribution-chart') {
+      // Interface Distribution -> switch to WAN Uplinks tab
+      el.on('plotly_click', function () {
+        var wanTabBtn = document.getElementById('home-tab-wanuplink');
+        if (wanTabBtn) {
+          wanTabBtn.click();
+        }
+      });
+    }
+
+    legendRoot.innerHTML = '';
+    labels.forEach((label, i) => {
+      const item = document.createElement('div');
+      item.className = 'legend-item';
+      item.dataset.index = i;
+      const sw = document.createElement('span');
+      sw.className = 'legend-swatch';
+      sw.style.background = (colors && colors[i]) ? colors[i] : '#353c44';
+      const txt = document.createElement('span');
+      txt.textContent = label;
+      item.appendChild(sw);
+      item.appendChild(txt);
+      legendRoot.appendChild(item);
+      if (!active[i]) item.classList.add('is-off');
+    });
+
+    legendRoot.addEventListener('click', (e) => {
+      const node = e.target.closest('.legend-item');
+      if (!node) return;
+      const idx = parseInt(node.dataset.index, 10);
+
+      active[idx] = !active[idx];
+
+      const newPlotValues = makePlotValues();
+      Plotly.restyle(el, { values: [newPlotValues] });
+      Plotly.relayout(el, { 'annotations[0].text': String(totalActive() || 0) });
+      node.classList.toggle('is-off', !active[idx]);
+    });
+  }
+
+  /* ================== FETCH INTERFACES-SUMMARY (kept, used for fallback only) ================== */
+
+  async function fetchInterfacesSummary() {
+    const path = window.location.pathname;
+    const match = path.match(/[0-9a-fA-F-]{36}/);
+    const DEVICE_UUID = match ? match[0] : 'b5224a8d-ee4c-44a3-a7b0-5f30fac484b9';
+
+    const base = window.API_BASE_URL || 'https://controller.nexapp.co.in';
+    const url = `${base}/api/v1/monitoring/device/${DEVICE_UUID}/interfaces-summary/`;
+
+    let token = null;
+    try {
+      token = await fetchAuthToken();
+    } catch (e) {
+      console.warn('fetchAuthToken error for interfaces-summary:', e);
+    }
+
+    const headers = { 'Accept': 'application/json' };
+    if (token) headers['Authorization'] = `Token ${token}`;
+
+    const resp = await fetch(url, { headers });
+    console.log('interfaces-summary response:===', resp);
+    if (!resp.ok) {
+      throw new Error(`interfaces-summary HTTP ${resp.status}`);
+    }
+    return resp.json();
+  }
+
+  /* ================== NEW: FETCH MOBILE-DISTRIBUTION FOR CARRIER + NETWORK ================== */
+
+  async function fetchMobileDistribution() {
+    const base = window.API_BASE_URL || 'https://controller.nexapp.co.in';
+    const url = `${base}/api/v1/monitoring/mobile-distribution/`;
+
+    let token = null;
+    try {
+      token = await fetchAuthToken();
+    } catch (e) {
+      console.warn('fetchAuthToken error for mobile-distribution:', e);
+    }
+
+    const headers = { 'Accept': 'application/json' };
+    if (token) headers['Authorization'] = `Token ${token}`;
+
+    const resp = await fetch(url, { headers });
+    console.log('mobile-distribution response:===', resp);
+    if (!resp.ok) {
+      throw new Error(`mobile-distribution HTTP ${resp.status}`);
+    }
+    return resp.json();
+  }
+
+  /* ===== helper to render Interface Distribution from WAN rows ===== */
+  function renderInterfaceDistributionFromWanRows(rows) {
+    const ifaceCount = new Map();
+
+    if (Array.isArray(rows)) {
+      rows.forEach(row => {
+        if (!row || !row.interface_name) return;
+        const name = String(row.interface_name).trim();
+        if (!name) return;
+        ifaceCount.set(name, (ifaceCount.get(name) || 0) + 1);
+      });
+    }
+
+    const interfaceLabels = ifaceCount.size
+      ? Array.from(ifaceCount.keys())
+      : ['No data'];
+    const interfaceValues = ifaceCount.size
+      ? interfaceLabels.map(k => ifaceCount.get(k))
+      : [0];
+
+    const palette3 = ['#ff7f0e', '#1f77b4', '#2ca02c', '#353c44', '#a72d1d', '#22c55e', '#6366f1', '#0ea5e9'];
+
+    renderDonutWithLegend({
+      elId: 'Interface-Distribution-chart',
+      legendId: 'Interface-Distribution-legend',
+      labels: interfaceLabels,
+      values: interfaceValues,
+      colors: palette3
+    });
+  }
+
+  /* ================== INIT CHARTS ================== */
+
+  async function initDistributionChartsFromApi() {
+    let ifSummary = {};
+    let mobileDist = {};
+
+    // fetch both in parallel, but handle errors independently
+    try {
+      ifSummary = await fetchInterfacesSummary();
+      console.log('Fetched interfaces-summary:====', ifSummary);
+    } catch (e) {
+      console.error('Error fetching interfaces-summary:', e);
+      ifSummary = {};
+    }
+
+    try {
+      mobileDist = await fetchMobileDistribution();
+      console.log('Fetched mobile-distribution:====', mobileDist);
+    } catch (e) {
+      console.error('Error fetching mobile-distribution:', e);
+      mobileDist = {};
+    }
+
+    const interfaces = Array.isArray(ifSummary.interfaces) ? ifSummary.interfaces : [];
+    console.log('interfaces-summary data:===', interfaces);
+
+    // ----- BASE: compute from interfaces-summary (fallback) -----
+    const carriersCount = new Map();
+    const techCount = new Map();
+
+    for (const iface of interfaces) {
+      if (!iface) continue;
+
+      if (iface.type === 'mobile' && iface.mobile) {
+        const op = (iface.mobile.operator_name || 'Unknown').trim() || 'Unknown';
+        carriersCount.set(op, (carriersCount.get(op) || 0) + 1);
+
+        const sig = iface.mobile.signal || {};
+        const sigKey = Object.keys(sig)[0];
+        if (sigKey) {
+          let label;
+          const low = sigKey.toLowerCase();
+          if (low === 'lte') {
+            label = '4G';
+          } else if (low === '5g') {
+            label = '5G';
+          } else {
+            label = sigKey.toUpperCase();
+          }
+          techCount.set(label, (techCount.get(label) || 0) + 1);
+        }
+      }
+    }
+
+    // Fallback values from interfaces-summary
+    let carrierLabels = carriersCount.size
+      ? Array.from(carriersCount.keys())
+      : ['No data'];
+    let carrierValues = carriersCount.size
+      ? carrierLabels.map(k => carriersCount.get(k))
+      : [0];
+
+    const preferredOrder = ['5G', '4G'];
+    const allTechKeys = Array.from(techCount.keys());
+    const orderedTech = [
+      ...preferredOrder.filter(k => techCount.has(k)),
+      ...allTechKeys.filter(k => !preferredOrder.includes(k))
+    ];
+    let networkLabels = orderedTech.length ? orderedTech : ['No data'];
+    let networkValues = orderedTech.length
+      ? networkLabels.map(k => techCount.get(k))
+      : [0];
+
+    // ----- OVERRIDE WITH mobile-distribution IF AVAILABLE -----
+    if (
+      mobileDist &&
+      mobileDist.carrier &&
+      Array.isArray(mobileDist.carrier.labels) &&
+      Array.isArray(mobileDist.carrier.data) &&
+      mobileDist.carrier.labels.length
+    ) {
+      carrierLabels = mobileDist.carrier.labels.length
+        ? mobileDist.carrier.labels
+        : ['No data'];
+
+      carrierValues = mobileDist.carrier.data.length
+        ? mobileDist.carrier.data
+        : new Array(mobileDist.carrier.labels.length || 1).fill(0);
+    }
+
+    if (
+      mobileDist &&
+      mobileDist.network &&
+      Array.isArray(mobileDist.network.labels) &&
+      Array.isArray(mobileDist.network.data) &&
+      mobileDist.network.labels.length
+    ) {
+      networkLabels = mobileDist.network.labels.length
+        ? mobileDist.network.labels
+        : ['No data'];
+
+      networkValues = mobileDist.network.data.length
+        ? mobileDist.network.data
+        : new Array(mobileDist.network.labels.length || 1).fill(0);
+    }
+
+    const palette1 = ['#ff7f0e', '#1f77b4', '#2ca02c', '#353c44', '#a72d1d', '#267126'];
+    const palette2 = ['#2ca02c', '#1f77b4', '#353c44', '#a72d1d', '#f59e0b', '#22c55e'];
+
+    // Carrier Distribution (click -> admin/config/device/)
+    renderDonutWithLegend({
+      elId: 'Carrier-Distribution-chart',
+      legendId: 'Carrier-Distribution-legend',
+      labels: carrierLabels,
+      values: carrierValues,
+      colors: palette1,
+      redirectUrl: '/admin/config/device/'
+    });
+
+    // Network Distribution (click -> admin/config/device/)
+    renderDonutWithLegend({
+      elId: 'Network-Distribution-chart',
+      legendId: 'Network-Distribution-legend',
+      labels: networkLabels,
+      values: networkValues,
+      colors: palette2,
+      redirectUrl: '/admin/config/device/'
+    });
+
+    // ---- Interface Distribution from WAN_UPLINK_DATA (if already loaded) ----
+    const initialWanRows =
+      window.WAN_UPLINK_DATA && Array.isArray(window.WAN_UPLINK_DATA.rows)
+        ? window.WAN_UPLINK_DATA.rows
+        : [];
+
+    renderInterfaceDistributionFromWanRows(initialWanRows);
+
+    // Listen for future WAN data from the WAN tab (single API call there)
+    window.addEventListener('wanUplinkDataLoaded', function (ev) {
+      const data = (ev && ev.detail) || window.WAN_UPLINK_DATA || {};
+      const rows = Array.isArray(data.rows) ? data.rows : [];
+      renderInterfaceDistributionFromWanRows(rows);
+    });
+  }
+
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    initDistributionChartsFromApi();
+  } else {
+    document.addEventListener('DOMContentLoaded', initDistributionChartsFromApi);
+  }
+
+  // ensure donuts resize correctly on zoom / orientation / device change
+  window.addEventListener('resize', function () {
+    if (typeof Plotly === 'undefined') return;
+    ['Carrier-Distribution-chart', 'Network-Distribution-chart', 'Interface-Distribution-chart']
+      .forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) {
+          try { Plotly.Plots.resize(el); } catch (e) { }
+        }
+      });
+  });
+</script>
+
+{% leaflet_js %}
+
+<script>
+  let cachedToken = sessionStorage.getItem('cachedToken') || '80ee082483ee2a41d520909e571a3970f06d5907';
+
+  async function fetchAuthToken() {
+    if (cachedToken) return cachedToken;
+    // add real token logic here if needed
+  }
+
+  async function fetchDeviceData() {
+    const token = await fetchAuthToken();
+    if (!token) {
+      document.getElementById('total-devices').innerText = 'Auth error';
+      document.getElementById('monitoring-ok').innerText = 'Auth error';
+      document.getElementById('monitoring-critical').innerText = 'Auth error';
+      return;
+    }
+
+    try {
+      const response = await fetch(`${window.API_BASE_URL}/api/v1/monitoring/device`, {
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': `Token ${token}`
+        }
+      });
+      const data = await response.json();
+
+      const totalDevices = data.count ?? (Array.isArray(data.results) ? data.results.length : 0);
+      document.getElementById('total-devices').innerText = totalDevices;
+
+      let okStatusCount = 0;
+      let criticalStatusCount = 0;
+      const devices = data.results || [];
+      devices.forEach(device => {
+        const status = device.monitoring?.status;
+        if (status === 'ok') okStatusCount++;
+        else if (status === 'critical') criticalStatusCount++;
+      });
+
+      document.getElementById('monitoring-ok').innerText = okStatusCount;
+      document.getElementById('monitoring-critical').innerText = criticalStatusCount;
+
+    } catch (error) {
+      console.error('Error fetching device data:', error);
+      document.getElementById('total-devices').innerText = '0';
+      document.getElementById('monitoring-ok').innerText = '0';
+      document.getElementById('monitoring-critical').innerText = '0';
+    }
+  }
+
+  async function fetchSpokeData() {
+    const elems = {
+      total: document.getElementById('spoke-total'),
+      active: document.getElementById('spoke-active'),
+      pending: document.getElementById('spoke-pending'),
+    };
+    if (Object.values(elems).some(el => !el)) {
+      console.error('One or more spoke DOM elements not found.');
+      return;
+    }
+
+    Object.values(elems).forEach(el => el.innerText = '0');
+
+    let token;
+    try {
+      token = await fetchAuthToken();
+    } catch (e) {
+      console.error('Token fetch failed', e);
+    }
+    if (!token) {
+      Object.values(elems).forEach(el => el.innerText = 'Auth error')
+      return;
+    }
+
+    let json;
+    try {
+      const resp = await fetch(`${window.API_BASE_URL}/api/v1/spoke/`, {
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': `Token ${token}`
+        }
+      });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      json = await resp.json();
+    } catch (err) {
+      console.error('Error fetching spoke data:', err);
+      Object.values(elems).forEach(el => el.innerText = '0');
+      return;
+    }
+
+    const items = Array.isArray(json) ? json : [];
+    const counts = items.reduce((acc, { status }) => {
+      const st = status || 'error';
+      acc[st] = (acc[st] || 0) + 1;
+      return acc;
+    }, {});
+
+    const result = {
+      active: counts.active || 0,
+      pending: counts.pending || 0,
+      error: counts.error || 0,
+    };
+    result.total = Object.values(result).reduce((sum, v) => sum + v, 0);
+
+    elems.total.innerText = result.total;
+    elems.active.innerText = result.active;
+    elems.pending.innerText = result.pending;
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    fetchDeviceData();
+    fetchSpokeData();
+
+    setInterval(fetchDeviceData, 30000);
+    setInterval(fetchSpokeData, 30000);
+  });
+</script>
+
+{% leaflet_css %}
+
+<style>
+  .ow-main-chart {
+    display: none !important;
+  }
+
+  .leaflet-bottom {
+    display: none !important;
+  }
+
+  .js-plotly-plot.currently-active-wifi-sessions {
+    display: none !important;
+  }
+
+  .js-plotly-plot.system-type {
+    display: none !important;
+  }
+
+  /* ======= OVERVIEW LAYOUT (FULLY RESPONSIVE) ======= */
+
+  .overview-page-wrap {
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    padding: 12px 12px 24px;
+    box-sizing: border-box;
+  }
+
+  .overview-map-view {
+    margin-bottom: 16px;
+  }
+
+  .overview-card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 16px;
+    margin: 10px auto 20px;
+    padding: 0 clamp(8px, 3vw, 32px);
+    box-sizing: border-box;
+  }
+
+  .overview-card {
+    background-color: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    padding: 1rem;
+    text-align: center;
+  }
+
+  .overview-stats {
+    display: flex;
+    justify-content: space-around;
+    margin-top: 10px;
+    gap: 8px;
+  }
+
+  .overview-stat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-size: 13px;
+    min-width: 80px;
+  }
+
+  .overview-distribution-row {
+    margin: 0 auto;
+    padding: 10px clamp(8px, 3vw, 32px);
+    box-sizing: border-box;
+  }
+
+  .overview-distribution-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 22px;
+  }
+
+  .overview-mini-card {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .1);
+    padding: 14px;
+    height: 280px;
+    box-sizing: border-box;
+  }
+
+  .overview-mini-title {
+    text-align: center;
+    margin: 0 0 8px 0;
+    font-size: 13px;
+    font-weight: 480;
+    color: #2b2f36;
+  }
+
+  .overview-mini-inner {
+    margin-top: 30px;
+    background: #fbfbfb;
+    border-radius: 12px;
+    height: 150px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .overview-mini-plot {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  .overview-mini-legend {
+    display: grid;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 6px 2px 6px;
+  }
+
+  .legend-item {
+    display: inline-flex;
+    align-items: center;
+    font-size: 12px;
+    color: #374151;
+    white-space: nowrap;
+    cursor: pointer;
+    user-select: none;
+    transition: opacity .15s ease, color .15s ease;
+  }
+
+  .legend-item.is-off {
+    opacity: .45;
+    text-decoration: line-through;
+  }
+
+  .legend-swatch {
+    width: 12px;
+    height: 12px;
+    margin-right: 6px;
+    background: #353c44;
+    flex: 0 0 auto;
+  }
+
+  .svg-container .main-svg {
+    background: rgb(255 255 255 / 0%) !important;
+  }
+
+  .content {
+    background-color: #d3d3d30f !important;
+  }
+
+  /* ===== OLD CARD STYLES (kept so nothing breaks) ===== */
+
+  .card-grid {
+    display: grid;
+    grid-gap: 20px;
+    grid-template-columns: repeat(4, 1fr);
+    margin: 10px auto;
+    padding: 10px 40px 10px 40px;
+  }
+
+  .card {
+    background-color: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    padding: 1rem;
+    text-align: center;
+  }
+
+  .stats {
+    display: flex;
+    justify-content: space-around;
+    margin-top: 10px;
+  }
+
+  .stat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-size: 13px;
+  }
+
+  .badge {
+    padding: 5px 10px;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 13px;
+    margin-bottom: 4px;
+  }
+
+  .badge-gray {
+    background: #e0e0e0;
+    color: #333;
+  }
+
+  .badge-green {
+    background: #28a745;
+    color: #fff;
+  }
+
+  .badge-red {
+    background: #dc3545;
+    color: #fff;
+  }
+
+  .badge-yellow {
+    background: #FFA500;
+    color: #333;
+  }
+
+  .card-label {
+    font-size: 12px;
+    color: #666;
+  }
+
+  /* ====== RESPONSIVE BREAKPOINTS ====== */
+
+  @media screen and (max-width: 1024px) {
+    .card-grid {
+      grid-template-columns: repeat(2, 1fr);
+      padding: 8px 16px;
+    }
+  }
+
+  @media screen and (max-width: 768px) {
+    .overview-card-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .overview-distribution-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .card-grid {
+      grid-template-columns: 1fr;
+      gap: 12px;
+      padding: 8px 12px;
+    }
+
+    .stats {
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .badge {
+      font-size: 11px;
+      padding: 4px 8px;
+    }
+  }
+</style>

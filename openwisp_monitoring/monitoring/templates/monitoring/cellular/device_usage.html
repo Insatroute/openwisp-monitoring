@@ -1653,6 +1653,49 @@
       applyCustomRangeMax();
       loadMonitoring();
 
+      // Fix: when Device Usage tab is opened for the first time, the parent
+      // .details-sub-content panel has display:none, so the initial Plotly.newPlot()
+      // (called from loadMonitoring on DOMContentLoaded) renders into a 0-height
+      // box and the modebar icons stack. Watch for the .active class being added
+      // to #details-device-usage and tell Plotly to remeasure + redraw.
+      // (See change_form.html sub-tab click handler at lines 776-787 — it only
+      // toggles classes; nothing else notifies Plotly.)
+      const deviceUsagePanel = document.getElementById("details-device-usage");
+      if (deviceUsagePanel && typeof MutationObserver !== "undefined") {
+        // Plotly.Plots.resize alone is not enough when the chart was first drawn
+        // into a 0×0 box: the cached layout sticks. Force a real re-layout by
+        // clearing the cached width/height via Plotly.relayout({autosize:true,
+        // width:null, height:null}) and then calling resize. Defer with rAF +
+        // setTimeout so the browser has applied display:block on the panel and
+        // computed a real width before Plotly remeasures.
+        const forceRedraw = () => {
+          const el = document.getElementById("trafficCharts");
+          if (!el || !el._fullLayout || !window.Plotly) return;
+          try {
+            Plotly.relayout(el, { autosize: true, width: null, height: null });
+          } catch (e) { /* relayout can throw if chart was just removed */ }
+          if (Plotly.Plots && Plotly.Plots.resize) Plotly.Plots.resize(el);
+        };
+        const onPanelShown = () => {
+          if (!deviceUsagePanel.classList.contains("active")) return;
+          requestAnimationFrame(forceRedraw);
+          setTimeout(forceRedraw, 200);
+        };
+        const observer = new MutationObserver((mutations) => {
+          for (const m of mutations) {
+            if (m.type === "attributes" && m.attributeName === "class") {
+              onPanelShown();
+              break;
+            }
+          }
+        });
+        observer.observe(deviceUsagePanel, { attributes: true, attributeFilter: ["class"] });
+        // Also handle the case where the panel is already .active at DOM ready
+        // (e.g. user lands directly on this tab via bookmark/hash) but newPlot
+        // ran before our observer attached — schedule a deferred redraw too.
+        if (deviceUsagePanel.classList.contains("active")) onPanelShown();
+      }
+
       const excelBtn = document.getElementById("exportExcelBtn");
       const pdfBtn = document.getElementById("exportPdfBtn");
       if (excelBtn) excelBtn.addEventListener("click", exportExcel);
