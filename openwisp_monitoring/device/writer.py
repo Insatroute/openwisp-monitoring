@@ -70,6 +70,7 @@ class DeviceDataWriter(object):
             time = datetime.utcnow().replace(tzinfo=UTC)
         else:
             time = datetime.strptime(time, "%d-%m-%Y_%H:%M:%S.%f").replace(tzinfo=UTC)
+        
         old_data = deepcopy(self.device_data.data)
         self._init_previous_data()
         self.device_data.data = data
@@ -78,7 +79,8 @@ class DeviceDataWriter(object):
         data = self.device_data.data
         self.check_sim_state_and_notify(old_data, data)
         self.check_interface_state_and_notify(old_data, data)
-        
+        self.check_wan_internet_state_and_notify(old_data, data)
+
         ct = ContentType.objects.get_for_model(Device)
         device_extra_tags = self._get_extra_tags(self.device_data)
         self.write_device_metrics = []
@@ -203,6 +205,349 @@ class DeviceDataWriter(object):
                 f'Failed to write metrics for "{self.device_data.pk}" device.'
                 f" Error: {error}"
             )
+
+    
+    def _get_iface_alert_config(self, org_id, ntype):
+        """Look up AlertConfiguration for interface_is_down/up.
+        Matches only the device's organization — each org has its own config.
+        """
+        try:
+            from email_templates.models import AlertConfiguration
+            if not org_id:
+                return None
+            return AlertConfiguration.objects.filter(
+                organization_id=org_id,
+                notification_type=ntype,
+                is_enabled=True,
+            ).first()
+        except Exception:
+            return None
+
+    def check_interface_state_and_notify(self, old_data, new_data):
+        """
+        Compare interface up/down state between old and new device data.
+        Checks AlertConfiguration for custom interval/retry settings.
+        """
+        from openwisp_notifications.signals import notify
+
+        device = self.device_data
+
+        old_ifaces = (old_data or {}).get("interfaces", []) or []
+        new_ifaces = (new_data or {}).get("interfaces", []) or []
+
+        if not old_ifaces or not new_ifaces:
+            return
+
+        # Skip bridge/virtual interfaces that duplicate physical ones
+        SKIP_IFACE_PREFIXES = ('br-', 'docker', 'veth', 'lo')
+        old_ifaces_dict = {i["name"]: i.get("up", False) for i in old_ifaces if "name" in i and not i["name"].startswith(SKIP_IFACE_PREFIXES)}
+        new_ifaces_dict = {i["name"]: i.get("up", False) for i in new_ifaces if "name" in i and not i["name"].startswith(SKIP_IFACE_PREFIXES)}
+
+        common_ifaces = set(old_ifaces_dict.keys()) & set(new_ifaces_dict.keys())
+        org_id = getattr(device, "organization_id", None)
+
+        for ifname in common_ifaces:
+            prev_up = old_ifaces_dict[ifname]
+            curr_up = new_ifaces_dict[ifname]
+
+            if prev_up == curr_up:
+                continue
+
+            if prev_up and not curr_up:
+                ntype = "interface_is_down"
+                ac = self._get_iface_alert_config(org_id, ntype) if org_id else None
+
+                if ac and not ac.is_enabled:
+                    continue
+
+                # Clear opposite
+                cache.delete(f"notif:iface_up:{device.pk}:{ifname}")
+
+                if ac and ac.email_timing == 'after_retries':
+                    pending_key = f"alert_pending:iface_down:{device.pk}:{ifname}"
+                    if cache.get(pending_key):
+                        continue
+                    delay_seconds = ac.alert_after_minutes * 60
+                    cache.set(pending_key, ntype, delay_seconds + 120)
+                    try:
+                        from openwisp_monitoring.monitoring.tasks import delayed_iface_alert_check
+                        delayed_iface_alert_check.apply_async(
+                            args=[str(device.pk), ifname, 'interface_is_down', str(ac.pk)],
+                            countdown=delay_seconds,
+                        )
+                    except Exception:
+                        cache.delete(pending_key)
+                        self._fire_iface_notification(notify, device, ifname, ntype, ac)
+                else:
+                    cache_key = f"notif:iface_down:{device.pk}:{ifname}"
+                    if cache.get(cache_key):
+                        continue
+                    cache.set(cache_key, True, 60)
+                    self._fire_iface_notification(notify, device, ifname, ntype, ac)
+
+            elif curr_up and not prev_up:
+                ntype = "interface_is_up"
+                ac = self._get_iface_alert_config(org_id, ntype) if org_id else None
+
+                if ac and not ac.is_enabled:
+                    continue
+
+                # Clear opposite pending
+                cache.delete(f"alert_pending:iface_down:{device.pk}:{ifname}")
+                cache.delete(f"notif:iface_down:{device.pk}:{ifname}")
+
+                if ac and ac.email_timing == 'after_retries':
+                    pending_key = f"alert_pending:iface_up:{device.pk}:{ifname}"
+                    if cache.get(pending_key):
+                        continue
+                    delay_seconds = ac.alert_after_minutes * 60
+                    cache.set(pending_key, ntype, delay_seconds + 120)
+                    try:
+                        from openwisp_monitoring.monitoring.tasks import delayed_iface_alert_check
+                        delayed_iface_alert_check.apply_async(
+                            args=[str(device.pk), ifname, 'interface_is_up', str(ac.pk)],
+                            countdown=delay_seconds,
+                        )
+                    except Exception:
+                        cache.delete(pending_key)
+                        self._fire_iface_notification(notify, device, ifname, ntype, ac)
+                else:
+                    cache_key = f"notif:iface_up:{device.pk}:{ifname}"
+                    if cache.get(cache_key):
+                        continue
+                    cache.set(cache_key, True, 60)
+                    self._fire_iface_notification(notify, device, ifname, ntype, ac)
+
+    def _fire_iface_notification(self, notify, device, ifname, ntype, ac):
+        """Send interface/WAN notification."""
+        try:
+            opts = dict(sender=device, type=ntype, target=device, ifname=ifname)
+            if ac:
+                opts['data'] = {'_alert_config_id': str(ac.pk), '_email_timing': ac.email_timing, 'ifname': ifname}
+            else:
+                opts['data'] = {'ifname': ifname}
+            notify.send(**opts)
+        except Exception as e:
+            logger.debug("%s notify failed: %s", ntype, e)
+    
+    def check_wan_internet_state_and_notify(self, old_data, new_data):
+        """Detect WAN internet up/down by checking wan_status field on is_wan=true interfaces.
+
+        wan_status logic:
+        - "online"    → WAN internet UP (interface connected + internet reachable)
+        - "connected" → WAN internet DOWN (interface connected but no internet)
+        - "offline"   → WAN internet DOWN (interface down)
+
+        Fires wan_internet_down when wan_status changes FROM "online" TO "connected"/"offline".
+        Fires wan_internet_up when wan_status changes TO "online" FROM "connected"/"offline".
+        """
+        from openwisp_notifications.signals import notify
+
+        device = self.device_data
+        old_ifaces = (old_data or {}).get("interfaces", []) or []
+        new_ifaces = (new_data or {}).get("interfaces", []) or []
+
+        if not old_ifaces or not new_ifaces:
+            return
+
+        # Build maps: only WAN interfaces (is_wan=true), track wan_status
+        old_wan = {i["name"]: i.get("wan_status", "online" if i.get("up") else "offline")
+                   for i in old_ifaces if i.get("is_wan") and "name" in i}
+        new_wan = {i["name"]: i.get("wan_status", "online" if i.get("up") else "offline")
+                   for i in new_ifaces if i.get("is_wan") and "name" in i}
+
+        common = set(old_wan.keys()) & set(new_wan.keys())
+        org_id = getattr(device, "organization_id", None)
+
+        for ifname in common:
+            prev_status = old_wan[ifname]
+            curr_status = new_wan[ifname]
+
+            if prev_status == curr_status:
+                continue
+
+            # online → connected/offline = WAN internet DOWN
+            if prev_status == "online" and curr_status in ("connected", "offline"):
+                ntype = "wan_internet_down"
+                ac = self._get_iface_alert_config(org_id, ntype) if org_id else None
+                if ac and not ac.is_enabled:
+                    continue
+
+                cache.delete(f"notif:wan_up:{device.pk}:{ifname}")
+
+                if ac and ac.email_timing == 'after_retries':
+                    pending_key = f"alert_pending:wan_down:{device.pk}:{ifname}"
+                    if cache.get(pending_key):
+                        continue
+                    delay_seconds = ac.alert_after_minutes * 60
+                    cache.set(pending_key, ntype, delay_seconds + 120)
+                    try:
+                        from openwisp_monitoring.monitoring.tasks import delayed_iface_alert_check
+                        delayed_iface_alert_check.apply_async(
+                            args=[str(device.pk), ifname, ntype, str(ac.pk)],
+                            countdown=delay_seconds,
+                        )
+                    except Exception:
+                        cache.delete(pending_key)
+                        self._fire_iface_notification(notify, device, ifname, ntype, ac)
+                else:
+                    cache_key = f"notif:wan_down:{device.pk}:{ifname}"
+                    if cache.get(cache_key):
+                        continue
+                    cache.set(cache_key, True, 60)
+                    self._fire_iface_notification(notify, device, ifname, ntype, ac)
+
+            # connected/offline → online = WAN internet UP
+            elif curr_status == "online" and prev_status in ("connected", "offline"):
+                ntype = "wan_internet_up"
+                ac = self._get_iface_alert_config(org_id, ntype) if org_id else None
+                if ac and not ac.is_enabled:
+                    continue
+
+                cache.delete(f"alert_pending:wan_down:{device.pk}:{ifname}")
+                cache.delete(f"notif:wan_down:{device.pk}:{ifname}")
+
+                if ac and ac.email_timing == 'after_retries':
+                    pending_key = f"alert_pending:wan_up:{device.pk}:{ifname}"
+                    if cache.get(pending_key):
+                        continue
+                    delay_seconds = ac.alert_after_minutes * 60
+                    cache.set(pending_key, ntype, delay_seconds + 120)
+                    try:
+                        from openwisp_monitoring.monitoring.tasks import delayed_iface_alert_check
+                        delayed_iface_alert_check.apply_async(
+                            args=[str(device.pk), ifname, ntype, str(ac.pk)],
+                            countdown=delay_seconds,
+                        )
+                    except Exception:
+                        cache.delete(pending_key)
+                        self._fire_iface_notification(notify, device, ifname, ntype, ac)
+                else:
+                    cache_key = f"notif:wan_up:{device.pk}:{ifname}"
+                    if cache.get(cache_key):
+                        continue
+                    cache.set(cache_key, True, 60)
+                    self._fire_iface_notification(notify, device, ifname, ntype, ac)
+
+    def check_sim_state_and_notify(self, old_data, new_data):
+        """
+        Detect SIM REMOVED and SIM CONNECTED for sim1 (modem) and sim2 (modem2)
+        using ICCID + modem_status with debounce.
+
+        Debounce:
+          - SIM Connected: ICCID detected AND attach CONNECTED stable >= 60s
+          - SIM Removed:   ICCID empty/undetected >= 30s after being present
+        """
+        from openwisp_notifications.signals import notify
+        device = self.device_data
+
+        slots = {
+            "modem": "sim1",
+            "modem2": "sim2",
+        }
+
+        DEBOUNCE_CONNECTED_S = 60
+        DEBOUNCE_REMOVED_S = 30
+
+        old_cellular = (old_data or {}).get("cellular", {})
+        new_cellular = (new_data or {}).get("cellular", {})
+        for modem_key, sim_slot in slots.items():
+            old_modem = old_cellular.get(modem_key, {}) or {}
+            new_modem = new_cellular.get(modem_key, {}) or {}
+
+            old_iccid = old_modem.get("sim_iccid")
+            new_iccid = new_modem.get("sim_iccid")
+            new_status = new_modem.get("modem_status")
+
+            cache_key = f"sim_state:{device.pk}:{sim_slot}"
+            state = cache.get(cache_key, {})
+            now_ts = now().timestamp()
+
+            # --- SIM REMOVED: ICCID was present, now gone ---
+            if old_iccid and not new_iccid:
+                first_seen = state.get("removed_since", now_ts)
+                if not state.get("removed_since"):
+                    cache.set(cache_key, {"removed_since": now_ts}, timeout=300)
+                    continue
+                elapsed = now_ts - first_seen
+                if elapsed < DEBOUNCE_REMOVED_S:
+                    continue
+                # Debounce passed - fire notification
+                cache.delete(cache_key)
+                notify.send(
+                    sender=device,
+                    target=device,
+                    type="sdwan_sim_removed",
+                    verb=f"{sim_slot.upper()} removed",
+                    description=(
+                        f"{sim_slot.upper()} from {device.name} is Removed"
+                    ),
+                    data={
+                        "sim_slot": sim_slot,
+                        "device_id": str(device.id),
+                        "device_name": device.name,
+                        "old_iccid": old_iccid,
+                    },
+                    sim_slot=sim_slot,
+                )
+                continue
+
+            # --- SIM EXCHANGED: both ICCIDs exist but differ ---
+            if old_iccid and new_iccid and old_iccid != new_iccid:
+                cache.delete(cache_key)
+                notify.send(
+                    sender=device,
+                    target=device,
+                    type="sdwan_sim_exchanged",
+                    verb=f"{sim_slot.upper()} exchanged",
+                    description=(
+                        f"{sim_slot.upper()} SIM exchanged on device {device.name}"
+                    ),
+                    data={
+                        "sim_slot": sim_slot,
+                        "device_id": str(device.id),
+                        "device_name": device.name,
+                        "old_iccid": old_iccid,
+                        "new_iccid": new_iccid,
+                    },
+                    sim_slot=sim_slot,
+                )
+                continue
+
+            # --- SIM CONNECTED: ICCID appeared AND modem status is connected ---
+            if not old_iccid and new_iccid and new_status == "connected":
+                first_seen = state.get("connected_since", now_ts)
+                if not state.get("connected_since"):
+                    cache.set(cache_key, {"connected_since": now_ts}, timeout=300)
+                    continue
+                elapsed = now_ts - first_seen
+                if elapsed < DEBOUNCE_CONNECTED_S:
+                    continue
+                # Debounce passed - fire notification
+                cache.delete(cache_key)
+                notify.send(
+                    sender=device,
+                    type="sdwan_sim_connected",
+                    target=device,
+                    verb=f"{sim_slot.upper()} connected",
+                    description=(
+                        f"{sim_slot.upper()} is connected to {device.name}"
+                    ),
+                    data={
+                        "sim_slot": sim_slot,
+                        "device_id": str(device.id),
+                        "device_name": device.name,
+                        "new_iccid": new_iccid,
+                    },
+                    sim_slot=sim_slot,
+                )
+                continue
+
+            # State resolved (SIM is back / stable) - clear any pending debounce
+            if state:
+                cache.delete(cache_key)
+
+
 
 
     def _get_prev_router_value(self, ifname, field):

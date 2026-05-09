@@ -174,3 +174,163 @@ def delayed_alert_check(self, metric_id, notification_type, device_id, alert_con
         alert_settings = None
 
     metric._send_notification(notification_type, alert_settings, metric.content_object, alert_config)
+
+
+
+@shared_task(bind=True, ignore_result=True, max_retries=0, time_limit=120)
+def fix_stuck_recovery_notifications(self):
+    """Detect and fix metrics where is_healthy and is_healthy_tolerant are mismatched.
+
+    Two stuck cases:
+    1. is_healthy=True, is_healthy_tolerant=False → recovery notification missed
+    2. is_healthy=False, is_healthy_tolerant=True → problem notification missed
+
+    Runs every 5 minutes via celery beat to auto-heal stuck metrics.
+    """
+    import logging
+    logger = logging.getLogger(__name__)
+    Metric = load_model("monitoring", "Metric")
+
+    fixed = 0
+
+    # Case 1: Device recovered but recovery notification never fired
+    stuck_recovery = Metric.objects.filter(
+        is_healthy=True,
+        is_healthy_tolerant=False,
+    ).select_related("alertsettings", "content_type")
+
+    for m in stuck_recovery[:100]:
+        try:
+            m.is_healthy_tolerant = True
+            m.save(update_fields=["is_healthy_tolerant"])
+            notification_type = f"{m.configuration}_recovery"
+            try:
+                alert_settings = m.alertsettings
+                if alert_settings.is_active:
+                    m._notify_users(notification_type, alert_settings)
+                    fixed += 1
+                    logger.info(
+                        "Fixed stuck recovery: config=%s target=%s",
+                        m.configuration, m.content_object,
+                    )
+            except ObjectDoesNotExist:
+                fixed += 1
+        except Exception as exc:
+            logger.warning("Failed to fix stuck recovery metric %s: %s", m.pk, exc)
+
+    # Case 2: Device went down but problem notification never fired
+    stuck_problem = Metric.objects.filter(
+        is_healthy=False,
+        is_healthy_tolerant=True,
+    ).select_related("alertsettings", "content_type")
+
+    for m in stuck_problem[:100]:
+        try:
+            m.is_healthy_tolerant = False
+            m.save(update_fields=["is_healthy_tolerant"])
+            notification_type = f"{m.configuration}_problem"
+            try:
+                alert_settings = m.alertsettings
+                if alert_settings.is_active:
+                    m._notify_users(notification_type, alert_settings)
+                    fixed += 1
+                    logger.info(
+                        "Fixed stuck problem: config=%s target=%s",
+                        m.configuration, m.content_object,
+                    )
+            except ObjectDoesNotExist:
+                fixed += 1
+        except Exception as exc:
+            logger.warning("Failed to fix stuck problem metric %s: %s", m.pk, exc)
+
+    if fixed:
+        logger.info("fix_stuck_notifications: healed %d stuck metrics", fixed)
+
+
+@shared_task(bind=True, ignore_result=True)
+def delayed_iface_alert_check(self, device_id, ifname, notification_type, alert_config_id):
+    """Re-check interface status after delay period.
+
+    Called by check_interface_state_and_notify when email_timing="after_retries".
+    After interval*retry minutes, checks if interface is STILL down/up.
+    If yes → fires notification. If changed → cancels.
+    """
+    import logging
+    from django.core.cache import cache
+
+    logger = logging.getLogger(__name__)
+    # Build correct pending key prefix based on notification type
+    _prefix_map = {
+        'interface_is_down': 'iface_down',
+        'interface_is_up': 'iface_up',
+        'wan_internet_down': 'wan_down',
+        'wan_internet_up': 'wan_up',
+    }
+    pending_key = f"alert_pending:{_prefix_map.get(notification_type, 'iface_down')}:{device_id}:{ifname}"
+    cache.delete(pending_key)
+
+    try:
+        Device = load_model('config', 'Device')
+        device = Device.objects.get(pk=device_id)
+    except Exception:
+        return
+
+    # Get current interface state from stored device data
+    try:
+        from swapper import load_model as _lm
+        DeviceData = _lm('device_monitoring', 'DeviceData')
+        dd = DeviceData.objects.get(pk=device_id)
+        interfaces = (dd.data or {}).get('interfaces', [])
+        iface_up = None
+        wan_status = None
+        for i in interfaces:
+            if i.get('name') == ifname:
+                iface_up = i.get('up', False)
+                wan_status = i.get('wan_status')
+                break
+    except Exception:
+        return
+
+    if iface_up is None:
+        logger.info("Delayed iface check: %s not found on %s — cancelled", ifname, device.name)
+        return
+
+    # Check if state still matches
+    # For WAN notifications, use wan_status; for interface, use up field
+    is_wan_type = notification_type in ('wan_internet_down', 'wan_internet_up')
+    if is_wan_type:
+        wan_is_online = (wan_status == 'online')
+        if notification_type == 'wan_internet_down' and wan_is_online:
+            logger.info("Delayed %s cancelled: %s on %s — recovered", notification_type, ifname, device.name)
+            return
+        if notification_type == 'wan_internet_up' and not wan_is_online:
+            logger.info("Delayed %s cancelled: %s on %s — still down", notification_type, ifname, device.name)
+            return
+    else:
+        is_down_type = notification_type == 'interface_is_down'
+        is_up_type = notification_type == 'interface_is_up'
+        if is_down_type and iface_up:
+            logger.info("Delayed %s cancelled: %s on %s — recovered", notification_type, ifname, device.name)
+            return
+        if is_up_type and not iface_up:
+            logger.info("Delayed %s cancelled: %s on %s — went down again", notification_type, ifname, device.name)
+            return
+
+    # State confirmed — fire notification
+    logger.info("Delayed %s confirmed: %s on %s", notification_type, ifname, device.name)
+
+    try:
+        from email_templates.models import AlertConfiguration
+        alert_config = AlertConfiguration.objects.filter(pk=alert_config_id).first()
+    except Exception:
+        alert_config = None
+
+    try:
+        from openwisp_notifications.signals import notify
+        opts = dict(sender=device, type=notification_type, target=device, ifname=ifname)
+        if alert_config:
+            opts['data'] = {'_alert_config_id': str(alert_config.pk), '_email_timing': alert_config.email_timing}
+        notify.send(**opts)
+    except Exception as e:
+        logger.warning("Delayed iface notification failed: %s", e)
+
