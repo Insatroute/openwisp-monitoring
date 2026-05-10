@@ -242,14 +242,19 @@ class DeviceDataWriter(object):
         if not old_ifaces or not new_ifaces:
             return
 
-        # Skip bridge/virtual interfaces AND WAN interfaces.
-        # WAN interfaces (is_wan=True) are handled by
-        # check_wan_internet_state_and_notify which uses wan_status (not the
-        # raw `up` flag) — firing here too would double-notify.
+        # Split rule (per user spec):
+        #   - if iface has `wan_status` field   → richer wan_status transition logic
+        #     handled by check_wan_internet_state_and_notify
+        #   - if iface has NO wan_status field  → simple up/down here (bridge
+        #     members, LAN ports, etc.). NO wan_internet_* notifications for these.
+        # Bridge / virtual interfaces are still skipped entirely (br-, docker, veth, lo).
         SKIP_IFACE_PREFIXES = ('br-', 'docker', 'veth', 'lo')
-        is_wan_set = {i["name"] for i in new_ifaces if i.get("is_wan") and "name" in i}
-        old_ifaces_dict = {i["name"]: i.get("up", False) for i in old_ifaces if "name" in i and not i["name"].startswith(SKIP_IFACE_PREFIXES) and i["name"] not in is_wan_set}
-        new_ifaces_dict = {i["name"]: i.get("up", False) for i in new_ifaces if "name" in i and not i["name"].startswith(SKIP_IFACE_PREFIXES) and i["name"] not in is_wan_set}
+        has_wan_status_set = (
+            {i["name"] for i in new_ifaces if "wan_status" in i and "name" in i}
+            | {i["name"] for i in old_ifaces if "wan_status" in i and "name" in i}
+        )
+        old_ifaces_dict = {i["name"]: i.get("up", False) for i in old_ifaces if "name" in i and not i["name"].startswith(SKIP_IFACE_PREFIXES) and i["name"] not in has_wan_status_set}
+        new_ifaces_dict = {i["name"]: i.get("up", False) for i in new_ifaces if "name" in i and not i["name"].startswith(SKIP_IFACE_PREFIXES) and i["name"] not in has_wan_status_set}
 
         common_ifaces = set(old_ifaces_dict.keys()) & set(new_ifaces_dict.keys())
         org_id = getattr(device, "organization_id", None)
@@ -265,16 +270,22 @@ class DeviceDataWriter(object):
                 ntype = "interface_is_down"
                 ac = self._get_iface_alert_config(org_id, ntype) if org_id else None
 
+                # Always update the state cache as soon as a transition is
+                # detected — even when fire is suppressed below by a disabled
+                # AC, same-state dedup, or anti-flap dwell. Otherwise stale
+                # cache blocks the next legitimate opposite transition.
+                state_key = f"iface_last_fired:{device.pk}:{ifname}"
+                dwell_key = f"iface_dwell:{device.pk}:{ifname}"
+                prev_state = cache.get(state_key)
+                cache.set(state_key, ntype, 60 * 60 * 24 * 7)  # 7 days
+
                 if ac and not ac.is_enabled:
                     continue
-
-                # Strict state dedup: don't re-fire DOWN until we've fired UP.
-                # Persists across writer invocations / device flaps within
-                # the same state — only a real UP→DOWN transition fires.
-                state_key = f"iface_last_fired:{device.pk}:{ifname}"
-                if cache.get(state_key) == ntype:
+                if prev_state == ntype:
                     continue
-                cache.set(state_key, ntype, 60 * 60 * 24 * 7)  # 7 days
+                if cache.get(dwell_key):
+                    continue  # anti-flap: opposite state fired within last 30s
+                cache.set(dwell_key, ntype, 30)  # anti-flap dwell window
 
                 if ac and ac.email_timing in ('after_retries', 'after_tolerance'):
                     pending_key = f"alert_pending:iface_down:{device.pk}:{ifname}"
@@ -298,14 +309,21 @@ class DeviceDataWriter(object):
                 ntype = "interface_is_up"
                 ac = self._get_iface_alert_config(org_id, ntype) if org_id else None
 
+                # Always update the state cache as soon as a transition is
+                # detected — even when fire is suppressed below by a disabled
+                # AC, same-state dedup, or anti-flap dwell.
+                state_key = f"iface_last_fired:{device.pk}:{ifname}"
+                dwell_key = f"iface_dwell:{device.pk}:{ifname}"
+                prev_state = cache.get(state_key)
+                cache.set(state_key, ntype, 60 * 60 * 24 * 7)  # 7 days
+
                 if ac and not ac.is_enabled:
                     continue
-
-                # Strict state dedup: don't re-fire UP until we've fired DOWN.
-                state_key = f"iface_last_fired:{device.pk}:{ifname}"
-                if cache.get(state_key) == ntype:
+                if prev_state == ntype:
                     continue
-                cache.set(state_key, ntype, 60 * 60 * 24 * 7)  # 7 days
+                if cache.get(dwell_key):
+                    continue  # anti-flap: opposite state fired within last 30s
+                cache.set(dwell_key, ntype, 30)  # anti-flap dwell window
 
                 # Clear stale pending DOWN delayed task
                 cache.delete(f"alert_pending:iface_down:{device.pk}:{ifname}")
@@ -392,15 +410,18 @@ class DeviceDataWriter(object):
             logger.warning("superuser fan-out for %s failed: %s", ntype, exc)
     
     def check_wan_internet_state_and_notify(self, old_data, new_data):
-        """Detect WAN internet up/down by checking wan_status field on is_wan=true interfaces.
+        """Detect WAN internet up/down using the wan_status field.
 
-        wan_status logic:
-        - "online"    → WAN internet UP (interface connected + internet reachable)
-        - "connected" → WAN internet DOWN (interface connected but no internet)
-        - "offline"   → WAN internet DOWN (interface down)
+        Per user spec: only interfaces that REPORT a wan_status field are
+        treated as internet-facing here. Bridge members / LAN ports without
+        wan_status fall through to check_interface_state_and_notify which
+        does plain up/down detection (no wan_internet_* notifications).
 
-        Fires wan_internet_down when wan_status changes FROM "online" TO "connected"/"offline".
-        Fires wan_internet_up when wan_status changes TO "online" FROM "connected"/"offline".
+        wan_status transition table:
+          any         → online     = wan_internet_up
+          online      → connected  = wan_internet_down
+          (online|connected) → offline = interface_is_down (link physically dead)
+          offline     → connected  = interface_is_up (cable plugged, internet not yet)
         """
         from openwisp_notifications.signals import notify
 
@@ -411,11 +432,10 @@ class DeviceDataWriter(object):
         if not old_ifaces or not new_ifaces:
             return
 
-        # Build maps: only WAN interfaces (is_wan=true), track wan_status
-        old_wan = {i["name"]: i.get("wan_status", "online" if i.get("up") else "offline")
-                   for i in old_ifaces if i.get("is_wan") and "name" in i}
-        new_wan = {i["name"]: i.get("wan_status", "online" if i.get("up") else "offline")
-                   for i in new_ifaces if i.get("is_wan") and "name" in i}
+        # Only interfaces that explicitly report wan_status. No fallback to
+        # `up` — if wan_status is missing, the iface is handled elsewhere.
+        old_wan = {i["name"]: i["wan_status"] for i in old_ifaces if "wan_status" in i and "name" in i}
+        new_wan = {i["name"]: i["wan_status"] for i in new_ifaces if "wan_status" in i and "name" in i}
 
         common = set(old_wan.keys()) & set(new_wan.keys())
         org_id = getattr(device, "organization_id", None)
@@ -429,12 +449,21 @@ class DeviceDataWriter(object):
         for ifname in newly_wan:
             ntype = "interface_is_up"
             ac = self._get_iface_alert_config(org_id, ntype) if org_id else None
+            # Always update state cache before any suppression check so
+            # disabled-AC / dedup / dwell don't leave a stale cache that
+            # blocks the next legitimate opposite transition.
+            state_key = f"iface_last_fired:{device.pk}:{ifname}"
+            dwell_key = f"iface_dwell:{device.pk}:{ifname}"
+            prev_state = cache.get(state_key)
+            cache.set(state_key, ntype, 60 * 60 * 24 * 7)
+
             if ac and not ac.is_enabled:
                 continue
-            state_key = f"iface_last_fired:{device.pk}:{ifname}"
-            if cache.get(state_key) == ntype:
+            if prev_state == ntype:
                 continue
-            cache.set(state_key, ntype, 60 * 60 * 24 * 7)
+            if cache.get(dwell_key):
+                continue  # anti-flap: opposite state fired within last 30s
+            cache.set(dwell_key, ntype, 30)  # anti-flap dwell window
             if ac and ac.email_timing in ('after_retries', 'after_tolerance'):
                 pending_key = f"alert_pending:{ntype}:{device.pk}:{ifname}"
                 if cache.get(pending_key):
@@ -455,12 +484,21 @@ class DeviceDataWriter(object):
         for ifname in no_longer_wan:
             ntype = "interface_is_down"
             ac = self._get_iface_alert_config(org_id, ntype) if org_id else None
+            # Always update state cache before any suppression check so
+            # disabled-AC / dedup / dwell don't leave a stale cache that
+            # blocks the next legitimate opposite transition.
+            state_key = f"iface_last_fired:{device.pk}:{ifname}"
+            dwell_key = f"iface_dwell:{device.pk}:{ifname}"
+            prev_state = cache.get(state_key)
+            cache.set(state_key, ntype, 60 * 60 * 24 * 7)
+
             if ac and not ac.is_enabled:
                 continue
-            state_key = f"iface_last_fired:{device.pk}:{ifname}"
-            if cache.get(state_key) == ntype:
+            if prev_state == ntype:
                 continue
-            cache.set(state_key, ntype, 60 * 60 * 24 * 7)
+            if cache.get(dwell_key):
+                continue  # anti-flap: opposite state fired within last 30s
+            cache.set(dwell_key, ntype, 30)  # anti-flap dwell window
             if ac and ac.email_timing in ('after_retries', 'after_tolerance'):
                 pending_key = f"alert_pending:{ntype}:{device.pk}:{ifname}"
                 if cache.get(pending_key):
@@ -479,11 +517,7 @@ class DeviceDataWriter(object):
             else:
                 self._fire_iface_notification(notify, device, ifname, ntype, ac)
 
-        # User transition table:
-        #   any → online                 = wan_internet_up
-        #   online → connected           = wan_internet_down
-        #   online/connected → offline   = interface_is_down  (link physically dead)
-        #   offline → connected          = wan_internet_up    (link came back, internet still resolving)
+        # Transition table is documented in the function docstring above.
         for ifname in common:
             prev_status = old_wan[ifname]
             curr_status = new_wan[ifname]
@@ -508,14 +542,21 @@ class DeviceDataWriter(object):
                 continue
 
             ac = self._get_iface_alert_config(org_id, ntype) if org_id else None
+
+            # Always update state cache before any suppression check so
+            # disabled-AC / dedup / dwell don't leave stale cache.
+            state_key = f"iface_last_fired:{device.pk}:{ifname}"
+            dwell_key = f"iface_dwell:{device.pk}:{ifname}"
+            prev_state = cache.get(state_key)
+            cache.set(state_key, ntype, 60 * 60 * 24 * 7)  # 7 days
+
             if ac and not ac.is_enabled:
                 continue
-
-            # Strict state dedup: don't re-fire same ntype until a different one fires.
-            state_key = f"iface_last_fired:{device.pk}:{ifname}"
-            if cache.get(state_key) == ntype:
+            if prev_state == ntype:
                 continue
-            cache.set(state_key, ntype, 60 * 60 * 24 * 7)  # 7 days
+            if cache.get(dwell_key):
+                continue  # anti-flap: opposite state fired within last 30s
+            cache.set(dwell_key, ntype, 30)  # anti-flap dwell window
 
             if ac and ac.email_timing in ('after_retries', 'after_tolerance'):
                 pending_key = f"alert_pending:{ntype}:{device.pk}:{ifname}"
