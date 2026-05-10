@@ -11,6 +11,8 @@ from django.utils.timezone import now
 from pytz import UTC
 from swapper import load_model
 
+
+
 from .. import settings as monitoring_settings
 from ..monitoring.configuration import ACCESS_TECHNOLOGIES
 
