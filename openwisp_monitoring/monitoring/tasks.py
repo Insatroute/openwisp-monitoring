@@ -261,9 +261,58 @@ def fix_stuck_recovery_notifications(self):
 
     for m in stuck_problem[:100]:
         try:
+            # Refresh from DB right before firing: if the metric just
+            # recovered (concurrent write between the queryset materialize
+            # and now), is_healthy will be True and we skip the phantom fire.
+            try:
+                m.refresh_from_db(fields=["is_healthy", "is_healthy_tolerant"])
+            except Exception:
+                pass
+            if m.is_healthy is True:
+                logger.info(
+                    "Skipped phantom problem: %s_problem for target=%s "
+                    "(metric recovered between query and fire)",
+                    m.configuration, m.object_id,
+                )
+                # Realign tolerant flag with healthy state.
+                if m.is_healthy_tolerant is not True:
+                    m.is_healthy_tolerant = True
+                    m.save(update_fields=["is_healthy_tolerant"])
+                continue
+
             m.is_healthy_tolerant = False
             m.save(update_fields=["is_healthy_tolerant"])
             notification_type = f"{m.configuration}_problem"
+
+            # Pair-guard: if a *_recovery just fired (last 5 min) for the
+            # same target, the device is in transit out of problem state —
+            # firing a stuck-problem now would be a phantom.
+            try:
+                from openwisp_notifications.models import (
+                    Notification as _Notif,
+                )
+                from django.utils import timezone as _tz
+                from datetime import timedelta as _td
+                recovery_type = f"{m.configuration}_recovery"
+                target_pk = str(m.object_id) if m.object_id else None
+                pair_cutoff = _tz.now() - _td(minutes=5)
+                if target_pk and _Notif.objects.filter(
+                    target_object_id=target_pk,
+                    type=recovery_type,
+                    timestamp__gte=pair_cutoff,
+                ).exists():
+                    logger.info(
+                        "Skipped phantom problem: %s for target=%s "
+                        "(%s fired in last 5 min)",
+                        notification_type, target_pk, recovery_type,
+                    )
+                    continue
+            except Exception as _exc:
+                logger.warning(
+                    "Pair-guard check failed for %s: %s; falling through",
+                    notification_type, _exc,
+                )
+
             try:
                 alert_settings = m.alertsettings
                 if alert_settings.is_active:

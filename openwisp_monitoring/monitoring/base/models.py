@@ -519,25 +519,36 @@ class AbstractMetric(TimeStampedEditableModel):
         if alert_config and not alert_config.is_enabled:
             alert_config = None
 
-        # Delayed-fire paths: each email_timing maps to a distinct delay.
-        #   after_retries  → check_interval × retry_count minutes
-        #   after_tolerance → custom_tolerance minutes (the value the user
-        #                     typed into the "Tolerance" input). Falls
-        #                     through to immediate fire if not set.
-        if alert_config and alert_config.email_timing in ("after_retries", "after_tolerance"):
+        # Anti-flap dwell: when a metric value rapidly oscillates across the
+        # threshold, _notify_users is called multiple times in quick
+        # succession alternating between *_problem and *_recovery. Suppress
+        # the opposite-state fire within 30s of the previous fire for this
+        # metric so the user doesn't get a 3-email storm in a single minute.
+        target_pk_for_dwell = str(target.pk) if target else "unknown"
+        _dwell_key = f"alert_dwell:{self.pk}:{target_pk_for_dwell}"
+        _last_fired = cache.get(_dwell_key)
+        if _last_fired and _last_fired != notification_type:
+            logger.info(
+                "Anti-flap suppressed: %s for target=%s (last fired %s within 30s)",
+                notification_type, target_pk_for_dwell, _last_fired,
+            )
+            return
+        cache.set(_dwell_key, notification_type, 30)
+
+        # after_tolerance: the framework's AlertSettings tolerance (synced
+        # from custom_tolerance on save) has ALREADY waited the required
+        # period before _notify_users was called. So we fire immediately —
+        # the configured tolerance IS the wait, not a delay added on top.
+        if alert_config and alert_config.email_timing == "after_tolerance":
+            self._send_notification(notification_type, alert_settings, target, alert_config)
+            return
+
+        # after_retries: schedule a delayed re-check after the configured
+        # check_interval × retry_count minutes; if state still holds, fire.
+        if alert_config and alert_config.email_timing == "after_retries":
             device_id = str(target.pk) if target else "unknown"
             metric_id = str(self.pk)
-
-            if alert_config.email_timing == "after_tolerance":
-                tol = alert_config.custom_tolerance
-                if not tol or tol <= 0:
-                    # custom_tolerance not set → framework tolerance has
-                    # already been applied at AlertSettings level, fire now.
-                    self._send_notification(notification_type, alert_settings, target, alert_config)
-                    return
-                delay_seconds = tol * 60
-            else:  # after_retries
-                delay_seconds = alert_config.alert_after_minutes * 60
+            delay_seconds = alert_config.alert_after_minutes * 60
 
             pending_key = f"alert_pending:{notification_type}:{device_id}"
 
@@ -571,6 +582,16 @@ class AbstractMetric(TimeStampedEditableModel):
         if target is not None:
             opts["target"] = target
 
+        # Populate `current_value` so the email template can render the
+        # observed metric value alongside the threshold. Lookup must
+        # never break notification delivery.
+        try:
+            cv = self._latest_value_for_email()
+            if cv is not None:
+                opts.setdefault("data", {})["current_value"] = cv
+        except Exception:
+            pass
+
         if alert_config:
             opts["data"] = opts.get("data", {})
             if not isinstance(opts["data"], dict):
@@ -582,6 +603,37 @@ class AbstractMetric(TimeStampedEditableModel):
                 opts["data"]["_custom_recipients"] = custom
 
         notify.send(**opts)
+
+    def _latest_value_for_email(self):
+        """Return the most recent measured value for this metric, or None.
+
+        Uses self.read() so the query includes content_type/object_id tags
+        and the correct field_name. Logs (does not swallow) failures so
+        silent misses become visible.
+        """
+        try:
+            points = self.read(
+                limit=1,
+                order="-time",
+            )
+        except Exception as exc:
+            logger.warning(
+                "current_value lookup failed for metric %s/%s: %s",
+                self.key, self.pk, exc,
+            )
+            return None
+        if not points:
+            return None
+        candidates = [self.field_name or "value", "value"]
+        for pt in points:
+            for fld in candidates:
+                v = pt.get(fld)
+                if v is not None:
+                    try:
+                        return float(v)
+                    except (TypeError, ValueError):
+                        return None
+        return None
 
     @staticmethod
     def _get_alert_configuration(notification_type, target):
