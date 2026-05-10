@@ -519,11 +519,26 @@ class AbstractMetric(TimeStampedEditableModel):
         if alert_config and not alert_config.is_enabled:
             alert_config = None
 
-        # Retry-based: schedule delayed verification
-        if alert_config and alert_config.email_timing == "after_retries":
+        # Delayed-fire paths: each email_timing maps to a distinct delay.
+        #   after_retries  → check_interval × retry_count minutes
+        #   after_tolerance → custom_tolerance minutes (the value the user
+        #                     typed into the "Tolerance" input). Falls
+        #                     through to immediate fire if not set.
+        if alert_config and alert_config.email_timing in ("after_retries", "after_tolerance"):
             device_id = str(target.pk) if target else "unknown"
             metric_id = str(self.pk)
-            delay_seconds = alert_config.alert_after_minutes * 60
+
+            if alert_config.email_timing == "after_tolerance":
+                tol = alert_config.custom_tolerance
+                if not tol or tol <= 0:
+                    # custom_tolerance not set → framework tolerance has
+                    # already been applied at AlertSettings level, fire now.
+                    self._send_notification(notification_type, alert_settings, target, alert_config)
+                    return
+                delay_seconds = tol * 60
+            else:  # after_retries
+                delay_seconds = alert_config.alert_after_minutes * 60
+
             pending_key = f"alert_pending:{notification_type}:{device_id}"
 
             # If already pending, don't schedule again
