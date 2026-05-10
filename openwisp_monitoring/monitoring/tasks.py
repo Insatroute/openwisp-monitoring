@@ -204,6 +204,41 @@ def fix_stuck_recovery_notifications(self):
             m.is_healthy_tolerant = True
             m.save(update_fields=["is_healthy_tolerant"])
             notification_type = f"{m.configuration}_recovery"
+
+            # Pair-guard: only fire *_recovery when a matching *_problem
+            # actually fired in the last 2h. Otherwise it's a phantom
+            # recovery from a sub-tolerance spike that never crossed
+            # the threshold long enough to trigger a problem.
+            try:
+                from openwisp_notifications.models import (
+                    Notification as _Notif,
+                )
+                from django.utils import timezone as _tz
+                from datetime import timedelta as _td
+                problem_type = f"{m.configuration}_problem"
+                target_pk = str(m.object_id) if m.object_id else None
+                pair_cutoff = _tz.now() - _td(hours=2)
+                has_pair = False
+                if target_pk:
+                    has_pair = _Notif.objects.filter(
+                        target_object_id=target_pk,
+                        type=problem_type,
+                        timestamp__gte=pair_cutoff,
+                    ).exists()
+                if not has_pair:
+                    logger.info(
+                        "Skipped phantom recovery: %s for target=%s "
+                        "(no recent %s in last 2h)",
+                        notification_type, target_pk, problem_type,
+                    )
+                    continue
+            except Exception as _exc:
+                logger.warning(
+                    "Pair-guard check failed for %s: %s; "
+                    "falling through to fire",
+                    notification_type, _exc,
+                )
+
             try:
                 alert_settings = m.alertsettings
                 if alert_settings.is_active:
