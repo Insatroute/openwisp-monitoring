@@ -199,11 +199,37 @@ def fix_stuck_recovery_notifications(self):
         is_healthy_tolerant=False,
     ).select_related("alertsettings", "content_type")
 
+    # stuck-fixer-pair-guard: only fire a recovery notification if there's
+    # an unpaired *_problem for this target — otherwise just sync the
+    # is_healthy_tolerant flag silently, no orphan notification.
+    from openwisp_notifications.models import Notification as _N
     for m in stuck_recovery[:100]:
         try:
             m.is_healthy_tolerant = True
             m.save(update_fields=["is_healthy_tolerant"])
             notification_type = f"{m.configuration}_recovery"
+            problem_type = f"{m.configuration}_problem"
+            target = m.content_object
+            target_pk = str(target.pk) if target else None
+            should_fire = False
+            if target_pk:
+                last_problem = (_N.objects.filter(
+                    target_object_id=target_pk, type=problem_type,
+                ).order_by("-timestamp").first())
+                last_recovery = (_N.objects.filter(
+                    target_object_id=target_pk, type=notification_type,
+                ).order_by("-timestamp").first())
+                if last_problem and (
+                    last_recovery is None
+                    or last_recovery.timestamp < last_problem.timestamp
+                ):
+                    should_fire = True
+            if not should_fire:
+                logger.info(
+                    "Stuck recovery state synced silently (no unpaired problem): "
+                    "config=%s target=%s", m.configuration, target,
+                )
+                continue
             try:
                 alert_settings = m.alertsettings
                 if alert_settings.is_active:
@@ -211,7 +237,7 @@ def fix_stuck_recovery_notifications(self):
                     fixed += 1
                     logger.info(
                         "Fixed stuck recovery: config=%s target=%s",
-                        m.configuration, m.content_object,
+                        m.configuration, target,
                     )
             except ObjectDoesNotExist:
                 fixed += 1
@@ -229,6 +255,30 @@ def fix_stuck_recovery_notifications(self):
             m.is_healthy_tolerant = False
             m.save(update_fields=["is_healthy_tolerant"])
             notification_type = f"{m.configuration}_problem"
+            recovery_type = f"{m.configuration}_recovery"
+            target = m.content_object
+            target_pk = str(target.pk) if target else None
+            should_fire = False
+            if target_pk:
+                last_problem = (_N.objects.filter(
+                    target_object_id=target_pk, type=notification_type,
+                ).order_by("-timestamp").first())
+                last_recovery = (_N.objects.filter(
+                    target_object_id=target_pk, type=recovery_type,
+                ).order_by("-timestamp").first())
+                # Fire problem only if the LAST notification was a recovery
+                # (so we'd be transitioning healthy → unhealthy now), or
+                # there's no history at all.
+                if last_problem is None or (
+                    last_recovery and last_recovery.timestamp > last_problem.timestamp
+                ):
+                    should_fire = True
+            if not should_fire:
+                logger.info(
+                    "Stuck problem state synced silently (already in problem state): "
+                    "config=%s target=%s", m.configuration, target,
+                )
+                continue
             try:
                 alert_settings = m.alertsettings
                 if alert_settings.is_active:
@@ -236,7 +286,7 @@ def fix_stuck_recovery_notifications(self):
                     fixed += 1
                     logger.info(
                         "Fixed stuck problem: config=%s target=%s",
-                        m.configuration, m.content_object,
+                        m.configuration, target,
                     )
             except ObjectDoesNotExist:
                 fixed += 1
@@ -333,4 +383,46 @@ def delayed_iface_alert_check(self, device_id, ifname, notification_type, alert_
         notify.send(**opts)
     except Exception as e:
         logger.warning("Delayed iface notification failed: %s", e)
+
+    # delayed-iface-su-fanout: notify.send only fans out to OrganizationUser
+    # members; superusers without OrgUser membership are skipped. Mirror
+    # the writer's immediate-path fan-out so admin still gets the
+    # notification when the AC uses email_timing=after_retries.
+    try:
+        from datetime import timedelta as _td
+        from django.contrib.auth import get_user_model
+        from django.contrib.contenttypes.models import ContentType
+        from django.utils.timezone import now as _now2
+        NotificationModel = load_model("openwisp_notifications", "Notification")
+        User = get_user_model()
+        level = "error" if notification_type.endswith("_down") else "success"
+        human = "DOWN" if notification_type.endswith("_down") else "UP"
+        ct = ContentType.objects.get_for_model(device.__class__)
+        recent_cutoff = _now2() - _td(seconds=15)
+        for su in User.objects.filter(is_active=True, is_superuser=True):
+            ns = su.notificationsetting_set.filter(
+                type=notification_type, organization_id=device.organization_id,
+            ).first()
+            if ns and ns.deleted:
+                continue
+            if NotificationModel.objects.filter(
+                recipient=su, type=notification_type, target_object_id=str(device.pk),
+                timestamp__gte=recent_cutoff,
+            ).exists():
+                continue
+            NotificationModel.objects.create(
+                level=level,
+                recipient=su,
+                actor_content_type=ct,
+                actor_object_id=device.pk,
+                target_content_type=ct,
+                target_object_id=device.pk,
+                type=notification_type,
+                description=f"Interface {ifname} is now {human} on device {device.name}",
+                data={"ifname": ifname, "state": human,
+                      "_alert_config_id": str(alert_config.pk) if alert_config else None},
+                public=True,
+            )
+    except Exception as exc:
+        logger.warning("delayed-iface-su-fanout for %s failed: %s", notification_type, exc)
 

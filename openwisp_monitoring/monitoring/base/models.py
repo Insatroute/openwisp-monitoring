@@ -515,12 +515,16 @@ class AbstractMetric(TimeStampedEditableModel):
         target = self.content_object
         alert_config = self._get_alert_configuration(notification_type, target)
 
-        # If AlertConfig exists but disabled, ignore it
+        # is-enabled-suppression-models: when AlertConfig exists with
+        # is_enabled=False, fully silence the alert — no recipient,
+        # not even superuser fan-out, gets a notification for this
+        # type/org. (Previously this just cleared alert_config and
+        # fell through to default firing.)
         if alert_config and not alert_config.is_enabled:
-            alert_config = None
+            return
 
         # Retry-based: schedule delayed verification
-        if alert_config and alert_config.email_timing == "after_retries":
+        if alert_config and alert_config.email_timing in ('after_retries', 'after_tolerance'):
             device_id = str(target.pk) if target else "unknown"
             metric_id = str(self.pk)
             delay_seconds = alert_config.alert_after_minutes * 60
@@ -556,6 +560,16 @@ class AbstractMetric(TimeStampedEditableModel):
         if target is not None:
             opts["target"] = target
 
+        # metric-current-value: surface the latest measured value so the
+        # email template can render {{ current_value }}. Pulled from the
+        # most recent timeseries point for this metric.
+        try:
+            cv = self._latest_value_for_email()
+            if cv is not None:
+                opts.setdefault("data", {})["current_value"] = cv
+        except Exception:
+            pass
+
         if alert_config:
             opts["data"] = opts.get("data", {})
             if not isinstance(opts["data"], dict):
@@ -567,6 +581,37 @@ class AbstractMetric(TimeStampedEditableModel):
                 opts["data"]["_custom_recipients"] = custom
 
         notify.send(**opts)
+
+    def _latest_value_for_email(self):
+        """Return the most recent measured value for this metric, or None.
+
+        Uses self.read() so the query includes content_type/object_id
+        tags and the correct field_name. Logs (does not swallow) failures
+        so silent misses become visible.
+        """
+        try:
+            points = self.read(
+                limit=1,
+                order="-time",
+            )
+        except Exception as exc:
+            logger.warning(
+                "current_value lookup failed for metric %s/%s: %s",
+                self.key, self.pk, exc,
+            )
+            return None
+        if not points:
+            return None
+        candidates = [self.field_name or "value", "value"]
+        for pt in points:
+            for fld in candidates:
+                v = pt.get(fld)
+                if v is not None:
+                    try:
+                        return float(v)
+                    except (TypeError, ValueError):
+                        return None
+        return None
 
     @staticmethod
     def _get_alert_configuration(notification_type, target):
