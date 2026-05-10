@@ -331,6 +331,7 @@ django.jQuery(
               } else {
                 fallback.show();
               }
+              window.owLastChartsData = data;
               createCharts(data);
               addOrganizationSelector(data);
             },
@@ -447,12 +448,30 @@ django.jQuery(
           );
         },
       );
-      // bind export button
+      // bind export button — opens column-picker modal
       $("#ow-chart-export").click(function () {
-        var queryString,
-          queryParams = { csv: 1 };
+        owOpenExportPicker();
+      });
+      // fetch chart data and replace the old charts with the new ones
+      function loadFetchedCharts(time) {
+        $.ajax(getChartFetchUrl(time), {
+          dataType: "json",
+          success: function (data) {
+            if (data.charts.length) {
+              window.owLastChartsData = data;
+              createCharts(data);
+              triggerZoomCharts("js-plotly-plot");
+            }
+          },
+          error: function () {
+            window.console.error("Unable to fetch chart data.");
+          },
+        });
+      }
+
+      function owBuildExportQuery(extra) {
+        var queryParams = { csv: 1 };
         queryParams.time = localStorage.getItem(timeRangeKey);
-        // If custom or pickerChosenLabelKey is 'Custom Range', pass pickerEndDate and pickerStartDate to csv url
         if (
           localStorage.getItem(isCustomDateRange) === "true" ||
           localStorage.getItem(pickerChosenLabelKey) === customDateRangeLabel
@@ -464,37 +483,119 @@ django.jQuery(
             queryParams.end = localStorage.getItem(zoomEndDateTimeKey);
             queryParams.start = localStorage.getItem(zoomStartDateTimeKey);
           }
-          timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-          if (timezone) {
-            queryParams.timezone = timezone;
+          var tzExp = Intl.DateTimeFormat().resolvedOptions().timeZone;
+          if (tzExp) {
+            queryParams.timezone = tzExp;
           }
         }
         if ($("#org-selector").val()) {
           queryParams.organization_slug = $("#org-selector").val();
         }
-        queryString = Object.keys(queryParams)
+        Object.keys(extra || {}).forEach(function (k) {
+          queryParams[k] = extra[k];
+        });
+        return Object.keys(queryParams)
           .map(
             (key) =>
               `${encodeURIComponent(key)}=${encodeURIComponent(queryParams[key])}`,
           )
           .join("&");
-        location.href = `${apiUrl}?${queryString}`;
-      });
-      // fetch chart data and replace the old charts with the new ones
-      function loadFetchedCharts(time) {
-        $.ajax(getChartFetchUrl(time), {
-          dataType: "json",
-          success: function (data) {
-            if (data.charts.length) {
-              createCharts(data);
-              triggerZoomCharts("js-plotly-plot");
-            }
-          },
-          error: function () {
-            window.console.error("Unable to fetch chart data.");
-          },
-        });
       }
+
+      window.owOpenExportPicker = function () {
+        var data = window.owLastChartsData;
+        var grid = document.getElementById("owExportGrid");
+        if (!grid) return;
+        if (!data || !data.charts || !data.charts.length) {
+          grid.innerHTML = '<div class="ow-export-empty">' +
+            gettext("No chart data available to export.") + "</div>";
+          document.getElementById("owExportTotalCount").textContent = "0";
+          document.getElementById("owExportSelectedCount").textContent = "0";
+        } else {
+          var html = "";
+          var total = 0;
+          data.charts.forEach(function (chart, ci) {
+            var titleEsc = String(chart.title || "")
+              .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            var items = "";
+            if (chart.type === "histogram") {
+              // Histograms export as a key-value section, not per-trace columns.
+              // Treat the whole chart as one selectable unit.
+              var headerH = "__hist__:" + (chart.title || "");
+              items = '<label><input type="checkbox" class="ow-export-col" data-chart-idx="' +
+                ci + '" value="' + encodeURIComponent(headerH) + '" checked> ' +
+                gettext("Summary") + "</label>";
+              total += 1;
+            } else if (Array.isArray(chart.traces)) {
+              chart.traces.forEach(function (trace) {
+                var traceName = trace[0];
+                var traceEsc = String(traceName)
+                  .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                var header = traceName + " - " + chart.title;
+                items += '<label><input type="checkbox" class="ow-export-col" data-chart-idx="' +
+                  ci + '" value="' + encodeURIComponent(header) + '" checked> ' +
+                  traceEsc + "</label>";
+                total += 1;
+              });
+            }
+            if (!items) return;
+            html += '<div class="ow-export-cat">' +
+              '<div class="ow-export-cat-title">' + titleEsc + "</div>" +
+              items + "</div>";
+          });
+          grid.innerHTML = html || '<div class="ow-export-empty">' +
+            gettext("No exportable columns.") + "</div>";
+          document.getElementById("owExportTotalCount").textContent = String(total);
+          owUpdateExportCounter();
+          $("#owExportGrid").off("change.owExport").on(
+            "change.owExport", "input.ow-export-col", owUpdateExportCounter,
+          );
+        }
+        document.getElementById("owExportOverlay").style.display = "block";
+        document.getElementById("owExportModal").style.display = "flex";
+      };
+
+      window.owCloseExportPicker = function () {
+        document.getElementById("owExportOverlay").style.display = "none";
+        document.getElementById("owExportModal").style.display = "none";
+      };
+
+      window.owExportSelectAll = function () {
+        $("#owExportGrid input.ow-export-col").prop("checked", true);
+        owUpdateExportCounter();
+      };
+
+      window.owExportDeselectAll = function () {
+        $("#owExportGrid input.ow-export-col").prop("checked", false);
+        owUpdateExportCounter();
+      };
+
+      function owUpdateExportCounter() {
+        var $boxes = $("#owExportGrid input.ow-export-col");
+        var selected = $boxes.filter(":checked").length;
+        document.getElementById("owExportSelectedCount").textContent = String(selected);
+        var pdfBtn = document.getElementById("owExportPdfBtn");
+        var pdfNote = document.getElementById("owExportPdfNote");
+        var xlsxBtn = document.getElementById("owExportXlsxBtn");
+        var pdfAllowed = selected > 0 && selected <= 10;
+        pdfBtn.style.display = pdfAllowed ? "" : "none";
+        pdfNote.style.display = selected > 10 ? "" : "none";
+        xlsxBtn.disabled = selected === 0;
+      }
+
+      window.owSubmitExport = function (format) {
+        var headers = $("#owExportGrid input.ow-export-col:checked")
+          .map(function () { return decodeURIComponent(this.value); })
+          .get();
+        if (!headers.length) return;
+        if (format === "pdf" && headers.length > 10) return;
+        var queryString = owBuildExportQuery({
+          export_format: format,
+          columns: headers.join("|"),
+        });
+        owCloseExportPicker();
+        location.href = `${apiUrl}?${queryString}`;
+      };
 
       $("#org-selector").change(function () {
         loadCharts(
