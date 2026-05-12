@@ -164,5 +164,7 @@ default_chart_query = [
 ]
 
 device_data_query = (
-    "SELECT data FROM {0}.{1} WHERE pk = '{2}' " "ORDER BY time DESC LIMIT 1"
+    "SELECT data FROM {0}.{1} WHERE pk = '{2}' "
+    "AND time > now() - 1d "
+    "ORDER BY time DESC LIMIT 1"
 )

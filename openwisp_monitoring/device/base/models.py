@@ -520,8 +520,9 @@ class AbstractDeviceData(object):
         q = device_data_query.format(SHORT_RP, self.__key, self.pk)
         cache_key = get_device_cache_key(device=self, context='current-data')
         points = cache.get(cache_key)
-        if not points:
-            points = timeseries_db.get_list_query(q, precision=None)
+        if points is None:
+            points = timeseries_db.get_list_query(q, precision=None) or []
+            cache.set(cache_key, points, timeout=CACHE_TIMEOUT)
         if not points:
             return None
         self.data_timestamp = points[0]['time']
@@ -978,11 +979,12 @@ class AbstractTunnelData(object):
         """Retrieve last tunnel data snapshot from InfluxDB / cache."""
         if self.__data:
             return self.__data
-        q = f'SELECT * FROM "{SHORT_RP}"."{self.__key}" WHERE "pk" = \'{self.pk}\' ORDER BY time DESC LIMIT 1'
+        q = f'SELECT * FROM "{SHORT_RP}"."{self.__key}" WHERE "pk" = \'{self.pk}\' AND time > now() - 1d ORDER BY time DESC LIMIT 1'
         cache_key = get_device_cache_key(device=self, context="current-tunnel-data")
         points = cache.get(cache_key)
-        if not points:
-            points = timeseries_db.get_list_query(q, precision=None)
+        if points is None:
+            points = timeseries_db.get_list_query(q, precision=None) or []
+            cache.set(cache_key, points, timeout=CACHE_TIMEOUT)
         if not points:
             return None
         self.data_timestamp = points[0]["time"]

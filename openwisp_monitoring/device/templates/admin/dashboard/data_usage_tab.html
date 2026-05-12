@@ -1284,6 +1284,11 @@
   // =========================================================================
   // FETCH HELPER
   // =========================================================================
+  function stripAppPrefix(name) {
+    if (!name) return "";
+    return String(name).replace(/^netify\./, "").replace(/^custom\./, "");
+  }
+
   function fetchJson(url, opts) {
     opts = opts || {};
     var timeoutMs = Number(opts.timeoutMs) || FETCH_TIMEOUT_MS;
@@ -2052,7 +2057,7 @@
         // Map DPI response to uniform format: label + traffic (total_down + total_up)
         var rows = rawApps.map(function (a) {
           return {
-            label: a.app_name || "",
+            label: stripAppPrefix(a.app_name) || "",
             traffic: (Number(a.total_down) || 0) + (Number(a.total_up) || 0),
             category: a.category || "",
           };
@@ -2565,7 +2570,7 @@
     chartDiv.className = "owdu-modal-chart";
     bodyEl.appendChild(chartDiv);
 
-    var labels = results.map(function (r) { return r.application || r.app_name || "Unknown"; });
+    var labels = results.map(function (r) { return stripAppPrefix(r.application || r.app_name) || "Unknown"; });
     var bytes = results.map(function (r) { return (r.download || 0) + (r.upload || 0); });
     var totalAll = bytes.reduce(function (a, b) { return a + b; }, 0);
 
@@ -2678,7 +2683,7 @@
         wanLinks.forEach(function (wan) {
           var apps = topAppsByWan[wan] || [];
           apps.slice(0, 5).forEach(function (a) {
-            var name = a.app || a.app_name || "Unknown";
+            var name = stripAppPrefix(a.app || a.app_name) || "Unknown";
             if (!appSet[name]) {
               appSet[name] = nodeLabels.length;
               nodeLabels.push(name);
@@ -2697,7 +2702,7 @@
         wanLinks.forEach(function (wan, wanIdx) {
           var apps = topAppsByWan[wan] || [];
           apps.slice(0, 5).forEach(function (a) {
-            var name = a.app || a.app_name || "Unknown";
+            var name = stripAppPrefix(a.app || a.app_name) || "Unknown";
             var bytes = (a.download || 0) + (a.upload || 0);
             if (bytes > 0 && appSet[name] !== undefined) {
               links.source.push(appSet[name]);

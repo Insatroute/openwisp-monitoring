@@ -52,10 +52,6 @@
           <button type="button" data-target="traffic-traffic" class="active">Traffic Summary</button>
           {% endif %}
           <button type="button" data-target="traffic-real-time-traffic" class="{% if device_data.device_type == '4g_5g_router' %}active{% endif %}">Real-Time Traffic</button>
-          <button type="button" data-target="traffic-wan-uplinks">WAN Uplinks</button>
-          {% if device_data.device_type != '4g_5g_router' %}
-          <button type="button" data-target="traffic-security">Security</button>
-          {% endif %}
 
         </div>
 
@@ -68,17 +64,28 @@
           <div id="traffic-real-time-traffic" class="traffic-sub-content traffic-sub-content {% if device_data.device_type == '4g_5g_router' %}active{% endif %}">
             {% include 'monitoring/traffic/real_time_traffic.html' %}
           </div>
-          <div id="traffic-wan-uplinks" class="traffic-sub-content">
-            {% include 'monitoring/traffic/wan_uplinks.html' %}
-          </div>
-          {% if device_data.device_type != '4g_5g_router' %}
-          <div id="traffic-security" class="traffic-sub-content">
-            {% include 'monitoring/traffic/security.html' %}
-          </div>
-          {% endif %}
         </div>
       </div>
     </div>
+  </fieldset>
+</div>
+{% endif %}
+
+{# WAN Uplinks and Security promoted to top-level tabs (repositioned before CPE via JS in device/change_form.html). #}
+{% if not add and device_data %}
+<div class="inline-group" id="ow-wan-uplinks">
+  <fieldset class="module">
+    <h2>{% trans 'WAN Uplinks' %}</h2>
+    {% include 'monitoring/traffic/wan_uplinks.html' %}
+  </fieldset>
+</div>
+{% endif %}
+
+{% if not add and device_data and device_data.device_type != '4g_5g_router' %}
+<div class="inline-group" id="ow-security">
+  <fieldset class="module">
+    <h2>{% trans 'Security' %}</h2>
+    {% include 'monitoring/traffic/security.html' %}
   </fieldset>
 </div>
 {% endif %}
