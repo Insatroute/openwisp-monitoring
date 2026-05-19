@@ -771,7 +771,9 @@ if (typeof L === "undefined") {
         LIVE
       </div>
 
-      <div class="dpi-dropdown-wrap">
+      <!-- Export dropdown hidden per UX request. Keep DOM nodes so the
+           toggle JS at line ~1858 doesn't error on getElementById. -->
+      <div class="dpi-dropdown-wrap" style="display:none">
         <button class="dpi-btn" id="dpi-export-btn-toggle" type="button">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -798,18 +800,9 @@ if (typeof L === "undefined") {
     </div>
   </div>
 
-  <!-- DATA STATUS BANNER (hidden dynamically when live data detected) -->
-  <div id="dpi-limited-banner" style="background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:8px 14px;margin:0 40px 0 40px;display:flex;align-items:center;gap:8px;">
-    <i class="fas fa-info-circle" style="color:#d97706;font-size:14px;flex-shrink:0"></i>
-    <div>
-      <div style="font-weight:600;color:#92400e;font-size:12px;">Dashboard shows limited data</div>
-      <div style="color:#a16207;font-size:11px;margin-top:1px;">
-        To see real-time DPI analytics, deploy an SD-WAN topology from
-        <a href="/admin/sdwan_tunnel/nsbondtopology/add/" style="color:#1d4ed8;text-decoration:underline">SD-WAN Fabric</a>.
-        Once deployed, the DPI engine on each router will start sending traffic data to this dashboard automatically.
-      </div>
-    </div>
-  </div>
+  <!-- DATA STATUS BANNER removed per UX request. Keep a hidden placeholder so
+       any JS that toggles dpi-limited-banner does not throw a null-ref error. -->
+  <div id="dpi-limited-banner" style="display:none"></div>
 
   <!-- SUMMARY CARDS -->
   <div class="dpi-summary-row">
@@ -1246,16 +1239,18 @@ if (typeof L === "undefined") {
   var topAppsLabels = topAppsData.map(function(a) {
     return (a.app_name || 'Unknown').replace('netify.','').replace(/^netify$/, 'DPI Engine');
   });
-  var rawDownBytes = topAppsData.map(function(a) { return a.total_down || 0; });
-  var appsUnit = pickUnit(rawDownBytes);
-  var topAppsDown = rawDownBytes.map(function(v) {
+  // Plot total bandwidth (down + up). Matches every other chart in this
+  // dashboard and matches industry convention for "Top Apps by Bandwidth".
+  var rawTotalBytes = topAppsData.map(function(a) { return (a.total_down || 0) + (a.total_up || 0); });
+  var appsUnit = pickUnit(rawTotalBytes);
+  var topAppsTotal = rawTotalBytes.map(function(v) {
     return Math.round((v / appsUnit.divisor) * 100) / 100;
   });
 
   // Top Apps Bar Chart
   var ctxApps = document.getElementById('chart-top-apps');
   if (ctxApps) {
-    var hasAppsData = topAppsLabels.length > 0 && topAppsDown.some(function(v) { return v > 0; });
+    var hasAppsData = topAppsLabels.length > 0 && topAppsTotal.some(function(v) { return v > 0; });
 
     // Wrap canvas in a relative container for overlay
     var appsParent = ctxApps.parentNode;
@@ -1309,8 +1304,8 @@ if (typeof L === "undefined") {
         data: {
           labels: topAppsLabels,
           datasets: [{
-            label: 'Download (' + appsUnit.label + ')',
-            data: topAppsDown,
+            label: 'Data Usage (' + appsUnit.label + ')',
+            data: topAppsTotal,
             backgroundColor: 'rgba(66,133,244,0.85)',
             borderRadius: 3,
             borderSkipped: false,

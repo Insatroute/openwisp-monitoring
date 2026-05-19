@@ -154,10 +154,12 @@ def _window_from_request(request) -> WindowParams:
 
 
 def _scope_devicedata_qs(user):
+    # Visibility precedence: superuser -> DeviceGroupUser -> organization.
+    # See openwisp_monitoring/monitoring/permissions.py for the rule.
+    from openwisp_monitoring.monitoring.permissions import scope_devicedata_qs
+
     qs = DeviceData.objects.select_related("monitoring").all()
-    if user.is_superuser:
-        return qs
-    return qs.filter(organization__in=user.organizations.all())
+    return scope_devicedata_qs(user, qs)
 
 
 def _org_scope_label(user) -> str:
@@ -168,7 +170,7 @@ def _cache_key(user, window: WindowParams) -> str:
     if user.is_superuser:
         scope = "superuser"
     else:
-        org_ids = list(user.organizations.values_list("id", flat=True).order_by("id"))
+        org_ids = sorted(user.organizations_dict.keys())
         scope = f"orgs:{','.join(str(i) for i in org_ids)}"
     return (
         f"ow:du:v2:{user.pk}:{scope}:{window.period}:"
@@ -319,7 +321,7 @@ def _top_apps_from_dpi(user, window: WindowParams) -> Tuple[List[Dict[str, Any]]
 
         qs = DpiAppTraffic.objects.filter(period_start__gte=window.start, period_start__lte=window.end)
         if not user.is_superuser:
-            qs = qs.filter(device__organization__in=user.organizations.all())
+            qs = qs.filter(device__organization_id__in=user.organizations_dict.keys())
 
         rows = qs.values("device_id", "app_name").annotate(
             total_down=Sum("download_bytes"),
@@ -395,7 +397,7 @@ def _hourly_dpi_series(user, window: WindowParams) -> Tuple[List[Dict[str, Any]]
 
         qs = DpiAppTraffic.objects.filter(period_start__gte=window.start, period_start__lte=window.end)
         if not user.is_superuser:
-            qs = qs.filter(device__organization__in=user.organizations.all())
+            qs = qs.filter(device__organization_id__in=user.organizations_dict.keys())
 
         grouped = (
             qs.annotate(hour=TruncHour("period_start"))

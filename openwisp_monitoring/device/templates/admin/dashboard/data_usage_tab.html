@@ -773,6 +773,22 @@
     .owdu-trending-chart { height: 240px; }
     .owdu-donut-wrap { min-height: 240px; }
   }
+
+  /* Override the global ".js-plotly-plot { display:flex; ... }" rule which is
+     intended for the home-dashboard donut cards but breaks Plotly layouts on
+     this tab (Sankey + bar charts render small + bottom-anchored). Scope
+     resets to every Plotly chart that lives inside this tab. */
+  .owdu-wrap .js-plotly-plot,
+  .owdu-card-bd .js-plotly-plot,
+  #owdu-sankey,
+  #owdu-sankey.js-plotly-plot {
+    display: block !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+  }
 </style>
 
 <div class="owdu-wrap">

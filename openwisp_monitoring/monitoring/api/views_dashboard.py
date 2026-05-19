@@ -60,8 +60,8 @@ class GlobalTopDevicesView(ProtectedAPIMixin, FilterByOrganizationMembership, ge
         try:
             return self._influx_top_devices(request, influx_interval, limit)
         except Exception:
-            logger.debug(
-                'GlobalTopDevicesView: InfluxDB failed, falling back',
+            logger.warning(
+                'GlobalTopDevicesView: InfluxDB failed, falling back to PG',
                 exc_info=True,
             )
             # Fallback to original build_data_usage_payload path
@@ -86,16 +86,53 @@ class GlobalTopDevicesView(ProtectedAPIMixin, FilterByOrganizationMembership, ge
     def _influx_top_devices(self, request, influx_interval, limit):
         where_parts = [f"time > now() - {influx_interval}"]
 
-        # Org scoping for non-superusers
+        # Org + group scoping for non-superusers.
         if not request.user.is_superuser:
-            org_ids = list(
-                request.user.organizations.values_list('id', flat=True)
-            )
+            # organizations_dict is the canonical attribute on this User model;
+            # the old `user.organizations` raised AttributeError and silently
+            # forced this view into a slow Postgres fallback.
+            org_ids = list(request.user.organizations_dict.keys())
             if org_ids:
                 org_regex = '|'.join(str(oid) for oid in org_ids)
                 where_parts.append(
                     f"organization_id =~ /^({org_regex})$/"
                 )
+
+            # Additional group scoping: when the user has DeviceGroupUser rows,
+            # restrict object_id to the visible devices.
+            try:
+                from swapper import load_model
+                from openwisp_controller.config.models import Device
+                DeviceGroupUser = load_model("config", "DeviceGroupUser")
+                group_ids = list(
+                    DeviceGroupUser.objects.filter(user=request.user)
+                    .values_list("device_group_id", flat=True)
+                )
+                if group_ids:
+                    visible_device_ids = list(
+                        Device.objects.filter(
+                            group_id__in=group_ids
+                        ).values_list("pk", flat=True)
+                    )
+                    if visible_device_ids:
+                        dev_regex = '|'.join(str(d) for d in visible_device_ids)
+                        where_parts.append(
+                            f"object_id =~ /^({dev_regex})$/"
+                        )
+                    else:
+                        where_parts.append("object_id = ''")
+            except Exception:
+                # Pre-DeviceGroupUser deployments: keep org-only scope.
+                pass
+
+        # WAN-interface allowlist: only count bytes on physical WAN-class
+        # interfaces (eth*, wan*, wwan*, wlan*, modem*, ppp*). This matches the
+        # semantics of the "Total Traffic" summary card, which excludes LAN
+        # bridges (br_*) and tunnels (wg*, vxlan*, gre*, l2tp*, ipsec*, tun*,
+        # tap*) so the two widgets agree.
+        where_parts.append(
+            "ifname =~ /^(eth|wan|wwan|wlan|modem|ppp)/"
+        )
 
         where_clause = ' AND '.join(where_parts)
         query = (

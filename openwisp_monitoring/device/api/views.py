@@ -725,29 +725,47 @@ tunnel_data = TunnelDataView.as_view()
 
 class MonitoringGeoJsonLocationList(GeoJsonLocationList):
     serializer_class = MonitoringGeoJsonLocationSerializer
-    queryset = (
-        Location.objects.filter(devicelocation__isnull=False)
-        .annotate(
-            device_count=Count('devicelocation'),
-            ok_count=Count(
-                'devicelocation',
-                filter=Q(devicelocation__content_object__monitoring__status='ok'),
-            ),
-            problem_count=Count(
-                'devicelocation',
-                filter=Q(devicelocation__content_object__monitoring__status='problem'),
-            ),
-            critical_count=Count(
-                'devicelocation',
-                filter=Q(devicelocation__content_object__monitoring__status='critical'),
-            ),
-            unknown_count=Count(
-                'devicelocation',
-                filter=Q(devicelocation__content_object__monitoring__status='unknown'),
-            ),
+
+    def get_queryset(self):
+        # Group-wise visibility: superuser -> all, DeviceGroupUser -> groups, else org.
+        # See openwisp_monitoring/monitoring/permissions.py for the rule.
+        from openwisp_monitoring.monitoring.permissions import (
+            get_visible_device_ids,
         )
-        .order_by('-created')
-    )
+
+        visible = get_visible_device_ids(self.request.user)
+        dl_filter = Q()
+        if visible is not None:
+            dl_filter = Q(devicelocation__content_object_id__in=visible)
+
+        return (
+            Location.objects.filter(devicelocation__isnull=False)
+            .annotate(
+                device_count=Count('devicelocation', filter=dl_filter),
+                ok_count=Count(
+                    'devicelocation',
+                    filter=dl_filter
+                    & Q(devicelocation__content_object__monitoring__status='ok'),
+                ),
+                problem_count=Count(
+                    'devicelocation',
+                    filter=dl_filter
+                    & Q(devicelocation__content_object__monitoring__status='problem'),
+                ),
+                critical_count=Count(
+                    'devicelocation',
+                    filter=dl_filter
+                    & Q(devicelocation__content_object__monitoring__status='critical'),
+                ),
+                unknown_count=Count(
+                    'devicelocation',
+                    filter=dl_filter
+                    & Q(devicelocation__content_object__monitoring__status='unknown'),
+                ),
+            )
+            .filter(device_count__gt=0)
+            .order_by('-created')
+        )
 
 
 monitoring_geojson_location_list = MonitoringGeoJsonLocationList.as_view()
@@ -814,7 +832,17 @@ class MonitoringDeviceList(DeviceListCreateView):
     filterset_class = MonitoringDeviceFilter
 
     def get_queryset(self):
-        return super().get_queryset().select_related('monitoring').order_by('name')
+        qs = super().get_queryset().select_related('monitoring').order_by('name')
+        # Group-wise visibility: superuser -> all, DeviceGroupUser -> groups, else org.
+        # See openwisp_monitoring/monitoring/permissions.py for the rule.
+        from openwisp_monitoring.monitoring.permissions import (
+            get_visible_device_ids,
+        )
+
+        visible = get_visible_device_ids(self.request.user)
+        if visible is not None:
+            qs = qs.filter(pk__in=visible)
+        return qs
 
 
 monitoring_device_list = MonitoringDeviceList.as_view()
