@@ -1,0 +1,157 @@
+{% load static %}
+
+<style>
+  .info-tab-wrap {
+    font-family: var(--font-family-primary, 'Poppins', 'Roboto', sans-serif);
+    color: #374151;
+    padding: 20px 24px;
+  }
+  .info-tab-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+  .info-tab-title {
+    font-size: 18px;
+    font-weight: 700;
+    margin: 0;
+  }
+  .info-tab-subtitle {
+    font-size: 13px;
+    color: #666;
+    margin-top: 2px;
+  }
+  .info-tab-period {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+  }
+  .info-tab-period select {
+    padding: 4px 8px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    background: #fff;
+    font-size: 13px;
+  }
+  .info-list {
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #fff;
+  }
+  .info-list-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    border-bottom: 1px solid #f1f5f9;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .info-list-row:last-child { border-bottom: none; }
+  .info-list-row:hover { background: #f9fafb; }
+  .info-list-row.is-open { background: #f3f4f6; }
+  .info-row-left { flex: 1; min-width: 0; }
+  .info-row-title { font-weight: 600; font-size: 14px; color: #111827; }
+  .info-row-desc { font-size: 12px; color: #6b7280; margin-top: 2px; }
+  .info-row-actions { display: flex; gap: 8px; }
+  .info-btn {
+    padding: 6px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    background: #fff;
+    font-size: 12px;
+    cursor: pointer;
+    color: #374151;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .info-btn:hover { background: #f3f4f6; }
+  .info-btn-primary { background: #24415d; color: #fff; border-color: #24415d; }
+  .info-btn-primary:hover { background: #1e3550; color: #fff; }
+</style>
+
+<div class="info-tab-wrap" id="info-tab-wrap">
+
+  <div class="info-tab-header">
+    <div>
+      <h2 class="info-tab-title">Instant Reports</h2>
+      <div class="info-tab-subtitle">
+        Quick read-only snapshots. Click a report to preview the PDF inline; download the PDF from the result panel.
+      </div>
+    </div>
+    <div class="info-tab-period">
+      <label for="info-period">Period:</label>
+      <select id="info-period">
+        <option value="1d">Last 1 day</option>
+        <option value="3d">Last 3 days</option>
+        <option value="7d" selected>Last 7 days</option>
+        <option value="30d">Last 30 days</option>
+        <option value="365d">Last 365 days</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="info-list" id="info-list">
+    <div class="info-list-row" data-pdf="/reports/instant/top-apps/pdf/">
+      <div class="info-row-left">
+        <div class="info-row-title">Top 10 Applications by Traffic</div>
+        <div class="info-row-desc">Highest-traffic applications across all your devices in the picked period.</div>
+      </div>
+      <div class="info-row-actions">
+        <a class="info-btn info-btn-primary" data-action="view" target="_blank" rel="noopener" href="#">View</a>
+      </div>
+    </div>
+
+    <div class="info-list-row" data-pdf="/reports/instant/top-uptime/pdf/">
+      <div class="info-row-left">
+        <div class="info-row-title">Top 10 Devices by Uptime</div>
+        <div class="info-row-desc">Devices with the highest availability% in the picked period.</div>
+      </div>
+      <div class="info-row-actions">
+        <a class="info-btn info-btn-primary" data-action="view" target="_blank" rel="noopener" href="#">View</a>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function () {
+  const wrap = document.getElementById('info-tab-wrap');
+  if (!wrap) return;
+
+  const periodSel = document.getElementById('info-period');
+  const list = document.getElementById('info-list');
+
+  function pdfUrlFor(row) {
+    const base = row.dataset.pdf;
+    const sep = base.indexOf('?') === -1 ? '?' : '&';
+    return base + sep + 'period=' + encodeURIComponent(periodSel.value) + '&inline=1';
+  }
+
+  function refreshLinks() {
+    list.querySelectorAll('.info-list-row').forEach(row => {
+      const link = row.querySelector('[data-action="view"]');
+      if (link) link.href = pdfUrlFor(row);
+    });
+  }
+
+  // make the whole row clickable too
+  list.addEventListener('click', function (e) {
+    if (e.target.closest('[data-action="view"]')) return; // anchor handles it
+    const row = e.target.closest('.info-list-row');
+    if (!row) return;
+    window.open(pdfUrlFor(row), '_blank', 'noopener');
+  });
+
+  periodSel.addEventListener('change', refreshLinks);
+  refreshLinks();
+})();
+</script>

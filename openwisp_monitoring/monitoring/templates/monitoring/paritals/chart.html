@@ -26,4 +26,76 @@
     {% if chart_quick_links %}
         {{ chart_quick_links|json_script:"monitoring-chart-quick-links" }}
     {% endif %}
+
+    <div id="owExportOverlay" class="ow-export-overlay" style="display:none;"></div>
+    <div id="owExportModal" class="ow-export-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="owExportTitle">
+        <div class="ow-export-header">
+            <h2 id="owExportTitle">{% trans 'Export data' %}</h2>
+            <button type="button" class="ow-export-close" aria-label="{% trans 'Close' %}" onclick="owCloseExportPicker()">&times;</button>
+        </div>
+        <div class="ow-export-toolbar">
+            <div class="ow-export-toolbar-actions">
+                <button type="button" class="ow-export-btn ow-export-btn-ghost" onclick="owExportSelectAll()">{% trans 'Select all' %}</button>
+                <button type="button" class="ow-export-btn ow-export-btn-ghost" onclick="owExportDeselectAll()">{% trans 'Deselect all' %}</button>
+            </div>
+            <span class="ow-export-counter"><strong id="owExportSelectedCount">0</strong> {% trans 'of' %} <span id="owExportTotalCount">0</span> {% trans 'columns selected' %}</span>
+        </div>
+        <div id="owExportGrid" class="ow-export-grid"></div>
+        <div class="ow-export-footer">
+            <span id="owExportPdfNote" class="ow-export-note" style="display:none;">{% trans 'PDF available only when 10 or fewer columns are selected.' %}</span>
+            <div class="ow-export-footer-actions">
+                <button type="button" class="ow-export-btn ow-export-btn-ghost" onclick="owCloseExportPicker()">{% trans 'Cancel' %}</button>
+                <button type="button" id="owExportPdfBtn" class="ow-export-btn ow-export-btn-primary" onclick="owSubmitExport('pdf')">{% trans 'Export PDF' %}</button>
+                <button type="button" id="owExportXlsxBtn" class="ow-export-btn ow-export-btn-primary" onclick="owSubmitExport('xlsx')">{% trans 'Export Excel' %}</button>
+            </div>
+        </div>
+    </div>
 </div>
+
+<style>
+.ow-export-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.55); z-index: 10000; }
+.ow-export-modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(980px, 94vw); max-height: 86vh; background: #fff; border-radius: 12px; box-shadow: 0 24px 70px rgba(15, 23, 42, 0.28); z-index: 10001; display: flex; flex-direction: column; font-family: inherit; color: #1e293b; }
+.ow-export-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 22px; border-bottom: 1px solid #e2e8f0; }
+.ow-export-header h2 { margin: 0; font-size: 16px; font-weight: 700; color: #1e293b; letter-spacing: 0.2px; font-family: inherit; }
+.ow-export-close { background: none; border: 0; font-size: 22px; line-height: 1; color: #94a3b8; cursor: pointer; padding: 4px 8px; border-radius: 6px; transition: background 0.15s, color 0.15s; }
+.ow-export-close:hover { background: #f1f5f9; color: #334155; }
+.ow-export-toolbar { display: flex; align-items: center; gap: 12px; padding: 14px 22px; border-bottom: 1px solid #f1f5f9; }
+.ow-export-toolbar-actions { display: flex; gap: 8px; }
+.ow-export-counter { margin-left: auto; color: #475569; font-size: 12.5px; }
+.ow-export-counter strong { color: #1e293b; font-weight: 700; }
+.ow-export-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; padding: 18px 22px; overflow: auto; flex: 1 1 auto; background: #f8fafc; }
+@media (max-width: 900px) { .ow-export-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 540px) { .ow-export-grid { grid-template-columns: 1fr; } }
+.ow-export-cat { border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 16px; background: #fff; transition: border-color 0.15s, box-shadow 0.15s; }
+.ow-export-cat:hover { border-color: #cbd5e1; box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04); }
+.ow-export-cat-title { font-size: 13.5px; font-weight: 700; color: #1e293b; margin-bottom: 10px; font-family: inherit; }
+.ow-export-cat label { display: flex; align-items: center; gap: 9px; padding: 4px 0; color: #334155; font-size: 13px; cursor: pointer; font-family: inherit; transition: color 0.15s; }
+.ow-export-cat label:hover { color: #24415d; }
+.ow-export-cat input[type=checkbox] {
+    -webkit-appearance: none; appearance: none; width: 18px; height: 18px;
+    border: 2px solid #cbd5e1; border-radius: 50%; background: #fff;
+    cursor: pointer; position: relative; flex-shrink: 0; transition: border-color 0.15s, background 0.15s;
+    margin: 0;
+}
+.ow-export-cat input[type=checkbox]:hover { border-color: #94a3b8; }
+.ow-export-cat input[type=checkbox]:checked { background: #24415d; border-color: #24415d; }
+.ow-export-cat input[type=checkbox]:checked::after {
+    content: ''; position: absolute; left: 4px; top: 1px; width: 5px; height: 9px;
+    border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg);
+}
+.ow-export-cat input[type=checkbox]:focus-visible { outline: 2px solid #24415d; outline-offset: 2px; }
+.ow-export-footer { display: flex; align-items: center; gap: 12px; padding: 14px 22px; border-top: 1px solid #e2e8f0; background: #fff; border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; }
+.ow-export-note { color: #b45309; background: #fef3c7; padding: 6px 10px; border-radius: 6px; font-size: 12px; margin-right: auto; }
+.ow-export-footer-actions { display: flex; gap: 8px; margin-left: auto; }
+.ow-export-btn {
+    padding: 7px 16px; border-radius: 6px; font-size: 12.5px; font-weight: 600;
+    cursor: pointer; transition: background 0.15s, color 0.15s, border-color 0.15s;
+    font-family: inherit; line-height: 1.4; min-width: 96px;
+}
+.ow-export-btn-ghost { background: #fff; color: #334155; border: 1px solid #cbd5e1; }
+.ow-export-btn-ghost:hover { background: #f1f5f9; border-color: #94a3b8; color: #1e293b; }
+.ow-export-btn-primary { background: #24415d; color: #fff; border: 1px solid #24415d; }
+.ow-export-btn-primary:hover { background: #334155; border-color: #334155; }
+.ow-export-btn-primary:disabled { background: #cbd5e1; border-color: #cbd5e1; cursor: not-allowed; color: #f8fafc; }
+.ow-export-empty { grid-column: 1 / -1; text-align: center; color: #94a3b8; padding: 36px 0; font-size: 13px; }
+</style>

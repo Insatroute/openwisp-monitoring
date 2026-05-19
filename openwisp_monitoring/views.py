@@ -1,11 +1,13 @@
 import csv
 import logging
 from collections import OrderedDict
+from copy import copy
 from datetime import datetime
-from io import StringIO
+from io import BytesIO, StringIO
 
 from django.conf import settings
 from django.http import HttpResponse
+from django.template.loader import render_to_string
 from pytz import timezone
 from pytz import timezone as tz
 from pytz.exceptions import UnknownTimeZoneError
@@ -88,7 +90,47 @@ class MonitoringApiViewMixin:
         data = self._get_charts_data(charts, time, tz_name, start_date, end_date)
         # csv export has a different response
         if request.query_params.get("csv"):
-            response = HttpResponse(self._get_csv(data), content_type="text/csv")
+            # Use ``export_format`` instead of ``format`` because DRF reserves
+            # the latter for content-negotiation (URL_FORMAT_OVERRIDE) and
+            # would 404 on unknown values like "xlsx" / "pdf".
+            export_format = (
+                request.query_params.get("export_format") or "csv"
+            ).lower()
+            columns_param = request.query_params.get("columns")
+            # Mirror client-side trace synthesis (e.g. ``total`` on traffic
+            # charts is computed by chart.js, not returned from the backend)
+            # so exports contain the same columns the user sees in the UI.
+            data = self._inject_synthesized_traces(data)
+            export_data = (
+                self._filter_data_by_columns(data, columns_param)
+                if columns_param
+                else data
+            )
+            if export_format == "xlsx":
+                payload = self._get_xlsx(export_data)
+                response = HttpResponse(
+                    payload,
+                    content_type=(
+                        "application/vnd.openxmlformats-officedocument."
+                        "spreadsheetml.sheet"
+                    ),
+                )
+                response["Content-Disposition"] = (
+                    'attachment; filename="data.xlsx"'
+                )
+                return response
+            if export_format == "pdf":
+                payload = self._get_pdf(export_data)
+                if payload is None:
+                    raise ValidationError(
+                        "PDF export requires WeasyPrint to be installed."
+                    )
+                response = HttpResponse(payload, content_type="application/pdf")
+                response["Content-Disposition"] = 'attachment; filename="data.pdf"'
+                return response
+            response = HttpResponse(
+                self._get_csv(export_data), content_type="text/csv"
+            )
             response["Content-Disposition"] = "attachment; filename=data.csv"
             return response
         data.update(self._get_additional_data(request, *args, **kwargs))
@@ -193,6 +235,173 @@ class MonitoringApiViewMixin:
     def _get_csv_header(self, chart, trace):
         header = trace[0]
         return f'{header} - {chart["title"]}'
+
+    def _inject_synthesized_traces(self, data):
+        """Append the synthetic ``total`` trace on charts that declare
+        ``calculate_total=True``. The frontend (chart.js) does this for
+        rendering, but the backend response doesn't include it — so the
+        export filter would otherwise silently drop a column the user
+        ticked in the picker.
+        """
+        for chart in data.get("charts", []):
+            if not chart.get("calculate_total"):
+                continue
+            traces = chart.get("traces") or []
+            if not traces:
+                continue
+            if any((trace[0] if trace else "") == "total" for trace in traces):
+                continue
+            length = max((len(t[1]) for t in traces if len(t) > 1), default=0)
+            if not length:
+                continue
+            total = [0] * length
+            for trace in traces:
+                values = trace[1] if len(trace) > 1 else []
+                for j in range(min(length, len(values))):
+                    v = values[j]
+                    if v is None:
+                        continue
+                    total[j] += v
+            traces.append(["total", total])
+        return data
+
+    def _filter_data_by_columns(self, data, columns_param):
+        """Return a shallow-copied data dict whose charts/traces only
+        include the columns named in columns_param.
+
+        columns_param is a pipe-separated list. For non-histogram charts,
+        each item is the CSV header "{trace_name} - {chart_title}". For
+        histogram charts, the item is "__hist__:{chart_title}".
+        Charts/traces not listed are dropped entirely.
+        """
+        requested = {c for c in (columns_param or "").split("|") if c}
+        if not requested:
+            return data
+        filtered_charts = []
+        for chart in data.get("charts", []):
+            if chart.get("type") == "histogram":
+                if f"__hist__:{chart.get('title', '')}" in requested:
+                    filtered_charts.append(chart)
+                continue
+            kept_traces = [
+                trace
+                for trace in chart.get("traces", [])
+                if self._get_csv_header(chart, trace) in requested
+            ]
+            if not kept_traces:
+                continue
+            chart_copy = copy(chart)
+            chart_copy["traces"] = kept_traces
+            filtered_charts.append(chart_copy)
+        new_data = OrderedDict(data)
+        new_data["charts"] = filtered_charts
+        return new_data
+
+    def _build_export_rows(self, data):
+        """Build (header_row, body_rows, histogram_sections) shared by
+        all export formats. histogram_sections is a list of
+        (title, [(field, value), ...]).
+        """
+        header = ["time"]
+        columns = [data.get("x") or []]
+        histograms = []
+        for chart in data.get("charts", []):
+            if chart.get("type") == "histogram":
+                histograms.append(chart)
+                continue
+            for trace in chart.get("traces", []):
+                header.append(self._get_csv_header(chart, trace))
+                columns.append(trace[1])
+        body = []
+        x_values = data.get("x") or []
+        for index in range(len(x_values)):
+            row = []
+            for column in columns:
+                row.append(column[index] if index < len(column) else None)
+            body.append(row)
+        histogram_sections = []
+        for chart in histograms:
+            summary = chart.get("summary") or {}
+            normalized = {
+                key: (0 if value is None else value)
+                for key, value in summary.items()
+            }
+            sorted_items = sorted(
+                normalized.items(), key=lambda item: item[1], reverse=True
+            )
+            histogram_sections.append((chart.get("title", ""), sorted_items))
+        return header, body, histogram_sections
+
+    def _get_xlsx(self, data):
+        """Build an XLSX workbook of the same data the CSV export contains.
+
+        Time-series traces are written as one sheet; each histogram chart
+        gets its own sheet so its key-value layout doesn't collide with
+        the time series.
+        """
+        from openpyxl import Workbook
+        from openpyxl.utils import get_column_letter
+
+        header, body, histograms = self._build_export_rows(data)
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Time Series"
+        if header:
+            ws.append(header)
+            for col_idx, value in enumerate(header, start=1):
+                ws.column_dimensions[get_column_letter(col_idx)].width = max(
+                    14, min(40, len(str(value)) + 2)
+                )
+        for row in body:
+            ws.append(row)
+        for title, items in histograms:
+            sheet_title = (title or "Histogram")[:31] or "Histogram"
+            base = sheet_title
+            counter = 2
+            while sheet_title in wb.sheetnames:
+                suffix = f" ({counter})"
+                sheet_title = base[: 31 - len(suffix)] + suffix
+                counter += 1
+            hist_ws = wb.create_sheet(title=sheet_title)
+            hist_ws.append([title])
+            hist_ws.append(["Field", "Value"])
+            for field, value in items:
+                hist_ws.append([field, value])
+            hist_ws.column_dimensions["A"].width = 32
+            hist_ws.column_dimensions["B"].width = 18
+        buffer = BytesIO()
+        wb.save(buffer)
+        return buffer.getvalue()
+
+    def _get_pdf(self, data):
+        """Render the selected data as a paginated PDF table.
+
+        Returns None if WeasyPrint is unavailable so the caller can
+        surface a clean error.
+        """
+        try:
+            from weasyprint import HTML
+        except ImportError:
+            logger.exception("WeasyPrint not available; cannot render PDF export.")
+            return None
+        header, body, histograms = self._build_export_rows(data)
+        # When called from the device-scoped API, the subclass sets
+        # ``self.instance`` to the Device before super().get() runs, so we
+        # can title the PDF with the device name. Falls back to a generic
+        # heading for dashboard / multi-tenant exports.
+        device = getattr(self, "instance", None)
+        title = getattr(device, "name", None) or "Timeseries Export"
+        html = render_to_string(
+            "monitoring/timeseries_export_pdf.html",
+            {
+                "title": title,
+                "header": header,
+                "rows": body,
+                "histograms": histograms,
+                "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            },
+        )
+        return HTML(string=html).write_pdf()
 
 from django.shortcuts import render
  

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Timeseries Export</title>
+    <style>
+        @page { size: A4 landscape; margin: 14mm 12mm; @bottom-right { content: "Page " counter(page) " of " counter(pages); font-size: 9pt; color: #64748b; } }
+        body { font-family: "Helvetica", "Arial", sans-serif; font-size: 9pt; color: #0f172a; }
+        h1 { font-size: 14pt; margin: 0 0 4px 0; }
+        .meta { color: #64748b; font-size: 8.5pt; margin-bottom: 10px; }
+        table { width: 100%; border-collapse: collapse; table-layout: fixed; word-wrap: break-word; }
+        th, td { border: 1px solid #cbd5e1; padding: 4px 6px; vertical-align: top; }
+        th { background: #f1f5f9; text-align: left; font-weight: 600; }
+        tbody tr:nth-child(even) td { background: #f8fafc; }
+        thead { display: table-header-group; }
+        tr { page-break-inside: avoid; }
+        h2 { font-size: 11pt; margin: 18px 0 6px 0; }
+        .empty { color: #94a3b8; font-style: italic; padding: 12px 0; }
+    </style>
+</head>
+<body>
+    <h1>{{ title|default:"Timeseries Export" }}</h1>
+    <div class="meta">Generated at {{ generated_at }}</div>
+
+    {% if rows %}
+    <table>
+        <thead>
+            <tr>{% for h in header %}<th>{{ h }}</th>{% endfor %}</tr>
+        </thead>
+        <tbody>
+            {% for row in rows %}
+            <tr>{% for cell in row %}<td>{% if cell is None %}{% else %}{{ cell }}{% endif %}</td>{% endfor %}</tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+        {% if not histograms %}<div class="empty">No data to export.</div>{% endif %}
+    {% endif %}
+
+    {% for title, items in histograms %}
+    <h2>{{ title }}</h2>
+    <table>
+        <thead><tr><th style="width: 60%;">Field</th><th>Value</th></tr></thead>
+        <tbody>
+            {% for field, value in items %}
+            <tr><td>{{ field }}</td><td>{{ value }}</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endfor %}
+</body>
+</html>

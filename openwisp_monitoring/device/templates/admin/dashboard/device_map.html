@@ -110,6 +110,12 @@
           Application Intelligence
         </button>
 
+        <!-- 5) INFO -->
+        <button class="home-tablink" role="tab" aria-selected="false" aria-controls="home-pane-info"
+          id="home-tab-info">
+          Info
+        </button>
+
       </div>
 
       <!-- ======================= TAB CONTENTS ======================= -->
@@ -135,6 +141,11 @@
         <!-- APPLICATION INTELLIGENCE -->
         <section id="home-pane-dpi" class="home-tab-pane" role="tabpanel" aria-labelledby="home-tab-dpi">
           {% include "./dpi_analytics_tab.html" %}
+        </section>
+
+        <!-- INFO -->
+        <section id="home-pane-info" class="home-tab-pane" role="tabpanel" aria-labelledby="home-tab-info">
+          {% include "./info_tab.html" %}
         </section>
 
       </div>
